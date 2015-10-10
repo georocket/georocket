@@ -109,7 +109,7 @@ public class GeoRocket extends AbstractVerticle {
     // create new splitter and a window that buffers input until the
     // next chunk is encountered
     Window window = new Window();
-    Splitter splitter = new FirstLevelSplitter(window);
+    Splitter splitter = new FirstLevelSplitter(window, xmlParser);
     
     // helper function to close the XML parser
     Runnable closeXmlParser = () -> {

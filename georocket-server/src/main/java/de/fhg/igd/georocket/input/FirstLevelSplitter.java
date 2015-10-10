@@ -1,7 +1,6 @@
 package de.fhg.igd.georocket.input;
 
-import java.nio.charset.StandardCharsets;
-
+import javax.xml.stream.XMLStreamReader;
 import javax.xml.stream.events.XMLEvent;
 
 /**
@@ -9,35 +8,32 @@ import javax.xml.stream.events.XMLEvent;
  * child of the XML document's root node) is encountered
  * @author Michel Kraemer
  */
-public class FirstLevelSplitter implements Splitter {
+public class FirstLevelSplitter extends XMLSplitter {
   private int depth = 0;
-  private int lastStart = -1;
-  private final Window window;
   
   /**
    * Create splitter
    * @param window a buffer for incoming data
+   * @param xmlReader the XML reader that emits the event that
+   * this splitter will handle
    */
-  public FirstLevelSplitter(Window window) {
-    this.window = window;
+  public FirstLevelSplitter(Window window, XMLStreamReader xmlReader) {
+    super(window, xmlReader);
   }
   
   @Override
-  public String onEvent(int event, int pos) {
+  protected String onXMLEvent(int event, int pos) {
     String result = null;
     
     // create new chunk if we're just after the end of a first-level element
-    if (depth == 1 && event != XMLEvent.END_ELEMENT && lastStart >= 0) {
-      byte[] bytes = window.getBytes(lastStart, pos);
-      result = new String(bytes, StandardCharsets.UTF_8);
-      window.advanceTo(pos);
-      lastStart = -1;
+    if (depth == 1 && isMarked()) {
+      result = makeChunk(pos);
     }
     
     switch (event) {
     case XMLEvent.START_ELEMENT:
       if (depth == 1) {
-        lastStart = pos;
+        mark(pos);
       }
       ++depth;
       break;
