@@ -1,4 +1,5 @@
 dependencies {
+    compile "io.vertx:vertx-rx-java:$vertxVersion"
     compile "io.vertx:vertx-web:$vertxVersion"
 
     compile 'com.fasterxml:aalto-xml:0.9.11'
