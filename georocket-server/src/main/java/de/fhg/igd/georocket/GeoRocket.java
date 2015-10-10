@@ -1,6 +1,6 @@
 package de.fhg.igd.georocket;
 
-import java.util.UUID;
+import java.io.FileNotFoundException;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -9,13 +9,13 @@ import com.fasterxml.aalto.AsyncXMLInputFactory;
 import com.fasterxml.aalto.AsyncXMLStreamReader;
 import com.fasterxml.aalto.stax.InputFactoryImpl;
 
-import de.fhg.igd.georocket.constants.AddressConstants;
 import de.fhg.igd.georocket.constants.ConfigConstants;
-import de.fhg.igd.georocket.constants.MessageConstants;
 import de.fhg.igd.georocket.input.FirstLevelSplitter;
 import de.fhg.igd.georocket.input.Splitter;
 import de.fhg.igd.georocket.input.Window;
-import de.fhg.igd.georocket.storage.file.FileStoreVerticle;
+import de.fhg.igd.georocket.storage.file.ChunkReadStream;
+import de.fhg.igd.georocket.storage.file.FileStore;
+import de.fhg.igd.georocket.storage.file.Store;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.DeploymentOptions;
@@ -24,16 +24,14 @@ import io.vertx.core.Handler;
 import io.vertx.core.Verticle;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.eventbus.EventBus;
-import io.vertx.core.eventbus.MessageConsumer;
 import io.vertx.core.eventbus.ReplyException;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.http.HttpServerOptions;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpServerResponse;
-import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.core.streams.Pump;
 import io.vertx.core.streams.ReadStream;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
@@ -47,6 +45,8 @@ import io.vertx.rx.java.RxHelper;
 public class GeoRocket extends AbstractVerticle {
   private static Logger log = LoggerFactory.getLogger(GeoRocket.class);
   
+  private Store store;
+  
   /**
    * Convert an asynchronous result to an HTTP status code
    * @param ar the result to convert
@@ -56,17 +56,14 @@ public class GeoRocket extends AbstractVerticle {
     if (ar.failed()) {
       if (ar.cause() instanceof ReplyException) {
         return ((ReplyException)ar.cause()).failureCode();
+      } else if (ar.cause() instanceof IllegalArgumentException) {
+        return 400;
+      } else if (ar.cause() instanceof FileNotFoundException) {
+        return 404;
       }
       return 500;
     }
     return 200;
-  }
-  
-  /**
-   * @return an address for a temporary event bus consumer
-   */
-  private static String makeTemporaryAddress() {
-    return AddressConstants.GEOROCKET + "." + UUID.randomUUID().toString();
   }
   
   /**
@@ -97,11 +94,8 @@ public class GeoRocket extends AbstractVerticle {
     int pos = xmlParser.getLocation().getCharacterOffset();
     String chunk = splitter.onEvent(event, pos);
     if (chunk != null) {
-      // splitter has created a chunk. send it to the store.
-      JsonObject msg = new JsonObject()
-          .put(MessageConstants.ACTION, MessageConstants.ADD)
-          .put(MessageConstants.CHUNK, chunk);
-      vertx.eventBus().send(AddressConstants.STORE, msg, ar -> {
+      // splitter has created a chunk. store it.
+      store.add(chunk, ar -> {
         if (ar.failed()) {
           handler.handle(Future.failedFuture(ar.cause()));
         } else {
@@ -182,45 +176,26 @@ public class GeoRocket extends AbstractVerticle {
    * @param context the routing context
    */
   private void onGet(RoutingContext context) {
-    EventBus eb = vertx.eventBus();
     HttpServerRequest request = context.request();
     HttpServerResponse response = context.response();
     
-    String id = request.getParam("id");
+    String name = request.getParam("name");
     
     // get chunk from store
-    JsonObject getMsg = new JsonObject()
-        .put(MessageConstants.ACTION, MessageConstants.GET)
-        .put(MessageConstants.NAME, id);
-    eb.<Long>send(AddressConstants.STORE, getMsg, getar -> {
+    store.get(name, getar -> {
       if (getar.failed()) {
         log.error("Could not get chunk", getar.cause());
         response.setStatusCode(resultToCode(getar)).end(getar.cause().getMessage());
         return;
       }
       
-      // write content-length
-      long[] size = new long[] { getar.result().body() };
-      response.putHeader("Content-Length", String.valueOf(size[0]));
+      // write Content-Length
+      ChunkReadStream crs = getar.result();
+      response.putHeader("Content-Length", String.valueOf(crs.getSize()));
       
-      // create a temporary consumer that will receive the chunk
-      String temporaryAddress = makeTemporaryAddress();
-      MessageConsumer<Buffer> consumer = eb.consumer(temporaryAddress);
-      consumer.handler(msg -> {
-        // send chunk to client
-        Buffer buf = msg.body();
-        response.write(buf);
-        
-        // unregister temporary consumer when all bytes have been received
-        size[0] -= buf.length();
-        if (size[0] <= 0) {
-          consumer.unregister();
-          response.end();
-        }
-      });
-      
-      // tell store the address of our temporary consumer
-      getar.result().reply(temporaryAddress);
+      // send chunk to client
+      Pump.pump(crs, response).start();
+      crs.endHandler(v -> response.end());
     });
   }
   
@@ -256,7 +231,7 @@ public class GeoRocket extends AbstractVerticle {
     int port = config().getInteger(ConfigConstants.PORT, ConfigConstants.DEFAULT_PORT);
     
     Router router = Router.router(vertx);
-    router.get("/db/:id").handler(this::onGet);
+    router.get("/db/:name").handler(this::onGet);
     router.put("/db").handler(this::onPut);
     
     HttpServerOptions serverOptions = new HttpServerOptions()
@@ -272,17 +247,15 @@ public class GeoRocket extends AbstractVerticle {
   public void start(Future<Void> startFuture) {
     log.info("Launching GeoRocket ...");
     
-    ObservableFuture<String> observable = deployVerticle(FileStoreVerticle.class);
+    store = new FileStore(vertx);
+    
+    ObservableFuture<HttpServer> observable = deployHttpServer();
     observable
-      .flatMap(v -> deployHttpServer())
-      .subscribe(
-          id -> {
-            startFuture.complete();
-          },
-          err -> {
-            startFuture.fail(err);
-          }
-      );
+      .subscribe(server -> {
+        startFuture.complete();
+      }, err -> {
+        startFuture.fail(err);
+      });
   }
   
   /**

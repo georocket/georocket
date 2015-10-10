@@ -6,7 +6,6 @@ package de.fhg.igd.georocket.constants;
  */
 public final class AddressConstants {
   public static final String GEOROCKET = "georocket";
-  public static final String STORE = "georocket.store";
   
   private AddressConstants() {
     // hidden constructor
