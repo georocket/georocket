@@ -1,6 +1,8 @@
 package de.fhg.igd.georocket.storage.file;
 
 import java.io.FileNotFoundException;
+import java.util.ArrayDeque;
+import java.util.Queue;
 
 import org.bson.types.ObjectId;
 
@@ -24,6 +26,8 @@ import rx.Observable;
  * @author Michel Kraemer
  */
 public class FileStore implements Store {
+  private static final long CLOSE_FILE_TIMEOUT = 5000;
+  
   /**
    * The folder where the chunks should be saved
    */
@@ -35,6 +39,21 @@ public class FileStore implements Store {
   private final Vertx vertx;
   
   /**
+   * A queue of files to close asynchronously
+   */
+  private final Queue<AsyncFile> filesToClose = new ArrayDeque<>();
+  
+  /**
+   * The time when the last file was added to {@link #filesToClose}
+   */
+  private long lastCloseFile = 0;
+  
+  /**
+   * The ID of the timer that asynchronously closes files from {@link #filesToClose}
+   */
+  private long closeFileTimerId = -1;
+  
+  /**
    * Default constructor
    */
   public FileStore(Vertx vertx) {
@@ -42,6 +61,41 @@ public class FileStore implements Store {
         ConfigConstants.HOME, System.getProperty("user.home") + "/.georocket");
     this.root = home + "/storage/file";
     this.vertx = vertx;
+  }
+  
+  /**
+   * Schedules a file to be closed asynchronously
+   * @param f the file to close
+   */
+  private void scheduleClose(AsyncFile f) {
+    filesToClose.offer(f);
+    lastCloseFile = System.currentTimeMillis();
+    if (closeFileTimerId < 0) {
+      closeFileTimerId = vertx.setTimer(CLOSE_FILE_TIMEOUT, this::doCloseFiles);
+    }
+  }
+  
+  /**
+   * The timer that closes files asynchronously
+   * @param timerId the timer's ID
+   */
+  private void doCloseFiles(Long timerId) {
+    long now = System.currentTimeMillis();
+    long elapsed = now - lastCloseFile;
+    if (elapsed >= CLOSE_FILE_TIMEOUT) {
+      closeFileTimerId = -1;
+      while (!filesToClose.isEmpty()) {
+        if (System.currentTimeMillis() - now > 10) { 
+          // do not block the event loop more than 10ms, and
+          // then wait a bit before we continue
+          closeFileTimerId = vertx.setTimer(10, this::doCloseFiles);
+          break;
+        }
+        filesToClose.poll().close();
+      }
+    } else {
+      closeFileTimerId = vertx.setTimer(CLOSE_FILE_TIMEOUT - elapsed, this::doCloseFiles);
+    }
   }
   
   @Override
@@ -69,7 +123,9 @@ public class FileStore implements Store {
         AsyncFile f = openar.result();
         Buffer buf = Buffer.buffer(chunk);
         f.write(buf, 0, writear -> {
-          f.close();
+          // close file asynchronously
+          scheduleClose(f);
+          
           if (writear.failed()) {
             handler.handle(Future.failedFuture(writear.cause()));
             return;
