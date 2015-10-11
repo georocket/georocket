@@ -3,7 +3,6 @@ package de.fhg.igd.georocket;
 import java.io.FileNotFoundException;
 
 import de.fhg.igd.georocket.constants.ConfigConstants;
-import de.fhg.igd.georocket.index.IndexerVerticle;
 import de.fhg.igd.georocket.input.FirstLevelSplitter;
 import de.fhg.igd.georocket.input.Splitter;
 import de.fhg.igd.georocket.storage.file.ChunkReadStream;
