@@ -12,6 +12,8 @@ import javax.xml.stream.XMLStreamReader;
 
 import org.junit.Test;
 
+import de.fhg.igd.georocket.util.Window;
+import de.fhg.igd.georocket.util.XMLStreamEvent;
 import io.vertx.core.buffer.Buffer;
 
 /**
@@ -31,12 +33,12 @@ public class FirstLevelSplitterTest {
     Window window = new Window();
     window.append(Buffer.buffer(xml));
     XMLStreamReader reader = XMLInputFactory.newFactory().createXMLStreamReader(new StringReader(xml));
-    FirstLevelSplitter splitter = new FirstLevelSplitter(window, reader);
+    FirstLevelSplitter splitter = new FirstLevelSplitter(window);
     List<String> chunks = new ArrayList<>();
     while (reader.hasNext()) {
       int event = reader.next();
       int pos = reader.getLocation().getCharacterOffset();
-      String chunk = splitter.onEvent(event, pos);
+      String chunk = splitter.onEvent(new XMLStreamEvent(event, pos, reader));
       if (chunk != null) {
         chunks.add(chunk);
       }

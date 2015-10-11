@@ -7,6 +7,9 @@ import java.util.Deque;
 import javax.xml.stream.XMLStreamReader;
 import javax.xml.stream.events.XMLEvent;
 
+import de.fhg.igd.georocket.util.Window;
+import de.fhg.igd.georocket.util.XMLStreamEvent;
+
 /**
  * Abstract base class for splitters that split XML streams
  * @author Michel Kraemer
@@ -23,11 +26,6 @@ public abstract class XMLSplitter implements Splitter {
   private final Window window;
   
   /**
-   * The XML reader that emits the event that this splitter will handle
-   */
-  private final XMLStreamReader xmlReader;
-  
-  /**
    * A stack keeping all encountered start elements
    */
   private final Deque<XMLStartElement> startElements = new ArrayDeque<>();
@@ -35,21 +33,18 @@ public abstract class XMLSplitter implements Splitter {
   /**
    * Create splitter
    * @param window a buffer for incoming data
-   * @param xmlReader the XML reader that emits the event that
-   * this splitter will handle
    */
-  public XMLSplitter(Window window, XMLStreamReader xmlReader) {
+  public XMLSplitter(Window window) {
     this.window = window;
-    this.xmlReader = xmlReader;
   }
   
   @Override
-  public String onEvent(int event, int pos) {
-    String chunk = onXMLEvent(event, pos);
+  public String onEvent(XMLStreamEvent event) {
+    String chunk = onXMLEvent(event);
     if (!isMarked()) {
-      if (event == XMLEvent.START_ELEMENT) {
-        startElements.push(makeXMLStartElement());
-      } else if (event == XMLEvent.END_ELEMENT) {
+      if (event.getEvent() == XMLEvent.START_ELEMENT) {
+        startElements.push(makeXMLStartElement(event.getXMLReader()));
+      } else if (event.getEvent() == XMLEvent.END_ELEMENT) {
         startElements.pop();
       }
     }
@@ -58,9 +53,10 @@ public abstract class XMLSplitter implements Splitter {
   
   /**
    * Creates an {@link XMLStartElement} from the current parser state
+   * @param xmlReader the XML parser
    * @return the {@link XMLStartElement}
    */
-  private XMLStartElement makeXMLStartElement() {
+  private XMLStartElement makeXMLStartElement(XMLStreamReader xmlReader) {
     // copy namespaces (if there are any)
     int nc = xmlReader.getNamespaceCount();
     String[] namespacePrefixes = null;
@@ -138,7 +134,7 @@ public abstract class XMLSplitter implements Splitter {
   }
   
   /**
-   * @see #onEvent(int, int)
+   * @see #onEvent(XMLStreamEvent)
    */
-  protected abstract String onXMLEvent(int event, int pos);
+  protected abstract String onXMLEvent(XMLStreamEvent event);
 }

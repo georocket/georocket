@@ -2,20 +2,15 @@ package de.fhg.igd.georocket;
 
 import java.io.FileNotFoundException;
 
-import javax.xml.stream.XMLStreamException;
-
-import com.fasterxml.aalto.AsyncByteArrayFeeder;
-import com.fasterxml.aalto.AsyncXMLInputFactory;
-import com.fasterxml.aalto.AsyncXMLStreamReader;
-import com.fasterxml.aalto.stax.InputFactoryImpl;
-
 import de.fhg.igd.georocket.constants.ConfigConstants;
+import de.fhg.igd.georocket.index.IndexerVerticle;
 import de.fhg.igd.georocket.input.FirstLevelSplitter;
 import de.fhg.igd.georocket.input.Splitter;
-import de.fhg.igd.georocket.input.Window;
 import de.fhg.igd.georocket.storage.file.ChunkReadStream;
 import de.fhg.igd.georocket.storage.file.FileStore;
 import de.fhg.igd.georocket.storage.file.Store;
+import de.fhg.igd.georocket.util.WindowPipeStream;
+import de.fhg.igd.georocket.util.XMLPipeStream;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.DeploymentOptions;
@@ -67,107 +62,41 @@ public class GeoRocket extends AbstractVerticle {
   }
   
   /**
-   * Recursively read XML tokens from a parser and split them
-   * @param xmlParser the parser from which to read the XML tokens
-   * @param splitter a splitter that will create chunks out of the XML tokens
-   * @param handler a result handler that will be called when all available
-   * tokens have been read or when an error has occurred
-   */
-  private void readTokens(AsyncXMLStreamReader<AsyncByteArrayFeeder> xmlParser,
-      Splitter splitter, Handler<AsyncResult<Void>> handler) {
-    // read next token
-    int event;
-    try {
-      event = xmlParser.next();
-    } catch (XMLStreamException e) {
-      handler.handle(Future.failedFuture(e));
-      return;
-    }
-    
-    if (event == AsyncXMLStreamReader.EVENT_INCOMPLETE) {
-      // wait for more input
-      handler.handle(Future.succeededFuture());
-      return;
-    }
-    
-    // forward token to splitter
-    int pos = xmlParser.getLocation().getCharacterOffset();
-    String chunk = splitter.onEvent(event, pos);
-    if (chunk != null) {
-      // splitter has created a chunk. store it.
-      store.add(chunk, ar -> {
-        if (ar.failed()) {
-          handler.handle(Future.failedFuture(ar.cause()));
-        } else {
-          // go ahead
-          readTokens(xmlParser, splitter, handler);
-        }
-      });
-    } else {
-      // splitter did not create a chunk. read next one.
-      readTokens(xmlParser, splitter, handler);
-    }
-  }
-  
-  /**
    * Imports an XML file from the given input stream into the store
    * @param f the XML file to read
    * @param callback will be called when the operation has finished
    */
   private void readStream(ReadStream<Buffer> f, Handler<AsyncResult<Void>> callback) {
-    // create asynchronous XML parser
-    AsyncXMLInputFactory xmlInputFactory = new InputFactoryImpl();
-    AsyncXMLStreamReader<AsyncByteArrayFeeder> xmlParser = xmlInputFactory.createAsyncForByteArray();
-    AsyncByteArrayFeeder xmlFeeder = xmlParser.getInputFeeder();
+    XMLPipeStream xmlStream = new XMLPipeStream(vertx);
+    WindowPipeStream windowPipeStream = new WindowPipeStream();
+    Splitter splitter = new FirstLevelSplitter(windowPipeStream.getWindow());
     
-    // create new splitter and a window that buffers input until the
-    // next chunk is encountered
-    Window window = new Window();
-    Splitter splitter = new FirstLevelSplitter(window, xmlParser);
+    Pump.pump(f, windowPipeStream).start();
+    Pump.pump(windowPipeStream, xmlStream).start();
     
-    // helper function to close the XML parser
-    Runnable closeXmlParser = () -> {
-      try {
-        xmlParser.close();
-      } catch (XMLStreamException e) {
-        // we don't have to inform the client about this, just log the error.
-        log.warn("Could not close XML parser", e);
-      }
-    };
-    
-    // close XML parser at the end
     f.endHandler(v -> {
-      xmlFeeder.endOfInput();
-      closeXmlParser.run();
+      xmlStream.close();
       callback.handle(Future.succeededFuture());
     });
     
-    // handle input data
-    f.handler(buf -> {
-      f.pause(); // don't feed more input while readTokens() is doing its work
-      
-      // buffer input in window
-      byte[] bytes = buf.getBytes();
-      window.append(buf);
-      
-      // feed XML parser with input
-      try {
-        xmlFeeder.feedInput(bytes, 0, bytes.length);
-      } catch (XMLStreamException e) {
-        closeXmlParser.run();
-        callback.handle(Future.failedFuture(e));
-        return;
+    f.exceptionHandler(e -> callback.handle(Future.failedFuture(e)));
+    windowPipeStream.exceptionHandler(e -> callback.handle(Future.failedFuture(e)));
+    xmlStream.exceptionHandler(e -> callback.handle(Future.failedFuture(e)));
+    
+    xmlStream.handler(event -> {
+      String chunk = splitter.onEvent(event);
+      if (chunk != null) {
+        // splitter has created a chunk. store it.
+        xmlStream.pause(); // pause stream while chunk being written
+        store.add(chunk, ar -> {
+          if (ar.failed()) {
+            callback.handle(Future.failedFuture(ar.cause()));
+          } else {
+            // go ahead
+            xmlStream.resume();
+          }
+        });
       }
-      
-      // read XML tokens and split file
-      readTokens(xmlParser, splitter, ar -> {
-        if (ar.failed()) {
-          closeXmlParser.run();
-          callback.handle(ar);
-        } else {
-          f.resume(); // continue feeding tokens
-        }
-      });
     });
   }
   
