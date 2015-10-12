@@ -131,6 +131,9 @@ public class FileStore implements Store {
             return;
           }
           
+          // start indexing
+          vertx.eventBus().publish(AddressConstants.INDEXER, filename);
+          
           // tell sender that writing was successful
           handler.handle(Future.succeededFuture());
         });

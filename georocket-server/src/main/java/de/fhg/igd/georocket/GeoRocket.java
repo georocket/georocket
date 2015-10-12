@@ -3,6 +3,7 @@ package de.fhg.igd.georocket;
 import java.io.FileNotFoundException;
 
 import de.fhg.igd.georocket.constants.ConfigConstants;
+import de.fhg.igd.georocket.index.IndexerVerticle;
 import de.fhg.igd.georocket.input.FirstLevelSplitter;
 import de.fhg.igd.georocket.input.Splitter;
 import de.fhg.igd.georocket.storage.file.ChunkReadStream;
@@ -177,9 +178,9 @@ public class GeoRocket extends AbstractVerticle {
     
     store = new FileStore(vertx);
     
-    ObservableFuture<HttpServer> observable = deployHttpServer();
-    observable
-      .subscribe(server -> {
+    deployVerticle(IndexerVerticle.class)
+      .flatMap(v -> deployHttpServer())
+      .subscribe(id -> {
         startFuture.complete();
       }, err -> {
         startFuture.fail(err);

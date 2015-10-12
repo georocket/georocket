@@ -67,9 +67,11 @@ public class GeoRocketTest {
           HttpClient client = vertx.createHttpClient(clientOptions);
           HttpClientRequest request = client.put(DEFAULT_PORT, "localhost", "/db", response -> {
             // check response and contents of GeoRocket's storage folder
-            context.assertEquals(202, response.statusCode());
-            context.assertEquals(2, new File(folder.getRoot(), "storage/file").listFiles().length);
-            async.complete();
+            vertx.setTimer(100, l -> {
+              context.assertEquals(202, response.statusCode());
+              context.assertEquals(2, new File(folder.getRoot(), "storage/file").listFiles().length);
+              async.complete();
+            });
           });
           request.putHeader("Content-Length", String.valueOf(props.size()));
           Pump.pump(f, request).start();
