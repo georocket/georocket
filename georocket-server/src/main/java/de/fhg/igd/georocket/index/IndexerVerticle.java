@@ -191,6 +191,7 @@ public class IndexerVerticle extends AbstractVerticle {
     Map<String,Object> gmlIds = new HashMap<>();
     gmlIds.put("type", "string"); // array of strings actually, auto-supported by ElasticSearch
     gmlIds.put("store", false);
+    gmlIds.put("index", "not_analyzed"); // do not analyze (i.e. tokenize) this field, use the actual value
     
     Map<String, Object> properties = new HashMap<>();
     properties.put("gmlIds", gmlIds);
