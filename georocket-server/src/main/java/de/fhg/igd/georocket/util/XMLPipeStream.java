@@ -36,34 +36,30 @@ public class XMLPipeStream extends PipeStream<Buffer, XMLStreamEvent> {
   
   @Override
   protected void doRead() {
-    if (dataHandler == null) {
-      // nothing to do
-      return;
-    }
+    while (!paused && dataHandler != null) {
+      // read next token
+      int event;
+      try {
+        event = xmlParser.next();
+      } catch (XMLStreamException e) {
+        handleException(e);
+        break;
+      }
+      
+      if (event == AsyncXMLStreamReader.EVENT_INCOMPLETE) {
+        // wait for more input
+        doDrain();
+        break;
+      }
     
-    // read next token
-    int event;
-    try {
-      event = xmlParser.next();
-    } catch (XMLStreamException e) {
-      handleException(e);
-      return;
-    }
-    
-    if (event == AsyncXMLStreamReader.EVENT_INCOMPLETE) {
-      // wait for more input
-      doDrain();
-      return;
-    }
-    
-    // forward token
-    int pos = xmlParser.getLocation().getCharacterOffset();
-    XMLStreamEvent e = new XMLStreamEvent(event, pos, xmlParser);
-    dataHandler.handle(e);
-    if (event == XMLEvent.END_DOCUMENT) {
-      handleEnd();
-    } else if (!paused && dataHandler != null) {
-      doRead();
+      // forward token
+      int pos = xmlParser.getLocation().getCharacterOffset();
+      XMLStreamEvent e = new XMLStreamEvent(event, pos, xmlParser);
+      dataHandler.handle(e);
+      if (event == XMLEvent.END_DOCUMENT) {
+        handleEnd();
+        break;
+      }
     }
   }
   

@@ -15,21 +15,17 @@ public class WindowPipeStream extends PipeStream<Buffer, Buffer> {
   
   @Override
   protected void doRead() {
-    if (paused || dataHandler == null) {
-      // nothing to do
-      return;
+    while (!paused && dataHandler != null) {
+      if (data == null) {
+        // wait for more input
+        doDrain();
+        break;
+      }
+      
+      Buffer d = data;
+      data = null;
+      dataHandler.handle(d);
     }
-    
-    if (data == null) {
-      // wait for more input
-      doDrain();
-      return;
-    }
-    
-    Buffer d = data;
-    data = null;
-    dataHandler.handle(d);
-    doRead();
   }
 
   @Override
