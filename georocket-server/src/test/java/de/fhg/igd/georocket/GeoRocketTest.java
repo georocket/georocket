@@ -71,7 +71,7 @@ public class GeoRocketTest {
           HttpClientOptions clientOptions = new HttpClientOptions()
               .setTryUseCompression(true);
           HttpClient client = vertx.createHttpClient(clientOptions);
-          HttpClientRequest request = client.put(DEFAULT_PORT, "localhost", "/db", response -> {
+          HttpClientRequest request = client.post(DEFAULT_PORT, "localhost", "/db", response -> {
             // check response and contents of GeoRocket's storage folder
             vertx.setTimer(100, l -> {
               context.assertEquals(202, response.statusCode());

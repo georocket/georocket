@@ -129,10 +129,10 @@ public class GeoRocket extends AbstractVerticle {
   }
   
   /**
-   * Handles the HTTP PUT request
+   * Handles the HTTP POST request
    * @param context the routing context
    */
-  private void onPut(RoutingContext context) {
+  private void onPost(RoutingContext context) {
     HttpServerRequest request = context.request();
     importXML(request, ar -> {
       if (ar.failed()) {
@@ -161,7 +161,7 @@ public class GeoRocket extends AbstractVerticle {
     
     Router router = Router.router(vertx);
     router.get("/db/:name").handler(this::onGet);
-    router.put("/db").handler(this::onPut);
+    router.post("/db").handler(this::onPost);
     
     HttpServerOptions serverOptions = new HttpServerOptions()
         .setCompressionSupported(true);
