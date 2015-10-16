@@ -1,4 +1,9 @@
-package de.fhg.igd.georocket.input;
+package de.fhg.igd.georocket.util;
+
+import java.util.Arrays;
+
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 
 /**
  * A simple class describing an XML start element with optional prefix,
@@ -62,6 +67,9 @@ public class XMLStartElement {
    * @param localName the name
    * @param namespacePrefixes the namespace prefixes (may be null)
    * @param namespaceUris the namespace URIs (may be null)
+   * @param attributePrefixes the attribute prefixes (may be null)
+   * @param attributeLocalNames the attribute names (may be null)
+   * @param attributeValues the attribute values (may be null)
    */
   public XMLStartElement(String prefix, String localName, String[] namespacePrefixes,
       String[] namespaceUris, String[] attributePrefixes, String[] attributeLocalNames,
@@ -82,7 +90,7 @@ public class XMLStartElement {
       throw new IllegalArgumentException("attributePrefixes, attributeLocalNames and attributeValues "
           + "must have the same number of elements");
     }
-    this.prefix = prefix;
+    this.prefix = prefix == null || prefix.isEmpty() ? null : prefix;
     this.localName = localName;
     this.namespacePrefixes = namespacePrefixes;
     this.namespaceUris = namespaceUris;
@@ -207,5 +215,104 @@ public class XMLStartElement {
     sb.append(">");
     
     return sb.toString();
+  }
+
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = 1;
+    result = prime * result + Arrays.hashCode(attributeLocalNames);
+    result = prime * result + Arrays.hashCode(attributePrefixes);
+    result = prime * result + Arrays.hashCode(attributeValues);
+    result = prime * result + ((localName == null) ? 0 : localName.hashCode());
+    result = prime * result + Arrays.hashCode(namespacePrefixes);
+    result = prime * result + Arrays.hashCode(namespaceUris);
+    result = prime * result + ((prefix == null) ? 0 : prefix.hashCode());
+    return result;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null) {
+      return false;
+    }
+    if (getClass() != obj.getClass()) {
+      return false;
+    }
+    XMLStartElement other = (XMLStartElement) obj;
+    if (!Arrays.equals(attributeLocalNames, other.attributeLocalNames)) {
+      return false;
+    }
+    if (!Arrays.equals(attributePrefixes, other.attributePrefixes)) {
+      return false;
+    }
+    if (!Arrays.equals(attributeValues, other.attributeValues)) {
+      return false;
+    }
+    if (localName == null) {
+      if (other.localName != null) {
+        return false;
+      }
+    } else if (!localName.equals(other.localName)) {
+      return false;
+    }
+    if (!Arrays.equals(namespacePrefixes, other.namespacePrefixes)) {
+      return false;
+    }
+    if (!Arrays.equals(namespaceUris, other.namespaceUris)) {
+      return false;
+    }
+    if (prefix == null) {
+      if (other.prefix != null) {
+        return false;
+      }
+    } else if (!prefix.equals(other.prefix)) {
+      return false;
+    }
+    return true;
+  }
+  
+  /**
+   * @return this object as a {@link JsonObject}
+   */
+  public JsonObject toJsonObject() {
+    JsonArray np = new JsonArray();
+    Arrays.asList(namespacePrefixes).forEach(e -> np.add(e));
+    JsonArray nu = new JsonArray();
+    Arrays.asList(namespaceUris).forEach(e -> nu.add(e));
+    JsonArray ap = new JsonArray();
+    Arrays.asList(attributePrefixes).forEach(e -> ap.add(e));
+    JsonArray aln = new JsonArray();
+    Arrays.asList(attributeLocalNames).forEach(e -> aln.add(e));
+    JsonArray av = new JsonArray();
+    Arrays.asList(attributeValues).forEach(e -> av.add(e));
+    return new JsonObject()
+        .put("prefix", prefix)
+        .put("localName", localName)
+        .put("namespacePrefixes", np)
+        .put("namespaceUris", nu)
+        .put("attributePrefixes", ap)
+        .put("attributeLocalNames", aln)
+        .put("attributeValues", av);
+  }
+  
+  /**
+   * Converts a {@link JsonObject} to a {@link XMLStartElement}
+   * @param obj the {@link JsonObject} to convert
+   * @return the {@link XMLStartElement}
+   */
+  public static XMLStartElement fromJsonObject(JsonObject obj) {
+    JsonArray np = obj.getJsonArray("namespacePrefixes");
+    JsonArray nu = obj.getJsonArray("namespaceUris");
+    JsonArray ap = obj.getJsonArray("attributePrefixes");
+    JsonArray aln = obj.getJsonArray("attributeLocalNames");
+    JsonArray av = obj.getJsonArray("attributeValues");
+    return new XMLStartElement(obj.getString("prefix"), obj.getString("localName"),
+        np.stream().toArray(String[]::new), nu.stream().toArray(String[]::new),
+        ap.stream().toArray(String[]::new), aln.stream().toArray(String[]::new),
+        av.stream().toArray(String[]::new));
   }
 }

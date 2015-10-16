@@ -30,9 +30,15 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
  */
 @RunWith(VertxUnitRunner.class)
 public class GeoRocketTest {
+  /**
+   * Run the test on a Vert.x test context
+   */
   @Rule
   public RunTestOnContext rule = new RunTestOnContext();
   
+  /**
+   * Create a temporary folder
+   */
   @Rule
   public TemporaryFolder folder = new TemporaryFolder();
   

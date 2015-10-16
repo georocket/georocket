@@ -8,6 +8,7 @@ import org.bson.types.ObjectId;
 
 import de.fhg.igd.georocket.constants.AddressConstants;
 import de.fhg.igd.georocket.constants.ConfigConstants;
+import de.fhg.igd.georocket.util.ChunkMeta;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -17,6 +18,7 @@ import io.vertx.core.file.AsyncFile;
 import io.vertx.core.file.FileProps;
 import io.vertx.core.file.FileSystem;
 import io.vertx.core.file.OpenOptions;
+import io.vertx.core.json.JsonObject;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
 import rx.Observable;
@@ -55,6 +57,7 @@ public class FileStore implements Store {
   
   /**
    * Default constructor
+   * @param vertx the Vertx instance
    */
   public FileStore(Vertx vertx) {
     String home = vertx.getOrCreateContext().config().getString(
@@ -99,7 +102,7 @@ public class FileStore implements Store {
   }
   
   @Override
-  public void add(String chunk, Handler<AsyncResult<Void>> handler) {
+  public void add(String chunk, ChunkMeta meta, Handler<AsyncResult<Void>> handler) {
     // create storage folder
     vertx.fileSystem().mkdirs(root, ar -> {
       if (ar.failed()) {
@@ -132,7 +135,10 @@ public class FileStore implements Store {
           }
           
           // start indexing
-          vertx.eventBus().publish(AddressConstants.INDEXER, filename);
+          JsonObject indexMsg = new JsonObject()
+              .put("filename", filename)
+              .put("meta", meta.toJsonObject());
+          vertx.eventBus().publish(AddressConstants.INDEXER, indexMsg);
           
           // tell sender that writing was successful
           handler.handle(Future.succeededFuture());

@@ -66,7 +66,7 @@ public class GeoRocket extends AbstractVerticle {
    * @param f the XML file to read
    * @param callback will be called when the operation has finished
    */
-  private void readStream(ReadStream<Buffer> f, Handler<AsyncResult<Void>> callback) {
+  private void importXML(ReadStream<Buffer> f, Handler<AsyncResult<Void>> callback) {
     XMLPipeStream xmlStream = new XMLPipeStream(vertx);
     WindowPipeStream windowPipeStream = new WindowPipeStream();
     Splitter splitter = new FirstLevelSplitter(windowPipeStream.getWindow());
@@ -84,11 +84,11 @@ public class GeoRocket extends AbstractVerticle {
     xmlStream.exceptionHandler(e -> callback.handle(Future.failedFuture(e)));
     
     xmlStream.handler(event -> {
-      String chunk = splitter.onEvent(event);
-      if (chunk != null) {
+      Splitter.Result splitResult = splitter.onEvent(event);
+      if (splitResult != null) {
         // splitter has created a chunk. store it.
         xmlStream.pause(); // pause stream while chunk being written
-        store.add(chunk, ar -> {
+        store.add(splitResult.getChunk(), splitResult.getMeta(), ar -> {
           if (ar.failed()) {
             callback.handle(Future.failedFuture(ar.cause()));
           } else {
@@ -134,7 +134,7 @@ public class GeoRocket extends AbstractVerticle {
    */
   private void onPut(RoutingContext context) {
     HttpServerRequest request = context.request();
-    readStream(request, ar -> {
+    importXML(request, ar -> {
       if (ar.failed()) {
         request.response()
           .setStatusCode(resultToCode(ar))

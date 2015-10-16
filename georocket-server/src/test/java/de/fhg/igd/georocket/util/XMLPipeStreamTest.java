@@ -29,9 +29,15 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
  */
 @RunWith(VertxUnitRunner.class)
 public class XMLPipeStreamTest {
+  /**
+   * Run the test on a Vert.x test context
+   */
   @Rule
   public RunTestOnContext rule = new RunTestOnContext();
   
+  /**
+   * Create a temporary folder
+   */
   @Rule
   public TemporaryFolder folder = new TemporaryFolder();
   
@@ -67,6 +73,10 @@ public class XMLPipeStreamTest {
     async.complete();
   }
   
+  /**
+   * Create objects required for all tests
+   * @param context the Vert.x test context
+   */
   @Before
   public void setUp(TestContext context) {
     xs = new XMLPipeStream(rule.vertx());

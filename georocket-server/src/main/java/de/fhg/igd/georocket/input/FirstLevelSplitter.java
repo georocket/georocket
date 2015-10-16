@@ -22,12 +22,12 @@ public class FirstLevelSplitter extends XMLSplitter {
   }
   
   @Override
-  protected String onXMLEvent(XMLStreamEvent event) {
-    String result = null;
+  protected Result onXMLEvent(XMLStreamEvent event) {
+    Result result = null;
     
     // create new chunk if we're just after the end of a first-level element
     if (depth == 1 && isMarked()) {
-      result = makeChunk(event.getPos());
+      result = makeResult(event.getPos());
     }
     
     switch (event.getEvent()) {

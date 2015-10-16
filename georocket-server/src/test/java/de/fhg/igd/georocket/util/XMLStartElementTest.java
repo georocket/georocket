@@ -1,4 +1,4 @@
-package de.fhg.igd.georocket.input;
+package de.fhg.igd.georocket.util;
 
 import static org.junit.Assert.assertEquals;
 

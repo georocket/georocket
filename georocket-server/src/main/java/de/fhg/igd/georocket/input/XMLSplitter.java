@@ -2,12 +2,17 @@ package de.fhg.igd.georocket.input;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
+import java.util.List;
 
 import javax.xml.stream.XMLStreamReader;
 import javax.xml.stream.events.XMLEvent;
 
+import de.fhg.igd.georocket.input.Splitter.Result;
+import de.fhg.igd.georocket.util.ChunkMeta;
 import de.fhg.igd.georocket.util.Window;
+import de.fhg.igd.georocket.util.XMLStartElement;
 import de.fhg.igd.georocket.util.XMLStreamEvent;
 
 /**
@@ -39,8 +44,8 @@ public abstract class XMLSplitter implements Splitter {
   }
   
   @Override
-  public String onEvent(XMLStreamEvent event) {
-    String chunk = onXMLEvent(event);
+  public Result onEvent(XMLStreamEvent event) {
+    Result chunk = onXMLEvent(event);
     if (!isMarked()) {
       if (event.getEvent() == XMLEvent.START_ELEMENT) {
         startElements.push(makeXMLStartElement(event.getXMLReader()));
@@ -110,16 +115,23 @@ public abstract class XMLSplitter implements Splitter {
   /**
    * Create a new chunk starting from the marked position and ending on the
    * given position. Reset the mark afterwards and advance the window to the
-   * end position.
+   * end position. Return a {@link Splitter.Result} object with the new chunk
+   * and its metadata.
    * @param pos the end position
-   * @return the chunk
+   * @return the {@link Splitter.Result} object
    */
-  protected String makeChunk(int pos) {
+  protected Result makeResult(int pos) {
     StringBuilder sb = new StringBuilder();
     sb.append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n");
     
     // append the full stack of start elements (backwards)
-    startElements.descendingIterator().forEachRemaining(e -> sb.append(e + "\n"));
+    List<XMLStartElement> chunkParents = new ArrayList<>();
+    startElements.descendingIterator().forEachRemaining(e -> {
+      chunkParents.add(e);
+      sb.append(e + "\n");
+    });
+    
+    int chunkStart = sb.length();
     
     // append current element
     byte[] bytes = window.getBytes(mark, pos);
@@ -127,14 +139,20 @@ public abstract class XMLSplitter implements Splitter {
     window.advanceTo(pos);
     mark = -1;
     
+    int chunkEnd = sb.length();
+    
     // append the full stack of end elements
     startElements.iterator().forEachRemaining(e -> sb.append("\n</" + e.getName() + ">"));
     
-    return sb.toString();
+    ChunkMeta meta = new ChunkMeta(chunkParents, chunkStart, chunkEnd);
+    return new Result(sb.toString(), meta);
   }
   
   /**
-   * @see #onEvent(XMLStreamEvent)
+   * Will be called on every XML event
+   * @param event the XML event
+   * @return a new {@link Result} object (containing chunk and metadata) or
+   * <code>null</code> if no result was produced
    */
-  protected abstract String onXMLEvent(XMLStreamEvent event);
+  protected abstract Result onXMLEvent(XMLStreamEvent event);
 }
