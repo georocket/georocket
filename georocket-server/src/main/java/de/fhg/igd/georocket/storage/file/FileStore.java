@@ -22,6 +22,8 @@ import io.vertx.core.file.FileProps;
 import io.vertx.core.file.FileSystem;
 import io.vertx.core.file.OpenOptions;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
 import rx.Observable;
@@ -31,6 +33,8 @@ import rx.Observable;
  * @author Michel Kraemer
  */
 public class FileStore implements Store {
+  private static Logger log = LoggerFactory.getLogger(FileStore.class);
+  
   private static final int MAX_FILES_OPEN_ADD = 1000;
   private static final long CLOSE_FILE_TIMEOUT = 1000;
   private static final long CLOSE_FILE_GRACE = 100;
@@ -66,16 +70,23 @@ public class FileStore implements Store {
   /**
    * The handler that closes files asynchronously
    * @param queue the files to close
+   * @param done will be called when all files are closed
    */
-  private void doCloseFiles(Queue<AsyncFile> queue) {
-    long now = System.currentTimeMillis();
-    while (!queue.isEmpty()) {
-      queue.poll().close();
-      if (System.currentTimeMillis() - now > 10) { 
-        // do not block the event loop more than 10ms
-        break;
+  private void doCloseFiles(Queue<AsyncFile> queue, Runnable done) {
+    // closing files can take a very long time because it involves
+    // flushing and releasing (possibly large) direct memory buffers.
+    // assume the code will block the event loop.
+    vertx.executeBlocking(f -> {
+      int count = 0;
+      while (!queue.isEmpty()) {
+        queue.poll().close();
+        ++count;
       }
-    }
+      log.info("Flushed and closed " + count + " files");
+      f.complete();
+    }, ar -> {
+      done.run();
+    });
   }
   
   @Override
