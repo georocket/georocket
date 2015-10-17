@@ -129,7 +129,10 @@ public class GeoRocket extends AbstractVerticle {
       
       // send chunk to client
       Pump.pump(crs, response).start();
-      crs.endHandler(v -> response.end());
+      crs.endHandler(v -> {
+        response.end();
+        crs.close();
+      });
     });
   }
   
@@ -203,7 +206,11 @@ public class GeoRocket extends AbstractVerticle {
             if (openar.failed()) {
               handler.handle(Future.failedFuture(openar.cause()));
             } else {
-              merger.merge(openar.result(), meta, out, v -> callback.run());
+              ChunkReadStream crs = openar.result();
+              merger.merge(crs, meta, out, v -> {
+                crs.close();
+                callback.run();
+              });
             }
           });
         }, handler);

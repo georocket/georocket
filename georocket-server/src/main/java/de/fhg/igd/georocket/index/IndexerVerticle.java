@@ -30,6 +30,7 @@ import com.google.common.collect.ImmutableMap;
 
 import de.fhg.igd.georocket.constants.AddressConstants;
 import de.fhg.igd.georocket.constants.ConfigConstants;
+import de.fhg.igd.georocket.storage.ChunkReadStream;
 import de.fhg.igd.georocket.storage.Store;
 import de.fhg.igd.georocket.storage.file.FileStore;
 import de.fhg.igd.georocket.util.ChunkMeta;
@@ -40,14 +41,12 @@ import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
-import io.vertx.core.buffer.Buffer;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.core.streams.Pump;
-import io.vertx.core.streams.ReadStream;
 
 /**
  * Background indexing of chunks added to the store
@@ -156,7 +155,7 @@ public class IndexerVerticle extends AbstractVerticle {
         log.error("Could not get chunk from store", ar.cause());
         return;
       }
-      ReadStream<Buffer> chunk = ar.result();
+      ChunkReadStream chunk = ar.result();
       indexChunk(filename, chunk, meta);
     });
   }
@@ -224,11 +223,14 @@ public class IndexerVerticle extends AbstractVerticle {
    * @param chunk the chunk to index
    * @param meta the chunk's metadata
    */
-  private void indexChunk(String name, ReadStream<Buffer> chunk, ChunkMeta meta) {
+  private void indexChunk(String name, ChunkReadStream chunk, ChunkMeta meta) {
     // create XML parser
     XMLPipeStream xmlStream = new XMLPipeStream(vertx);
     Pump.pump(chunk, xmlStream).start();
-    chunk.endHandler(v -> xmlStream.close());
+    chunk.endHandler(v -> {
+      xmlStream.close();
+      chunk.close();
+    });
     
     // a HashMap retrieving the attributes that will be added to the
     // ElasticSearch index

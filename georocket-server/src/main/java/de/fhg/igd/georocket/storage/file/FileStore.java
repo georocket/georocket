@@ -152,7 +152,7 @@ public class FileStore implements Store {
         ObservableFuture<AsyncFile> openObservable = RxHelper.observableFuture();
         OpenOptions openOptions = new OpenOptions().setCreate(false).setWrite(false);
         fs.open(path, openOptions, openObservable.toHandler());
-        return openObservable.map(f -> new ChunkReadStream(size, f));
+        return openObservable.map(f -> new FileChunkReadStream(size, f));
       })
       .subscribe(readStream -> {
         // send chunk to peer

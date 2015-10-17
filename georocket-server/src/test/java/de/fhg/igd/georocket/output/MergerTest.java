@@ -8,7 +8,7 @@ import org.junit.runner.RunWith;
 
 import de.fhg.igd.georocket.BufferReadStream;
 import de.fhg.igd.georocket.BufferWriteStream;
-import de.fhg.igd.georocket.storage.ChunkReadStream;
+import de.fhg.igd.georocket.SimpleChunkReadStream;
 import de.fhg.igd.georocket.util.ChunkMeta;
 import de.fhg.igd.georocket.util.XMLStartElement;
 import io.vertx.core.buffer.Buffer;
@@ -48,8 +48,8 @@ public class MergerTest {
     m.init(cm);
     
     Async async = context.async();
-    m.merge(new ChunkReadStream(chunk1.length(), new BufferReadStream(chunk1)), cm, bws, v1 -> {
-      m.merge(new ChunkReadStream(chunk2.length(), new BufferReadStream(chunk2)), cm, bws, v2 -> {
+    m.merge(new SimpleChunkReadStream(chunk1.length(), new BufferReadStream(chunk1)), cm, bws, v1 -> {
+      m.merge(new SimpleChunkReadStream(chunk2.length(), new BufferReadStream(chunk2)), cm, bws, v2 -> {
         context.assertEquals(XMLHEADER + "<root><test chunk=\"1\"></test><test chunk=\"2\"></test></root>",
             bws.getBuffer().toString());
         async.complete();

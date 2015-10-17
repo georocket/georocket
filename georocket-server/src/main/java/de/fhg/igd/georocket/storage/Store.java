@@ -18,7 +18,8 @@ public interface Store {
   void add(String chunk, ChunkMeta meta, Handler<AsyncResult<Void>> handler);
   
   /**
-   * Get a chunk from the store
+   * Get a chunk from the store. The returned {@link ChunkReadStream} must
+   * be closed after use to release all resources.
    * @param name the chunk's name
    * @param handler will be called when the chunk has been retrieved from the store
    */
