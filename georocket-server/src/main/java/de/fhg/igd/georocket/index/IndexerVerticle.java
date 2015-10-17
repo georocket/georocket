@@ -1,12 +1,10 @@
 package de.fhg.igd.georocket.index;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -15,6 +13,7 @@ import javax.xml.stream.events.XMLEvent;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequest;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
+import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
@@ -34,6 +33,7 @@ import de.fhg.igd.georocket.constants.ConfigConstants;
 import de.fhg.igd.georocket.storage.Store;
 import de.fhg.igd.georocket.storage.file.FileStore;
 import de.fhg.igd.georocket.util.ChunkMeta;
+import de.fhg.igd.georocket.util.TimedActionQueue;
 import de.fhg.igd.georocket.util.XMLPipeStream;
 import de.fhg.igd.georocket.util.XMLStartElement;
 import io.vertx.core.AbstractVerticle;
@@ -55,6 +55,10 @@ import io.vertx.core.streams.ReadStream;
  */
 public class IndexerVerticle extends AbstractVerticle {
   private static Logger log = LoggerFactory.getLogger(IndexerVerticle.class);
+  
+  private static final int MAX_INDEX_REQUESTS = 10000;
+  private static final long INDEX_REQUEST_TIMEOUT = 1000;
+  private static final long INDEX_REQUEST_GRACE = 100;
   
   private static final String NS_GML = "http://www.opengis.net/gml";
   private static final String INDEX_NAME = "georocket";
@@ -82,10 +86,9 @@ public class IndexerVerticle extends AbstractVerticle {
   private boolean insertInProgress;
   
   /**
-   * A queue for {@link IndexRequest}s used by {@link #insertDocument(IndexRequest)}
-   * if an insert is already in progress
+   * A timed queue for {@link IndexRequest}s
    */
-  private Queue<IndexRequest> docsToInsert = new ArrayDeque<>();
+  private TimedActionQueue<IndexRequest> docsToInsert;
   
   @Override
   public void start() {
@@ -111,6 +114,8 @@ public class IndexerVerticle extends AbstractVerticle {
         .node();
     
     client = node.client();
+    docsToInsert = new TimedActionQueue<>(MAX_INDEX_REQUESTS, INDEX_REQUEST_TIMEOUT,
+        INDEX_REQUEST_GRACE, vertx);
     store = new FileStore(vertx);
   }
   
@@ -401,37 +406,45 @@ public class IndexerVerticle extends AbstractVerticle {
   /**
    * Inserts an ElasticSearch document to the index. Enqueues the document
    * if an insert operation is currently in progress.
-   * @param req the IndexRequest containing the document
+   * @param request the IndexRequest containing the document
    * @see #insertDocument(String, Map)
    */
-  private void insertDocument(IndexRequest req) {
-    // TODO improve performance a lot through bulk insert!
-    if (insertInProgress) {
-      docsToInsert.offer(req);
-    } else {
+  private void insertDocument(IndexRequest request) {
+    docsToInsert.offer(request, (queue, done) -> {
+      if (insertInProgress) {
+        // wait a little bit longer
+        done.run();
+        return;
+      }
+      
       insertInProgress = true;
       
       // ensure index exists
       ensureIndex(eiar -> {
         if (eiar.failed()) {
           log.error("Could not create index", eiar.cause());
+          insertInProgress = false;
+          done.run();
         } else {
-          // add document to index
-          client.index(req, handlerToListener(ar -> {
-            log.debug("Finished indexing " + req.id());
+          BulkRequest br = Requests.bulkRequest();
+          int count = 0;
+          while (!queue.isEmpty() && count < MAX_INDEX_REQUESTS) {
+            br.add(queue.poll());
+            ++count;
+          }
+          int finalCount = count;
+          client.bulk(br, handlerToListener(ar -> {
             if (ar.failed()) {
-              log.error("Could not insert document into index", ar.cause());
+              log.error("Could not index chunks", ar.cause());
+            } else {
+              log.info("Finished indexing " + finalCount + " chunks");
             }
             insertInProgress = false;
-            
-            // proceed with the next document
-            if (!docsToInsert.isEmpty()) {
-              insertDocument(docsToInsert.poll());
-            }
+            done.run();
           }));
         }
       });
-    }
+    });
   }
   
   /**
