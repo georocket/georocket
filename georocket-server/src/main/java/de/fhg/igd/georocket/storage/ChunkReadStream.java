@@ -1,4 +1,4 @@
-package de.fhg.igd.georocket.storage.file;
+package de.fhg.igd.georocket.storage;
 
 import de.fhg.igd.georocket.util.DelegateReadStream;
 import io.vertx.core.buffer.Buffer;

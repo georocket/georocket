@@ -1,14 +1,18 @@
 package de.fhg.igd.georocket;
 
 import java.io.FileNotFoundException;
+import java.util.function.BiConsumer;
 
 import de.fhg.igd.georocket.constants.ConfigConstants;
 import de.fhg.igd.georocket.index.IndexerVerticle;
 import de.fhg.igd.georocket.input.FirstLevelSplitter;
 import de.fhg.igd.georocket.input.Splitter;
-import de.fhg.igd.georocket.storage.file.ChunkReadStream;
+import de.fhg.igd.georocket.output.Merger;
+import de.fhg.igd.georocket.storage.ChunkReadStream;
+import de.fhg.igd.georocket.storage.Store;
+import de.fhg.igd.georocket.storage.StoreCursor;
 import de.fhg.igd.georocket.storage.file.FileStore;
-import de.fhg.igd.georocket.storage.file.Store;
+import de.fhg.igd.georocket.util.ChunkMeta;
 import de.fhg.igd.georocket.util.WindowPipeStream;
 import de.fhg.igd.georocket.util.XMLPipeStream;
 import io.vertx.core.AbstractVerticle;
@@ -28,6 +32,7 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.core.streams.Pump;
 import io.vertx.core.streams.ReadStream;
+import io.vertx.core.streams.WriteStream;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.rx.java.ObservableFuture;
@@ -101,17 +106,17 @@ public class GeoRocket extends AbstractVerticle {
   }
   
   /**
-   * Handles the HTTP GET request
+   * Handles the HTTP GET request for a single chunk
    * @param context the routing context
    */
-  private void onGet(RoutingContext context) {
+  private void onGetOne(RoutingContext context) {
     HttpServerRequest request = context.request();
     HttpServerResponse response = context.response();
     
     String name = request.getParam("name");
     
     // get chunk from store
-    store.get(name, getar -> {
+    store.getOne(name, getar -> {
       if (getar.failed()) {
         log.error("Could not get chunk", getar.cause());
         response.setStatusCode(resultToCode(getar)).end(getar.cause().getMessage());
@@ -126,6 +131,107 @@ public class GeoRocket extends AbstractVerticle {
       Pump.pump(crs, response).start();
       crs.endHandler(v -> response.end());
     });
+  }
+  
+  /**
+   * Handles the HTTP GET request for a bunch of chunks
+   * @param context the routing context
+   */
+  private void onGet(RoutingContext context) {
+    HttpServerResponse response = context.response();
+    
+    // TODO remove
+    response.setChunked(true);
+    
+    // TODO get from request
+    String search = "";
+    
+    // perform two searches: first initialize the merger and then
+    // merge all retrieved chunks
+    Merger merger = new Merger();
+    ObservableFuture<Void> o = RxHelper.observableFuture();
+    initializeMerger(merger, search, o.toHandler());
+    o.flatMap(v -> {
+      ObservableFuture<Void> o2 = RxHelper.observableFuture();
+      doMerge(merger, search, response, o2.toHandler());
+      return o2;
+    }).reduce((v1, v2) -> v1).subscribe(v -> {
+      response.end();
+    }, err -> {
+      log.error("Could not perform query", err);
+      response.setStatusCode(500).end(err.getMessage());
+    });
+  }
+  
+  /**
+   * Initialize the given merger. Perform a search using the given search string
+   * and pass all chunk metadata retrieved to the merger.
+   * @param merger the merger to initialize
+   * @param search the search query
+   * @param handler will be called when the merger has been initialized with
+   * all results
+   */
+  private void initializeMerger(Merger merger, String search, Handler<AsyncResult<Void>> handler) {
+    store.get(search, getar -> {
+      if (getar.failed()) {
+        handler.handle(Future.failedFuture(getar.cause()));
+      } else {
+        iterateCursor(getar.result(), (meta, callback) -> {
+          merger.init(meta);
+          callback.run();
+        }, handler);
+      }
+    });
+  }
+  
+  /**
+   * Performs a search and merges all retrieved chunks using the given merger
+   * @param merger the merger
+   * @param search the search query
+   * @param out a write stream to write the merged chunk to
+   * @param handler will be called when all chunks have been merged
+   */
+  private void doMerge(Merger merger, String search, WriteStream<Buffer> out,
+      Handler<AsyncResult<Void>> handler) {
+    store.get(search, getar -> {
+      if (getar.failed()) {
+        handler.handle(Future.failedFuture(getar.cause()));
+      } else {
+        StoreCursor cursor = getar.result();
+        iterateCursor(cursor, (meta, callback) -> {
+          cursor.openChunk(openar -> {
+            if (openar.failed()) {
+              handler.handle(Future.failedFuture(openar.cause()));
+            } else {
+              merger.merge(openar.result(), meta, out, v -> callback.run());
+            }
+          });
+        }, handler);
+      }
+    });
+  }
+  
+  /**
+   * Iterate through all items from a {@link StoreCursor}
+   * @param cursor the cursor
+   * @param consumer consumes all items
+   * @param endHandler will be called when all items have been consumed
+   */
+  private void iterateCursor(StoreCursor cursor, BiConsumer<ChunkMeta, Runnable> consumer,
+      Handler<AsyncResult<Void>> endHandler) {
+    if (cursor.hasNext()) {
+      cursor.next(ar -> {
+        if (ar.failed()) {
+          endHandler.handle(Future.failedFuture(ar.cause()));
+        } else {
+          consumer.accept(ar.result(), () -> {
+            iterateCursor(cursor, consumer, endHandler);
+          });
+        }
+      });
+    } else {
+      endHandler.handle(Future.succeededFuture());
+    }
   }
   
   /**
@@ -160,7 +266,8 @@ public class GeoRocket extends AbstractVerticle {
     int port = config().getInteger(ConfigConstants.PORT, ConfigConstants.DEFAULT_PORT);
     
     Router router = Router.router(vertx);
-    router.get("/db/:name").handler(this::onGet);
+    router.get("/db/:name").handler(this::onGetOne);
+    router.get("/db").handler(this::onGet);
     router.post("/db").handler(this::onPost);
     
     HttpServerOptions serverOptions = new HttpServerOptions()

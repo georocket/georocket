@@ -16,26 +16,33 @@ import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequest;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
 import org.elasticsearch.action.index.IndexRequest;
+import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.Requests;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.unit.TimeValue;
+import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.node.Node;
 import org.elasticsearch.node.NodeBuilder;
+import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.SearchHits;
 
 import com.google.common.collect.ImmutableMap;
 
 import de.fhg.igd.georocket.constants.AddressConstants;
 import de.fhg.igd.georocket.constants.ConfigConstants;
+import de.fhg.igd.georocket.storage.Store;
 import de.fhg.igd.georocket.storage.file.FileStore;
-import de.fhg.igd.georocket.storage.file.Store;
 import de.fhg.igd.georocket.util.ChunkMeta;
 import de.fhg.igd.georocket.util.XMLPipeStream;
+import de.fhg.igd.georocket.util.XMLStartElement;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.eventbus.Message;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -108,16 +115,38 @@ public class IndexerVerticle extends AbstractVerticle {
   }
   
   /**
-   * Receives a name of a chunks to index
-   * @param msg the event bus message containing the chunk name 
+   * Receives a message
+   * @param msg the message 
    */
   private void onMessage(Message<JsonObject> msg) {
+    String action = msg.body().getString("action");
+    switch (action) {
+    case "add":
+      onAdd(msg);
+      break;
+    
+    case "query":
+      onQuery(msg);
+      break;
+    
+    default:
+      msg.fail(400, "Invalid action: " + action);
+      log.error("Invalid action: " + action);
+      break;
+    }
+  }
+  
+  /**
+   * Receives a name of a chunk to index
+   * @param msg the event bus message containing the chunk name 
+   */
+  private void onAdd(Message<JsonObject> msg) {
     String filename = msg.body().getString("filename");
     ChunkMeta meta = ChunkMeta.fromJsonObject(msg.body().getJsonObject("meta"));
     log.debug("Indexing " + filename);
     
     // get chunk from store and index it
-    store.get(filename, ar -> {
+    store.getOne(filename, ar -> {
       if (ar.failed()) {
         log.error("Could not get chunk from store", ar.cause());
         return;
@@ -125,6 +154,63 @@ public class IndexerVerticle extends AbstractVerticle {
       ReadStream<Buffer> chunk = ar.result();
       indexChunk(filename, chunk, meta);
     });
+  }
+  
+  /**
+   * Performs a query
+   * @param msg the event bus message containing the query
+   */
+  private void onQuery(Message<JsonObject> msg) {
+    // TODO use 'search'
+    String search = msg.body().getString("search");
+    String scrollId = msg.body().getString("scrollId");
+    int pageSize = msg.body().getInteger("pageSize", 100);
+    TimeValue timeout = TimeValue.timeValueMinutes(1);
+    
+    // StrTokenizer strTokenizer = new StrTokenizer(search);
+    
+    // search result handler
+    ActionListener<SearchResponse> listener = handlerToListener(ar -> {
+      if (ar.failed()) {
+        log.error("Could not execute search", ar.cause());
+        msg.fail(500, ar.cause().getMessage());
+        return;
+      }
+      
+      // iterate through all hits and convert them to JSON
+      SearchResponse sr = ar.result();
+      SearchHits hits = sr.getHits();
+      long totalHits = hits.getTotalHits();
+      JsonArray resultHits = new JsonArray();
+      for (SearchHit hit : hits) {
+        ChunkMeta meta = getMeta(hit.getSource());
+        JsonObject obj = meta.toJsonObject()
+            .put("id", hit.getId());
+        resultHits.add(obj);
+      }
+      
+      // create result and send it to the client
+      JsonObject result = new JsonObject()
+          .put("totalHits", totalHits)
+          .put("hits", resultHits)
+          .put("scrollId", sr.getScrollId());
+      msg.reply(result);
+    });
+    
+    if (scrollId == null) {
+      // execute a new search
+      client.prepareSearch(INDEX_NAME)
+          .setTypes(TYPE_NAME)
+          .setScroll(timeout)
+          .setSize(pageSize)
+          .setPostFilter(QueryBuilders.matchAllQuery())
+          .execute(listener);
+    } else {
+      // continue searching
+      client.prepareSearchScroll(scrollId)
+          .setScroll(timeout)
+          .execute(listener);
+    }
   }
   
   /**
@@ -148,6 +234,7 @@ public class IndexerVerticle extends AbstractVerticle {
       if (event.getEvent() == XMLEvent.START_ELEMENT) {
         String gmlId = event.getXMLReader().getAttributeValue(NS_GML, "id");
         if (gmlId != null) {
+          @SuppressWarnings("unchecked")
           List<String> gmlIds = (List<String>)doc.get("gmlIds");
           if (gmlIds == null) {
             gmlIds = new ArrayList<>();
@@ -175,6 +262,45 @@ public class IndexerVerticle extends AbstractVerticle {
     doc.put("chunkEnd", meta.getEnd());
     doc.put("chunkParents", meta.getParents().stream().map(p ->
         p.toJsonObject().getMap()).collect(Collectors.toList()));
+  }
+  
+  /**
+   * Get chunk metadata from ElasticSearch document
+   * @param source the document
+   * @return the metadata
+   */
+  @SuppressWarnings("unchecked")
+  private ChunkMeta getMeta(Map<String, Object> source) {
+    int start = ((Number)source.get("chunkStart")).intValue();
+    int end = ((Number)source.get("chunkEnd")).intValue();
+    
+    List<Map<String, Object>> parentsList = (List<Map<String, Object>>)source.get("chunkParents");
+    List<XMLStartElement> parents = parentsList.stream().map(p -> {
+      String prefix = (String)p.get("prefix");
+      String localName = (String)p.get("localName");
+      String[] namespacePrefixes = safeListToArray((List<String>)p.get("namespacePrefixes"));
+      String[] namespaceUris = safeListToArray((List<String>)p.get("namespaceUris"));
+      String[] attributePrefixes = safeListToArray((List<String>)p.get("attributePrefixes"));
+      String[] attributeLocalNames = safeListToArray((List<String>)p.get("attributeLocalNames"));
+      String[] attributeValues = safeListToArray((List<String>)p.get("attributeValues"));
+      return new XMLStartElement(prefix, localName, namespacePrefixes, namespaceUris,
+          attributePrefixes, attributeLocalNames, attributeValues);
+    }).collect(Collectors.toList());
+    
+    return new ChunkMeta(parents, start, end);
+  }
+  
+  /**
+   * Convert a list to an array. If the list is null the return value
+   * will also be null.
+   * @param list the list to convert
+   * @return the array or null if <code>list</code> is null
+   */
+  private String[] safeListToArray(List<String> list) {
+    if (list == null) {
+      return null;
+    }
+    return list.toArray(new String[list.size()]);
   }
 
   /**

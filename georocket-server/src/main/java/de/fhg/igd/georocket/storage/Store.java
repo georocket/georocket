@@ -1,4 +1,4 @@
-package de.fhg.igd.georocket.storage.file;
+package de.fhg.igd.georocket.storage;
 
 import de.fhg.igd.georocket.util.ChunkMeta;
 import io.vertx.core.AsyncResult;
@@ -22,5 +22,12 @@ public interface Store {
    * @param name the chunk's name
    * @param handler will be called when the chunk has been retrieved from the store
    */
-  void get(String name, Handler<AsyncResult<ChunkReadStream>> handler);
+  void getOne(String name, Handler<AsyncResult<ChunkReadStream>> handler);
+  
+  /**
+   * Get a number of chunks from the store using quick-search
+   * @param search the quick-search query
+   * @param handler will be called when the chunks have been retrieved from the store
+   */
+  void get(String search, Handler<AsyncResult<StoreCursor>> handler);
 }

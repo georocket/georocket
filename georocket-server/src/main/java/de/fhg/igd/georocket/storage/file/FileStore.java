@@ -8,6 +8,9 @@ import org.bson.types.ObjectId;
 
 import de.fhg.igd.georocket.constants.AddressConstants;
 import de.fhg.igd.georocket.constants.ConfigConstants;
+import de.fhg.igd.georocket.storage.ChunkReadStream;
+import de.fhg.igd.georocket.storage.Store;
+import de.fhg.igd.georocket.storage.StoreCursor;
 import de.fhg.igd.georocket.util.ChunkMeta;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -136,6 +139,7 @@ public class FileStore implements Store {
           
           // start indexing
           JsonObject indexMsg = new JsonObject()
+              .put("action", "add")
               .put("filename", filename)
               .put("meta", meta.toJsonObject());
           vertx.eventBus().publish(AddressConstants.INDEXER, indexMsg);
@@ -148,7 +152,7 @@ public class FileStore implements Store {
   }
   
   @Override
-  public void get(String name, Handler<AsyncResult<ChunkReadStream>> handler) {
+  public void getOne(String name, Handler<AsyncResult<ChunkReadStream>> handler) {
     String path = root + "/" + name;
     
     // check if chunk exists
@@ -182,5 +186,10 @@ public class FileStore implements Store {
       }, err -> {
         handler.handle(Future.failedFuture(err));
       });
+  }
+  
+  @Override
+  public void get(String search, Handler<AsyncResult<StoreCursor>> handler) {
+    new FileStoreCursor(vertx, this, 100).start(handler);
   }
 }
