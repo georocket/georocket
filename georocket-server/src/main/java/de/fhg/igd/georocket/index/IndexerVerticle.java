@@ -16,6 +16,7 @@ import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsReques
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.Requests;
 import org.elasticsearch.common.settings.Settings;
@@ -207,6 +208,7 @@ public class IndexerVerticle extends AbstractVerticle {
           .setTypes(TYPE_NAME)
           .setScroll(timeout)
           .setSize(pageSize)
+          .setSearchType(SearchType.SCAN) // do not sort results (faster)
           .setPostFilter(QueryBuilders.matchAllQuery())
           .execute(listener);
     } else {

@@ -34,7 +34,12 @@ public class FileStoreCursor implements StoreCursor {
   /**
    * The number of items retrieved from the store
    */
-  private long i;
+  private long count;
+  
+  /**
+   * The current read position in {@link #ids} and {@link #metas}
+   */
+  private int pos = -1;
   
   /**
    * The total number of items requested from the store
@@ -106,14 +111,14 @@ public class FileStoreCursor implements StoreCursor {
 
   @Override
   public boolean hasNext() {
-    return i < size;
+    return count < size;
   }
 
   @Override
   public void next(Handler<AsyncResult<ChunkMeta>> handler) {
-    int p = (int)(i % pageSize);
-    ++i;
-    if (i > 1 && p == 0) {
+    ++count;
+    ++pos;
+    if (pos >= metas.length) {
       JsonObject queryMsg = new JsonObject()
           .put("action", "query")
           .put("pageSize", pageSize)
@@ -123,22 +128,21 @@ public class FileStoreCursor implements StoreCursor {
           handler.handle(Future.failedFuture(ar.cause()));
         } else {
           handleResponse(ar.result().body());
-          handler.handle(Future.succeededFuture(metas[p]));
+          pos = 0;
+          handler.handle(Future.succeededFuture(metas[pos]));
         }
       });
     } else {
-      handler.handle(Future.succeededFuture(metas[p]));
+      handler.handle(Future.succeededFuture(metas[pos]));
     }
   }
   
   @Override
   public String getChunkId() {
-    if (i == 0) {
+    if (pos < 0) {
       throw new IllegalStateException("You have to call next() first");
     }
-    
-    int p = (int)((i - 1) % pageSize);
-    return ids[p];
+    return ids[pos];
   }
 
   @Override
