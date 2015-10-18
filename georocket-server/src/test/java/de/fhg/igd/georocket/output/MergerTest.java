@@ -50,6 +50,7 @@ public class MergerTest {
     Async async = context.async();
     m.merge(new SimpleChunkReadStream(chunk1.length(), new BufferReadStream(chunk1)), cm, bws, v1 -> {
       m.merge(new SimpleChunkReadStream(chunk2.length(), new BufferReadStream(chunk2)), cm, bws, v2 -> {
+        m.finishMerge(bws);
         context.assertEquals(XMLHEADER + "<root><test chunk=\"1\"></test><test chunk=\"2\"></test></root>",
             bws.getBuffer().toString());
         async.complete();
