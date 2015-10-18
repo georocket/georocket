@@ -27,15 +27,9 @@ public class Merger {
   private static final String XMLHEADER = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n";
   
   /**
-   * The number of times {@link #init(ChunkMeta)} has been called
+   * True if the header has already been writte in {@link #merge(ChunkReadStream, ChunkMeta, WriteStream, Handler)}
    */
-  private int initializeCount = 0;
-  
-  /**
-   * The number of times {@link #merge(ChunkReadStream, ChunkMeta, WriteStream, Handler)}
-   * has been called
-   */
-  private int mergeCount = 0;
+  private boolean headerWritten = false;
   
   /**
    * The merger strategy determined by {@link #init(ChunkMeta)}
@@ -62,19 +56,25 @@ public class Merger {
         throw new UnsupportedOperationException("Cannot merge chunks. No valid strategy available.");
       }
     }
-    ++initializeCount;
   }
   
   /**
-   * Merge a chunk using the current merge strategy. The given chunk must
-   * have been passed to {@link #init(ChunkMeta)} first.
+   * Merge a chunk using the current merge strategy. The given chunk should
+   * have been passed to {@link #init(ChunkMeta)} first. If it hasn't the method
+   * may or may not accept it. If the chunk cannot be merged with the current
+   * strategy, the method will throw an {@link IllegalArgumentException}
    * @param chunk the chunk to merge
    * @param meta the chunk's metadata
    * @param out the stream to write the merged result to
    * @param handler will be called when the chunk has been merged
+   * @throws IllegalArgumentException if the chunk cannot be merged
+   * @throws IllegalStateException if {@link #init(ChunkMeta)} has never been called before
    */
   public void merge(ChunkReadStream chunk, ChunkMeta meta, WriteStream<Buffer> out,
-      Handler<Void> handler) {
+      Handler<Void> handler) throws IllegalArgumentException {
+    if (firstParents == null) {
+      throw new IllegalStateException("You must call init() at least once");
+    }
     switch (strategy) {
     case ALL_SAME:
       mergeSame(chunk, meta, out, handler);
@@ -88,13 +88,19 @@ public class Merger {
    * @param meta the chunk's metadata
    * @param out the stream to write the merged result to
    * @param handler will be called when the chunk has been merged
+   * @throws IllegalArgumentException if the chunk cannot be merged
    */
   private void mergeSame(ChunkReadStream chunk, ChunkMeta meta, WriteStream<Buffer> out,
-      Handler<Void> handler) {
-    if (mergeCount == 0) {
-      // this is the first item - write the header and the parent elements
+      Handler<Void> handler) throws IllegalArgumentException {
+    if (!firstParents.equals(meta.getParents())) {
+      throw new IllegalArgumentException("Chunk cannot be merged with this strategy");
+    }
+    
+    if (!headerWritten) {
+      // write the header and the parent elements
       out.write(Buffer.buffer(XMLHEADER));
       firstParents.forEach(e -> out.write(Buffer.buffer(e.toString())));
+      headerWritten = true;
     }
     
     // write chunk to output stream
@@ -110,16 +116,18 @@ public class Merger {
       end[0] -= buf.length();
     });
     
-    chunk.endHandler(v -> {
-      ++mergeCount;
-      if (mergeCount == initializeCount) {
-        // this is the last chunk - close all parent elements
-        for (int i = firstParents.size() - 1; i >= 0; --i) {
-          XMLStartElement e = firstParents.get(i);
-          out.write(Buffer.buffer("</" + e.getName() + ">"));
-        }
-      }
-      handler.handle(null);
-    });
+    chunk.endHandler(handler);
+  }
+  
+  /**
+   * Finishes merging chunks and closes all open XML elements
+   * @param out the stream to write the merged result to
+   */
+  public void finishMerge(WriteStream<Buffer> out) {
+    // close all parent elements
+    for (int i = firstParents.size() - 1; i >= 0; --i) {
+      XMLStartElement e = firstParents.get(i);
+      out.write(Buffer.buffer("</" + e.getName() + ">"));
+    }
   }
 }

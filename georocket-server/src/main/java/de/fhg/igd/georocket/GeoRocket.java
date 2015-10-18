@@ -143,7 +143,12 @@ public class GeoRocket extends AbstractVerticle {
   private void onGet(RoutingContext context) {
     HttpServerResponse response = context.response();
     
-    // TODO remove
+    // Our responses must always be chunked because we cannot calculate
+    // the exact content-length beforehand. We perform two searches, one to
+    // initialize the merger and one to do the actual merge. The problem is
+    // that the result set may change between these two searches and so we
+    // cannot calculate the content-length just from looking at the result
+    // from the first search.
     response.setChunked(true);
     
     // TODO get from request
@@ -200,6 +205,7 @@ public class GeoRocket extends AbstractVerticle {
       if (getar.failed()) {
         handler.handle(Future.failedFuture(getar.cause()));
       } else {
+        long[] notaccepted = new long[] { 0 };
         StoreCursor cursor = getar.result();
         iterateCursor(cursor, (meta, callback) -> {
           cursor.openChunk(openar -> {
@@ -207,13 +213,34 @@ public class GeoRocket extends AbstractVerticle {
               handler.handle(Future.failedFuture(openar.cause()));
             } else {
               ChunkReadStream crs = openar.result();
-              merger.merge(crs, meta, out, v -> {
+              Handler<Void> mergeHandler = v -> {
                 crs.close();
                 callback.run();
-              });
+              };
+              try {
+                merger.merge(crs, meta, out, mergeHandler);
+              } catch (IllegalArgumentException e) {
+                // chunk cannot be merged. maybe it's a new one that has
+                // been added after the Merger has been initialized.
+                // just ignore it, but emit a warning later
+                ++notaccepted[0];
+                mergeHandler.handle(null);
+              }
             }
           });
-        }, handler);
+        }, ar -> {
+          if (ar.succeeded()) {
+            merger.finishMerge(out);
+            if (notaccepted[0] > 0) {
+              log.warn("Could not merge " + notaccepted[0] + " chunks "
+                  + "because the merger did not accept them. Most likely "
+                  + "these are new chunks that were added while the "
+                  + "merge was in progress. If this worries you, just "
+                  + "repeat the request.");
+            }
+          }
+          handler.handle(ar);
+        });
       }
     });
   }
