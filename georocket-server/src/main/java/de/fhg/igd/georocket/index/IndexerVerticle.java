@@ -14,6 +14,7 @@ import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequest;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
 import org.elasticsearch.action.bulk.BulkRequest;
+import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.search.SearchType;
@@ -437,11 +438,19 @@ public class IndexerVerticle extends AbstractVerticle {
             ++count;
           }
           int finalCount = count;
+          log.info("Indexing " + count + " chunks");
+          long startIndexing = System.currentTimeMillis();
           client.bulk(br, handlerToListener(ar -> {
             if (ar.failed()) {
               log.error("Could not index chunks", ar.cause());
             } else {
-              log.info("Finished indexing " + finalCount + " chunks");
+              BulkResponse bres = ar.result();
+              if (bres.hasFailures()) {
+                log.error(bres.buildFailureMessage());
+              } else {
+                log.info("Finished indexing " + finalCount + " chunks in " +
+                    (System.currentTimeMillis() - startIndexing) + " ms");
+              }
             }
             insertInProgress = false;
             done.run();
