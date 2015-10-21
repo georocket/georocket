@@ -1,6 +1,5 @@
 package de.fhg.igd.georocket.index;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -61,7 +60,6 @@ public class IndexerVerticle extends AbstractVerticle {
   private static final long INDEX_REQUEST_TIMEOUT = 1000;
   private static final long INDEX_REQUEST_GRACE = 100;
   
-  private static final String NS_GML = "http://www.opengis.net/gml";
   private static final String INDEX_NAME = "georocket";
   private static final String TYPE_NAME = "object";
   
@@ -239,23 +237,16 @@ public class IndexerVerticle extends AbstractVerticle {
     // ElasticSearch index
     Map<String, Object> doc = new HashMap<>();
     
+    List<Indexer> indexers = Arrays.asList(new GmlIdIndexer(),
+        new BoundingBoxIndexer());
+    
     xmlStream.handler(event -> {
-      // index gml:id
-      if (event.getEvent() == XMLEvent.START_ELEMENT) {
-        String gmlId = event.getXMLReader().getAttributeValue(NS_GML, "id");
-        if (gmlId != null) {
-          @SuppressWarnings("unchecked")
-          List<String> gmlIds = (List<String>)doc.get("gmlIds");
-          if (gmlIds == null) {
-            gmlIds = new ArrayList<>();
-            doc.put("gmlIds", gmlIds);
-          }
-          gmlIds.add(gmlId);
-        }
-      }
+      // call indexers
+      indexers.forEach(i -> i.onEvent(event));
       
       // insert document to index at the end of the XML stream
       if (event.getEvent() == XMLEvent.END_DOCUMENT) {
+        indexers.forEach(i -> doc.putAll(i.getResult()));
         addMeta(doc, meta);
         insertDocument(name, doc);
       }
@@ -359,6 +350,14 @@ public class IndexerVerticle extends AbstractVerticle {
             "gmlIds", ImmutableMap.of(
                 "type", "string", // array of strings actually, auto-supported by ElasticSearch
                 "index", "not_analyzed" // do not analyze (i.e. tokenize) this field, use the actual value
+            ),
+            
+            "bbox", ImmutableMap.of(
+                "type", "geo_shape",
+                "tree", "quadtree", // see https://github.com/elastic/elasticsearch/issues/14181
+                "precision", "29" // this is the maximum level
+                // quadtree uses less memory and seems to be a lot faster than geohash
+                // see http://tech.taskrabbit.com/blog/2015/06/09/elasticsearch-geohash-vs-geotree/
             ),
             
             // metadata: don't index it

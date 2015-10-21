@@ -8,6 +8,14 @@ subprojects {
     targetCompatibility = '1.8'
 
     repositories {
+        maven {
+            url 'http://download.java.net/maven/2'
+        }
+        maven {
+            // must come before mavenCentral() because it contains
+            // the correct version of javax.media:jai_core
+            url 'http://download.osgeo.org/webdav/geotools/'
+        }
         mavenCentral()
     }
 
