@@ -77,12 +77,14 @@ public class FileStore implements Store {
     // flushing and releasing (possibly large) direct memory buffers.
     // assume the code will block the event loop.
     vertx.executeBlocking(f -> {
+      long start = System.currentTimeMillis();
       int count = 0;
       while (!queue.isEmpty()) {
         queue.poll().close();
         ++count;
       }
-      log.info("Flushed and closed " + count + " files");
+      log.info("Flushed and closed " + count + " files in " +
+          (System.currentTimeMillis() - start) + " ms");
       f.complete();
     }, ar -> {
       done.run();
