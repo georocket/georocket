@@ -10,7 +10,7 @@ import javax.xml.stream.XMLStreamReader;
 import javax.xml.stream.events.XMLEvent;
 
 import de.fhg.igd.georocket.input.Splitter.Result;
-import de.fhg.igd.georocket.util.ChunkMeta;
+import de.fhg.igd.georocket.storage.ChunkMeta;
 import de.fhg.igd.georocket.util.Window;
 import de.fhg.igd.georocket.util.XMLStartElement;
 import de.fhg.igd.georocket.util.XMLStreamEvent;

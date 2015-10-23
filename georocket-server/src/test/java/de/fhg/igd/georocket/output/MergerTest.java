@@ -9,7 +9,7 @@ import org.junit.runner.RunWith;
 import de.fhg.igd.georocket.BufferReadStream;
 import de.fhg.igd.georocket.BufferWriteStream;
 import de.fhg.igd.georocket.SimpleChunkReadStream;
-import de.fhg.igd.georocket.util.ChunkMeta;
+import de.fhg.igd.georocket.storage.ChunkMeta;
 import de.fhg.igd.georocket.util.XMLStartElement;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.ext.unit.Async;

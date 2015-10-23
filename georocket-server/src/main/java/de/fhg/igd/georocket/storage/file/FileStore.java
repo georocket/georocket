@@ -7,10 +7,10 @@ import org.bson.types.ObjectId;
 
 import de.fhg.igd.georocket.constants.AddressConstants;
 import de.fhg.igd.georocket.constants.ConfigConstants;
+import de.fhg.igd.georocket.storage.ChunkMeta;
 import de.fhg.igd.georocket.storage.ChunkReadStream;
 import de.fhg.igd.georocket.storage.Store;
 import de.fhg.igd.georocket.storage.StoreCursor;
-import de.fhg.igd.georocket.util.ChunkMeta;
 import de.fhg.igd.georocket.util.TimedActionQueue;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;

@@ -2,8 +2,8 @@ package de.fhg.igd.georocket.output;
 
 import java.util.List;
 
+import de.fhg.igd.georocket.storage.ChunkMeta;
 import de.fhg.igd.georocket.storage.ChunkReadStream;
-import de.fhg.igd.georocket.util.ChunkMeta;
 import de.fhg.igd.georocket.util.XMLStartElement;
 import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;

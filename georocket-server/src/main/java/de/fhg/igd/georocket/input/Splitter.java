@@ -1,6 +1,6 @@
 package de.fhg.igd.georocket.input;
 
-import de.fhg.igd.georocket.util.ChunkMeta;
+import de.fhg.igd.georocket.storage.ChunkMeta;
 import de.fhg.igd.georocket.util.XMLStreamEvent;
 
 /**

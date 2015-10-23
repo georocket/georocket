@@ -1,6 +1,5 @@
 package de.fhg.igd.georocket.storage;
 
-import de.fhg.igd.georocket.util.ChunkMeta;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 

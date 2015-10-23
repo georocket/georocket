@@ -1,9 +1,9 @@
 package de.fhg.igd.georocket.storage.file;
 
 import de.fhg.igd.georocket.constants.AddressConstants;
+import de.fhg.igd.georocket.storage.ChunkMeta;
 import de.fhg.igd.georocket.storage.ChunkReadStream;
 import de.fhg.igd.georocket.storage.StoreCursor;
-import de.fhg.igd.georocket.util.ChunkMeta;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;

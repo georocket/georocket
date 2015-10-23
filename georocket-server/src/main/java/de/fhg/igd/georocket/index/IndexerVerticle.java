@@ -31,10 +31,10 @@ import com.google.common.collect.ImmutableMap;
 
 import de.fhg.igd.georocket.constants.AddressConstants;
 import de.fhg.igd.georocket.constants.ConfigConstants;
+import de.fhg.igd.georocket.storage.ChunkMeta;
 import de.fhg.igd.georocket.storage.ChunkReadStream;
 import de.fhg.igd.georocket.storage.Store;
 import de.fhg.igd.georocket.storage.file.FileStore;
-import de.fhg.igd.georocket.util.ChunkMeta;
 import de.fhg.igd.georocket.util.TimedActionQueue;
 import de.fhg.igd.georocket.util.XMLPipeStream;
 import de.fhg.igd.georocket.util.XMLStartElement;

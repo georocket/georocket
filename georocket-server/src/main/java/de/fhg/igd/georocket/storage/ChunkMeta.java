@@ -1,8 +1,9 @@
-package de.fhg.igd.georocket.util;
+package de.fhg.igd.georocket.storage;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
+import de.fhg.igd.georocket.util.XMLStartElement;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
