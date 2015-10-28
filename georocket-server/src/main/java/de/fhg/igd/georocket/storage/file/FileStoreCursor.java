@@ -32,6 +32,11 @@ public class FileStoreCursor implements StoreCursor {
   private final int pageSize;
   
   /**
+   * The search query
+   */
+  private final String search;
+  
+  /**
    * The number of items retrieved from the store
    */
   private long count;
@@ -66,11 +71,13 @@ public class FileStoreCursor implements StoreCursor {
    * @param vertx the Vert.x instance
    * @param store the store we're iterating over
    * @param pageSize the number of items retrieved in one batch
+   * @param search the search query
    */
-  public FileStoreCursor(Vertx vertx, FileStore store, int pageSize) {
+  public FileStoreCursor(Vertx vertx, FileStore store, int pageSize, String search) {
     this.vertx = vertx;
     this.store = store;
     this.pageSize = pageSize;
+    this.search = search;
   }
   
   /**
@@ -80,7 +87,8 @@ public class FileStoreCursor implements StoreCursor {
   public void start(Handler<AsyncResult<StoreCursor>> handler) {
     JsonObject queryMsg = new JsonObject()
         .put("action", "query")
-        .put("pageSize", pageSize);
+        .put("pageSize", pageSize)
+        .put("search", search);
     vertx.eventBus().<JsonObject>send(AddressConstants.INDEXER, queryMsg, ar -> {
       if (ar.failed()) {
         handler.handle(Future.failedFuture(ar.cause()));
@@ -122,6 +130,7 @@ public class FileStoreCursor implements StoreCursor {
       JsonObject queryMsg = new JsonObject()
           .put("action", "query")
           .put("pageSize", pageSize)
+          .put("search", search)
           .put("scrollId", scrollId);
       vertx.eventBus().<JsonObject>send(AddressConstants.INDEXER, queryMsg, ar -> {
         if (ar.failed()) {

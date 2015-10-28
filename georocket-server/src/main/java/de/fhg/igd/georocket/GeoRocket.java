@@ -151,6 +151,8 @@ public class GeoRocket extends AbstractVerticle {
    */
   private void onGet(RoutingContext context) {
     HttpServerResponse response = context.response();
+    HttpServerRequest request = context.request();
+    String search = request.getParam("search");
     
     // Our responses must always be chunked because we cannot calculate
     // the exact content-length beforehand. We perform two searches, one to
@@ -159,9 +161,6 @@ public class GeoRocket extends AbstractVerticle {
     // cannot calculate the content-length just from looking at the result
     // from the first search.
     response.setChunked(true);
-    
-    // TODO get from request
-    String search = "";
     
     // perform two searches: first initialize the merger and then
     // merge all retrieved chunks

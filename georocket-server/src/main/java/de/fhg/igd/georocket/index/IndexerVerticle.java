@@ -2,9 +2,12 @@ package de.fhg.igd.georocket.index;
 
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import javax.xml.stream.events.XMLEvent;
@@ -19,14 +22,18 @@ import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.Requests;
+import org.elasticsearch.common.geo.builders.ShapeBuilder;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.TimeValue;
+import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.node.Node;
 import org.elasticsearch.node.NodeBuilder;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
 
+import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableMap;
 
 import de.fhg.igd.georocket.constants.AddressConstants;
@@ -35,6 +42,7 @@ import de.fhg.igd.georocket.storage.ChunkMeta;
 import de.fhg.igd.georocket.storage.ChunkReadStream;
 import de.fhg.igd.georocket.storage.Store;
 import de.fhg.igd.georocket.storage.file.FileStore;
+import de.fhg.igd.georocket.util.QuotedStringSplitter;
 import de.fhg.igd.georocket.util.TimedActionQueue;
 import de.fhg.igd.georocket.util.XMLPipeStream;
 import de.fhg.igd.georocket.util.XMLStartElement;
@@ -62,6 +70,12 @@ public class IndexerVerticle extends AbstractVerticle {
   
   private static final String INDEX_NAME = "georocket";
   private static final String TYPE_NAME = "object";
+  
+  private static final String FLOAT_REGEX = "[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?";
+  private static final String COMMA_REGEX = "\\s*,\\s*";
+  private static final String BBOX_REGEX = FLOAT_REGEX + COMMA_REGEX + FLOAT_REGEX +
+      COMMA_REGEX + FLOAT_REGEX + COMMA_REGEX + FLOAT_REGEX;
+  private static final Pattern BBOX_PATTERN = Pattern.compile(BBOX_REGEX);
   
   /**
    * The ElasticSearch client
@@ -165,13 +179,10 @@ public class IndexerVerticle extends AbstractVerticle {
    * @param msg the event bus message containing the query
    */
   private void onQuery(Message<JsonObject> msg) {
-    // TODO use 'search'
     String search = msg.body().getString("search");
     String scrollId = msg.body().getString("scrollId");
     int pageSize = msg.body().getInteger("pageSize", 100);
     TimeValue timeout = TimeValue.timeValueMinutes(1);
-    
-    // StrTokenizer strTokenizer = new StrTokenizer(search);
     
     // search result handler
     ActionListener<SearchResponse> listener = handlerToListener(ar -> {
@@ -208,7 +219,7 @@ public class IndexerVerticle extends AbstractVerticle {
           .setScroll(timeout)
           .setSize(pageSize)
           .setSearchType(SearchType.SCAN) // do not sort results (faster)
-          .setPostFilter(QueryBuilders.matchAllQuery())
+          .setPostFilter(makeQuery(search))
           .execute(listener);
     } else {
       // continue searching
@@ -216,6 +227,45 @@ public class IndexerVerticle extends AbstractVerticle {
           .setScroll(timeout)
           .execute(listener);
     }
+  }
+  
+  /**
+   * Creates an ElasticSearch query from the given search string
+   * @param search the search string
+   * @return the query
+   */
+  private QueryBuilder makeQuery(String search) {
+    if (search == null || search.isEmpty()) {
+      // match everything my default
+      return QueryBuilders.matchAllQuery();
+    }
+    
+    // split search query
+    List<String> searches = QuotedStringSplitter.split(search);
+    if (searches.size() == 1) {
+      search = searches.get(0);
+      
+      Matcher bboxMatcher = BBOX_PATTERN.matcher(search);
+      if (bboxMatcher.matches()) {
+        // search contains a bounding box
+        Iterable<String> coords = Splitter.on(',').trimResults().split(search);
+        Iterator<String> coordsIter = coords.iterator();
+        double minX = Double.parseDouble(coordsIter.next());
+        double minY = Double.parseDouble(coordsIter.next());
+        double maxX = Double.parseDouble(coordsIter.next());
+        double maxY = Double.parseDouble(coordsIter.next());
+        return QueryBuilders.geoIntersectionQuery("bbox", ShapeBuilder.newEnvelope()
+            .bottomRight(maxX, minY).topLeft(minX, maxY));
+      } else {
+        // TODO support more queries
+        return QueryBuilders.termQuery("gmlIds", search);
+      }
+    }
+    
+    // call #makeQuery for every part of the search query recursively
+    BoolQueryBuilder bqb = QueryBuilders.boolQuery();
+    searches.stream().map(this::makeQuery).forEach(bqb::should);
+    return bqb;
   }
   
   /**
