@@ -48,20 +48,29 @@ public class GeoRocket extends AbstractVerticle {
   private Store store;
   
   /**
+   * Convert a throwable to an HTTP status code
+   * @param t the throwable to convert
+   * @return the HTTP status code
+   */
+  private static int throwableToCode(Throwable t) {
+    if (t instanceof ReplyException) {
+      return ((ReplyException)t).failureCode();
+    } else if (t instanceof IllegalArgumentException) {
+      return 400;
+    } else if (t instanceof FileNotFoundException) {
+      return 404;
+    }
+    return 500;
+  }
+  
+  /**
    * Convert an asynchronous result to an HTTP status code
    * @param ar the result to convert
    * @return the HTTP status code
    */
   private static int resultToCode(AsyncResult<?> ar) {
     if (ar.failed()) {
-      if (ar.cause() instanceof ReplyException) {
-        return ((ReplyException)ar.cause()).failureCode();
-      } else if (ar.cause() instanceof IllegalArgumentException) {
-        return 400;
-      } else if (ar.cause() instanceof FileNotFoundException) {
-        return 404;
-      }
-      return 500;
+      return throwableToCode(ar.cause());
     }
     return 200;
   }
@@ -166,8 +175,10 @@ public class GeoRocket extends AbstractVerticle {
     }).reduce((v1, v2) -> v1).subscribe(v -> {
       response.end();
     }, err -> {
-      log.error("Could not perform query", err);
-      response.setStatusCode(500).end(err.getMessage());
+      if (!(err instanceof FileNotFoundException)) {
+        log.error("Could not perform query", err);
+      }
+      response.setStatusCode(throwableToCode(err)).end(err.getMessage());
     });
   }
   
@@ -205,9 +216,11 @@ public class GeoRocket extends AbstractVerticle {
       if (getar.failed()) {
         handler.handle(Future.failedFuture(getar.cause()));
       } else {
+        long[] count = new long[] { 0 };
         long[] notaccepted = new long[] { 0 };
         StoreCursor cursor = getar.result();
         iterateCursor(cursor, (meta, callback) -> {
+          ++count[0];
           cursor.openChunk(openar -> {
             if (openar.failed()) {
               handler.handle(Future.failedFuture(openar.cause()));
@@ -230,7 +243,6 @@ public class GeoRocket extends AbstractVerticle {
           });
         }, ar -> {
           if (ar.succeeded()) {
-            merger.finishMerge(out);
             if (notaccepted[0] > 0) {
               log.warn("Could not merge " + notaccepted[0] + " chunks "
                   + "because the merger did not accept them. Most likely "
@@ -238,8 +250,15 @@ public class GeoRocket extends AbstractVerticle {
                   + "merge was in progress. If this worries you, just "
                   + "repeat the request.");
             }
+            if (count[0] > 0) {
+              merger.finishMerge(out);
+              handler.handle(ar);
+            } else {
+              handler.handle(Future.failedFuture(new FileNotFoundException("Not Found")));
+            }
+          } else {
+            handler.handle(ar);
           }
-          handler.handle(ar);
         });
       }
     });
