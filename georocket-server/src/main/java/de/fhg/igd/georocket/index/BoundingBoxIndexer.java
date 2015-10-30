@@ -10,6 +10,7 @@ import org.geotools.referencing.CRS;
 import org.geotools.referencing.crs.DefaultGeographicCRS;
 import org.opengis.referencing.FactoryException;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
+import org.opengis.referencing.cs.AxisDirection;
 import org.opengis.referencing.operation.MathTransform;
 import org.opengis.referencing.operation.TransformException;
 
@@ -35,6 +36,11 @@ public class BoundingBoxIndexer implements Indexer {
    * chunk or if it was invalid
    */
   private CoordinateReferenceSystem crs;
+  
+  /**
+   * True if x and y are flipped in {@link #crs}
+   */
+  private boolean flippedCRS;
   
   /**
    * A transformation from {@link #crs} to WGS84. <code>null</code> if
@@ -79,6 +85,22 @@ public class BoundingBoxIndexer implements Indexer {
   private double maxX;
   private double minY;
   private double maxY;
+  
+  /**
+   * Check if x and y are flipped in the given CRS
+   * @param crs the CRS
+   * @return true if x and y are flipped, false otherwise
+   */
+  public static boolean isFlippedCRS(CoordinateReferenceSystem crs) {
+    if (crs.getCoordinateSystem().getDimension() == 2) {
+      AxisDirection direction = crs.getCoordinateSystem().getAxis(0).getDirection();
+      if (direction.equals(AxisDirection.NORTH) ||
+        direction.equals(AxisDirection.UP)) {
+        return true;
+      }
+    }
+    return false;
+  }
   
   @Override
   public void onEvent(XMLStreamEvent event) {
@@ -170,11 +192,13 @@ public class BoundingBoxIndexer implements Indexer {
       
       // find transformation to WGS84
       transform = CRS.findMathTransform(crs, WGS84, true);
+      flippedCRS = isFlippedCRS(crs);
     } catch (FactoryException e) {
       // unknown CRS or no transformation available
       crsStr = null;
       transform = null;
       crs = null;
+      flippedCRS = false;
     }
   }
   
@@ -225,8 +249,14 @@ public class BoundingBoxIndexer implements Indexer {
     double[] dstCoords = new double[count * 2];
     try {
       for (int i = 0; i < count; ++i) {
-        srcCoords[i * 2] = Double.parseDouble(coordinates[i * dim]);
-        srcCoords[i * 2 + 1] = Double.parseDouble(coordinates[i * dim + 1]);
+        int j1 = i * 2;
+        int j2 = j1 + 1;
+        if (flippedCRS) {
+          j2 = j1;
+          j1 = j2 + 1;
+        }
+        srcCoords[j1] = Double.parseDouble(coordinates[i * dim]);
+        srcCoords[j2] = Double.parseDouble(coordinates[i * dim + 1]);
       }
     } catch (NumberFormatException e) {
       // invalid coordinates. ignore.
