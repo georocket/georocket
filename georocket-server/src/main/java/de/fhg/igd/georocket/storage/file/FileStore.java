@@ -1,7 +1,6 @@
 package de.fhg.igd.georocket.storage.file;
 
 import java.io.FileNotFoundException;
-import java.util.Queue;
 
 import org.bson.types.ObjectId;
 
@@ -11,7 +10,6 @@ import de.fhg.igd.georocket.storage.ChunkMeta;
 import de.fhg.igd.georocket.storage.ChunkReadStream;
 import de.fhg.igd.georocket.storage.Store;
 import de.fhg.igd.georocket.storage.StoreCursor;
-import de.fhg.igd.georocket.util.TimedActionQueue;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -22,8 +20,6 @@ import io.vertx.core.file.FileProps;
 import io.vertx.core.file.FileSystem;
 import io.vertx.core.file.OpenOptions;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
 import rx.Observable;
@@ -33,12 +29,6 @@ import rx.Observable;
  * @author Michel Kraemer
  */
 public class FileStore implements Store {
-  private static Logger log = LoggerFactory.getLogger(FileStore.class);
-  
-  private static final int MAX_FILES_OPEN_ADD = 1000;
-  private static final long CLOSE_FILE_TIMEOUT = 1000;
-  private static final long CLOSE_FILE_GRACE = 100;
-  
   /**
    * The folder where the chunks should be saved
    */
@@ -50,11 +40,6 @@ public class FileStore implements Store {
   private final Vertx vertx;
   
   /**
-   * A queue of files to close asynchronously
-   */
-  private final TimedActionQueue<AsyncFile> filesToClose;
-  
-  /**
    * Default constructor
    * @param vertx the Vertx instance
    */
@@ -63,32 +48,6 @@ public class FileStore implements Store {
         ConfigConstants.HOME, System.getProperty("user.home") + "/.georocket");
     this.root = home + "/storage/file";
     this.vertx = vertx;
-    this.filesToClose = new TimedActionQueue<>(MAX_FILES_OPEN_ADD,
-        CLOSE_FILE_TIMEOUT, CLOSE_FILE_GRACE, vertx);
-  }
-  
-  /**
-   * The handler that closes files asynchronously
-   * @param queue the files to close
-   * @param done will be called when all files are closed
-   */
-  private void doCloseFiles(Queue<AsyncFile> queue, Runnable done) {
-    // closing files can take a very long time because it involves
-    // flushing and releasing (possibly large) direct memory buffers.
-    // assume the code will block the event loop.
-    vertx.executeBlocking(f -> {
-      long start = System.currentTimeMillis();
-      int count = 0;
-      while (!queue.isEmpty()) {
-        queue.poll().close();
-        ++count;
-      }
-      log.info("Flushed and closed " + count + " files in " +
-          (System.currentTimeMillis() - start) + " ms");
-      f.complete();
-    }, ar -> {
-      done.run();
-    });
   }
   
   @Override
@@ -116,8 +75,7 @@ public class FileStore implements Store {
         AsyncFile f = openar.result();
         Buffer buf = Buffer.buffer(chunk);
         f.write(buf, 0, writear -> {
-          // close file asynchronously
-          filesToClose.offer(f, this::doCloseFiles);
+          f.close();
           
           if (writear.failed()) {
             handler.handle(Future.failedFuture(writear.cause()));
