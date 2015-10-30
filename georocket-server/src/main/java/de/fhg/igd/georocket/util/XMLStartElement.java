@@ -280,15 +280,25 @@ public class XMLStartElement {
    */
   public JsonObject toJsonObject() {
     JsonArray np = new JsonArray();
-    Arrays.asList(namespacePrefixes).forEach(e -> np.add(e));
+    if (namespacePrefixes != null) {
+      Arrays.asList(namespacePrefixes).forEach(e -> np.add(e));
+    }
     JsonArray nu = new JsonArray();
-    Arrays.asList(namespaceUris).forEach(e -> nu.add(e));
+    if (namespaceUris != null) {
+      Arrays.asList(namespaceUris).forEach(e -> nu.add(e));
+    }
     JsonArray ap = new JsonArray();
-    Arrays.asList(attributePrefixes).forEach(e -> ap.add(e));
+    if (attributePrefixes != null) {
+      Arrays.asList(attributePrefixes).forEach(e -> ap.add(e));
+    }
     JsonArray aln = new JsonArray();
-    Arrays.asList(attributeLocalNames).forEach(e -> aln.add(e));
+    if (attributeLocalNames != null) {
+      Arrays.asList(attributeLocalNames).forEach(e -> aln.add(e));
+    }
     JsonArray av = new JsonArray();
-    Arrays.asList(attributeValues).forEach(e -> av.add(e));
+    if (attributeValues != null) {
+      Arrays.asList(attributeValues).forEach(e -> av.add(e));
+    }
     return new JsonObject()
         .put("prefix", prefix)
         .put("localName", localName)
