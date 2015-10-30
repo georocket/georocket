@@ -3,18 +3,17 @@ package de.fhg.igd.georocket;
 import java.io.FileNotFoundException;
 import java.util.function.BiConsumer;
 
+import org.bson.types.ObjectId;
+
+import de.fhg.igd.georocket.constants.AddressConstants;
 import de.fhg.igd.georocket.constants.ConfigConstants;
 import de.fhg.igd.georocket.index.IndexerVerticle;
-import de.fhg.igd.georocket.input.FirstLevelSplitter;
-import de.fhg.igd.georocket.input.Splitter;
 import de.fhg.igd.georocket.output.Merger;
 import de.fhg.igd.georocket.storage.ChunkMeta;
 import de.fhg.igd.georocket.storage.ChunkReadStream;
 import de.fhg.igd.georocket.storage.Store;
 import de.fhg.igd.georocket.storage.StoreCursor;
 import de.fhg.igd.georocket.storage.file.FileStore;
-import de.fhg.igd.georocket.util.WindowPipeStream;
-import de.fhg.igd.georocket.util.XMLPipeStream;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.DeploymentOptions;
@@ -24,14 +23,17 @@ import io.vertx.core.Verticle;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.eventbus.ReplyException;
+import io.vertx.core.file.AsyncFile;
+import io.vertx.core.file.FileSystem;
+import io.vertx.core.file.OpenOptions;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.http.HttpServerOptions;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpServerResponse;
+import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.core.streams.Pump;
-import io.vertx.core.streams.ReadStream;
 import io.vertx.core.streams.WriteStream;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
@@ -46,6 +48,7 @@ public class GeoRocket extends AbstractVerticle {
   private static Logger log = LoggerFactory.getLogger(GeoRocket.class);
   
   private Store store;
+  private String home;
   
   /**
    * Convert a throwable to an HTTP status code
@@ -73,45 +76,6 @@ public class GeoRocket extends AbstractVerticle {
       return throwableToCode(ar.cause());
     }
     return 200;
-  }
-  
-  /**
-   * Imports an XML file from the given input stream into the store
-   * @param f the XML file to read
-   * @param callback will be called when the operation has finished
-   */
-  private void importXML(ReadStream<Buffer> f, Handler<AsyncResult<Void>> callback) {
-    XMLPipeStream xmlStream = new XMLPipeStream(vertx);
-    WindowPipeStream windowPipeStream = new WindowPipeStream();
-    Splitter splitter = new FirstLevelSplitter(windowPipeStream.getWindow());
-    
-    Pump.pump(f, windowPipeStream).start();
-    Pump.pump(windowPipeStream, xmlStream).start();
-    
-    f.endHandler(v -> {
-      xmlStream.close();
-      callback.handle(Future.succeededFuture());
-    });
-    
-    f.exceptionHandler(e -> callback.handle(Future.failedFuture(e)));
-    windowPipeStream.exceptionHandler(e -> callback.handle(Future.failedFuture(e)));
-    xmlStream.exceptionHandler(e -> callback.handle(Future.failedFuture(e)));
-    
-    xmlStream.handler(event -> {
-      Splitter.Result splitResult = splitter.onEvent(event);
-      if (splitResult != null) {
-        // splitter has created a chunk. store it.
-        xmlStream.pause(); // pause stream while chunk being written
-        store.add(splitResult.getChunk(), splitResult.getMeta(), ar -> {
-          if (ar.failed()) {
-            callback.handle(Future.failedFuture(ar.cause()));
-          } else {
-            // go ahead
-            xmlStream.resume();
-          }
-        });
-      }
-    });
   }
   
   /**
@@ -292,19 +256,62 @@ public class GeoRocket extends AbstractVerticle {
    */
   private void onPost(RoutingContext context) {
     HttpServerRequest request = context.request();
-    importXML(request, ar -> {
-      if (ar.failed()) {
-        request.response()
-          .setStatusCode(resultToCode(ar))
-          .end("Could not parse XML: " + ar.cause().getMessage());
-        ar.cause().printStackTrace();
-      } else {
+    
+    // get temporary filename
+    String incoming = home + "/incoming";
+    String id = new ObjectId().toString();
+    String filename = incoming + "/" + id;
+    
+    log.info("Receiving file ...");
+    
+    // create directory for incoming files
+    FileSystem fs = vertx.fileSystem();
+    ObservableFuture<Void> observable = RxHelper.observableFuture();
+    fs.mkdirs(incoming, observable.toHandler());
+    observable
+      .flatMap(v -> {
+        // create temporary file
+        ObservableFuture<AsyncFile> openObservable = RxHelper.observableFuture();
+        fs.open(filename, new OpenOptions(), openObservable.toHandler());
+        return openObservable;
+      })
+      .flatMap(f -> {
+        ObservableFuture<AsyncFile> pumpObservable = RxHelper.observableFuture();
+        Handler<AsyncResult<AsyncFile>> pumpHandler = pumpObservable.toHandler();
+        Pump.pump(request, f).start();
+        Handler<Throwable> errHandler = (Throwable t) -> {
+          f.close();
+          pumpHandler.handle(Future.failedFuture(t));
+        };
+        f.exceptionHandler(errHandler);
+        request.exceptionHandler(errHandler);
+        request.endHandler(v -> {
+          pumpHandler.handle(Future.succeededFuture(f));
+        });
+        return pumpObservable;
+      })
+      .subscribe(f -> {
+        // tell caller that we're now importing the file
         request.response()
           .setStatusCode(202) // Accepted
-          .setStatusMessage("Accepted file - indexing in progress")
+          .setStatusMessage("Accepted file - importing in progress")
           .end();
-      }
-    });
+        
+        // close file before importing
+        f.close();
+        
+        // run importer
+        JsonObject msg = new JsonObject()
+            .put("action", "import")
+            .put("filename", id);
+        vertx.eventBus().send(AddressConstants.IMPORTER, msg);
+      }, err -> {
+        request.response()
+          .setStatusCode(throwableToCode(err))
+          .end("Could not import file: " + err.getMessage());
+        err.printStackTrace();
+        fs.delete(filename, ar -> {});
+      });
   }
   
   private ObservableFuture<String> deployVerticle(Class<? extends Verticle> cls) {
@@ -336,10 +343,14 @@ public class GeoRocket extends AbstractVerticle {
     log.info("Launching GeoRocket ...");
     
     store = new FileStore(vertx);
+    home = vertx.getOrCreateContext().config().getString(
+        ConfigConstants.HOME, System.getProperty("user.home") + "/.georocket");
     
     deployVerticle(IndexerVerticle.class)
+      .flatMap(v -> deployVerticle(ImporterVerticle.class))
       .flatMap(v -> deployHttpServer())
       .subscribe(id -> {
+        log.info("GeoRocket launched successfully.");
         startFuture.complete();
       }, err -> {
         startFuture.fail(err);

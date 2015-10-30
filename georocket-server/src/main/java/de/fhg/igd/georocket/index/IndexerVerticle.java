@@ -64,7 +64,7 @@ import io.vertx.core.streams.Pump;
 public class IndexerVerticle extends AbstractVerticle {
   private static Logger log = LoggerFactory.getLogger(IndexerVerticle.class);
   
-  private static final int MAX_INDEX_REQUESTS = 10000;
+  private static final int MAX_INDEX_REQUESTS = 1000;
   private static final long INDEX_REQUEST_TIMEOUT = 1000;
   private static final long INDEX_REQUEST_GRACE = 100;
   
