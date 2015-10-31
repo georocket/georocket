@@ -256,6 +256,7 @@ public class GeoRocket extends AbstractVerticle {
    */
   private void onPost(RoutingContext context) {
     HttpServerRequest request = context.request();
+    request.pause();
     
     // get temporary filename
     String incoming = home + "/incoming";
@@ -288,6 +289,7 @@ public class GeoRocket extends AbstractVerticle {
         request.endHandler(v -> {
           pumpHandler.handle(Future.succeededFuture(f));
         });
+        request.resume();
         return pumpObservable;
       })
       .subscribe(f -> {
