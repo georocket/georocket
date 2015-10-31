@@ -2,11 +2,17 @@ package de.fhg.igd.georocket.commands;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
 
+import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
 import de.fhg.igd.georocket.util.DurationFormat;
@@ -62,19 +68,89 @@ public class ImportCommand extends AbstractGeoRocketCommand {
     }
     return super.checkArguments();
   }
-
+  
+  /**
+   * Check if the given string contains a glob character ('*', '{', '?', or '[')
+   * @param s the string
+   * @return true if the string contains a glob character, false otherwise
+   */
+  private boolean hasGlobCharacter(String s) {
+    for (int i = 0; i < s.length(); ++i) {
+      char c = s.charAt(i);
+      if (c == '\\') {
+          ++i;
+          continue;
+      }
+      if (c == '*' || c == '{' || c == '?' || c == '[') {
+        return true;
+      }
+    }
+    return false;
+  }
+  
   @Override
   public void doRun(String[] remainingArgs, InputReader in, PrintWriter out,
       Handler<Integer> handler) throws OptionParserException, IOException {
     long start = System.currentTimeMillis();
+    
+    // resolve file patterns
+    Queue<String> queue = new ArrayDeque<>();
+    for (String p : patterns) {
+      // convert Windows backslashes to slashes (necessary for Files.newDirectoryStream())
+      if (SystemUtils.IS_OS_WINDOWS) {
+        p = FilenameUtils.separatorsToUnix(p);
+      }
+      
+      // collect paths and glob patterns
+      List<String> roots = new ArrayList<>();
+      List<String> globs = new ArrayList<>();
+      String[] parts = p.split("/");
+      boolean rootParsed = false;
+      for (String part : parts) {
+        if (!rootParsed) {
+          if (hasGlobCharacter(part)) {
+            globs.add(part);
+            rootParsed = true;
+          } else {
+            roots.add(part);
+          }
+        } else {
+          globs.add(part);
+        }
+      }
+      
+      if (globs.isEmpty()) {
+        // string does not contain a glob pattern at all
+        queue.add(p);
+      } else {
+        // string contains a glob pattern
+        if (roots.isEmpty()) {
+          // there are not paths in the string. start from the current
+          // working directory
+          roots.add(".");
+        }
+        
+        // add all files matching the pattern
+        String root = String.join("/", roots);
+        String glob = String.join("/", globs);
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(root), glob)) {
+          stream.forEach(path -> queue.add(path.toString()));
+        }
+      }
+    }
+    
+    if (queue.isEmpty()) {
+      error("given pattern didn't match any files");
+      return;
+    }
     
     Vertx vertx = new Vertx(this.vertx);
     
     HttpClientOptions options = new HttpClientOptions().setKeepAlive(true);
     HttpClient client = vertx.createHttpClient(options);
     
-    Queue<String> files = new ArrayDeque<>(patterns);
-    doImport(files, client, vertx, exitCode -> {
+    int queueSize = queue.size();
+    doImport(queue, client, vertx, exitCode -> {
       client.close();
       
       if (exitCode == 0) {
@@ -82,7 +158,7 @@ public class ImportCommand extends AbstractGeoRocketCommand {
         if (patterns.size() > 1) {
           m += "s";
         }
-        System.out.println("Successfully imported " + patterns.size() + " " +
+        System.out.println("Successfully imported " + queueSize + " " +
             m + " in " + DurationFormat.formatUntilNow(start));
       }
       
