@@ -281,6 +281,7 @@ public class GeoRocket extends AbstractVerticle {
         Handler<AsyncResult<AsyncFile>> pumpHandler = pumpObservable.toHandler();
         Pump.pump(request, f).start();
         Handler<Throwable> errHandler = (Throwable t) -> {
+          request.endHandler(null);
           f.close();
           pumpHandler.handle(Future.failedFuture(t));
         };
