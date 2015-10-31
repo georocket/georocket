@@ -6,4 +6,5 @@
 .vertx/
 bin/
 build/
+src-gen/
 gradle.properties
