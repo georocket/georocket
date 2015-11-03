@@ -51,9 +51,12 @@ public class FileStore implements Store {
   }
   
   @Override
-  public void add(String chunk, ChunkMeta meta, Handler<AsyncResult<Void>> handler) {
+  public void add(String chunk, ChunkMeta meta, String layer,
+      Handler<AsyncResult<Void>> handler) {
+    String dir = layer == null ? root : root + "/" + layer;
+    
     // create storage folder
-    vertx.fileSystem().mkdirs(root, ar -> {
+    vertx.fileSystem().mkdirs(dir, ar -> {
       if (ar.failed()) {
         handler.handle(Future.failedFuture(ar.cause()));
         return;
@@ -65,7 +68,7 @@ public class FileStore implements Store {
       
       // open new file
       FileSystem fs = vertx.fileSystem();
-      fs.open(root + "/" + filename, new OpenOptions(), openar -> {
+      fs.open(dir + "/" + filename, new OpenOptions(), openar -> {
         if (openar.failed()) {
           handler.handle(Future.failedFuture(openar.cause()));
           return;
@@ -87,6 +90,9 @@ public class FileStore implements Store {
               .put("action", "add")
               .put("filename", filename)
               .put("meta", meta.toJsonObject());
+          if (layer != null) {
+            indexMsg.put("layer", layer);
+          }
           vertx.eventBus().publish(AddressConstants.INDEXER, indexMsg);
           
           // tell sender that writing was successful

@@ -258,6 +258,16 @@ public class GeoRocket extends AbstractVerticle {
     HttpServerRequest request = context.request();
     request.pause();
     
+    // get layer from request path
+    String path = context.normalisedPath();
+    String routePath = context.currentRoute().getPath();
+    String layer;
+    if (routePath.length() < path.length()) {
+      layer = path.substring(routePath.length());
+    } else {
+      layer = null;
+    }
+    
     // get temporary filename
     String incoming = home + "/incoming";
     String id = new ObjectId().toString();
@@ -307,6 +317,9 @@ public class GeoRocket extends AbstractVerticle {
         JsonObject msg = new JsonObject()
             .put("action", "import")
             .put("filename", id);
+        if (layer != null && !layer.isEmpty()) {
+          msg.put("layer", layer);
+        }
         vertx.eventBus().send(AddressConstants.IMPORTER, msg);
       }, err -> {
         request.response()
@@ -330,7 +343,7 @@ public class GeoRocket extends AbstractVerticle {
     Router router = Router.router(vertx);
     router.get("/db/:name").handler(this::onGetOne);
     router.get("/db").handler(this::onGet);
-    router.post("/db").handler(this::onPost);
+    router.post("/db/*").handler(this::onPost);
     
     HttpServerOptions serverOptions = new HttpServerOptions()
         .setCompressionSupported(true);

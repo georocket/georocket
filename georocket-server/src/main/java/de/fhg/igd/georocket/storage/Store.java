@@ -12,9 +12,11 @@ public interface Store {
    * Add a chunk to the store
    * @param chunk the chunk to add
    * @param meta the chunk's metadata
+   * @param layer the layer where the chunk should be stored (may be null)
    * @param handler will be called when the chunk has been added to the store
    */
-  void add(String chunk, ChunkMeta meta, Handler<AsyncResult<Void>> handler);
+  void add(String chunk, ChunkMeta meta, String layer,
+      Handler<AsyncResult<Void>> handler);
   
   /**
    * Get a chunk from the store. The returned {@link ChunkReadStream} must

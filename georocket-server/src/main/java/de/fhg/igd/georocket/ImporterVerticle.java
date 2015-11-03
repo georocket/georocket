@@ -71,7 +71,12 @@ public class ImporterVerticle extends AbstractVerticle {
    */
   private void onImport(Message<JsonObject> msg) {
     String filename = incoming + "/" + msg.body().getString("filename");
-    log.info("Importing " + filename);
+    String layer = msg.body().getString("layer");
+    if (layer != null) {
+      log.info("Importing " + filename + " to layer " + layer);
+    } else {
+      log.info("Importing " + filename);
+    }
     
     FileSystem fs = vertx.fileSystem();
     OpenOptions openOptions = new OpenOptions().setCreate(false).setWrite(false);
@@ -80,7 +85,7 @@ public class ImporterVerticle extends AbstractVerticle {
     observable
       .flatMap(f -> {
         ObservableFuture<Void> importObservable = RxHelper.observableFuture();
-        importXML(f, ar -> {
+        importXML(f, layer, ar -> {
           f.close();
           fs.delete(filename, deleteAr -> {
             if (ar.failed()) {
@@ -102,9 +107,11 @@ public class ImporterVerticle extends AbstractVerticle {
   /**
    * Imports an XML file from the given input stream into the store
    * @param f the XML file to read
+   * @param layer the layer where the file should be stored (may be null)
    * @param callback will be called when the operation has finished
    */
-  private void importXML(ReadStream<Buffer> f, Handler<AsyncResult<Void>> callback) {
+  private void importXML(ReadStream<Buffer> f, String layer,
+      Handler<AsyncResult<Void>> callback) {
     XMLPipeStream xmlStream = new XMLPipeStream(vertx);
     WindowPipeStream windowPipeStream = new WindowPipeStream();
     Splitter splitter = new FirstLevelSplitter(windowPipeStream.getWindow());
@@ -126,7 +133,7 @@ public class ImporterVerticle extends AbstractVerticle {
       if (splitResult != null) {
         // splitter has created a chunk. store it.
         xmlStream.pause(); // pause stream while chunk being written
-        store.add(splitResult.getChunk(), splitResult.getMeta(), ar -> {
+        store.add(splitResult.getChunk(), splitResult.getMeta(), layer, ar -> {
           if (ar.failed()) {
             callback.handle(Future.failedFuture(ar.cause()));
           } else {

@@ -160,17 +160,19 @@ public class IndexerVerticle extends AbstractVerticle {
    */
   private void onAdd(Message<JsonObject> msg) {
     String filename = msg.body().getString("filename");
+    String layer = msg.body().getString("layer");
     ChunkMeta meta = ChunkMeta.fromJsonObject(msg.body().getJsonObject("meta"));
-    log.debug("Indexing " + filename);
+    String chunkName = layer != null ? layer + "/" + filename : filename;
+    log.debug("Indexing " + chunkName);
     
     // get chunk from store and index it
-    store.getOne(filename, ar -> {
+    store.getOne(chunkName, ar -> {
       if (ar.failed()) {
         log.error("Could not get chunk from store", ar.cause());
         return;
       }
       ChunkReadStream chunk = ar.result();
-      indexChunk(filename, chunk, meta);
+      indexChunk(chunkName, chunk, meta);
     });
   }
   
