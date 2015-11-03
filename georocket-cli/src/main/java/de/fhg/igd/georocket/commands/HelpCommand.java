@@ -6,9 +6,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import de.fhg.igd.georocket.GeoRocketCli;
-import de.undercouch.citeclip.InputReader;
-import de.undercouch.citeclip.OptionParserException;
-import de.undercouch.citeclip.UnknownAttributes;
+import de.undercouch.underline.InputReader;
+import de.undercouch.underline.OptionParserException;
+import de.undercouch.underline.UnknownAttributes;
 import io.vertx.core.Handler;
 
 /**

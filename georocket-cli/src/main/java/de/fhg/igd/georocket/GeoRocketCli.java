@@ -11,12 +11,12 @@ import de.fhg.igd.georocket.commands.AbstractGeoRocketCommand;
 import de.fhg.igd.georocket.commands.HelpCommand;
 import de.fhg.igd.georocket.commands.ImportCommand;
 import de.fhg.igd.georocket.commands.SearchCommand;
-import de.undercouch.citeclip.CommandDesc;
-import de.undercouch.citeclip.CommandDescList;
-import de.undercouch.citeclip.InputReader;
-import de.undercouch.citeclip.OptionDesc;
-import de.undercouch.citeclip.OptionParserException;
-import de.undercouch.citeclip.StandardInputReader;
+import de.undercouch.underline.CommandDesc;
+import de.undercouch.underline.CommandDescList;
+import de.undercouch.underline.InputReader;
+import de.undercouch.underline.OptionDesc;
+import de.undercouch.underline.OptionParserException;
+import de.undercouch.underline.StandardInputReader;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 
