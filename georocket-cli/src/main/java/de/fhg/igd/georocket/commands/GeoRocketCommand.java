@@ -3,9 +3,9 @@ package de.fhg.igd.georocket.commands;
 import java.io.IOException;
 import java.io.PrintWriter;
 
-import de.undercouch.citeclip.Command;
-import de.undercouch.citeclip.InputReader;
-import de.undercouch.citeclip.OptionParserException;
+import de.undercouch.underline.Command;
+import de.undercouch.underline.InputReader;
+import de.undercouch.underline.OptionParserException;
 import io.vertx.core.Handler;
 
 /**

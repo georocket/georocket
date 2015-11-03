@@ -16,9 +16,9 @@ import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
 import de.fhg.igd.georocket.util.DurationFormat;
-import de.undercouch.citeclip.InputReader;
-import de.undercouch.citeclip.OptionParserException;
-import de.undercouch.citeclip.UnknownAttributes;
+import de.undercouch.underline.InputReader;
+import de.undercouch.underline.OptionParserException;
+import de.undercouch.underline.UnknownAttributes;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
