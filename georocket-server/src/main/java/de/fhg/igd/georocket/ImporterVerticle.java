@@ -71,12 +71,8 @@ public class ImporterVerticle extends AbstractVerticle {
    */
   private void onImport(Message<JsonObject> msg) {
     String filename = incoming + "/" + msg.body().getString("filename");
-    String layer = msg.body().getString("layer");
-    if (layer != null) {
-      log.info("Importing " + filename + " to layer " + layer);
-    } else {
-      log.info("Importing " + filename);
-    }
+    String layer = msg.body().getString("layer", "/");
+    log.info("Importing " + filename + " to layer " + layer);
     
     FileSystem fs = vertx.fileSystem();
     OpenOptions openOptions = new OpenOptions().setCreate(false).setWrite(false);

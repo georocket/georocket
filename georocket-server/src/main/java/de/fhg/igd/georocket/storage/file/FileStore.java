@@ -51,9 +51,13 @@ public class FileStore implements Store {
   }
   
   @Override
-  public void add(String chunk, ChunkMeta meta, String layer,
+  public void add(String chunk, ChunkMeta meta, String path,
       Handler<AsyncResult<Void>> handler) {
-    String dir = layer == null ? root : root + "/" + layer;
+    if (path == null || path.isEmpty()) {
+      path = "/";
+    }
+    String dir = root + path;
+    String finalPath = path;
     
     // create storage folder
     vertx.fileSystem().mkdirs(dir, ar -> {
@@ -88,11 +92,8 @@ public class FileStore implements Store {
           // start indexing
           JsonObject indexMsg = new JsonObject()
               .put("action", "add")
-              .put("filename", filename)
+              .put("path", finalPath + "/" + filename)
               .put("meta", meta.toJsonObject());
-          if (layer != null) {
-            indexMsg.put("layer", layer);
-          }
           vertx.eventBus().publish(AddressConstants.INDEXER, indexMsg);
           
           // tell sender that writing was successful
@@ -103,24 +104,24 @@ public class FileStore implements Store {
   }
   
   @Override
-  public void getOne(String name, Handler<AsyncResult<ChunkReadStream>> handler) {
-    String path = root + "/" + name;
+  public void getOne(String path, Handler<AsyncResult<ChunkReadStream>> handler) {
+    String absolutePath = root + "/" + path;
     
     // check if chunk exists
     FileSystem fs = vertx.fileSystem();
     ObservableFuture<Boolean> observable = RxHelper.observableFuture();
-    fs.exists(path, observable.toHandler());
+    fs.exists(absolutePath, observable.toHandler());
     observable
       .flatMap(exists -> {
         if (!exists) {
-          return Observable.error(new FileNotFoundException("Could not find chunk: " + name));
+          return Observable.error(new FileNotFoundException("Could not find chunk: " + path));
         }
         return Observable.just(exists);
       })
       .flatMap(exists -> {
         // get chunk's size
         ObservableFuture<FileProps> propsObservable = RxHelper.observableFuture();
-        fs.props(path, propsObservable.toHandler());
+        fs.props(absolutePath, propsObservable.toHandler());
         return propsObservable;
       })
       .map(props -> props.size())
@@ -128,7 +129,7 @@ public class FileStore implements Store {
         // open chunk
         ObservableFuture<AsyncFile> openObservable = RxHelper.observableFuture();
         OpenOptions openOptions = new OpenOptions().setCreate(false).setWrite(false);
-        fs.open(path, openOptions, openObservable.toHandler());
+        fs.open(absolutePath, openOptions, openObservable.toHandler());
         return openObservable.map(f -> new FileChunkReadStream(size, f));
       })
       .subscribe(readStream -> {

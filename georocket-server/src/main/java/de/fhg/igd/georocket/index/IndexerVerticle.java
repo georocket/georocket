@@ -159,20 +159,19 @@ public class IndexerVerticle extends AbstractVerticle {
    * @param msg the event bus message containing the chunk name 
    */
   private void onAdd(Message<JsonObject> msg) {
-    String filename = msg.body().getString("filename");
-    String layer = msg.body().getString("layer");
+    String path = msg.body().getString("path");
     ChunkMeta meta = ChunkMeta.fromJsonObject(msg.body().getJsonObject("meta"));
-    String chunkName = layer != null ? layer + "/" + filename : filename;
-    log.debug("Indexing " + chunkName);
+    
+    log.debug("Indexing " + path);
     
     // get chunk from store and index it
-    store.getOne(chunkName, ar -> {
+    store.getOne(path, ar -> {
       if (ar.failed()) {
         log.error("Could not get chunk from store", ar.cause());
         return;
       }
       ChunkReadStream chunk = ar.result();
-      indexChunk(chunkName, chunk, meta);
+      indexChunk(path, chunk, meta);
     });
   }
   
@@ -272,11 +271,11 @@ public class IndexerVerticle extends AbstractVerticle {
   
   /**
    * Adds a chunk to the index
-   * @param name the chunk's name
+   * @param path the absolute path to the chunk
    * @param chunk the chunk to index
    * @param meta the chunk's metadata
    */
-  private void indexChunk(String name, ChunkReadStream chunk, ChunkMeta meta) {
+  private void indexChunk(String path, ChunkReadStream chunk, ChunkMeta meta) {
     // create XML parser
     XMLPipeStream xmlStream = new XMLPipeStream(vertx);
     Pump.pump(chunk, xmlStream).start();
@@ -300,7 +299,7 @@ public class IndexerVerticle extends AbstractVerticle {
       if (event.getEvent() == XMLEvent.END_DOCUMENT) {
         indexers.forEach(i -> doc.putAll(i.getResult()));
         addMeta(doc, meta);
-        insertDocument(name, doc);
+        insertDocument(path, doc);
       }
     });
   }
@@ -448,13 +447,13 @@ public class IndexerVerticle extends AbstractVerticle {
   
   /**
    * Inserts an ElasticSearch document to the index
-   * @param id the chunk's ID
+   * @param path the absolute path to the chunk
    * @param doc the document to add
    */
-  private void insertDocument(String id, Map<String, Object> doc) {
+  private void insertDocument(String path, Map<String, Object> doc) {
     IndexRequest req = Requests.indexRequest(INDEX_NAME)
         .type(TYPE_NAME)
-        .id(id)
+        .id(path)
         .source(doc);
     insertDocument(req);
   }
