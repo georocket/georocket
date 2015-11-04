@@ -2,7 +2,11 @@ package de.fhg.igd.georocket.commands;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.util.stream.Collectors;
+
+import com.google.common.base.Splitter;
 
 import io.vertx.core.Handler;
 import io.vertx.core.http.HttpClient;
@@ -16,6 +20,19 @@ import io.vertx.core.logging.LoggerFactory;
  */
 public abstract class AbstractQueryCommand extends AbstractGeoRocketCommand {
   private static Logger log = LoggerFactory.getLogger(AbstractQueryCommand.class);
+  
+  /**
+   * Convenience method to URL-encode a string
+   * @param url the string
+   * @return the encoded string
+   */
+  protected String urlencode(String str) {
+    try {
+      return URLEncoder.encode(str, "UTF-8");
+    } catch (UnsupportedEncodingException e) {
+      throw new RuntimeException(e);
+    }
+  }
   
   /**
    * Export using a search query and a layer
@@ -40,8 +57,11 @@ public abstract class AbstractQueryCommand extends AbstractGeoRocketCommand {
     
     String urlQuery = "";
     if (query != null && !query.isEmpty()) {
-      urlQuery = "?search=" + URLEncoder.encode(query, "UTF-8");
+      urlQuery = "?search=" + urlencode(query);
     }
+    
+    layer = Splitter.on('/').splitToList(layer).stream()
+      .map(this::urlencode).collect(Collectors.joining("/"));
     
     HttpClient client = vertx.createHttpClient();
     HttpClientRequest request = client.get(63074, "localhost", "/store" + layer + urlQuery);
