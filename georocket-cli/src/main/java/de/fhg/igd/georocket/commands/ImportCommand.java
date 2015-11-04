@@ -220,7 +220,7 @@ public class ImportCommand extends AbstractGeoRocketCommand {
     ObservableFuture<Void> o = RxHelper.observableFuture();
     Handler<AsyncResult<Void>> handler = o.toHandler();
     
-    HttpClientRequest request = client.post(63074, "localhost", "/db");
+    HttpClientRequest request = client.post(63074, "localhost", "/store");
     
     request.putHeader("Content-Length", String.valueOf(fileSize));
     
