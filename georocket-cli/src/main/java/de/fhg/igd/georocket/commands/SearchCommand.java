@@ -6,6 +6,8 @@ import java.net.URLEncoder;
 import java.util.List;
 
 import de.undercouch.underline.InputReader;
+import de.undercouch.underline.Option.ArgumentType;
+import de.undercouch.underline.OptionDesc;
 import de.undercouch.underline.OptionParserException;
 import de.undercouch.underline.UnknownAttributes;
 import io.vertx.core.Handler;
@@ -17,6 +19,7 @@ import io.vertx.core.http.HttpClient;
  */
 public class SearchCommand extends AbstractGeoRocketCommand {
   private String query;
+  private String layer;
   
   /**
    * Set the query parts
@@ -25,6 +28,26 @@ public class SearchCommand extends AbstractGeoRocketCommand {
   @UnknownAttributes("QUERY")
   public void setQueryParts(List<String> queryParts) {
     this.query = String.join(" ", queryParts);
+  }
+  
+  /**
+   * Set the absolute path to the layer to search
+   * @param layer the layer
+   */
+  @OptionDesc(longName = "layer", shortName = "l",
+      description = "absolute path to the layer to search",
+      argumentName = "PATH", argumentType = ArgumentType.STRING)
+  public void setLayer(String layer) {
+    this.layer = layer;
+    if (layer == null || layer.isEmpty()) {
+      return;
+    }
+    if (!this.layer.endsWith("/")) {
+      this.layer += "/";
+    }
+    if (!this.layer.startsWith("/")) {
+      this.layer = "/" + this.layer;
+    }
   }
   
   @Override
@@ -51,8 +74,12 @@ public class SearchCommand extends AbstractGeoRocketCommand {
       throws OptionParserException, IOException {
     String urlQuery = URLEncoder.encode(query, "UTF-8");
     
+    if (layer == null || layer.isEmpty()) {
+      layer = "/";
+    }
+    
     HttpClient client = vertx.createHttpClient();
-    client.getNow(63074, "localhost", "/store?search=" + urlQuery, response -> {
+    client.getNow(63074, "localhost", "/store" + layer + "?search=" + urlQuery, response -> {
       if (response.statusCode() != 200) {
         error(response.statusMessage());
         client.close();
