@@ -52,7 +52,7 @@ public class SearchCommand extends AbstractGeoRocketCommand {
     String urlQuery = URLEncoder.encode(query, "UTF-8");
     
     HttpClient client = vertx.createHttpClient();
-    client.getNow(63074, "localhost", "/db?search=" + urlQuery, response -> {
+    client.getNow(63074, "localhost", "/store?search=" + urlQuery, response -> {
       if (response.statusCode() != 200) {
         error(response.statusMessage());
         client.close();

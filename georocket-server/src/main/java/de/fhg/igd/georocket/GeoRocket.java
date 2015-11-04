@@ -314,8 +314,8 @@ public class GeoRocket extends AbstractVerticle {
     int port = config().getInteger(ConfigConstants.PORT, ConfigConstants.DEFAULT_PORT);
     
     Router router = Router.router(vertx);
-    router.get("/db/*").handler(this::onGet);
-    router.post("/db/*").handler(this::onPost);
+    router.get("/store/*").handler(this::onGet);
+    router.post("/store/*").handler(this::onPost);
     
     HttpServerOptions serverOptions = new HttpServerOptions()
         .setCompressionSupported(true);
