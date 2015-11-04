@@ -6,12 +6,17 @@ import java.net.URLEncoder;
 
 import io.vertx.core.Handler;
 import io.vertx.core.http.HttpClient;
+import io.vertx.core.http.HttpClientRequest;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 /**
  * Abstract base class for commands that need to export data
  * @author Michel Kraemer
  */
 public abstract class AbstractQueryCommand extends AbstractGeoRocketCommand {
+  private static Logger log = LoggerFactory.getLogger(AbstractQueryCommand.class);
+  
   /**
    * Export using a search query and a layer
    * @param query the search query (may be null)
@@ -39,7 +44,14 @@ public abstract class AbstractQueryCommand extends AbstractGeoRocketCommand {
     }
     
     HttpClient client = vertx.createHttpClient();
-    client.getNow(63074, "localhost", "/store" + layer + urlQuery, response -> {
+    HttpClientRequest request = client.get(63074, "localhost", "/store" + layer + urlQuery);
+    request.exceptionHandler(t -> {
+      error(t.getMessage());
+      log.error("Could not query store", t);
+      client.close();
+      handler.handle(1);
+    });
+    request.handler(response -> {
       if (response.statusCode() != 200) {
         error(response.statusMessage());
         client.close();
@@ -54,5 +66,6 @@ public abstract class AbstractQueryCommand extends AbstractGeoRocketCommand {
         });
       }
     });
+    request.end();
   }
 }
