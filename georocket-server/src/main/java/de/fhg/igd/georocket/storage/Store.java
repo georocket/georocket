@@ -29,7 +29,8 @@ public interface Store {
   /**
    * Get a number of chunks from the store using quick-search
    * @param search the quick-search query
+   * @param path the path where to search for the chunks (may be null)
    * @param handler will be called when the chunks have been retrieved from the store
    */
-  void get(String search, Handler<AsyncResult<StoreCursor>> handler);
+  void get(String search, String path, Handler<AsyncResult<StoreCursor>> handler);
 }

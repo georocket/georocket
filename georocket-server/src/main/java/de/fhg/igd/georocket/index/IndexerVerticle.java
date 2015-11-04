@@ -181,6 +181,7 @@ public class IndexerVerticle extends AbstractVerticle {
    */
   private void onQuery(Message<JsonObject> msg) {
     String search = msg.body().getString("search");
+    String path = msg.body().getString("path");
     String scrollId = msg.body().getString("scrollId");
     int pageSize = msg.body().getInteger("pageSize", 100);
     TimeValue timeout = TimeValue.timeValueMinutes(1);
@@ -220,7 +221,7 @@ public class IndexerVerticle extends AbstractVerticle {
           .setScroll(timeout)
           .setSize(pageSize)
           .setSearchType(SearchType.SCAN) // do not sort results (faster)
-          .setPostFilter(makeQuery(search))
+          .setPostFilter(makeQuery(search, path))
           .execute(listener);
     } else {
       // continue searching
@@ -228,6 +229,26 @@ public class IndexerVerticle extends AbstractVerticle {
           .setScroll(timeout)
           .execute(listener);
     }
+  }
+  
+  /**
+   * Creates an ElasticSearch query from the given search string
+   * @param search the search string
+   * @param path the path where to perform the search (may be null if the
+   * whole store should be searched)
+   * @return the query
+   */
+  private QueryBuilder makeQuery(String search, String path) {
+    QueryBuilder qb = makeQuery(search);
+    if (path != null && !path.equals("/")) {
+      String prefix = path.endsWith("/") ? path : path + "/";
+      return QueryBuilders.boolQuery()
+          .should(qb)
+          .must(QueryBuilders.boolQuery()
+              .should(QueryBuilders.termQuery("_id", path))
+              .should(QueryBuilders.prefixQuery("_id", prefix)));
+    }
+    return qb;
   }
   
   /**

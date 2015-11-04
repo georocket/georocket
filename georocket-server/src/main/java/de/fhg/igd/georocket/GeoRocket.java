@@ -67,53 +67,12 @@ public class GeoRocket extends AbstractVerticle {
   }
   
   /**
-   * Convert an asynchronous result to an HTTP status code
-   * @param ar the result to convert
-   * @return the HTTP status code
-   */
-  private static int resultToCode(AsyncResult<?> ar) {
-    if (ar.failed()) {
-      return throwableToCode(ar.cause());
-    }
-    return 200;
-  }
-  
-  /**
-   * Handles the HTTP GET request for a single chunk
-   * @param context the routing context
-   */
-  private void onGetOne(RoutingContext context) {
-    HttpServerRequest request = context.request();
-    HttpServerResponse response = context.response();
-    
-    String name = request.getParam("name");
-    
-    // get chunk from store
-    store.getOne(name, getar -> {
-      if (getar.failed()) {
-        log.error("Could not get chunk", getar.cause());
-        response.setStatusCode(resultToCode(getar)).end(getar.cause().getMessage());
-        return;
-      }
-      
-      // write Content-Length
-      ChunkReadStream crs = getar.result();
-      response.putHeader("Content-Length", String.valueOf(crs.getSize()));
-      
-      // send chunk to client
-      Pump.pump(crs, response).start();
-      crs.endHandler(v -> {
-        response.end();
-        crs.close();
-      });
-    });
-  }
-  
-  /**
    * Handles the HTTP GET request for a bunch of chunks
    * @param context the routing context
    */
   private void onGet(RoutingContext context) {
+    String path = getStorePath(context);
+    
     HttpServerResponse response = context.response();
     HttpServerRequest request = context.request();
     String search = request.getParam("search");
@@ -130,10 +89,10 @@ public class GeoRocket extends AbstractVerticle {
     // merge all retrieved chunks
     Merger merger = new Merger();
     ObservableFuture<Void> o = RxHelper.observableFuture();
-    initializeMerger(merger, search, o.toHandler());
+    initializeMerger(merger, search, path, o.toHandler());
     o.flatMap(v -> {
       ObservableFuture<Void> o2 = RxHelper.observableFuture();
-      doMerge(merger, search, response, o2.toHandler());
+      doMerge(merger, search, path, response, o2.toHandler());
       return o2;
     }).reduce((v1, v2) -> v1).subscribe(v -> {
       response.end();
@@ -150,11 +109,13 @@ public class GeoRocket extends AbstractVerticle {
    * and pass all chunk metadata retrieved to the merger.
    * @param merger the merger to initialize
    * @param search the search query
+   * @param path the path where to perform the search
    * @param handler will be called when the merger has been initialized with
    * all results
    */
-  private void initializeMerger(Merger merger, String search, Handler<AsyncResult<Void>> handler) {
-    store.get(search, getar -> {
+  private void initializeMerger(Merger merger, String search, String path,
+      Handler<AsyncResult<Void>> handler) {
+    store.get(search, path, getar -> {
       if (getar.failed()) {
         handler.handle(Future.failedFuture(getar.cause()));
       } else {
@@ -170,12 +131,13 @@ public class GeoRocket extends AbstractVerticle {
    * Performs a search and merges all retrieved chunks using the given merger
    * @param merger the merger
    * @param search the search query
+   * @param path the path where to perform the search
    * @param out a write stream to write the merged chunk to
    * @param handler will be called when all chunks have been merged
    */
-  private void doMerge(Merger merger, String search, WriteStream<Buffer> out,
-      Handler<AsyncResult<Void>> handler) {
-    store.get(search, getar -> {
+  private void doMerge(Merger merger, String search, String path,
+      WriteStream<Buffer> out, Handler<AsyncResult<Void>> handler) {
+    store.get(search, path, getar -> {
       if (getar.failed()) {
         handler.handle(Future.failedFuture(getar.cause()));
       } else {
@@ -258,15 +220,7 @@ public class GeoRocket extends AbstractVerticle {
     HttpServerRequest request = context.request();
     request.pause();
     
-    // get layer from request path
-    String path = context.normalisedPath();
-    String routePath = context.currentRoute().getPath();
-    String layer;
-    if (routePath.length() < path.length()) {
-      layer = path.substring(routePath.length());
-    } else {
-      layer = null;
-    }
+    String layer = getStorePath(context);
     
     // get temporary filename
     String incoming = home + "/incoming";
@@ -316,10 +270,8 @@ public class GeoRocket extends AbstractVerticle {
         // run importer
         JsonObject msg = new JsonObject()
             .put("action", "import")
-            .put("filename", id);
-        if (layer != null && !layer.isEmpty()) {
-          msg.put("layer", layer);
-        }
+            .put("filename", id)
+            .put("layer", layer);
         vertx.eventBus().send(AddressConstants.IMPORTER, msg);
       }, err -> {
         request.response()
@@ -328,6 +280,27 @@ public class GeoRocket extends AbstractVerticle {
         err.printStackTrace();
         fs.delete(filename, ar -> {});
       });
+  }
+
+  /**
+   * Get absolute data store path from request
+   * @param context the current routing context
+   * @return the absolute path (never null, default: "/")
+   */
+  private String getStorePath(RoutingContext context) {
+    String path = context.normalisedPath();
+    String routePath = context.currentRoute().getPath();
+    String result = null;
+    if (routePath.length() < path.length()) {
+      result = path.substring(routePath.length());
+    }
+    if (result == null || result.isEmpty()) {
+      return "/";
+    }
+    if (result.charAt(0) != '/') {
+      result = "/" + result;
+    }
+    return result;
   }
   
   private ObservableFuture<String> deployVerticle(Class<? extends Verticle> cls) {
@@ -341,8 +314,7 @@ public class GeoRocket extends AbstractVerticle {
     int port = config().getInteger(ConfigConstants.PORT, ConfigConstants.DEFAULT_PORT);
     
     Router router = Router.router(vertx);
-    router.get("/db/:name").handler(this::onGetOne);
-    router.get("/db").handler(this::onGet);
+    router.get("/db/*").handler(this::onGet);
     router.post("/db/*").handler(this::onPost);
     
     HttpServerOptions serverOptions = new HttpServerOptions()
