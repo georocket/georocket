@@ -27,8 +27,16 @@ public interface Store {
   void getOne(String path, Handler<AsyncResult<ChunkReadStream>> handler);
   
   /**
+   * Delete all chunks from the store that match a given query
+   * @param search the search query
+   * @param path the path where to search for the chunks (may be null)
+   * @param handler will be called when the chunk has been deleted
+   */
+  void delete(String search, String path, Handler<AsyncResult<Void>> handler);
+  
+  /**
    * Get a number of chunks from the store using quick-search
-   * @param search the quick-search query
+   * @param search the search query
    * @param path the path where to search for the chunks (may be null)
    * @param handler will be called when the chunks have been retrieved from the store
    */

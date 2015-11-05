@@ -147,6 +147,10 @@ public class IndexerVerticle extends AbstractVerticle {
       onQuery(msg);
       break;
     
+    case "delete":
+      onDelete(msg);
+      break;
+    
     default:
       msg.fail(400, "Invalid action: " + action);
       log.error("Invalid action: " + action);
@@ -229,6 +233,41 @@ public class IndexerVerticle extends AbstractVerticle {
           .setScroll(timeout)
           .execute(listener);
     }
+  }
+  
+  /**
+   * Deletes chunks from the index
+   * @param msg the message containing the paths to the chunks to delete
+   */
+  private void onDelete(Message<JsonObject> msg) {
+    JsonArray paths = msg.body().getJsonArray("paths");
+    
+    // prepare bulk request for all chunks to delete
+    BulkRequest br = Requests.bulkRequest();
+    for (int i = 0; i < paths.size(); ++i) {
+      String path = paths.getString(i);
+      br.add(Requests.deleteRequest(INDEX_NAME).type(TYPE_NAME).id(path));
+    }
+    
+    // execute bulk request
+    long startDeleting = System.currentTimeMillis();
+    log.info("Deleting " + paths.size() + " chunks from index ...");
+    client.bulk(br, handlerToListener(ar -> {
+      if (ar.failed()) {
+        log.error("Could not index chunks", ar.cause());
+        msg.fail(500, ar.cause().getMessage());
+      } else {
+        BulkResponse bres = ar.result();
+        if (bres.hasFailures()) {
+          log.error(bres.buildFailureMessage());
+          msg.fail(500, bres.buildFailureMessage());
+        } else {
+          log.info("Finished deleting " + paths.size() + " chunks from index in " +
+              (System.currentTimeMillis() - startDeleting) + " ms");
+          msg.reply(null);
+        }
+      }
+    }));
   }
   
   /**

@@ -303,6 +303,28 @@ public class GeoRocket extends AbstractVerticle {
     return result;
   }
   
+  /**
+   * Handles the HTTP DELETE request
+   * @param context the routing context
+   */
+  private void onDelete(RoutingContext context) {
+    String path = getStorePath(context);
+    
+    HttpServerResponse response = context.response();
+    HttpServerRequest request = context.request();
+    String search = request.getParam("search");
+    
+    store.delete(search, path, ar -> {
+      if (ar.failed()) {
+        Throwable t = ar.cause();
+        log.error("Could not delete chunks", t);
+        response.setStatusCode(throwableToCode(t)).end(t.getMessage());
+      } else {
+        response.setStatusCode(204).end();
+      }
+    });
+  }
+  
   private ObservableFuture<String> deployVerticle(Class<? extends Verticle> cls) {
     ObservableFuture<String> observable = RxHelper.observableFuture();
     DeploymentOptions options = new DeploymentOptions().setConfig(config());
@@ -316,6 +338,7 @@ public class GeoRocket extends AbstractVerticle {
     Router router = Router.router(vertx);
     router.get("/store/*").handler(this::onGet);
     router.post("/store/*").handler(this::onPost);
+    router.delete("/store/*").handler(this::onDelete);
     
     HttpServerOptions serverOptions = new HttpServerOptions()
         .setCompressionSupported(true);
