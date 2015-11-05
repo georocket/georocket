@@ -2,16 +2,11 @@ apply plugin: 'application'
 
 mainClassName = 'de.fhg.igd.georocket.GeoRocketCli'
 
-repositories {
-    mavenLocal()
-    mavenCentral()
-}
-
 dependencies {
     compile "io.vertx:vertx-rx-java:$vertxVersion"
     
     compile 'commons-io:commons-io:2.4'
-    compile 'de.undercouch:underline:1.0.0-SNAPSHOT'
+    compile 'de.undercouch:underline:1.0.0'
     compile 'org.apache.commons:commons-lang3:3.4'
     compile 'net.time4j:time4j-core:4.7'
 }
