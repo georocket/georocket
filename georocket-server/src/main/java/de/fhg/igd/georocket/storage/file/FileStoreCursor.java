@@ -2,7 +2,6 @@ package de.fhg.igd.georocket.storage.file;
 
 import de.fhg.igd.georocket.constants.AddressConstants;
 import de.fhg.igd.georocket.storage.ChunkMeta;
-import de.fhg.igd.georocket.storage.ChunkReadStream;
 import de.fhg.igd.georocket.storage.StoreCursor;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -20,11 +19,6 @@ public class FileStoreCursor implements StoreCursor {
    * The Vert.x instance
    */
   private final Vertx vertx;
-  
-  /**
-   * The store we're iterating over
-   */
-  private final FileStore store;
   
   /**
    * The number of items retrieved in one batch
@@ -74,16 +68,13 @@ public class FileStoreCursor implements StoreCursor {
   /**
    * Create a cursor
    * @param vertx the Vert.x instance
-   * @param store the store we're iterating over
    * @param pageSize the number of items retrieved in one batch
    * @param search the search query
    * @param path the path where to perform the search (may be null if the
    * whole store should be searched)
    */
-  public FileStoreCursor(Vertx vertx, FileStore store, int pageSize,
-      String search, String path) {
+  public FileStoreCursor(Vertx vertx, int pageSize, String search, String path) {
     this.vertx = vertx;
-    this.store = store;
     this.pageSize = pageSize;
     this.search = search;
     this.path = path;
@@ -162,15 +153,10 @@ public class FileStoreCursor implements StoreCursor {
   }
   
   @Override
-  public String getChunkId() {
+  public String getChunkPath() {
     if (pos < 0) {
       throw new IllegalStateException("You have to call next() first");
     }
     return ids[pos];
-  }
-
-  @Override
-  public void openChunk(Handler<AsyncResult<ChunkReadStream>> handler) {
-    store.getOne(getChunkId(), handler);
   }
 }

@@ -142,6 +142,6 @@ public class FileStore implements Store {
   
   @Override
   public void get(String search, String path, Handler<AsyncResult<StoreCursor>> handler) {
-    new FileStoreCursor(vertx, this, 100, search, path).start(handler);
+    new FileStoreCursor(vertx, 100, search, path).start(handler);
   }
 }

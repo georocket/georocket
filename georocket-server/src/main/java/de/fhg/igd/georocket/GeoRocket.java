@@ -146,7 +146,7 @@ public class GeoRocket extends AbstractVerticle {
         StoreCursor cursor = getar.result();
         iterateCursor(cursor, (meta, callback) -> {
           ++count[0];
-          cursor.openChunk(openar -> {
+          store.getOne(cursor.getChunkPath(), openar -> {
             if (openar.failed()) {
               handler.handle(Future.failedFuture(openar.cause()));
             } else {

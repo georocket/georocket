@@ -20,16 +20,8 @@ public interface StoreCursor {
   void next(Handler<AsyncResult<ChunkMeta>> handler);
   
   /**
-   * @return the ID of the chunk that has been produced by the last
+   * @return the absolute path to the chunk that has been produced by the last
    * call to {@link #next(Handler)}
    */
-  String getChunkId();
-  
-  /**
-   * Open the chunk that has been produced by the last call to {@link #next(Handler)}.
-   * The returned {@link ChunkReadStream} must be closed after use to release
-   * all resources.
-   * @param handler will be called when the chunk has been opened
-   */
-  void openChunk(Handler<AsyncResult<ChunkReadStream>> handler);
+  String getChunkPath();
 }
