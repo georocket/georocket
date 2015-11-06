@@ -35,7 +35,7 @@ public abstract class AbstractQueryCommand extends AbstractGeoRocketCommand {
   }
   
   /**
-   * Export using a search query and a layer
+   * Query data store using a search query and a layer
    * @param query the search query (may be null)
    * @param layer the layer to export (may be null)
    * @param out the writer to write the results to
@@ -43,28 +43,11 @@ public abstract class AbstractQueryCommand extends AbstractGeoRocketCommand {
    * chunks have been exported
    * @throws IOException if the query or the layer was invalid
    */
-  protected void export(String query, String layer, PrintWriter out,
+  protected void query(String query, String layer, PrintWriter out,
       Handler<Integer> handler) throws IOException {
-    if (layer == null || layer.isEmpty()) {
-      layer = "/";
-    }
-    if (!layer.endsWith("/")) {
-      layer += "/";
-    }
-    if (!layer.startsWith("/")) {
-      layer = "/" + layer;
-    }
-    
-    String urlQuery = "";
-    if (query != null && !query.isEmpty()) {
-      urlQuery = "?search=" + urlencode(query);
-    }
-    
-    layer = Splitter.on('/').splitToList(layer).stream()
-      .map(this::urlencode).collect(Collectors.joining("/"));
-    
+    String queryPath = prepareQuery(query, layer);
     HttpClient client = vertx.createHttpClient();
-    HttpClientRequest request = client.get(63074, "localhost", "/store" + layer + urlQuery);
+    HttpClientRequest request = client.get(63074, "localhost", "/store" + queryPath);
     request.exceptionHandler(t -> {
       error(t.getMessage());
       log.error("Could not query store", t);
@@ -87,5 +70,33 @@ public abstract class AbstractQueryCommand extends AbstractGeoRocketCommand {
       }
     });
     request.end();
+  }
+
+  /**
+   * Prepare a query. Generate a query path for the given search query and layer.
+   * @param query the search query (may be null)
+   * @param layer the layer to export (may be null)
+   * @return the query path
+   */
+  protected String prepareQuery(String query, String layer) {
+    if (layer == null || layer.isEmpty()) {
+      layer = "/";
+    }
+    if (!layer.endsWith("/")) {
+      layer += "/";
+    }
+    if (!layer.startsWith("/")) {
+      layer = "/" + layer;
+    }
+    
+    String urlQuery = "";
+    if (query != null && !query.isEmpty()) {
+      urlQuery = "?search=" + urlencode(query);
+    }
+    
+    layer = Splitter.on('/').splitToList(layer).stream()
+      .map(this::urlencode).collect(Collectors.joining("/"));
+    
+    return layer + urlQuery;
   }
 }

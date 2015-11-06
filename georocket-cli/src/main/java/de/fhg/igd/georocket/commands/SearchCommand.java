@@ -61,6 +61,6 @@ public class SearchCommand extends AbstractQueryCommand {
   @Override
   public void doRun(String[] remainingArgs, InputReader in, PrintWriter out,
       Handler<Integer> handler) throws OptionParserException, IOException {
-    export(query, layer, out, handler);
+    query(query, layer, out, handler);
   }
 }
