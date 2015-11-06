@@ -21,7 +21,7 @@ public interface Store {
   /**
    * Get a chunk from the store. The returned {@link ChunkReadStream} must
    * be closed after use to release all resources.
-   * @param name the absolute path to the chunk
+   * @param path the absolute path to the chunk
    * @param handler will be called when the chunk has been retrieved from the store
    */
   void getOne(String path, Handler<AsyncResult<ChunkReadStream>> handler);
