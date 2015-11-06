@@ -1,0 +1,15 @@
+{
+  "name": "georocket-docs",
+  "version": "1.0.0-SNAPSHOT",
+  "description": "GeoRocket Documentation",
+  "author": "",
+  "license": "AGPL",
+  "dependencies": {},
+  "devDependencies": {
+    "asciidoctor.js": "^1.5.3-preview.2",
+    "del": "^2.0.2",
+    "gulp": "^3.9.0",
+    "gulp-asciidoctor": "^1.0.7",
+    "gulp-livereload": "^3.8.1"
+  }
+}
