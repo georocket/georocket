@@ -23,7 +23,7 @@ public abstract class AbstractQueryCommand extends AbstractGeoRocketCommand {
   
   /**
    * Convenience method to URL-encode a string
-   * @param url the string
+   * @param str the string
    * @return the encoded string
    */
   protected String urlencode(String str) {
