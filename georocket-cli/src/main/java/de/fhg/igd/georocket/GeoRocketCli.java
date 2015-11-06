@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import org.apache.commons.io.IOUtils;
 
 import de.fhg.igd.georocket.commands.AbstractGeoRocketCommand;
+import de.fhg.igd.georocket.commands.DeleteCommand;
 import de.fhg.igd.georocket.commands.ExportCommand;
 import de.fhg.igd.georocket.commands.HelpCommand;
 import de.fhg.igd.georocket.commands.ImportCommand;
@@ -70,6 +71,9 @@ public class GeoRocketCli extends AbstractGeoRocketCommand {
     @CommandDesc(longName = "search",
         description = "search the GeoRocket data store",
         command = SearchCommand.class),
+    @CommandDesc(longName = "delete",
+        description = "delete from the GeoRocket data store",
+        command = DeleteCommand.class),
     @CommandDesc(longName = "help",
         description = "display help for a given command",
         command = HelpCommand.class)

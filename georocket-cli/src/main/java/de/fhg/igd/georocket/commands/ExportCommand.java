@@ -53,6 +53,6 @@ public class ExportCommand extends AbstractQueryCommand {
   @Override
   public void doRun(String[] remainingArgs, InputReader in, PrintWriter out, Handler<Integer> handler)
       throws OptionParserException, IOException {
-    export(null, layer, out, handler);
+    query(null, layer, out, handler);
   }
 }
