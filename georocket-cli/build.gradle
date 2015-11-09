@@ -1,6 +1,6 @@
 apply plugin: 'application'
 
-mainClassName = 'de.fhg.igd.georocket.GeoRocketCli'
+mainClassName = 'io.georocket.GeoRocketCli'
 
 dependencies {
     compile 'de.undercouch:underline:1.0.0'

@@ -1,6 +1,6 @@
 apply plugin: 'application'
 
-mainClassName = 'de.fhg.igd.georocket.GeoRocket'
+mainClassName = 'io.georocket.GeoRocket'
 
 dependencies {
     compile "io.vertx:vertx-web:$vertxVersion"
