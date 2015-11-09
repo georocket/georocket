@@ -1,4 +1,4 @@
-package de.fhg.igd.georocket.commands;
+package io.georocket.commands;
 
 import java.beans.IntrospectionException;
 import java.io.IOException;

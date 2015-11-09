@@ -1,14 +1,14 @@
-package de.fhg.igd.georocket.commands;
+package io.georocket.commands;
 
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 
-import de.fhg.igd.georocket.GeoRocketCli;
 import de.undercouch.underline.InputReader;
 import de.undercouch.underline.OptionParserException;
 import de.undercouch.underline.UnknownAttributes;
+import io.georocket.GeoRocketCli;
 import io.vertx.core.Handler;
 
 /**

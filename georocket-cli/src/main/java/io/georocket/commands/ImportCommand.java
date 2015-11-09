@@ -1,4 +1,4 @@
-package de.fhg.igd.georocket.commands;
+package io.georocket.commands;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -15,10 +15,10 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
-import de.fhg.igd.georocket.util.DurationFormat;
 import de.undercouch.underline.InputReader;
 import de.undercouch.underline.OptionParserException;
 import de.undercouch.underline.UnknownAttributes;
+import io.georocket.util.DurationFormat;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;

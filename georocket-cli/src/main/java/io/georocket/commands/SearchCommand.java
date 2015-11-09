@@ -1,4 +1,4 @@
-package de.fhg.igd.georocket.commands;
+package io.georocket.commands;
 
 import java.io.IOException;
 import java.io.PrintWriter;

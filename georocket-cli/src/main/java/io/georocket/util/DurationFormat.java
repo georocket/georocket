@@ -1,4 +1,4 @@
-package de.fhg.igd.georocket.util;
+package io.georocket.util;
 
 import java.time.Duration;
 
