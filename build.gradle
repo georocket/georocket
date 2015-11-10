@@ -1,61 +1,98 @@
-subprojects {
-    apply plugin: 'java'
-    apply plugin: 'eclipse'
+apply plugin: 'java'
+apply plugin: 'eclipse'
+apply plugin: 'application'
 
-    version = '1.0.0-SNAPSHOT'
-    group = 'de.fhg.igd'
-    sourceCompatibility = '1.8'
-    targetCompatibility = '1.8'
+version = '1.0.0-SNAPSHOT'
+group = 'de.fhg.igd'
+sourceCompatibility = '1.8'
+targetCompatibility = '1.8'
+mainClassName = 'io.georocket.GeoRocket'
 
-    repositories {
-        maven {
-            url 'http://download.java.net/maven/2'
-        }
-        maven {
-            // must come before mavenCentral() because it contains
-            // the correct version of javax.media:jai_core
-            url 'http://download.osgeo.org/webdav/geotools/'
-        }
-        mavenCentral()
+repositories {
+    maven {
+        url 'http://download.java.net/maven/2'
     }
-
-    ext {
-        vertxVersion = '3.1.0'
+    maven {
+        // must come before mavenCentral() because it contains
+        // the correct version of javax.media:jai_core
+        url 'http://download.osgeo.org/webdav/geotools/'
     }
+    mavenCentral()
+}
 
-    dependencies {
-        compile "io.vertx:vertx-core:$vertxVersion"
-        compile "io.vertx:vertx-rx-java:$vertxVersion"
-        
-        compile 'com.google.guava:guava:18.0'
-        compile 'commons-io:commons-io:2.4'
-        compile 'org.apache.commons:commons-lang3:3.4'
+ext {
+    vertxVersion = '3.1.0'
+}
 
-        testCompile "io.vertx:vertx-unit:$vertxVersion"
-        testCompile 'junit:junit:4.12'
-    }
+dependencies {
+    compile "io.vertx:vertx-core:$vertxVersion"
+    compile "io.vertx:vertx-rx-java:$vertxVersion"
+    compile "io.vertx:vertx-web:$vertxVersion"
     
-    tasks.eclipse.doLast {
-        File prefsFile = file("${project.projectDir}/.settings/org.eclipse.jdt.core.prefs")
-        def text = prefsFile.text
-        prefsFile.withWriter { w ->
-            w << text
-                .replaceAll('org.eclipse.jdt.core.formatter.indentation.size=[0-9]+',
-                    'org.eclipse.jdt.core.formatter.indentation.size=2')
-                .replaceAll('org.eclipse.jdt.core.formatter.tabulation.char=[a-z]+',
-                    'org.eclipse.jdt.core.formatter.tabulation.char=space')
-                .replaceAll('org.eclipse.jdt.core.formatter.tabulation.size=[0-9]+',
-                    'org.eclipse.jdt.core.formatter.tabulation.size=2')
-        }
-        text = prefsFile.text
-        if (!text.contains('org.eclipse.jdt.core.formatter.indentation.size')) {
-            prefsFile.append('org.eclipse.jdt.core.formatter.indentation.size=2\n')
-        }
-        if (!text.contains('org.eclipse.jdt.core.formatter.tabulation.char')) {
-            prefsFile.append('org.eclipse.jdt.core.formatter.tabulation.char=space\n')
-        }
-        if (!text.contains('org.eclipse.jdt.core.formatter.tabulation.size')) {
-            prefsFile.append('org.eclipse.jdt.core.formatter.tabulation.size=2\n')
+    compile 'com.fasterxml:aalto-xml:0.9.11'
+    compile 'com.google.guava:guava:18.0'
+    compile 'com.vividsolutions:jts:1.12'
+    compile 'commons-io:commons-io:2.4'
+    compile 'javax.media:jai_core:1.1.3'
+    compile 'net.java.dev.jna:jna:4.2.0'
+    compile 'org.apache.commons:commons-lang3:3.4'
+    compile 'org.elasticsearch:elasticsearch:2.0.0'
+    compile 'org.geotools:gt-epsg-extension:14.0'
+    compile 'org.geotools:gt-epsg-hsql:14.0'
+    compile 'org.geotools:gt-referencing:14.0'
+    compile 'org.mongodb:bson:3.1.0'
+
+    testCompile "io.vertx:vertx-unit:$vertxVersion"
+    testCompile 'junit:junit:4.12'
+}
+
+tasks.eclipse.doLast {
+    File prefsFile = file("${project.projectDir}/.settings/org.eclipse.jdt.core.prefs")
+    def text = prefsFile.text
+    prefsFile.withWriter { w ->
+        w << text
+            .replaceAll('org.eclipse.jdt.core.formatter.indentation.size=[0-9]+',
+                'org.eclipse.jdt.core.formatter.indentation.size=2')
+            .replaceAll('org.eclipse.jdt.core.formatter.tabulation.char=[a-z]+',
+                'org.eclipse.jdt.core.formatter.tabulation.char=space')
+            .replaceAll('org.eclipse.jdt.core.formatter.tabulation.size=[0-9]+',
+                'org.eclipse.jdt.core.formatter.tabulation.size=2')
+    }
+    text = prefsFile.text
+    if (!text.contains('org.eclipse.jdt.core.formatter.indentation.size')) {
+        prefsFile.append('org.eclipse.jdt.core.formatter.indentation.size=2\n')
+    }
+    if (!text.contains('org.eclipse.jdt.core.formatter.tabulation.char')) {
+        prefsFile.append('org.eclipse.jdt.core.formatter.tabulation.char=space\n')
+    }
+    if (!text.contains('org.eclipse.jdt.core.formatter.tabulation.size')) {
+        prefsFile.append('org.eclipse.jdt.core.formatter.tabulation.size=2\n')
+    }
+}
+
+// customize start scripts
+startScripts {
+    // customize application name
+    applicationName = 'georocketd'
+    
+    // set GEOROCKET_HOME environment variable
+    doLast {
+        def windowsScriptFile = file(getWindowsScript())
+        def unixScriptFile = file(getUnixScript())
+        windowsScriptFile.text = windowsScriptFile.text
+            .replaceFirst('set APP_HOME=.*', '$0\r\nset GEOROCKET_HOME=%APP_HOME%')
+        unixScriptFile.text = unixScriptFile.text
+            .replaceFirst('APP_HOME=.*', '$0\r\nexport GEOROCKET_HOME=\\$APP_HOME')
+    }
+}
+
+// include 'conf' directory in distribution
+distributions {
+    main {
+        contents {
+            from(projectDir) {
+                include 'conf/**/*'
+            }
         }
     }
 }
