@@ -56,7 +56,8 @@ public class GeoRocketTest {
     
     // set GeoRocket home to temporary folder
     JsonObject config = new JsonObject();
-    config.put(ConfigConstants.HOME, folder.getRoot().getAbsolutePath());
+    File storagePath = new File(folder.getRoot(), "storage");
+    config.put(ConfigConstants.STORAGE_PATH, storagePath.getAbsolutePath());
     DeploymentOptions options = new DeploymentOptions();
     options.setConfig(config);
     
@@ -75,7 +76,7 @@ public class GeoRocketTest {
             // check response and contents of GeoRocket's storage folder
             vertx.setTimer(100, l -> {
               context.assertEquals(202, response.statusCode());
-              context.assertEquals(2, new File(folder.getRoot(), "storage/file").listFiles().length);
+              context.assertEquals(2, new File(storagePath, "file").listFiles().length);
               async.complete();
             });
           });
