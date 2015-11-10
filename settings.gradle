@@ -1,2 +1,1 @@
-include 'georocket-cli'
 include 'georocket-server'
