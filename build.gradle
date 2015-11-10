@@ -1,65 +1,92 @@
-subprojects {
-    apply plugin: 'java'
-    apply plugin: 'eclipse'
+apply plugin: 'java'
+apply plugin: 'eclipse'
+apply plugin: 'application'
 
-    version = '1.0.0-SNAPSHOT'
-    group = 'de.fhg.igd'
-    sourceCompatibility = '1.8'
-    targetCompatibility = '1.8'
+version = '1.0.0-SNAPSHOT'
+group = 'de.fhg.igd'
+sourceCompatibility = '1.8'
+targetCompatibility = '1.8'
+mainClassName = 'io.georocket.GeoRocketCli'
 
-    repositories {
-        maven {
-            url 'http://download.java.net/maven/2'
-        }
-        maven {
-            // must come before mavenCentral() because it contains
-            // the correct version of javax.media:jai_core
-            url 'http://download.osgeo.org/webdav/geotools/'
-        }
-        mavenCentral()
+repositories {
+    maven {
+        url 'http://download.java.net/maven/2'
     }
-
-    ext {
-        vertxVersion = '3.1.0'
+    maven {
+        // must come before mavenCentral() because it contains
+        // the correct version of javax.media:jai_core
+        url 'http://download.osgeo.org/webdav/geotools/'
     }
+    mavenCentral()
+}
 
-    dependencies {
-        compile "io.vertx:vertx-core:$vertxVersion"
-        compile "io.vertx:vertx-rx-java:$vertxVersion"
-        
-        compile 'com.google.guava:guava:18.0'
-        compile 'commons-io:commons-io:2.4'
-        compile 'org.apache.commons:commons-lang3:3.4'
+ext {
+    vertxVersion = '3.1.0'
+}
 
-        testCompile "io.vertx:vertx-unit:$vertxVersion"
-        testCompile 'junit:junit:4.12'
-    }
+dependencies {
+    compile "io.vertx:vertx-core:$vertxVersion"
+    compile "io.vertx:vertx-rx-java:$vertxVersion"
     
-    tasks.eclipse.doLast {
-        File prefsFile = file("${project.projectDir}/.settings/org.eclipse.jdt.core.prefs")
-        def text = prefsFile.text
-        prefsFile.withWriter { w ->
-            w << text
-                .replaceAll('org.eclipse.jdt.core.formatter.indentation.size=[0-9]+',
-                    'org.eclipse.jdt.core.formatter.indentation.size=2')
-                .replaceAll('org.eclipse.jdt.core.formatter.tabulation.char=[a-z]+',
-                    'org.eclipse.jdt.core.formatter.tabulation.char=space')
-                .replaceAll('org.eclipse.jdt.core.formatter.tabulation.size=[0-9]+',
-                    'org.eclipse.jdt.core.formatter.tabulation.size=2')
-        }
-        text = prefsFile.text
-        if (!text.contains('org.eclipse.jdt.core.formatter.indentation.size')) {
-            prefsFile.append('org.eclipse.jdt.core.formatter.indentation.size=2\n')
-        }
-        if (!text.contains('org.eclipse.jdt.core.formatter.tabulation.char')) {
-            prefsFile.append('org.eclipse.jdt.core.formatter.tabulation.char=space\n')
-        }
-        if (!text.contains('org.eclipse.jdt.core.formatter.tabulation.size')) {
-            prefsFile.append('org.eclipse.jdt.core.formatter.tabulation.size=2\n')
-        }
+    compile 'com.google.guava:guava:18.0'
+    compile 'commons-io:commons-io:2.4'
+    compile 'de.undercouch:underline:1.0.0'
+    compile 'net.time4j:time4j-core:4.7'
+    compile 'org.apache.commons:commons-lang3:3.4'
+
+    testCompile "io.vertx:vertx-unit:$vertxVersion"
+    testCompile 'junit:junit:4.12'
+}
+
+tasks.eclipse.doLast {
+    File prefsFile = file("${project.projectDir}/.settings/org.eclipse.jdt.core.prefs")
+    def text = prefsFile.text
+    prefsFile.withWriter { w ->
+        w << text
+            .replaceAll('org.eclipse.jdt.core.formatter.indentation.size=[0-9]+',
+                'org.eclipse.jdt.core.formatter.indentation.size=2')
+            .replaceAll('org.eclipse.jdt.core.formatter.tabulation.char=[a-z]+',
+                'org.eclipse.jdt.core.formatter.tabulation.char=space')
+            .replaceAll('org.eclipse.jdt.core.formatter.tabulation.size=[0-9]+',
+                'org.eclipse.jdt.core.formatter.tabulation.size=2')
+    }
+    text = prefsFile.text
+    if (!text.contains('org.eclipse.jdt.core.formatter.indentation.size')) {
+        prefsFile.append('org.eclipse.jdt.core.formatter.indentation.size=2\n')
+    }
+    if (!text.contains('org.eclipse.jdt.core.formatter.tabulation.char')) {
+        prefsFile.append('org.eclipse.jdt.core.formatter.tabulation.char=space\n')
+    }
+    if (!text.contains('org.eclipse.jdt.core.formatter.tabulation.size')) {
+        prefsFile.append('org.eclipse.jdt.core.formatter.tabulation.size=2\n')
     }
 }
 
 task wrapper(type: Wrapper) {
     gradleVersion = '2.7'
 }
+
+task generateVersionFile << {
+    def dstRes = new File(project.projectDir, 'src-gen/main/resources')
+    def dst = new File(dstRes, 'de/fhg/igd/georocket')
+    dst.mkdirs()
+    def versionFile = new File(dst, 'version.dat')
+    versionFile.withWriter { w ->
+        w << project.version
+    }
+}
+
+task generateSources(dependsOn: generateVersionFile)
+
+processResources.dependsOn(generateSources)
+eclipseClasspath.dependsOn(generateSources)
+
+task cleanGeneratedSources(type: Delete) {
+    delete 'src-gen'
+}
+
+clean.dependsOn(cleanGeneratedSources)
+
+// include generated sources
+sourceSets.main.java.srcDirs 'src-gen/main/java'
+sourceSets.main.resources.srcDirs 'src-gen/main/resources'
