@@ -1,0 +1,4 @@
+{
+  "georocket.port": 63074,
+  "georocket.storage.path": "$GEOROCKET_HOME/storage"
+}

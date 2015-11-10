@@ -15,3 +15,30 @@ dependencies {
     compile 'org.geotools:gt-referencing:14.0'
     compile 'org.mongodb:bson:3.1.0'
 }
+
+// customize start scripts
+startScripts {
+    // customize application name
+    applicationName = 'georocketd'
+    
+    // set GEOROCKET_HOME environment variable
+    doLast {
+        def windowsScriptFile = file(getWindowsScript())
+        def unixScriptFile = file(getUnixScript())
+        windowsScriptFile.text = windowsScriptFile.text
+            .replaceFirst('set APP_HOME=.*', '$0\r\nset GEOROCKET_HOME=%APP_HOME%')
+        unixScriptFile.text = unixScriptFile.text
+            .replaceFirst('APP_HOME=.*', '$0\r\nexport GEOROCKET_HOME=\\$APP_HOME')
+    }
+}
+
+// include 'conf' directory in distribution
+distributions {
+    main {
+        contents {
+            from(projectDir) {
+                include 'conf/**/*'
+            }
+        }
+    }
+}

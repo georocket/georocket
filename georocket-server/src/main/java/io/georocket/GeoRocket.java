@@ -1,8 +1,13 @@
 package io.georocket;
 
+import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.function.BiConsumer;
 
+import org.apache.commons.io.FileUtils;
 import org.bson.types.ObjectId;
 
 import io.georocket.constants.AddressConstants;
@@ -30,6 +35,8 @@ import io.vertx.core.http.HttpServer;
 import io.vertx.core.http.HttpServerOptions;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpServerResponse;
+import io.vertx.core.json.DecodeException;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -47,8 +54,9 @@ import io.vertx.rx.java.RxHelper;
 public class GeoRocket extends AbstractVerticle {
   private static Logger log = LoggerFactory.getLogger(GeoRocket.class);
   
+  private static File geoRocketHome;
   private Store store;
-  private String home;
+  private String storagePath;
   
   /**
    * Convert a throwable to an HTTP status code
@@ -223,7 +231,7 @@ public class GeoRocket extends AbstractVerticle {
     String layer = getStorePath(context);
     
     // get temporary filename
-    String incoming = home + "/incoming";
+    String incoming = storagePath + "/incoming";
     String id = new ObjectId().toString();
     String filename = incoming + "/" + id;
     
@@ -354,8 +362,8 @@ public class GeoRocket extends AbstractVerticle {
     log.info("Launching GeoRocket ...");
     
     store = new FileStore(vertx);
-    home = vertx.getOrCreateContext().config().getString(
-        ConfigConstants.HOME, System.getProperty("user.home") + "/.georocket");
+    storagePath = vertx.getOrCreateContext().config().getString(
+        ConfigConstants.STORAGE_PATH);
     
     deployVerticle(IndexerVerticle.class)
       .flatMap(v -> deployVerticle(ImporterVerticle.class))
@@ -369,12 +377,110 @@ public class GeoRocket extends AbstractVerticle {
   }
   
   /**
+   * Replace configuration variables in a string
+   * @param str the string
+   * @return a copy of the given string with configuration variables replaced
+   */
+  private static String replaceConfVariables(String str) {
+    return str.replace("$GEOROCKET_HOME", geoRocketHome.getAbsolutePath());
+  }
+  
+  /**
+   * Recursively replace configuration variables in an array
+   * @param arr the array
+   * @return a copy of the given array with configuration variables replaced
+   */
+  private static JsonArray replaceConfVariables(JsonArray arr) {
+    JsonArray result = new JsonArray();
+    for (Object o : arr) {
+      if (o instanceof JsonObject) {
+        replaceConfVariables((JsonObject)o);
+      } else if (o instanceof JsonArray) {
+        o = replaceConfVariables((JsonArray)o);
+      } else if (o instanceof String) {
+        o = replaceConfVariables((String)o);
+      }
+      result.add(o);
+    }
+    return result;
+  }
+  
+  /**
+   * Recursively replace configuration variables in an object
+   * @param obj the object
+   */
+  private static void replaceConfVariables(JsonObject obj) {
+    Set<String> keys = new HashSet<>(obj.getMap().keySet());
+    for (String key : keys) {
+      Object value = obj.getValue(key);
+      if (value instanceof JsonObject) {
+        replaceConfVariables((JsonObject)value);
+      } else if (value instanceof JsonArray) {
+        JsonArray arr = replaceConfVariables((JsonArray)value);
+        obj.put(key, arr);
+      } else if (value instanceof String) {
+        String newValue = replaceConfVariables((String)value);
+        obj.put(key, newValue);
+      }
+    }
+  }
+  
+  /**
+   * Set default configuration values
+   * @param conf the current configuration
+   */
+  private static void setDefaultConf(JsonObject conf) {
+    conf.put(ConfigConstants.HOME, "$GEOROCKET_HOME");
+    if (!conf.containsKey(ConfigConstants.STORAGE_PATH)) {
+      conf.put(ConfigConstants.STORAGE_PATH, "$GEOROCKET_HOME/storage");
+    }
+  }
+  
+  /**
    * Runs the server
    * @param args the command line arguments
    */
   public static void main(String[] args) {
+    // get GEOROCKET_HOME
+    String geoRocketHomeStr = System.getenv("GEOROCKET_HOME");
+    if (geoRocketHomeStr == null) {
+      log.info("Environment variable GEOROCKET_HOME not set. Using current "
+          + "working directory.");
+      geoRocketHomeStr = new File(".").getAbsolutePath();
+    }
+    try {
+      geoRocketHome = new File(geoRocketHomeStr).getCanonicalFile();
+    } catch (IOException e) {
+      log.error("Invalid GeoRocket home: " + geoRocketHomeStr);
+      System.exit(1);
+      return;
+    }
+    
+    log.info("Using GeoRocket home " + geoRocketHome);
+    
+    // load configuration file
+    File confDir = new File(geoRocketHome, "conf");
+    File confFile = new File(confDir, "georocketd.json");
+    JsonObject conf = new JsonObject();
+    try {
+      String confFileStr = FileUtils.readFileToString(confFile, "UTF-8");
+      conf = new JsonObject(confFileStr);
+    } catch (IOException e) {
+      log.error("Could not read config file " + confFile, e);
+    } catch (DecodeException e) {
+      log.error("Invalid config file", e);
+    }
+    
+    // set default configuration values
+    setDefaultConf(conf);
+    
+    // replace variables in config
+    replaceConfVariables(conf);
+    
+    // deploy main verticle
     Vertx vertx = Vertx.vertx();
-    vertx.deployVerticle(GeoRocket.class.getName(), ar -> {
+    DeploymentOptions options = new DeploymentOptions().setConfig(conf);
+    vertx.deployVerticle(GeoRocket.class.getName(), options, ar -> {
       if (ar.failed()) {
         log.error("Could not deploy GeoRocket");
         ar.cause().printStackTrace();

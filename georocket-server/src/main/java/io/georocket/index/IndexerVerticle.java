@@ -109,8 +109,8 @@ public class IndexerVerticle extends AbstractVerticle {
     vertx.eventBus().consumer(AddressConstants.INDEXER, this::onMessage);
     
     String home = vertx.getOrCreateContext().config().getString(
-        ConfigConstants.HOME, System.getProperty("user.home") + "/.georocket");
-    String root = home + "/storage/index";
+        ConfigConstants.STORAGE_PATH);
+    String root = home + "/index";
     
     // start embedded ElasticSearch instance
     Settings settings = Settings.builder()

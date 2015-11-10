@@ -49,9 +49,9 @@ public class FileStore implements Store {
    * @param vertx the Vertx instance
    */
   public FileStore(Vertx vertx) {
-    String home = vertx.getOrCreateContext().config().getString(
-        ConfigConstants.HOME, System.getProperty("user.home") + "/.georocket");
-    this.root = home + "/storage/file";
+    String storagePath = vertx.getOrCreateContext().config().getString(
+        ConfigConstants.STORAGE_PATH);
+    this.root = storagePath + "/file";
     this.vertx = vertx;
   }
   

@@ -40,9 +40,9 @@ public class ImporterVerticle extends AbstractVerticle {
     log.info("Launching importer ...");
     
     store = new FileStore(vertx);
-    String home = vertx.getOrCreateContext().config().getString(
-        ConfigConstants.HOME, System.getProperty("user.home") + "/.georocket");
-    incoming = home + "/incoming";
+    String storagePath = vertx.getOrCreateContext().config().getString(
+        ConfigConstants.STORAGE_PATH);
+    incoming = storagePath + "/incoming";
     
     vertx.eventBus().consumer(AddressConstants.IMPORTER, this::onMessage);
   }

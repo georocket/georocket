@@ -7,4 +7,5 @@
 bin/
 build/
 src-gen/
+storage/
 gradle.properties
