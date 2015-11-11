@@ -188,7 +188,10 @@ public class BoundingBoxIndexer implements Indexer {
       }
       
       // only keep horizontal CRS
-      crs = CRS.getHorizontalCRS(crs);
+      CoordinateReferenceSystem hcrs = CRS.getHorizontalCRS(crs);
+      if (hcrs != null) {
+        crs = hcrs;
+      }
       
       // find transformation to WGS84
       transform = CRS.findMathTransform(crs, WGS84, true);
