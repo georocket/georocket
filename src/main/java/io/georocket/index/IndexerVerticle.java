@@ -1,5 +1,6 @@
 package io.georocket.index;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -12,9 +13,11 @@ import java.util.stream.Collectors;
 
 import javax.xml.stream.events.XMLEvent;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequest;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
+import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.index.IndexRequest;
@@ -78,7 +81,12 @@ public class IndexerVerticle extends AbstractVerticle {
   private static final Pattern BBOX_PATTERN = Pattern.compile(BBOX_REGEX);
   
   /**
-   * The ElasticSearch client
+   * The Elasticsearch node
+   */
+  private Node node;
+  
+  /**
+   * The Elasticsearch client
    */
   private Client client;
   
@@ -101,7 +109,7 @@ public class IndexerVerticle extends AbstractVerticle {
   /**
    * A timed queue for {@link IndexRequest}s
    */
-  private TimedActionQueue<IndexRequest> docsToInsert;
+  private TimedActionQueue<Pair<IndexRequest, Handler<AsyncResult<Void>>>> docsToInsert;
   
   @Override
   public void start() {
@@ -119,7 +127,7 @@ public class IndexerVerticle extends AbstractVerticle {
         .put("path.data", root + "/data")
         .put("http.enabled", true) // TODO enable HTTP for debugging purpose only!
         .build();
-    Node node = NodeBuilder.nodeBuilder()
+    node = NodeBuilder.nodeBuilder()
         .settings(settings)
         .clusterName("georocket-cluster")
         .data(true)
@@ -130,6 +138,12 @@ public class IndexerVerticle extends AbstractVerticle {
     docsToInsert = new TimedActionQueue<>(MAX_INDEX_REQUESTS, INDEX_REQUEST_TIMEOUT,
         INDEX_REQUEST_GRACE, vertx);
     store = new FileStore(vertx);
+  }
+  
+  @Override
+  public void stop() {
+    client.close();
+    node.close();
   }
   
   /**
@@ -163,8 +177,20 @@ public class IndexerVerticle extends AbstractVerticle {
    * @param msg the event bus message containing the chunk name 
    */
   private void onAdd(Message<JsonObject> msg) {
+    // get path to the chunk to index
     String path = msg.body().getString("path");
-    ChunkMeta meta = ChunkMeta.fromJsonObject(msg.body().getJsonObject("meta"));
+    if (path == null) {
+      msg.fail(400, "Missing path to the chunk to index");
+      return;
+    }
+    
+    // get chunk metadata
+    JsonObject metaObj = msg.body().getJsonObject("meta");
+    if (metaObj == null) {
+      msg.fail(400, "Missing chunk metadata");
+      return;
+    }
+    ChunkMeta meta = ChunkMeta.fromJsonObject(metaObj);
     
     log.debug("Indexing " + path);
     
@@ -175,7 +201,13 @@ public class IndexerVerticle extends AbstractVerticle {
         return;
       }
       ChunkReadStream chunk = ar.result();
-      indexChunk(path, chunk, meta);
+      indexChunk(path, chunk, meta, indexAr -> {
+        if (indexAr.failed()) {
+          msg.fail(500, indexAr.cause().getMessage());
+        } else {
+          msg.reply(null);
+        }
+      });
     });
   }
   
@@ -334,8 +366,10 @@ public class IndexerVerticle extends AbstractVerticle {
    * @param path the absolute path to the chunk
    * @param chunk the chunk to index
    * @param meta the chunk's metadata
+   * @param handler will be called when the chunk has been indexed
    */
-  private void indexChunk(String path, ChunkReadStream chunk, ChunkMeta meta) {
+  private void indexChunk(String path, ChunkReadStream chunk, ChunkMeta meta,
+      Handler<AsyncResult<Void>> handler) {
     // create XML parser
     XMLPipeStream xmlStream = new XMLPipeStream(vertx);
     Pump.pump(chunk, xmlStream).start();
@@ -359,7 +393,7 @@ public class IndexerVerticle extends AbstractVerticle {
       if (event.getEvent() == XMLEvent.END_DOCUMENT) {
         indexers.forEach(i -> doc.putAll(i.getResult()));
         addMeta(doc, meta);
-        insertDocument(path, doc);
+        insertDocument(path, doc, handler);
       }
     });
   }
@@ -506,26 +540,29 @@ public class IndexerVerticle extends AbstractVerticle {
   }
   
   /**
-   * Inserts an ElasticSearch document to the index
+   * Inserts an Elasticsearch document to the index
    * @param path the absolute path to the chunk
    * @param doc the document to add
+   * @param handler will be called when the document has been added to the index
    */
-  private void insertDocument(String path, Map<String, Object> doc) {
+  private void insertDocument(String path, Map<String, Object> doc,
+      Handler<AsyncResult<Void>> handler) {
     IndexRequest req = Requests.indexRequest(INDEX_NAME)
         .type(TYPE_NAME)
         .id(path)
         .source(doc);
-    insertDocument(req);
+    insertDocument(req, handler);
   }
   
   /**
-   * Inserts an ElasticSearch document to the index. Enqueues the document
+   * Inserts an Elasticsearch document to the index. Enqueues the document
    * if an insert operation is currently in progress.
    * @param request the IndexRequest containing the document
+   * @param handler will be called when the document has been added to the index
    * @see #insertDocument(String, Map)
    */
-  private void insertDocument(IndexRequest request) {
-    docsToInsert.offer(request, (queue, done) -> {
+  private void insertDocument(IndexRequest request, Handler<AsyncResult<Void>> handler) {
+    docsToInsert.offer(Pair.of(request, handler), (queue, done) -> {
       if (insertInProgress) {
         // wait a little bit longer
         done.run();
@@ -542,9 +579,12 @@ public class IndexerVerticle extends AbstractVerticle {
           done.run();
         } else {
           BulkRequest br = Requests.bulkRequest();
+          List<Handler<AsyncResult<Void>>> handlers = new ArrayList<>();
           int count = 0;
           while (!queue.isEmpty() && count < MAX_INDEX_REQUESTS) {
-            br.add(queue.poll());
+            Pair<IndexRequest, Handler<AsyncResult<Void>>> pair = queue.poll();
+            br.add(pair.getLeft());
+            handlers.add(pair.getRight());
             ++count;
           }
           int finalCount = count;
@@ -555,6 +595,14 @@ public class IndexerVerticle extends AbstractVerticle {
               log.error("Could not index chunks", ar.cause());
             } else {
               BulkResponse bres = ar.result();
+              for (BulkItemResponse item : bres.getItems()) {
+                Handler<AsyncResult<Void>> itemHandler = handlers.get(item.getItemId());
+                if (item.isFailed()) {
+                  itemHandler.handle(Future.failedFuture(item.getFailureMessage()));
+                } else {
+                  itemHandler.handle(Future.succeededFuture());
+                }
+              }
               if (bres.hasFailures()) {
                 log.error(bres.buildFailureMessage());
               } else {
