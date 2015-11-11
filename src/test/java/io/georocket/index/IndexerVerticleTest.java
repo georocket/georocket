@@ -35,10 +35,22 @@ public class IndexerVerticleTest {
   private static final String TESTFILE_GMLID1 = "1234";
   private static final String TESTFILE_CONTENTS1 = "<test "
       + "xmlns:gml=\"http://www.opengis.net/gml\" "
-      + "gml:id=\"" + TESTFILE_GMLID1 + "\"></test>";
+      + "gml:id=\"" + TESTFILE_GMLID1 + "\">"
+      + "</test>";
   private static final String TESTFILE_NAME1 = "abcd";
   private static final ChunkMeta TESTFILE_META1 = new ChunkMeta(
       Collections.emptyList(), 0, TESTFILE_CONTENTS1.length());
+  
+  private static final String TESTFILE_GMLID2 = "5678";
+  private static final String TESTFILE_CONTENTS2 = "<test "
+      + "xmlns:gml=\"http://www.opengis.net/gml\" "
+      + "gml:id=\"" + TESTFILE_GMLID2 + "\">"
+      + "<posList srsName=\"epsg:4326\">13.047058991922242 52.33014282539029 "
+      + "13.047215442741708 52.33021464459186</posList>"
+      + "</test>";
+  private static final String TESTFILE_NAME2 = "efgh";
+  private static final ChunkMeta TESTFILE_META2 = new ChunkMeta(
+      Collections.emptyList(), 0, TESTFILE_CONTENTS2.length());
 
   /**
    * Run the test on a Vert.x test context
@@ -71,17 +83,33 @@ public class IndexerVerticleTest {
   }
   
   /**
-   * Write a simple test file to the storage
+   * Write a test file to the storage
    * @param context the test context
    */
-  private void writeTestFile1(TestContext context) {
+  private void writeTestFile(TestContext context, String name, String contents) {
     File filePath = new File(storagePath, "file");
-    File f = new File(filePath, TESTFILE_NAME1);
+    File f = new File(filePath, name);
     try {
-      FileUtils.writeStringToFile(f, TESTFILE_CONTENTS1, StandardCharsets.UTF_8);
+      FileUtils.writeStringToFile(f, contents, StandardCharsets.UTF_8);
     } catch (IOException e) {
       context.fail(e);
     }
+  }
+  
+  /**
+   * Write test file 1 to the storage
+   * @param context the test context
+   */
+  private void writeTestFile1(TestContext context) {
+    writeTestFile(context, TESTFILE_NAME1, TESTFILE_CONTENTS1);
+  }
+  
+  /**
+   * Write test file 2 to the storage
+   * @param context the test context
+   */
+  private void writeTestFile2(TestContext context) {
+    writeTestFile(context, TESTFILE_NAME2, TESTFILE_CONTENTS2);
   }
   
   /**
@@ -129,28 +157,31 @@ public class IndexerVerticleTest {
     }));
   }
   
-  private void deployAndTestFile1(TestContext context,
+  private void deployAndTestFiles(TestContext context,
       Handler<AsyncResult<String>> handler) {
     Vertx vertx = rule.vertx();
     
     // deploy indexer verticle
     vertx.deployVerticle(IndexerVerticle.class.getName(), options,
         context.asyncAssertSuccess(ivid -> {
-      // save a test file in the storage directory
+      // save test files in the storage directory
       writeTestFile1(context);
+      writeTestFile2(context);
       
-      // tell indexer verticle about the new file
-      JsonObject msg = new JsonObject()
+      // tell indexer verticle about the new files
+      JsonObject msg1 = new JsonObject()
           .put("action", "add")
           .put("path", TESTFILE_NAME1)
           .put("meta", TESTFILE_META1.toJsonObject());
-      vertx.eventBus().send(AddressConstants.INDEXER, msg, ar -> {
-        if (ar.failed()) {
-          handler.handle(Future.failedFuture(ar.cause().getMessage()));
-        } else {
+      vertx.eventBus().send(AddressConstants.INDEXER, msg1, context.asyncAssertSuccess(ar1 -> {
+        JsonObject msg2 = new JsonObject()
+            .put("action", "add")
+            .put("path", TESTFILE_NAME2)
+            .put("meta", TESTFILE_META2.toJsonObject());
+        vertx.eventBus().send(AddressConstants.INDEXER, msg2, context.asyncAssertSuccess(ar2 -> {
           handler.handle(Future.succeededFuture(ivid));
-        }
-      });
+        }));
+      }));
     }));
   }
   
@@ -161,7 +192,7 @@ public class IndexerVerticleTest {
   @Test
   public void add(TestContext context) {
     Async async = context.async();
-    deployAndTestFile1(context, context.asyncAssertSuccess(id -> {
+    deployAndTestFiles(context, context.asyncAssertSuccess(id -> {
       rule.vertx().undeploy(id, context.asyncAssertSuccess(v -> {
         async.complete();
       }));
@@ -176,18 +207,70 @@ public class IndexerVerticleTest {
   public void queryGmlId(TestContext context) {
     Vertx vertx = rule.vertx();
     Async async = context.async();
-    deployAndTestFile1(context, context.asyncAssertSuccess(id -> {
+    deployAndTestFiles(context, context.asyncAssertSuccess(id -> {
       // wait for Elasticsearch to update the index
       vertx.setTimer(2000, l -> {
-        JsonObject msg = new JsonObject()
+        // search for test file 1
+        JsonObject msg1 = new JsonObject()
             .put("action", "query")
             .put("search", TESTFILE_GMLID1);
-        vertx.eventBus().<JsonObject>send(AddressConstants.INDEXER, msg, context.asyncAssertSuccess(reply -> {
-          JsonObject obj = reply.body();
-          int totalHits = obj.getInteger("totalHits");
-          context.assertEquals(1, totalHits);
-          rule.vertx().undeploy(id, context.asyncAssertSuccess(v -> {
-            async.complete();
+        vertx.eventBus().<JsonObject>send(AddressConstants.INDEXER, msg1, context.asyncAssertSuccess(reply1 -> {
+          JsonObject obj1 = reply1.body();
+          int totalHits1 = obj1.getInteger("totalHits");
+          context.assertEquals(1, totalHits1);
+          
+          // perform a query that should return no result
+          JsonObject msg2 = new JsonObject()
+              .put("action", "query")
+              .put("search", "zzzz");
+          vertx.eventBus().<JsonObject>send(AddressConstants.INDEXER, msg2, context.asyncAssertSuccess(reply2 -> {
+            JsonObject obj2 = reply2.body();
+            int totalHits2 = obj2.getInteger("totalHits");
+            context.assertEquals(0, totalHits2);
+          
+            // undeploy verticle
+            rule.vertx().undeploy(id, context.asyncAssertSuccess(v -> {
+              async.complete();
+            }));
+          }));
+        }));
+      });
+    }));
+  }
+  
+  /**
+   * Test if a we can perform a spatial query
+   * @param context the test context
+   */
+  @Test
+  public void spatialQuery(TestContext context) {
+    Vertx vertx = rule.vertx();
+    Async async = context.async();
+    deployAndTestFiles(context, context.asyncAssertSuccess(id -> {
+      // wait for Elasticsearch to update the index
+      vertx.setTimer(2000, l -> {
+        // search for test file 2
+        JsonObject msg1 = new JsonObject()
+            .put("action", "query")
+            .put("search", "13.0,52.2,13.1,52.4");
+        vertx.eventBus().<JsonObject>send(AddressConstants.INDEXER, msg1, context.asyncAssertSuccess(reply1 -> {
+          JsonObject obj1 = reply1.body();
+          int totalHits1 = obj1.getInteger("totalHits");
+          context.assertEquals(1, totalHits1);
+          
+          // perform a search that should return no result
+          JsonObject msg2 = new JsonObject()
+              .put("action", "query")
+              .put("search", "12.0,51.2,12.1,51.4");
+          vertx.eventBus().<JsonObject>send(AddressConstants.INDEXER, msg2, context.asyncAssertSuccess(reply2 -> {
+            JsonObject obj2 = reply2.body();
+            int totalHits2 = obj2.getInteger("totalHits");
+            context.assertEquals(0, totalHits2);
+            
+            // undeploy verticle
+            rule.vertx().undeploy(id, context.asyncAssertSuccess(v -> {
+              async.complete();
+            }));
           }));
         }));
       });
