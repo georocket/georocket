@@ -198,6 +198,7 @@ public class IndexerVerticle extends AbstractVerticle {
     store.getOne(path, ar -> {
       if (ar.failed()) {
         log.error("Could not get chunk from store", ar.cause());
+        msg.fail(404, "Chunk not found: " + path);
         return;
       }
       ChunkReadStream chunk = ar.result();

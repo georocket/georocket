@@ -20,6 +20,7 @@ import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.eventbus.ReplyException;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -132,6 +133,8 @@ public class IndexerVerticleTest {
       JsonObject msg = new JsonObject()
           .put("action", "add");
       vertx.eventBus().send(AddressConstants.INDEXER, msg, context.asyncAssertFailure(t -> {
+        context.assertEquals(400, ((ReplyException)t).failureCode());
+        context.assertEquals("Missing path to the chunk to index", t.getMessage());
         vertx.undeploy(ivid, context.asyncAssertSuccess(v -> {
           async.complete();
         }));
@@ -155,6 +158,34 @@ public class IndexerVerticleTest {
           .put("action", "add")
           .put("path", TESTFILE_NAME1);
       vertx.eventBus().send(AddressConstants.INDEXER, msg, context.asyncAssertFailure(t -> {
+        context.assertEquals(400, ((ReplyException)t).failureCode());
+        context.assertEquals("Missing chunk metadata", t.getMessage());
+        vertx.undeploy(ivid, context.asyncAssertSuccess(v -> {
+          async.complete();
+        }));
+      }));
+    }));
+  }
+  
+  /**
+   * Test if the verticle fails if the chunk was not found
+   * @param context the test context
+   */
+  @Test
+  public void addNoChunk(TestContext context) {
+    Vertx vertx = rule.vertx();
+    Async async = context.async();
+    
+    // deploy indexer verticle
+    vertx.deployVerticle(IndexerVerticle.class.getName(), options,
+        context.asyncAssertSuccess(ivid -> {
+      JsonObject msg = new JsonObject()
+          .put("action", "add")
+          .put("path", TESTFILE_NAME1)
+          .put("meta", TESTFILE_META1.toJsonObject());
+      vertx.eventBus().send(AddressConstants.INDEXER, msg, context.asyncAssertFailure(t -> {
+        context.assertEquals(404, ((ReplyException)t).failureCode());
+        context.assertEquals("Chunk not found: " + TESTFILE_NAME1, t.getMessage());
         vertx.undeploy(ivid, context.asyncAssertSuccess(v -> {
           async.complete();
         }));
