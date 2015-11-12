@@ -150,8 +150,8 @@ public abstract class XMLSplitter implements Splitter {
   /**
    * Will be called on every XML event
    * @param event the XML event
-   * @return a new {@link Result} object (containing chunk and metadata) or
-   * <code>null</code> if no result was produced
+   * @return a new {@link Splitter.Result} object (containing chunk and
+   * metadata) or <code>null</code> if no result was produced
    */
   protected abstract Result onXMLEvent(XMLStreamEvent event);
 }

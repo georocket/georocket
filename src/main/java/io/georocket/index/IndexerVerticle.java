@@ -101,8 +101,8 @@ public class IndexerVerticle extends AbstractVerticle {
   private boolean indexEnsured;
   
   /**
-   * True if {@link #insertDocument(IndexRequest)} has just sent a request
-   * to ElasticSearch and this request is currently being processed
+   * True if {@link #insertDocument(IndexRequest, Handler)} has just sent a
+   * request to Elasticsearch and this request is currently being processed
    */
   private boolean insertInProgress;
   
@@ -559,7 +559,7 @@ public class IndexerVerticle extends AbstractVerticle {
    * if an insert operation is currently in progress.
    * @param request the IndexRequest containing the document
    * @param handler will be called when the document has been added to the index
-   * @see #insertDocument(String, Map)
+   * @see #insertDocument(String, Map, Handler)
    */
   private void insertDocument(IndexRequest request, Handler<AsyncResult<Void>> handler) {
     docsToInsert.offer(Pair.of(request, handler), (queue, done) -> {

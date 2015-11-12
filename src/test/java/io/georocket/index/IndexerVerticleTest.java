@@ -74,6 +74,9 @@ public class IndexerVerticleTest {
    */
   private DeploymentOptions options;
   
+  /**
+   * Set up test environment
+   */
   @Before
   public void setUp() {
     storagePath = new File(folder.getRoot(), "storage");
@@ -85,6 +88,8 @@ public class IndexerVerticleTest {
   /**
    * Write a test file to the storage
    * @param context the test context
+   * @param name the name of the test file
+   * @param contents the file contents
    */
   private void writeTestFile(TestContext context, String name, String contents) {
     File filePath = new File(storagePath, "file");
