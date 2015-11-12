@@ -3,7 +3,9 @@ package io.georocket.index;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.Before;
@@ -21,6 +23,7 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.ReplyException;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -193,7 +196,7 @@ public class IndexerVerticleTest {
     }));
   }
   
-  private void deployAndTestFiles(TestContext context,
+  private void deployAndTestFiles(TestContext context, List<String> tags1,
       Handler<AsyncResult<String>> handler) {
     Vertx vertx = rule.vertx();
     
@@ -209,16 +212,27 @@ public class IndexerVerticleTest {
           .put("action", "add")
           .put("path", TESTFILE_NAME1)
           .put("meta", TESTFILE_META1.toJsonObject());
+      if (tags1 != null) {
+        msg1.put("tags", new JsonArray(tags1));
+      }
       vertx.eventBus().send(AddressConstants.INDEXER, msg1, context.asyncAssertSuccess(ar1 -> {
         JsonObject msg2 = new JsonObject()
             .put("action", "add")
             .put("path", TESTFILE_NAME2)
             .put("meta", TESTFILE_META2.toJsonObject());
         vertx.eventBus().send(AddressConstants.INDEXER, msg2, context.asyncAssertSuccess(ar2 -> {
-          handler.handle(Future.succeededFuture(ivid));
+          // wait for Elasticsearch to update the index
+          vertx.setTimer(2000, l -> {
+            handler.handle(Future.succeededFuture(ivid));
+          });
         }));
       }));
     }));
+  }
+  
+  private void deployAndTestFiles(TestContext context,
+      Handler<AsyncResult<String>> handler) {
+    deployAndTestFiles(context, null, handler);
   }
   
   /**
@@ -244,33 +258,30 @@ public class IndexerVerticleTest {
     Vertx vertx = rule.vertx();
     Async async = context.async();
     deployAndTestFiles(context, context.asyncAssertSuccess(id -> {
-      // wait for Elasticsearch to update the index
-      vertx.setTimer(2000, l -> {
-        // search for test file 1
-        JsonObject msg1 = new JsonObject()
+      // search for test file 1
+      JsonObject msg1 = new JsonObject()
+          .put("action", "query")
+          .put("search", TESTFILE_GMLID1);
+      vertx.eventBus().<JsonObject>send(AddressConstants.INDEXER, msg1, context.asyncAssertSuccess(reply1 -> {
+        JsonObject obj1 = reply1.body();
+        int totalHits1 = obj1.getInteger("totalHits");
+        context.assertEquals(1, totalHits1);
+        
+        // perform a query that should return no result
+        JsonObject msg2 = new JsonObject()
             .put("action", "query")
-            .put("search", TESTFILE_GMLID1);
-        vertx.eventBus().<JsonObject>send(AddressConstants.INDEXER, msg1, context.asyncAssertSuccess(reply1 -> {
-          JsonObject obj1 = reply1.body();
-          int totalHits1 = obj1.getInteger("totalHits");
-          context.assertEquals(1, totalHits1);
-          
-          // perform a query that should return no result
-          JsonObject msg2 = new JsonObject()
-              .put("action", "query")
-              .put("search", "zzzz");
-          vertx.eventBus().<JsonObject>send(AddressConstants.INDEXER, msg2, context.asyncAssertSuccess(reply2 -> {
-            JsonObject obj2 = reply2.body();
-            int totalHits2 = obj2.getInteger("totalHits");
-            context.assertEquals(0, totalHits2);
-          
-            // undeploy verticle
-            rule.vertx().undeploy(id, context.asyncAssertSuccess(v -> {
-              async.complete();
-            }));
+            .put("search", "zzzz");
+        vertx.eventBus().<JsonObject>send(AddressConstants.INDEXER, msg2, context.asyncAssertSuccess(reply2 -> {
+          JsonObject obj2 = reply2.body();
+          int totalHits2 = obj2.getInteger("totalHits");
+          context.assertEquals(0, totalHits2);
+        
+          // undeploy verticle
+          rule.vertx().undeploy(id, context.asyncAssertSuccess(v -> {
+            async.complete();
           }));
         }));
-      });
+      }));
     }));
   }
   
@@ -283,33 +294,56 @@ public class IndexerVerticleTest {
     Vertx vertx = rule.vertx();
     Async async = context.async();
     deployAndTestFiles(context, context.asyncAssertSuccess(id -> {
-      // wait for Elasticsearch to update the index
-      vertx.setTimer(2000, l -> {
-        // search for test file 2
-        JsonObject msg1 = new JsonObject()
+      // search for test file 2
+      JsonObject msg1 = new JsonObject()
+          .put("action", "query")
+          .put("search", "13.0,52.2,13.1,52.4");
+      vertx.eventBus().<JsonObject>send(AddressConstants.INDEXER, msg1, context.asyncAssertSuccess(reply1 -> {
+        JsonObject obj1 = reply1.body();
+        int totalHits1 = obj1.getInteger("totalHits");
+        context.assertEquals(1, totalHits1);
+        
+        // perform a search that should return no result
+        JsonObject msg2 = new JsonObject()
             .put("action", "query")
-            .put("search", "13.0,52.2,13.1,52.4");
-        vertx.eventBus().<JsonObject>send(AddressConstants.INDEXER, msg1, context.asyncAssertSuccess(reply1 -> {
-          JsonObject obj1 = reply1.body();
-          int totalHits1 = obj1.getInteger("totalHits");
-          context.assertEquals(1, totalHits1);
+            .put("search", "12.0,51.2,12.1,51.4");
+        vertx.eventBus().<JsonObject>send(AddressConstants.INDEXER, msg2, context.asyncAssertSuccess(reply2 -> {
+          JsonObject obj2 = reply2.body();
+          int totalHits2 = obj2.getInteger("totalHits");
+          context.assertEquals(0, totalHits2);
           
-          // perform a search that should return no result
-          JsonObject msg2 = new JsonObject()
-              .put("action", "query")
-              .put("search", "12.0,51.2,12.1,51.4");
-          vertx.eventBus().<JsonObject>send(AddressConstants.INDEXER, msg2, context.asyncAssertSuccess(reply2 -> {
-            JsonObject obj2 = reply2.body();
-            int totalHits2 = obj2.getInteger("totalHits");
-            context.assertEquals(0, totalHits2);
-            
-            // undeploy verticle
-            rule.vertx().undeploy(id, context.asyncAssertSuccess(v -> {
-              async.complete();
-            }));
+          // undeploy verticle
+          rule.vertx().undeploy(id, context.asyncAssertSuccess(v -> {
+            async.complete();
           }));
         }));
-      });
+      }));
+    }));
+  }
+  
+  /**
+   * Test if a we can query for tags
+   * @param context the test context
+   */
+  @Test
+  public void queryTags(TestContext context) {
+    Vertx vertx = rule.vertx();
+    Async async = context.async();
+    deployAndTestFiles(context, Arrays.asList("tag1a", "tag1b"), context.asyncAssertSuccess(id -> {
+      // search for test file 2
+      JsonObject msg1 = new JsonObject()
+          .put("action", "query")
+          .put("search", "tag1a");
+      vertx.eventBus().<JsonObject>send(AddressConstants.INDEXER, msg1, context.asyncAssertSuccess(reply1 -> {
+        JsonObject obj1 = reply1.body();
+        int totalHits1 = obj1.getInteger("totalHits");
+        context.assertEquals(1, totalHits1);
+        
+        // undeploy verticle
+        rule.vertx().undeploy(id, context.asyncAssertSuccess(v -> {
+          async.complete();
+        }));
+      }));
     }));
   }
 }

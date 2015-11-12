@@ -178,19 +178,36 @@ public class IndexerVerticle extends AbstractVerticle {
    */
   private void onAdd(Message<JsonObject> msg) {
     // get path to the chunk to index
-    String path = msg.body().getString("path");
+    JsonObject body = msg.body();
+    String path = body.getString("path");
     if (path == null) {
       msg.fail(400, "Missing path to the chunk to index");
       return;
     }
     
     // get chunk metadata
-    JsonObject metaObj = msg.body().getJsonObject("meta");
+    JsonObject metaObj = body.getJsonObject("meta");
     if (metaObj == null) {
       msg.fail(400, "Missing chunk metadata");
       return;
     }
     ChunkMeta meta = ChunkMeta.fromJsonObject(metaObj);
+    
+    // get tags
+    JsonArray tagsArr = body.getJsonArray("tags");
+    List<String> tags;
+    if (tagsArr != null) {
+      tags = new ArrayList<>();
+      for (Object tagObj : tagsArr) {
+        if (!(tagObj instanceof String)) {
+          msg.fail(400, "'tags' must be an array of strings");
+          return;
+        }
+        tags.add((String)tagObj);
+      }
+    } else {
+      tags = null;
+    }
     
     log.debug("Indexing " + path);
     
@@ -202,7 +219,7 @@ public class IndexerVerticle extends AbstractVerticle {
         return;
       }
       ChunkReadStream chunk = ar.result();
-      indexChunk(path, chunk, meta, indexAr -> {
+      indexChunk(path, chunk, meta, tags, indexAr -> {
         if (indexAr.failed()) {
           msg.fail(500, indexAr.cause().getMessage());
         } else {
@@ -351,8 +368,10 @@ public class IndexerVerticle extends AbstractVerticle {
         return QueryBuilders.geoIntersectionQuery("bbox", ShapeBuilder.newEnvelope()
             .bottomRight(maxX, minY).topLeft(minX, maxY));
       } else {
-        // TODO support more queries
-        return QueryBuilders.termQuery("gmlIds", search);
+        BoolQueryBuilder bqb = QueryBuilders.boolQuery();
+        bqb.should(QueryBuilders.termQuery("gmlIds", search));
+        bqb.should(QueryBuilders.termQuery("tags", search));
+        return bqb;
       }
     }
     
@@ -367,10 +386,11 @@ public class IndexerVerticle extends AbstractVerticle {
    * @param path the absolute path to the chunk
    * @param chunk the chunk to index
    * @param meta the chunk's metadata
+   * @param tags a list of tags to attach to the chunk (may be null)
    * @param handler will be called when the chunk has been indexed
    */
   private void indexChunk(String path, ChunkReadStream chunk, ChunkMeta meta,
-      Handler<AsyncResult<Void>> handler) {
+      List<String> tags, Handler<AsyncResult<Void>> handler) {
     // create XML parser
     XMLPipeStream xmlStream = new XMLPipeStream(vertx);
     Pump.pump(chunk, xmlStream).start();
@@ -394,6 +414,9 @@ public class IndexerVerticle extends AbstractVerticle {
       if (event.getEvent() == XMLEvent.END_DOCUMENT) {
         indexers.forEach(i -> doc.putAll(i.getResult()));
         addMeta(doc, meta);
+        if (tags != null) {
+          doc.put("tags", tags);
+        }
         insertDocument(path, doc, handler);
       }
     });
@@ -492,24 +515,29 @@ public class IndexerVerticle extends AbstractVerticle {
     );
     
     Map<String, Object> source = ImmutableMap.of(
-        "properties", ImmutableMap.of(
-            "gmlIds", ImmutableMap.of(
-                "type", "string", // array of strings actually, auto-supported by ElasticSearch
+        "properties", ImmutableMap.builder()
+            .put("gmlIds", ImmutableMap.of(
+                "type", "string", // array of strings actually, auto-supported by Elasticsearch
                 "index", "not_analyzed" // do not analyze (i.e. tokenize) this field, use the actual value
-            ),
+            ))
             
-            "bbox", ImmutableMap.of(
+            .put("tags", ImmutableMap.of(
+                "type", "string", // array of strings
+                "index", "not_analyzed"
+            ))
+            
+            .put("bbox", ImmutableMap.of(
                 "type", "geo_shape",
                 "tree", "quadtree", // see https://github.com/elastic/elasticsearch/issues/14181
                 "precision", "29" // this is the maximum level
                 // quadtree uses less memory and seems to be a lot faster than geohash
                 // see http://tech.taskrabbit.com/blog/2015/06/09/elasticsearch-geohash-vs-geotree/
-            ),
+            ))
             
             // metadata: don't index it
-            "chunkStart", integerNoIndex,
-            "chunkEnd", integerNoIndex,
-            "chunkParents", ImmutableMap.of(
+            .put("chunkStart", integerNoIndex)
+            .put("chunkEnd", integerNoIndex)
+            .put("chunkParents", ImmutableMap.of(
                 "type", "object",
                 "properties", ImmutableMap.builder()
                     .put("prefix", stringNoIndex)
@@ -520,8 +548,8 @@ public class IndexerVerticle extends AbstractVerticle {
                     .put("attributeLocalNames", stringNoIndex)
                     .put("attributeValues", stringNoIndex)
                     .build()
-            )
-        ),
+            ))
+            .build(),
         
         // Do not save the original indexed document to save space. only include metadata!
         // See https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-source-field.html
