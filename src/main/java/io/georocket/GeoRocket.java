@@ -4,11 +4,14 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.function.BiConsumer;
 
 import org.apache.commons.io.FileUtils;
 import org.bson.types.ObjectId;
+
+import com.google.common.base.Splitter;
 
 import io.georocket.constants.AddressConstants;
 import io.georocket.constants.ConfigConstants;
@@ -229,6 +232,9 @@ public class GeoRocket extends AbstractVerticle {
     request.pause();
     
     String layer = getStorePath(context);
+    String tagsStr = request.getParam("tags");
+    List<String> tags = tagsStr != null ? Splitter.on(',')
+        .trimResults().splitToList(tagsStr) : null;
     
     // get temporary filename
     String incoming = storagePath + "/incoming";
@@ -280,6 +286,9 @@ public class GeoRocket extends AbstractVerticle {
             .put("action", "import")
             .put("filename", id)
             .put("layer", layer);
+        if (tags != null) {
+          msg.put("tags", new JsonArray(tags));
+        }
         vertx.eventBus().send(AddressConstants.IMPORTER, msg);
       }, err -> {
         request.response()

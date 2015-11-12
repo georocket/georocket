@@ -1,5 +1,9 @@
 package io.georocket;
 
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 import io.georocket.constants.AddressConstants;
 import io.georocket.constants.ConfigConstants;
 import io.georocket.input.FirstLevelSplitter;
@@ -17,6 +21,7 @@ import io.vertx.core.eventbus.Message;
 import io.vertx.core.file.AsyncFile;
 import io.vertx.core.file.FileSystem;
 import io.vertx.core.file.OpenOptions;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -70,8 +75,15 @@ public class ImporterVerticle extends AbstractVerticle {
    * @param msg the event bus message containing the filename
    */
   private void onImport(Message<JsonObject> msg) {
-    String filename = incoming + "/" + msg.body().getString("filename");
-    String layer = msg.body().getString("layer", "/");
+    JsonObject body = msg.body();
+    String filename = incoming + "/" + body.getString("filename");
+    String layer = body.getString("layer", "/");
+    
+    // get tags
+    JsonArray tagsArr = body.getJsonArray("tags");
+    List<String> tags = tagsArr != null ? tagsArr.stream().flatMap(o -> o != null ?
+        Stream.of(o.toString()) : Stream.of()).collect(Collectors.toList()) : null;
+    
     log.info("Importing " + filename + " to layer " + layer);
     
     FileSystem fs = vertx.fileSystem();
@@ -81,7 +93,7 @@ public class ImporterVerticle extends AbstractVerticle {
     observable
       .flatMap(f -> {
         ObservableFuture<Void> importObservable = RxHelper.observableFuture();
-        importXML(f, layer, ar -> {
+        importXML(f, layer, tags, ar -> {
           f.close();
           fs.delete(filename, deleteAr -> {
             if (ar.failed()) {
@@ -104,9 +116,10 @@ public class ImporterVerticle extends AbstractVerticle {
    * Imports an XML file from the given input stream into the store
    * @param f the XML file to read
    * @param layer the layer where the file should be stored (may be null)
+   * @param tags the list of tags to attach to the file (may be null)
    * @param callback will be called when the operation has finished
    */
-  private void importXML(ReadStream<Buffer> f, String layer,
+  private void importXML(ReadStream<Buffer> f, String layer, List<String> tags,
       Handler<AsyncResult<Void>> callback) {
     XMLPipeStream xmlStream = new XMLPipeStream(vertx);
     WindowPipeStream windowPipeStream = new WindowPipeStream();
@@ -129,7 +142,7 @@ public class ImporterVerticle extends AbstractVerticle {
       if (splitResult != null) {
         // splitter has created a chunk. store it.
         xmlStream.pause(); // pause stream while chunk being written
-        store.add(splitResult.getChunk(), splitResult.getMeta(), layer, ar -> {
+        store.add(splitResult.getChunk(), splitResult.getMeta(), layer, tags, ar -> {
           if (ar.failed()) {
             callback.handle(Future.failedFuture(ar.cause()));
           } else {

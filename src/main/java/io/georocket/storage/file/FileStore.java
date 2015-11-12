@@ -2,6 +2,7 @@ package io.georocket.storage.file;
 
 import java.io.FileNotFoundException;
 import java.util.ArrayDeque;
+import java.util.List;
 import java.util.Queue;
 
 import org.bson.types.ObjectId;
@@ -56,7 +57,7 @@ public class FileStore implements Store {
   }
   
   @Override
-  public void add(String chunk, ChunkMeta meta, String path,
+  public void add(String chunk, ChunkMeta meta, String path, List<String> tags,
       Handler<AsyncResult<Void>> handler) {
     if (path == null || path.isEmpty()) {
       path = "/";
@@ -99,6 +100,9 @@ public class FileStore implements Store {
               .put("action", "add")
               .put("path", finalPath + "/" + filename)
               .put("meta", meta.toJsonObject());
+          if (tags != null) {
+            indexMsg.put("tags", new JsonArray(tags));
+          }
           vertx.eventBus().publish(AddressConstants.INDEXER, indexMsg);
           
           // tell sender that writing was successful

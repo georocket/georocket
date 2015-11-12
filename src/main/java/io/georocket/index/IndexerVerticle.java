@@ -10,6 +10,7 @@ import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import javax.xml.stream.events.XMLEvent;
 
@@ -195,19 +196,8 @@ public class IndexerVerticle extends AbstractVerticle {
     
     // get tags
     JsonArray tagsArr = body.getJsonArray("tags");
-    List<String> tags;
-    if (tagsArr != null) {
-      tags = new ArrayList<>();
-      for (Object tagObj : tagsArr) {
-        if (!(tagObj instanceof String)) {
-          msg.fail(400, "'tags' must be an array of strings");
-          return;
-        }
-        tags.add((String)tagObj);
-      }
-    } else {
-      tags = null;
-    }
+    List<String> tags = tagsArr != null ? tagsArr.stream().flatMap(o -> o != null ?
+        Stream.of(o.toString()) : Stream.of()).collect(Collectors.toList()) : null;
     
     log.debug("Indexing " + path);
     
