@@ -15,9 +15,13 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
+import com.google.common.base.Splitter;
+
 import de.undercouch.underline.InputReader;
+import de.undercouch.underline.OptionDesc;
 import de.undercouch.underline.OptionParserException;
 import de.undercouch.underline.UnknownAttributes;
+import de.undercouch.underline.Option.ArgumentType;
 import io.georocket.util.DurationFormat;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -40,6 +44,7 @@ import rx.Observable;
  */
 public class ImportCommand extends AbstractGeoRocketCommand {
   private List<String> patterns;
+  private List<String> tags;
   
   /**
    * Set the patterns of the files to import
@@ -48,6 +53,21 @@ public class ImportCommand extends AbstractGeoRocketCommand {
   @UnknownAttributes("FILE PATTERN")
   public void setPatterns(List<String> patterns) {
     this.patterns = patterns;
+  }
+  
+  /**
+   * Set the tags to attach to the imported file
+   * @param tags the tags
+   */
+  @OptionDesc(longName = "tags", shortName = "t",
+      description = "comma-separated list of tags to attach to the file(s)",
+      argumentName = "TAGS", argumentType = ArgumentType.STRING)
+  public void setTags(String tags) {
+    if (tags == null || tags.isEmpty()) {
+      this.tags = null;
+    } else {
+      this.tags = Splitter.on(',').trimResults().splitToList(tags);
+    }
   }
   
   @Override
@@ -220,7 +240,12 @@ public class ImportCommand extends AbstractGeoRocketCommand {
     ObservableFuture<Void> o = RxHelper.observableFuture();
     Handler<AsyncResult<Void>> handler = o.toHandler();
     
-    HttpClientRequest request = client.post(63074, "localhost", "/store");
+    String path = "/store";
+    if (tags != null && !tags.isEmpty()) {
+      path += "?tags=" + String.join(",", tags);
+    }
+    
+    HttpClientRequest request = client.post(63074, "localhost", path);
     
     request.putHeader("Content-Length", String.valueOf(fileSize));
     
