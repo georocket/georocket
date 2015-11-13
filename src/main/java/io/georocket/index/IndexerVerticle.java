@@ -3,13 +3,10 @@ package io.georocket.index;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.function.Function;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -27,7 +24,6 @@ import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.Requests;
-import org.elasticsearch.common.geo.builders.ShapeBuilder;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.index.query.BoolQueryBuilder;
@@ -38,9 +34,11 @@ import org.elasticsearch.node.NodeBuilder;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
 
-import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableMap.Builder;
 
+import io.georocket.api.index.IndexerFactory;
+import io.georocket.api.index.IndexerFactory.MatchPriority;
 import io.georocket.api.index.xml.XMLIndexer;
 import io.georocket.api.index.xml.XMLIndexerFactory;
 import io.georocket.constants.AddressConstants;
@@ -77,12 +75,6 @@ public class IndexerVerticle extends AbstractVerticle {
   
   private static final String INDEX_NAME = "georocket";
   private static final String TYPE_NAME = "object";
-  
-  private static final String FLOAT_REGEX = "[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?";
-  private static final String COMMA_REGEX = "\\s*,\\s*";
-  private static final String BBOX_REGEX = FLOAT_REGEX + COMMA_REGEX + FLOAT_REGEX +
-      COMMA_REGEX + FLOAT_REGEX + COMMA_REGEX + FLOAT_REGEX;
-  private static final Pattern BBOX_PATTERN = Pattern.compile(BBOX_REGEX);
   
   /**
    * The Elasticsearch node
@@ -355,23 +347,21 @@ public class IndexerVerticle extends AbstractVerticle {
     if (searches.size() == 1) {
       search = searches.get(0);
       
-      Matcher bboxMatcher = BBOX_PATTERN.matcher(search);
-      if (bboxMatcher.matches()) {
-        // search contains a bounding box
-        Iterable<String> coords = Splitter.on(',').trimResults().split(search);
-        Iterator<String> coordsIter = coords.iterator();
-        double minX = Double.parseDouble(coordsIter.next());
-        double minY = Double.parseDouble(coordsIter.next());
-        double maxX = Double.parseDouble(coordsIter.next());
-        double maxY = Double.parseDouble(coordsIter.next());
-        return QueryBuilders.geoIntersectionQuery("bbox", ShapeBuilder.newEnvelope()
-            .bottomRight(maxX, minY).topLeft(minX, maxY));
-      } else {
-        BoolQueryBuilder bqb = QueryBuilders.boolQuery();
-        bqb.should(QueryBuilders.termQuery("gmlIds", search));
-        bqb.should(QueryBuilders.termQuery("tags", search));
-        return bqb;
+      BoolQueryBuilder bqb = QueryBuilders.boolQuery();
+      bqb.should(QueryBuilders.termQuery("tags", search));
+      
+      for (IndexerFactory f : xmlIndexerFactoryLoader) {
+        MatchPriority mp = f.getQueryPriority(search);
+        if (mp == MatchPriority.ONLY) {
+          return f.makeQuery(search);
+        } else if (mp == MatchPriority.SHOULD) {
+          bqb.should(f.makeQuery(search));
+        } else if (mp == MatchPriority.MUST) {
+          bqb.must(f.makeQuery(search));
+        }
       }
+      
+      return bqb;
     }
     
     // call #makeQuery for every part of the search query recursively
@@ -513,42 +503,34 @@ public class IndexerVerticle extends AbstractVerticle {
         "index", "no"
     );
     
+    Builder<String, Object> propertiesBuilder = ImmutableMap.<String, Object>builder()
+        .put("tags", ImmutableMap.of(
+            "type", "string", // array of strings actually, auto-supported by Elasticsearch
+            "index", "not_analyzed"
+        ))
+        
+        // metadata: don't index it
+        .put("chunkStart", integerNoIndex)
+        .put("chunkEnd", integerNoIndex)
+        .put("chunkParents", ImmutableMap.of(
+            "type", "object",
+            "properties", ImmutableMap.builder()
+                .put("prefix", stringNoIndex)
+                .put("localName", stringNoIndex)
+                .put("namespacePrefixes", stringNoIndex)
+                .put("namespaceUris", stringNoIndex)
+                .put("attributePrefixes", stringNoIndex)
+                .put("attributeLocalNames", stringNoIndex)
+                .put("attributeValues", stringNoIndex)
+                .build()
+        ));
+    
+    // add all properties from XML indexers
+    xmlIndexerFactoryLoader.forEach(factory ->
+        propertiesBuilder.putAll(factory.getMapping()));
+    
     Map<String, Object> source = ImmutableMap.of(
-        "properties", ImmutableMap.builder()
-            .put("gmlIds", ImmutableMap.of(
-                "type", "string", // array of strings actually, auto-supported by Elasticsearch
-                "index", "not_analyzed" // do not analyze (i.e. tokenize) this field, use the actual value
-            ))
-            
-            .put("tags", ImmutableMap.of(
-                "type", "string", // array of strings
-                "index", "not_analyzed"
-            ))
-            
-            .put("bbox", ImmutableMap.of(
-                "type", "geo_shape",
-                "tree", "quadtree", // see https://github.com/elastic/elasticsearch/issues/14181
-                "precision", "29" // this is the maximum level
-                // quadtree uses less memory and seems to be a lot faster than geohash
-                // see http://tech.taskrabbit.com/blog/2015/06/09/elasticsearch-geohash-vs-geotree/
-            ))
-            
-            // metadata: don't index it
-            .put("chunkStart", integerNoIndex)
-            .put("chunkEnd", integerNoIndex)
-            .put("chunkParents", ImmutableMap.of(
-                "type", "object",
-                "properties", ImmutableMap.builder()
-                    .put("prefix", stringNoIndex)
-                    .put("localName", stringNoIndex)
-                    .put("namespacePrefixes", stringNoIndex)
-                    .put("namespaceUris", stringNoIndex)
-                    .put("attributePrefixes", stringNoIndex)
-                    .put("attributeLocalNames", stringNoIndex)
-                    .put("attributeValues", stringNoIndex)
-                    .build()
-            ))
-            .build(),
+        "properties", propertiesBuilder.build(),
         
         // Do not save the original indexed document to save space. only include metadata!
         // See https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-source-field.html
