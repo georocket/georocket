@@ -1,4 +1,4 @@
-package io.georocket.index;
+package io.georocket.index.xml;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -8,13 +8,14 @@ import javax.xml.stream.events.XMLEvent;
 
 import com.google.common.collect.ImmutableMap;
 
+import io.georocket.api.index.xml.XMLIndexer;
 import io.georocket.util.XMLStreamEvent;
 
 /**
  * Indexes GML IDs
  * @author Michel Kraemer
  */
-public class GmlIdIndexer implements Indexer {
+public class GmlIdIndexer implements XMLIndexer {
   private static final String NS_GML = "http://www.opengis.net/gml";
   
   private List<String> ids = new ArrayList<>();

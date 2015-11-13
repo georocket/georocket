@@ -1,4 +1,4 @@
-package io.georocket.index;
+package io.georocket.index.xml;
 
 import java.util.Arrays;
 import java.util.Map;
@@ -16,6 +16,7 @@ import org.opengis.referencing.operation.TransformException;
 
 import com.google.common.collect.ImmutableMap;
 
+import io.georocket.api.index.xml.XMLIndexer;
 import io.georocket.util.CompoundCRSDecoder;
 import io.georocket.util.XMLStreamEvent;
 
@@ -23,7 +24,7 @@ import io.georocket.util.XMLStreamEvent;
  * Indexes bounding boxes of inserted chunks
  * @author Michel Kraemer
  */
-public class BoundingBoxIndexer implements Indexer {
+public class BoundingBoxIndexer implements XMLIndexer {
   private static final CoordinateReferenceSystem WGS84 = DefaultGeographicCRS.WGS84;
   
   /**
@@ -310,6 +311,7 @@ public class BoundingBoxIndexer implements Indexer {
       // the chunk's bounding box is unknown. do not add it to the index
       return ImmutableMap.of();
     }
+    //System.out.println(minX + "," + minY + "," + maxX + "," + maxY);
     return ImmutableMap.of("bbox", ImmutableMap.of(
         "type", "envelope",
         "coordinates", Arrays.asList(

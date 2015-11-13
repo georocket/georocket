@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -40,6 +41,8 @@ import org.elasticsearch.search.SearchHits;
 import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableMap;
 
+import io.georocket.api.index.xml.XMLIndexer;
+import io.georocket.api.index.xml.XMLIndexerFactory;
 import io.georocket.constants.AddressConstants;
 import io.georocket.constants.ConfigConstants;
 import io.georocket.storage.ChunkMeta;
@@ -95,6 +98,12 @@ public class IndexerVerticle extends AbstractVerticle {
    * The GeoRocket store
    */
   private Store store;
+  
+  /**
+   * A service loader for {@link XMLIndexerFactory} objects
+   */
+  private ServiceLoader<XMLIndexerFactory> xmlIndexerFactoryLoader =
+      ServiceLoader.load(XMLIndexerFactory.class);
   
   /**
    * True if {@link #ensureIndex(Handler)} has been called at least once
@@ -393,8 +402,8 @@ public class IndexerVerticle extends AbstractVerticle {
     // ElasticSearch index
     Map<String, Object> doc = new HashMap<>();
     
-    List<Indexer> indexers = Arrays.asList(new GmlIdIndexer(),
-        new BoundingBoxIndexer());
+    List<XMLIndexer> indexers = new ArrayList<>();
+    xmlIndexerFactoryLoader.forEach(factory -> indexers.add(factory.createIndexer()));
     
     xmlStream.handler(event -> {
       // call indexers
