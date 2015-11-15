@@ -1,5 +1,7 @@
 package io.georocket.index;
 
+import static io.georocket.util.ThrowableHelper.throwableToCode;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -9,8 +11,6 @@ import java.util.ServiceLoader;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import javax.xml.stream.events.XMLEvent;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.elasticsearch.action.ActionListener;
@@ -47,9 +47,9 @@ import io.georocket.storage.ChunkMeta;
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.Store;
 import io.georocket.storage.file.FileStore;
+import io.georocket.util.AsyncXMLParser;
 import io.georocket.util.QuotedStringSplitter;
 import io.georocket.util.TimedActionQueue;
-import io.georocket.util.XMLPipeStream;
 import io.georocket.util.XMLStartElement;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
@@ -60,7 +60,9 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.core.streams.Pump;
+import io.vertx.rx.java.ObservableFuture;
+import io.vertx.rx.java.RxHelper;
+import rx.Observable;
 
 /**
  * Background indexing of chunks added to the store
@@ -210,13 +212,10 @@ public class IndexerVerticle extends AbstractVerticle {
         return;
       }
       ChunkReadStream chunk = ar.result();
-      indexChunk(path, chunk, meta, tags, indexAr -> {
-        if (indexAr.failed()) {
-          msg.fail(500, indexAr.cause().getMessage());
-        } else {
-          msg.reply(null);
-        }
-      });
+      indexChunk(path, chunk, meta, tags)
+        .finallyDo(chunk::close)
+        .subscribe(v -> msg.reply(null),
+            err -> msg.fail(throwableToCode(err), err.getMessage()));
     });
   }
   
@@ -376,39 +375,34 @@ public class IndexerVerticle extends AbstractVerticle {
    * @param chunk the chunk to index
    * @param meta the chunk's metadata
    * @param tags a list of tags to attach to the chunk (may be null)
-   * @param handler will be called when the chunk has been indexed
+   * @return an observable that will emit when the chunk has been indexed
    */
-  private void indexChunk(String path, ChunkReadStream chunk, ChunkMeta meta,
-      List<String> tags, Handler<AsyncResult<Void>> handler) {
-    // create XML parser
-    XMLPipeStream xmlStream = new XMLPipeStream(vertx);
-    Pump.pump(chunk, xmlStream).start();
-    chunk.endHandler(v -> {
-      xmlStream.close();
-      chunk.close();
-    });
-    
-    // a HashMap retrieving the attributes that will be added to the
-    // ElasticSearch index
-    Map<String, Object> doc = new HashMap<>();
+  private Observable<Void> indexChunk(String path, ChunkReadStream chunk,
+      ChunkMeta meta, List<String> tags) {
+    AsyncXMLParser xmlParser = new AsyncXMLParser();
     
     List<XMLIndexer> indexers = new ArrayList<>();
     xmlIndexerFactoryLoader.forEach(factory -> indexers.add(factory.createIndexer()));
     
-    xmlStream.handler(event -> {
-      // call indexers
-      indexers.forEach(i -> i.onEvent(event));
-      
-      // insert document to index at the end of the XML stream
-      if (event.getEvent() == XMLEvent.END_DOCUMENT) {
+    return RxHelper.toObservable(chunk)
+      .flatMap(xmlParser::feed)
+      .doOnNext(e -> indexers.forEach(i -> i.onEvent(e)))
+      .last() // "wait" until the whole chunk has been consumed
+      .flatMap(e -> {
+        // create an Elasticsearch document
+        Map<String, Object> doc = new HashMap<>();
         indexers.forEach(i -> doc.putAll(i.getResult()));
         addMeta(doc, meta);
         if (tags != null) {
           doc.put("tags", tags);
         }
-        insertDocument(path, doc, handler);
-      }
-    });
+        
+        // insert Elasticsearch document
+        ObservableFuture<Void> o = RxHelper.observableFuture();
+        insertDocument(path, doc, o.toHandler());
+        return o;
+      })
+      .finallyDo(xmlParser::close);
   }
   
   /**

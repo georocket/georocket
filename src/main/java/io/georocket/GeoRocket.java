@@ -1,5 +1,7 @@
 package io.georocket;
 
+import static io.georocket.util.ThrowableHelper.throwableToCode;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -30,7 +32,6 @@ import io.vertx.core.Handler;
 import io.vertx.core.Verticle;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.eventbus.ReplyException;
 import io.vertx.core.file.AsyncFile;
 import io.vertx.core.file.FileSystem;
 import io.vertx.core.file.OpenOptions;
@@ -60,22 +61,6 @@ public class GeoRocket extends AbstractVerticle {
   private static File geoRocketHome;
   private Store store;
   private String storagePath;
-  
-  /**
-   * Convert a throwable to an HTTP status code
-   * @param t the throwable to convert
-   * @return the HTTP status code
-   */
-  private static int throwableToCode(Throwable t) {
-    if (t instanceof ReplyException) {
-      return ((ReplyException)t).failureCode();
-    } else if (t instanceof IllegalArgumentException) {
-      return 400;
-    } else if (t instanceof FileNotFoundException) {
-      return 404;
-    }
-    return 500;
-  }
   
   /**
    * Handles the HTTP GET request for a bunch of chunks

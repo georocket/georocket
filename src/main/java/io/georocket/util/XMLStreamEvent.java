@@ -3,7 +3,7 @@ package io.georocket.util;
 import javax.xml.stream.XMLStreamReader;
 
 /**
- * An event produced by {@link XMLPipeStream}
+ * An event produced by {@link AsyncXMLParser}
  * @author Michel Kraemer
  */
 public class XMLStreamEvent {

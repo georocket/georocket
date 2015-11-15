@@ -10,25 +10,21 @@ import io.georocket.input.FirstLevelSplitter;
 import io.georocket.input.Splitter;
 import io.georocket.storage.Store;
 import io.georocket.storage.file.FileStore;
-import io.georocket.util.WindowPipeStream;
-import io.georocket.util.XMLPipeStream;
-import io.vertx.core.AbstractVerticle;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.buffer.Buffer;
-import io.vertx.core.eventbus.Message;
-import io.vertx.core.file.AsyncFile;
-import io.vertx.core.file.FileSystem;
+import io.georocket.util.AsyncXMLParser;
+import io.georocket.util.Window;
 import io.vertx.core.file.OpenOptions;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.core.streams.Pump;
-import io.vertx.core.streams.ReadStream;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
+import io.vertx.rxjava.core.AbstractVerticle;
+import io.vertx.rxjava.core.buffer.Buffer;
+import io.vertx.rxjava.core.eventbus.Message;
+import io.vertx.rxjava.core.file.FileSystem;
+import io.vertx.rxjava.core.streams.ReadStream;
+import rx.Observable;
 
 /**
  * Imports file in the background
@@ -44,7 +40,7 @@ public class ImporterVerticle extends AbstractVerticle {
   public void start() {
     log.info("Launching importer ...");
     
-    store = new FileStore(vertx);
+    store = new FileStore((io.vertx.core.Vertx)vertx.getDelegate());
     String storagePath = vertx.getOrCreateContext().config().getString(
         ConfigConstants.STORAGE_PATH);
     incoming = storagePath + "/incoming";
@@ -88,27 +84,17 @@ public class ImporterVerticle extends AbstractVerticle {
     
     FileSystem fs = vertx.fileSystem();
     OpenOptions openOptions = new OpenOptions().setCreate(false).setWrite(false);
-    ObservableFuture<AsyncFile> observable = RxHelper.observableFuture();
-    fs.open(filename, openOptions, observable.toHandler());
-    observable
-      .flatMap(f -> {
-        ObservableFuture<Void> importObservable = RxHelper.observableFuture();
-        importXML(f, layer, tags, ar -> {
-          f.close();
-          fs.delete(filename, deleteAr -> {
-            if (ar.failed()) {
-              importObservable.toHandler().handle(ar);
-            } else {
-              importObservable.toHandler().handle(deleteAr);
-            }
+    fs.openObservable(filename, openOptions)
+      .flatMap(f -> importXML(f, layer, tags).finallyDo(() -> {
+        // delete file from 'incoming' folder
+        f.closeObservable()
+          .flatMap(v -> fs.deleteObservable(filename))
+          .subscribe(v -> {}, err -> {
+            log.error("Could not delete file from 'incoming' folder", err);
           });
-        });
-        return importObservable;
-      })
-      .subscribe(v -> {
-        // nothing to do here
-      }, err -> {
-        err.printStackTrace();
+      }))
+      .subscribe(v -> {}, err -> {
+        log.error("Failed to import chunk", err);
       });
   }
   
@@ -117,40 +103,29 @@ public class ImporterVerticle extends AbstractVerticle {
    * @param f the XML file to read
    * @param layer the layer where the file should be stored (may be null)
    * @param tags the list of tags to attach to the file (may be null)
-   * @param callback will be called when the operation has finished
+   * @return an observable that will emit when the file has been imported
    */
-  private void importXML(ReadStream<Buffer> f, String layer, List<String> tags,
-      Handler<AsyncResult<Void>> callback) {
-    XMLPipeStream xmlStream = new XMLPipeStream(vertx);
-    WindowPipeStream windowPipeStream = new WindowPipeStream();
-    Splitter splitter = new FirstLevelSplitter(windowPipeStream.getWindow());
-    
-    Pump.pump(f, windowPipeStream).start();
-    Pump.pump(windowPipeStream, xmlStream).start();
-    
-    f.endHandler(v -> {
-      xmlStream.close();
-      callback.handle(Future.succeededFuture());
-    });
-    
-    f.exceptionHandler(e -> callback.handle(Future.failedFuture(e)));
-    windowPipeStream.exceptionHandler(e -> callback.handle(Future.failedFuture(e)));
-    xmlStream.exceptionHandler(e -> callback.handle(Future.failedFuture(e)));
-    
-    xmlStream.handler(event -> {
-      Splitter.Result splitResult = splitter.onEvent(event);
-      if (splitResult != null) {
-        // splitter has created a chunk. store it.
-        xmlStream.pause(); // pause stream while chunk being written
-        store.add(splitResult.getChunk(), splitResult.getMeta(), layer, tags, ar -> {
-          if (ar.failed()) {
-            callback.handle(Future.failedFuture(ar.cause()));
-          } else {
+  private Observable<Void> importXML(ReadStream<Buffer> f, String layer, List<String> tags) {
+    AsyncXMLParser xmlParser = new AsyncXMLParser();
+    Window window = new Window();
+    Splitter splitter = new FirstLevelSplitter(window);
+    return f.toObservable()
+        .map(buf -> (io.vertx.core.buffer.Buffer)buf.getDelegate())
+        .doOnNext(window::append)
+        .flatMap(xmlParser::feed)
+        .flatMap(splitter::onEventObservable)
+        .flatMap(result -> {
+          // pause stream while chunk is being written
+          f.pause();
+          
+          ObservableFuture<Void> o = RxHelper.observableFuture();
+          store.add(result.getChunk(), result.getMeta(), layer, tags, o.toHandler());
+          return o.doOnNext(v -> {
             // go ahead
-            xmlStream.resume();
-          }
-        });
-      }
-    });
+            f.resume();
+          });
+        })
+        .last() // "wait" for last event (i.e. end of file)
+        .finallyDo(xmlParser::close);
   }
 }
