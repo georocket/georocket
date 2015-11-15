@@ -2,15 +2,17 @@ package io.georocket.input;
 
 import static org.junit.Assert.assertEquals;
 
-import java.io.StringReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import javax.xml.stream.XMLInputFactory;
-import javax.xml.stream.XMLStreamReader;
-
 import org.junit.Test;
+
+import com.fasterxml.aalto.AsyncByteArrayFeeder;
+import com.fasterxml.aalto.AsyncXMLInputFactory;
+import com.fasterxml.aalto.AsyncXMLStreamReader;
+import com.fasterxml.aalto.stax.InputFactoryImpl;
 
 import io.georocket.input.Splitter.Result;
 import io.georocket.storage.ChunkMeta;
@@ -35,11 +37,19 @@ public class FirstLevelSplitterTest {
   private List<Splitter.Result> split(String xml) throws Exception {
     Window window = new Window();
     window.append(Buffer.buffer(xml));
-    XMLStreamReader reader = XMLInputFactory.newFactory().createXMLStreamReader(new StringReader(xml));
+    AsyncXMLInputFactory xmlInputFactory = new InputFactoryImpl();
+    AsyncXMLStreamReader<AsyncByteArrayFeeder> reader =
+        xmlInputFactory.createAsyncForByteArray();
+    byte[] xmlBytes = xml.getBytes(StandardCharsets.UTF_8);
+    reader.getInputFeeder().feedInput(xmlBytes, 0, xmlBytes.length);
     FirstLevelSplitter splitter = new FirstLevelSplitter(window);
     List<Splitter.Result> chunks = new ArrayList<>();
     while (reader.hasNext()) {
       int event = reader.next();
+      if (event == AsyncXMLStreamReader.EVENT_INCOMPLETE) {
+        reader.close();
+        continue;
+      }
       int pos = reader.getLocation().getCharacterOffset();
       Splitter.Result chunk = splitter.onEvent(new XMLStreamEvent(event, pos, reader));
       if (chunk != null) {
@@ -162,5 +172,21 @@ public class FirstLevelSplitterTest {
     assertEquals(meta2, chunk2.getMeta());
     assertEquals(XMLHEADER + root + "\n<p:object ok=\"ov\"><p:child></p:child></p:object>\n</root>", chunk1.getChunk());
     assertEquals(XMLHEADER + root + "\n<p:object><child2></child2></p:object>\n</root>", chunk2.getChunk());
+  }
+  
+  /**
+   * Test if an XML string with an UTF8 character can be split
+   * @throws Exception if an error has occurred
+   */
+  @Test
+  public void utf8() throws Exception {
+    String xml = XMLHEADER + "<root>\n<object><child name=\"\u2248\"></child></object>\n</root>";
+    List<Splitter.Result> chunks = split(xml);
+    assertEquals(1, chunks.size());
+    Result chunk = chunks.get(0);
+    ChunkMeta meta = new ChunkMeta(Arrays.asList(new XMLStartElement("root")),
+        XMLHEADER.length() + 7, xml.getBytes(StandardCharsets.UTF_8).length - 8);
+    assertEquals(meta, chunk.getMeta());
+    assertEquals(xml, chunk.getChunk());
   }
 }

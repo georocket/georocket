@@ -130,7 +130,8 @@ public abstract class XMLSplitter implements Splitter {
       sb.append(e + "\n");
     });
     
-    int chunkStart = sb.length();
+    // get chunk start in bytes
+    int chunkStart = sb.toString().getBytes(StandardCharsets.UTF_8).length;
     
     // append current element
     byte[] bytes = window.getBytes(mark, pos);
@@ -138,7 +139,8 @@ public abstract class XMLSplitter implements Splitter {
     window.advanceTo(pos);
     mark = -1;
     
-    int chunkEnd = sb.length();
+    // get chunk end in bytes
+    int chunkEnd = chunkStart + bytes.length;
     
     // append the full stack of end elements
     startElements.iterator().forEachRemaining(e -> sb.append("\n</" + e.getName() + ">"));
