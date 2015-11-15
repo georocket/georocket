@@ -133,9 +133,8 @@ public class IndexerVerticleTest {
     // deploy indexer verticle
     vertx.deployVerticle(IndexerVerticle.class.getName(), options,
         context.asyncAssertSuccess(ivid -> {
-      JsonObject msg = new JsonObject()
-          .put("action", "add");
-      vertx.eventBus().send(AddressConstants.INDEXER, msg, context.asyncAssertFailure(t -> {
+      JsonObject msg = new JsonObject();
+      vertx.eventBus().send(AddressConstants.INDEXER_ADD, msg, context.asyncAssertFailure(t -> {
         context.assertEquals(400, ((ReplyException)t).failureCode());
         context.assertEquals("Missing path to the chunk to index", t.getMessage());
         vertx.undeploy(ivid, context.asyncAssertSuccess(v -> {
@@ -158,9 +157,8 @@ public class IndexerVerticleTest {
     vertx.deployVerticle(IndexerVerticle.class.getName(), options,
         context.asyncAssertSuccess(ivid -> {
       JsonObject msg = new JsonObject()
-          .put("action", "add")
           .put("path", TESTFILE_NAME1);
-      vertx.eventBus().send(AddressConstants.INDEXER, msg, context.asyncAssertFailure(t -> {
+      vertx.eventBus().send(AddressConstants.INDEXER_ADD, msg, context.asyncAssertFailure(t -> {
         context.assertEquals(400, ((ReplyException)t).failureCode());
         context.assertEquals("Missing chunk metadata", t.getMessage());
         vertx.undeploy(ivid, context.asyncAssertSuccess(v -> {
@@ -183,12 +181,11 @@ public class IndexerVerticleTest {
     vertx.deployVerticle(IndexerVerticle.class.getName(), options,
         context.asyncAssertSuccess(ivid -> {
       JsonObject msg = new JsonObject()
-          .put("action", "add")
           .put("path", TESTFILE_NAME1)
           .put("meta", TESTFILE_META1.toJsonObject());
-      vertx.eventBus().send(AddressConstants.INDEXER, msg, context.asyncAssertFailure(t -> {
+      vertx.eventBus().send(AddressConstants.INDEXER_ADD, msg, context.asyncAssertFailure(t -> {
         context.assertEquals(404, ((ReplyException)t).failureCode());
-        context.assertEquals("Chunk not found: " + TESTFILE_NAME1, t.getMessage());
+        context.assertEquals("Could not find chunk: " + TESTFILE_NAME1, t.getMessage());
         vertx.undeploy(ivid, context.asyncAssertSuccess(v -> {
           async.complete();
         }));
@@ -209,18 +206,16 @@ public class IndexerVerticleTest {
       
       // tell indexer verticle about the new files
       JsonObject msg1 = new JsonObject()
-          .put("action", "add")
           .put("path", TESTFILE_NAME1)
           .put("meta", TESTFILE_META1.toJsonObject());
       if (tags1 != null) {
         msg1.put("tags", new JsonArray(tags1));
       }
-      vertx.eventBus().send(AddressConstants.INDEXER, msg1, context.asyncAssertSuccess(ar1 -> {
+      vertx.eventBus().send(AddressConstants.INDEXER_ADD, msg1, context.asyncAssertSuccess(ar1 -> {
         JsonObject msg2 = new JsonObject()
-            .put("action", "add")
             .put("path", TESTFILE_NAME2)
             .put("meta", TESTFILE_META2.toJsonObject());
-        vertx.eventBus().send(AddressConstants.INDEXER, msg2, context.asyncAssertSuccess(ar2 -> {
+        vertx.eventBus().send(AddressConstants.INDEXER_ADD, msg2, context.asyncAssertSuccess(ar2 -> {
           // wait for Elasticsearch to update the index
           vertx.setTimer(2000, l -> {
             handler.handle(Future.succeededFuture(ivid));
@@ -259,19 +254,15 @@ public class IndexerVerticleTest {
     Async async = context.async();
     deployAndTestFiles(context, context.asyncAssertSuccess(id -> {
       // search for test file 1
-      JsonObject msg1 = new JsonObject()
-          .put("action", "query")
-          .put("search", TESTFILE_GMLID1);
-      vertx.eventBus().<JsonObject>send(AddressConstants.INDEXER, msg1, context.asyncAssertSuccess(reply1 -> {
+      JsonObject msg1 = new JsonObject().put("search", TESTFILE_GMLID1);
+      vertx.eventBus().<JsonObject>send(AddressConstants.INDEXER_QUERY, msg1, context.asyncAssertSuccess(reply1 -> {
         JsonObject obj1 = reply1.body();
         int totalHits1 = obj1.getInteger("totalHits");
         context.assertEquals(1, totalHits1);
         
         // perform a query that should return no result
-        JsonObject msg2 = new JsonObject()
-            .put("action", "query")
-            .put("search", "zzzz");
-        vertx.eventBus().<JsonObject>send(AddressConstants.INDEXER, msg2, context.asyncAssertSuccess(reply2 -> {
+        JsonObject msg2 = new JsonObject().put("search", "zzzz");
+        vertx.eventBus().<JsonObject>send(AddressConstants.INDEXER_QUERY, msg2, context.asyncAssertSuccess(reply2 -> {
           JsonObject obj2 = reply2.body();
           int totalHits2 = obj2.getInteger("totalHits");
           context.assertEquals(0, totalHits2);
@@ -295,19 +286,15 @@ public class IndexerVerticleTest {
     Async async = context.async();
     deployAndTestFiles(context, context.asyncAssertSuccess(id -> {
       // search for test file 2
-      JsonObject msg1 = new JsonObject()
-          .put("action", "query")
-          .put("search", "13.0,52.2,13.1,52.4");
-      vertx.eventBus().<JsonObject>send(AddressConstants.INDEXER, msg1, context.asyncAssertSuccess(reply1 -> {
+      JsonObject msg1 = new JsonObject().put("search", "13.0,52.2,13.1,52.4");
+      vertx.eventBus().<JsonObject>send(AddressConstants.INDEXER_QUERY, msg1, context.asyncAssertSuccess(reply1 -> {
         JsonObject obj1 = reply1.body();
         int totalHits1 = obj1.getInteger("totalHits");
         context.assertEquals(1, totalHits1);
         
         // perform a search that should return no result
-        JsonObject msg2 = new JsonObject()
-            .put("action", "query")
-            .put("search", "12.0,51.2,12.1,51.4");
-        vertx.eventBus().<JsonObject>send(AddressConstants.INDEXER, msg2, context.asyncAssertSuccess(reply2 -> {
+        JsonObject msg2 = new JsonObject().put("search", "12.0,51.2,12.1,51.4");
+        vertx.eventBus().<JsonObject>send(AddressConstants.INDEXER_QUERY, msg2, context.asyncAssertSuccess(reply2 -> {
           JsonObject obj2 = reply2.body();
           int totalHits2 = obj2.getInteger("totalHits");
           context.assertEquals(0, totalHits2);
@@ -331,10 +318,8 @@ public class IndexerVerticleTest {
     Async async = context.async();
     deployAndTestFiles(context, Arrays.asList("tag1a", "tag1b"), context.asyncAssertSuccess(id -> {
       // search for test file 2
-      JsonObject msg1 = new JsonObject()
-          .put("action", "query")
-          .put("search", "tag1a");
-      vertx.eventBus().<JsonObject>send(AddressConstants.INDEXER, msg1, context.asyncAssertSuccess(reply1 -> {
+      JsonObject msg1 = new JsonObject().put("search", "tag1a");
+      vertx.eventBus().<JsonObject>send(AddressConstants.INDEXER_QUERY, msg1, context.asyncAssertSuccess(reply1 -> {
         JsonObject obj1 = reply1.body();
         int totalHits1 = obj1.getInteger("totalHits");
         context.assertEquals(1, totalHits1);

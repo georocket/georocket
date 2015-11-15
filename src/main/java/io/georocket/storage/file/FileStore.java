@@ -97,13 +97,12 @@ public class FileStore implements Store {
           
           // start indexing
           JsonObject indexMsg = new JsonObject()
-              .put("action", "add")
               .put("path", finalPath + "/" + filename)
               .put("meta", meta.toJsonObject());
           if (tags != null) {
             indexMsg.put("tags", new JsonArray(tags));
           }
-          vertx.eventBus().publish(AddressConstants.INDEXER, indexMsg);
+          vertx.eventBus().publish(AddressConstants.INDEXER_ADD, indexMsg);
           
           // tell sender that writing was successful
           handler.handle(Future.succeededFuture());
@@ -227,9 +226,8 @@ public class FileStore implements Store {
     JsonArray jsonPaths = new JsonArray();
     paths.forEach(jsonPaths::add);
     JsonObject indexMsg = new JsonObject()
-        .put("action", "delete")
         .put("paths", jsonPaths);
-    vertx.eventBus().send(AddressConstants.INDEXER, indexMsg, ar -> {
+    vertx.eventBus().send(AddressConstants.INDEXER_DELETE, indexMsg, ar -> {
       if (ar.failed()) {
         handler.handle(Future.failedFuture(ar.cause()));
       } else {

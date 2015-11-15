@@ -8,14 +8,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
-import java.util.function.Function;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequest;
+import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
+import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
@@ -49,19 +51,19 @@ import io.georocket.storage.Store;
 import io.georocket.storage.file.FileStore;
 import io.georocket.util.AsyncXMLParser;
 import io.georocket.util.QuotedStringSplitter;
-import io.georocket.util.TimedActionQueue;
 import io.georocket.util.XMLStartElement;
-import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
-import io.vertx.core.eventbus.Message;
+import io.vertx.core.impl.NoStackTraceThrowable;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
+import io.vertx.rxjava.core.AbstractVerticle;
+import io.vertx.rxjava.core.eventbus.Message;
 import rx.Observable;
 
 /**
@@ -71,9 +73,8 @@ import rx.Observable;
 public class IndexerVerticle extends AbstractVerticle {
   private static Logger log = LoggerFactory.getLogger(IndexerVerticle.class);
   
-  private static final int MAX_INDEX_REQUESTS = 1000;
-  private static final long INDEX_REQUEST_TIMEOUT = 1000;
-  private static final long INDEX_REQUEST_GRACE = 100;
+  private static final int MAX_ADD_REQUESTS = 1000;
+  private static final long BUFFER_TIMESPAN = 5000;
   
   private static final String INDEX_NAME = "georocket";
   private static final String TYPE_NAME = "object";
@@ -100,25 +101,13 @@ public class IndexerVerticle extends AbstractVerticle {
       ServiceLoader.load(XMLIndexerFactory.class);
   
   /**
-   * True if {@link #ensureIndex(Handler)} has been called at least once
+   * True if {@link #ensureIndex()} has been called at least once
    */
   private boolean indexEnsured;
-  
-  /**
-   * True if {@link #insertDocument(IndexRequest, Handler)} has just sent a
-   * request to Elasticsearch and this request is currently being processed
-   */
-  private boolean insertInProgress;
-  
-  /**
-   * A timed queue for {@link IndexRequest}s
-   */
-  private TimedActionQueue<Pair<IndexRequest, Handler<AsyncResult<Void>>>> docsToInsert;
   
   @Override
   public void start() {
     log.info("Launching indexer ...");
-    vertx.eventBus().consumer(AddressConstants.INDEXER, this::onMessage);
     
     String home = vertx.getOrCreateContext().config().getString(
         ConfigConstants.STORAGE_PATH);
@@ -139,9 +128,120 @@ public class IndexerVerticle extends AbstractVerticle {
         .node();
     
     client = node.client();
-    docsToInsert = new TimedActionQueue<>(MAX_INDEX_REQUESTS, INDEX_REQUEST_TIMEOUT,
-        INDEX_REQUEST_GRACE, vertx);
-    store = new FileStore(vertx);
+    store = new FileStore((io.vertx.core.Vertx)vertx.getDelegate());
+    
+    registerAdd();
+    registerDelete();
+    registerQuery();
+  }
+  
+  /**
+   * Register consumer for add messages
+   */
+  private void registerAdd() {
+    vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_ADD)
+      .toObservable()
+      .buffer(BUFFER_TIMESPAN, TimeUnit.MILLISECONDS, MAX_ADD_REQUESTS)
+      .subscribe(messages -> {
+        if (!messages.isEmpty()) {
+          onAdd(messages);
+        }
+      });
+  }
+  
+  /**
+   * Register consumer for delete messages
+   */
+  private void registerDelete() {
+    vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_DELETE)
+      .toObservable()
+      .subscribe(msg -> {
+        onDelete(msg.body()).subscribe(v -> {
+          msg.reply(v);
+        }, err -> {
+          log.error("Could not delete chunks", err);
+          msg.fail(throwableToCode(err), err.getMessage());
+        });
+      });
+  }
+  
+  /**
+   * Register consumer for queries
+   */
+  private void registerQuery() {
+    vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_QUERY)
+      .toObservable()
+      .subscribe(msg -> {
+        onQuery(msg.body()).subscribe(reply -> {
+          msg.reply(reply);
+        }, err -> {
+          log.error("Could not perform query", err);
+          msg.fail(throwableToCode(err), err.getMessage());
+        });
+      });
+  }
+
+  /**
+   * Will be called when chunks should be added to the index
+   * @param messages the list of add messages that contain the paths to
+   * the chunks to be indexed
+   */
+  private void onAdd(List<Message<JsonObject>> messages) {
+    Observable.from(messages)
+      .flatMap(msg -> ensureIndex().map(v -> msg))
+      .flatMap(msg -> {
+        // get path to chunk from message
+        JsonObject body = msg.body();
+        String path = body.getString("path");
+        if (path == null) {
+          msg.fail(400, "Missing path to the chunk to index");
+          return Observable.error(new NoStackTraceThrowable("Missing path to the chunk to index"));
+        }
+        
+        // get chunk metadata
+        JsonObject metaObj = body.getJsonObject("meta");
+        if (metaObj == null) {
+          msg.fail(400, "Missing chunk metadata");
+          return Observable.error(new NoStackTraceThrowable("Missing chunk metadata"));
+        }
+        ChunkMeta meta = ChunkMeta.fromJsonObject(metaObj);
+        
+        // get tags
+        JsonArray tagsArr = body.getJsonArray("tags");
+        List<String> tags = tagsArr != null ? tagsArr.stream().flatMap(o -> o != null ?
+            Stream.of(o.toString()) : Stream.of()).collect(Collectors.toList()) : null;
+        
+        log.trace("Indexing " + path);
+        
+        // open chunk and create IndexRequest
+        return openChunk(path)
+            .flatMap(chunk -> {
+              // convert chunk to document and close it
+              return chunkToDocument(chunk).finallyDo(chunk::close);
+            })
+            .doOnNext(doc -> {
+              // add metadata and tags to document
+              addMeta(doc, meta);
+              if (tags != null) {
+                doc.put("tags", tags);
+              }
+            })
+            .map(doc -> Pair.of(documentToIndexRequest(path, doc), msg))
+            .doOnError(err -> {
+              msg.fail(throwableToCode(err), err.getMessage());
+            });
+      })
+      // create bulk request
+      .reduce(Pair.of(Requests.bulkRequest(), new ArrayList<Message<JsonObject>>()), (i, p) -> {
+        i.getLeft().add(p.getLeft());
+        i.getRight().add(p.getRight());
+        return i;
+      })
+      .subscribe(p -> {
+        insertDocuments(p.getLeft(), p.getRight());
+      }, err -> {
+        log.error("Could not add chunks to index", err);
+      });
   }
   
   @Override
@@ -151,95 +251,33 @@ public class IndexerVerticle extends AbstractVerticle {
   }
   
   /**
-   * Receives a message
-   * @param msg the message 
+   * Open a chunk
+   * @param path the path to the chunk to open
+   * @return an observable that emits a {@link ChunkReadStream}
    */
-  private void onMessage(Message<JsonObject> msg) {
-    String action = msg.body().getString("action");
-    switch (action) {
-    case "add":
-      onAdd(msg);
-      break;
-    
-    case "query":
-      onQuery(msg);
-      break;
-    
-    case "delete":
-      onDelete(msg);
-      break;
-    
-    default:
-      msg.fail(400, "Invalid action: " + action);
-      log.error("Invalid action: " + action);
-      break;
-    }
-  }
-  
-  /**
-   * Receives a name of a chunk to index
-   * @param msg the event bus message containing the chunk name 
-   */
-  private void onAdd(Message<JsonObject> msg) {
-    // get path to the chunk to index
-    JsonObject body = msg.body();
-    String path = body.getString("path");
-    if (path == null) {
-      msg.fail(400, "Missing path to the chunk to index");
-      return;
-    }
-    
-    // get chunk metadata
-    JsonObject metaObj = body.getJsonObject("meta");
-    if (metaObj == null) {
-      msg.fail(400, "Missing chunk metadata");
-      return;
-    }
-    ChunkMeta meta = ChunkMeta.fromJsonObject(metaObj);
-    
-    // get tags
-    JsonArray tagsArr = body.getJsonArray("tags");
-    List<String> tags = tagsArr != null ? tagsArr.stream().flatMap(o -> o != null ?
-        Stream.of(o.toString()) : Stream.of()).collect(Collectors.toList()) : null;
-    
-    log.debug("Indexing " + path);
-    
-    // get chunk from store and index it
-    store.getOne(path, ar -> {
-      if (ar.failed()) {
-        log.error("Could not get chunk from store", ar.cause());
-        msg.fail(404, "Chunk not found: " + path);
-        return;
-      }
-      ChunkReadStream chunk = ar.result();
-      indexChunk(path, chunk, meta, tags)
-        .finallyDo(chunk::close)
-        .subscribe(v -> msg.reply(null),
-            err -> msg.fail(throwableToCode(err), err.getMessage()));
-    });
+  private Observable<ChunkReadStream> openChunk(String path) {
+    ObservableFuture<ChunkReadStream> observable = RxHelper.observableFuture();
+    store.getOne(path, observable.toHandler());
+    return observable;
   }
   
   /**
    * Performs a query
-   * @param msg the event bus message containing the query
+   * @param body the message containing the query
+   * @return an observable that emits the results of the query
    */
-  private void onQuery(Message<JsonObject> msg) {
-    String search = msg.body().getString("search");
-    String path = msg.body().getString("path");
-    String scrollId = msg.body().getString("scrollId");
-    int pageSize = msg.body().getInteger("pageSize", 100);
+  private Observable<JsonObject> onQuery(JsonObject body) {
+    String search = body.getString("search");
+    String path = body.getString("path");
+    String scrollId = body.getString("scrollId");
+    int pageSize = body.getInteger("pageSize", 100);
     TimeValue timeout = TimeValue.timeValueMinutes(1);
     
     // search result handler
-    ActionListener<SearchResponse> listener = handlerToListener(ar -> {
-      if (ar.failed()) {
-        log.error("Could not execute search", ar.cause());
-        msg.fail(500, ar.cause().getMessage());
-        return;
-      }
-      
+    ObservableFuture<SearchResponse> observable = RxHelper.observableFuture();
+    ActionListener<SearchResponse> listener = handlerToListener(observable.toHandler());
+    Observable<JsonObject> result = observable.map(sr -> {
       // iterate through all hits and convert them to JSON
-      SearchResponse sr = ar.result();
       SearchHits hits = sr.getHits();
       long totalHits = hits.getTotalHits();
       JsonArray resultHits = new JsonArray();
@@ -251,11 +289,10 @@ public class IndexerVerticle extends AbstractVerticle {
       }
       
       // create result and send it to the client
-      JsonObject result = new JsonObject()
+      return new JsonObject()
           .put("totalHits", totalHits)
           .put("hits", resultHits)
           .put("scrollId", sr.getScrollId());
-      msg.reply(result);
     });
     
     if (scrollId == null) {
@@ -273,14 +310,18 @@ public class IndexerVerticle extends AbstractVerticle {
           .setScroll(timeout)
           .execute(listener);
     }
+    
+    return result;
   }
   
   /**
    * Deletes chunks from the index
-   * @param msg the message containing the paths to the chunks to delete
+   * @param body the message containing the paths to the chunks to delete
+   * @return an observable that emits a single item when the chunks have
+   * been deleted successfully
    */
-  private void onDelete(Message<JsonObject> msg) {
-    JsonArray paths = msg.body().getJsonArray("paths");
+  private Observable<Void> onDelete(JsonObject body) {
+    JsonArray paths = body.getJsonArray("paths");
     
     // prepare bulk request for all chunks to delete
     BulkRequest br = Requests.bulkRequest();
@@ -292,22 +333,17 @@ public class IndexerVerticle extends AbstractVerticle {
     // execute bulk request
     long startDeleting = System.currentTimeMillis();
     log.info("Deleting " + paths.size() + " chunks from index ...");
-    client.bulk(br, handlerToListener(ar -> {
-      if (ar.failed()) {
-        log.error("Could not index chunks", ar.cause());
-        msg.fail(500, ar.cause().getMessage());
+    ObservableFuture<BulkResponse> observable = RxHelper.observableFuture();
+    client.bulk(br, handlerToListener(observable.toHandler()));
+    return observable.flatMap(bres -> {
+      if (bres.hasFailures()) {
+        return Observable.error(new NoStackTraceThrowable(bres.buildFailureMessage()));
       } else {
-        BulkResponse bres = ar.result();
-        if (bres.hasFailures()) {
-          log.error(bres.buildFailureMessage());
-          msg.fail(500, bres.buildFailureMessage());
-        } else {
-          log.info("Finished deleting " + paths.size() + " chunks from index in " +
-              (System.currentTimeMillis() - startDeleting) + " ms");
-          msg.reply(null);
-        }
+        log.info("Finished deleting " + paths.size() + " chunks from index in " +
+            (System.currentTimeMillis() - startDeleting) + " ms");
+        return Observable.just(null);
       }
-    }));
+    });
   }
   
   /**
@@ -370,15 +406,11 @@ public class IndexerVerticle extends AbstractVerticle {
   }
   
   /**
-   * Adds a chunk to the index
-   * @param path the absolute path to the chunk
-   * @param chunk the chunk to index
-   * @param meta the chunk's metadata
-   * @param tags a list of tags to attach to the chunk (may be null)
-   * @return an observable that will emit when the chunk has been indexed
+   * Convert a chunk to a Elasticsearch document
+   * @param chunk the chunk to convert
+   * @return an observable that will emit the document
    */
-  private Observable<Void> indexChunk(String path, ChunkReadStream chunk,
-      ChunkMeta meta, List<String> tags) {
+  private Observable<Map<String, Object>> chunkToDocument(ChunkReadStream chunk) {
     AsyncXMLParser xmlParser = new AsyncXMLParser();
     
     List<XMLIndexer> indexers = new ArrayList<>();
@@ -388,19 +420,11 @@ public class IndexerVerticle extends AbstractVerticle {
       .flatMap(xmlParser::feed)
       .doOnNext(e -> indexers.forEach(i -> i.onEvent(e)))
       .last() // "wait" until the whole chunk has been consumed
-      .flatMap(e -> {
-        // create an Elasticsearch document
+      .map(e -> {
+        // create the Elasticsearch document
         Map<String, Object> doc = new HashMap<>();
         indexers.forEach(i -> doc.putAll(i.getResult()));
-        addMeta(doc, meta);
-        if (tags != null) {
-          doc.put("tags", tags);
-        }
-        
-        // insert Elasticsearch document
-        ObservableFuture<Void> o = RxHelper.observableFuture();
-        insertDocument(path, doc, o.toHandler());
-        return o;
+        return doc;
       })
       .finallyDo(xmlParser::close);
   }
@@ -457,37 +481,36 @@ public class IndexerVerticle extends AbstractVerticle {
   }
 
   /**
-   * Ensures the ElasticSearch index exists
-   * @param handler will be called when the index has been created or if it
-   * already exists
+   * Ensure the Elasticsearch index exists
+   * @return an observable that will emit a single item when the index has
+   * been created or if it already exists
    */
-  private void ensureIndex(Handler<AsyncResult<Void>> handler) {
+  private Observable<Void> ensureIndex() {
     if (indexEnsured) {
-      handler.handle(Future.succeededFuture());
-    } else {
-      // check if index exists
-      IndicesExistsRequest r = Requests.indicesExistsRequest(INDEX_NAME);
-      client.admin().indices().exists(r, handlerToListener(existsAr -> {
-        if (existsAr.failed()) {
-          handler.handle(Future.failedFuture(existsAr.cause()));
-        } else {
-          indexEnsured = true;
-          if (existsAr.result().isExists()) {
-            handler.handle(Future.succeededFuture());
-          } else {
-            // index does not exist. create it.
-            createIndex(handler);
-          }
-        }
-      }));
+      return Observable.just(null);
     }
+    indexEnsured = true;
+    
+    // check if index exists
+    IndicesExistsRequest r = Requests.indicesExistsRequest(INDEX_NAME);
+    ObservableFuture<IndicesExistsResponse> observable = RxHelper.observableFuture();
+    client.admin().indices().exists(r, handlerToListener(observable.toHandler()));
+    return observable.flatMap(eres -> {
+      if (eres.isExists()) {
+        return Observable.just(null);
+      } else {
+        // index does not exist. create it.
+        return createIndex();
+      }
+    });
   }
   
   /**
-   * Creates the ElasticSearch index. Assumes it does not exist yet.
-   * @param handler will be called when the index has been created.
+   * Create the Elasticsearch index. Assumes it does not exist yet.
+   * @return an observable that will emit a single item when the index
+   * has been created
    */
-  private void createIndex(Handler<AsyncResult<Void>> handler) {
+  private Observable<Void> createIndex() {
     Map<String, Object> integerNoIndex = ImmutableMap.of(
         "type", "integer",
         "index", "no"
@@ -540,85 +563,54 @@ public class IndexerVerticle extends AbstractVerticle {
     
     CreateIndexRequest request = Requests.createIndexRequest(INDEX_NAME)
         .mapping(TYPE_NAME, source);
-    client.admin().indices().create(request, handlerToListener(handler, v -> null));
+    ObservableFuture<CreateIndexResponse> observable = RxHelper.observableFuture();
+    client.admin().indices().create(request, handlerToListener(observable.toHandler()));
+    return observable.map(r -> null);
   }
   
   /**
-   * Inserts an Elasticsearch document to the index
+   * Convert an Elasticsearch document to an {@link IndexRequest}
    * @param path the absolute path to the chunk
-   * @param doc the document to add
-   * @param handler will be called when the document has been added to the index
+   * @param doc the document to convert
+   * @return the {@link IndexRequest}
    */
-  private void insertDocument(String path, Map<String, Object> doc,
-      Handler<AsyncResult<Void>> handler) {
-    IndexRequest req = Requests.indexRequest(INDEX_NAME)
+  private IndexRequest documentToIndexRequest(String path, Map<String, Object> doc) {
+    return Requests.indexRequest(INDEX_NAME)
         .type(TYPE_NAME)
         .id(path)
         .source(doc);
-    insertDocument(req, handler);
   }
   
   /**
-   * Inserts an Elasticsearch document to the index. Enqueues the document
-   * if an insert operation is currently in progress.
-   * @param request the IndexRequest containing the document
-   * @param handler will be called when the document has been added to the index
-   * @see #insertDocument(String, Map, Handler)
+   * Inserts multiple Elasticsearch documents to the index.
+   * @param bulkRequest the {@link BulkRequest} containing the documents
+   * @param messages a list of messages from which the index requests were
+   * created; items are in the same order as the respective index requests in
+   * the given bulk request
    */
-  private void insertDocument(IndexRequest request, Handler<AsyncResult<Void>> handler) {
-    docsToInsert.offer(Pair.of(request, handler), (queue, done) -> {
-      if (insertInProgress) {
-        // wait a little bit longer
-        done.run();
-        return;
-      }
-      
-      insertInProgress = true;
-      
-      // ensure index exists
-      ensureIndex(eiar -> {
-        if (eiar.failed()) {
-          log.error("Could not create index", eiar.cause());
-          insertInProgress = false;
-          done.run();
+  private void insertDocuments(BulkRequest bulkRequest, List<Message<JsonObject>> messages) {
+    log.info("Indexing " + messages.size() + " chunks");
+    long startIndexing = System.currentTimeMillis();
+    ObservableFuture<BulkResponse> observable = RxHelper.observableFuture();
+    client.bulk(bulkRequest, handlerToListener(observable.toHandler()));
+    observable.subscribe(bres -> {
+      for (BulkItemResponse item : bres.getItems()) {
+        Message<JsonObject> msg = messages.get(item.getItemId());
+        if (item.isFailed()) {
+          msg.fail(500, item.getFailureMessage());
         } else {
-          BulkRequest br = Requests.bulkRequest();
-          List<Handler<AsyncResult<Void>>> handlers = new ArrayList<>();
-          int count = 0;
-          while (!queue.isEmpty() && count < MAX_INDEX_REQUESTS) {
-            Pair<IndexRequest, Handler<AsyncResult<Void>>> pair = queue.poll();
-            br.add(pair.getLeft());
-            handlers.add(pair.getRight());
-            ++count;
-          }
-          int finalCount = count;
-          log.info("Indexing " + count + " chunks");
-          long startIndexing = System.currentTimeMillis();
-          client.bulk(br, handlerToListener(ar -> {
-            if (ar.failed()) {
-              log.error("Could not index chunks", ar.cause());
-            } else {
-              BulkResponse bres = ar.result();
-              for (BulkItemResponse item : bres.getItems()) {
-                Handler<AsyncResult<Void>> itemHandler = handlers.get(item.getItemId());
-                if (item.isFailed()) {
-                  itemHandler.handle(Future.failedFuture(item.getFailureMessage()));
-                } else {
-                  itemHandler.handle(Future.succeededFuture());
-                }
-              }
-              if (bres.hasFailures()) {
-                log.error(bres.buildFailureMessage());
-              } else {
-                log.info("Finished indexing " + finalCount + " chunks in " +
-                    (System.currentTimeMillis() - startIndexing) + " ms");
-              }
-            }
-            insertInProgress = false;
-            done.run();
-          }));
+          msg.reply(null);
         }
-      });
+      }
+      if (bres.hasFailures()) {
+        log.error(bres.buildFailureMessage());
+      } else {
+        log.info("Finished indexing " + messages.size() + " chunks in " +
+            (System.currentTimeMillis() - startIndexing) + " ms");
+      }
+    }, err -> {
+      log.error("Could not perform bulk request", err);
+      messages.forEach(c -> c.fail(500, "Could not perform bulk request: " + err.getMessage()));
     });
   }
   
@@ -630,26 +622,11 @@ public class IndexerVerticle extends AbstractVerticle {
    * @return the {@link ActionListener}
    */
   private <T> ActionListener<T> handlerToListener(Handler<AsyncResult<T>> handler) {
-    return handlerToListener(handler, v -> v);
-  }
-  
-  /**
-   * Convenience method to convert a Vert.x {@link Handler} to an ElasticSearch
-   * {@link ActionListener}. Applies a given function to the {@link ActionListener}'s
-   * result before calling the handler
-   * @param <T> the type of the {@link ActionListener}'s result
-   * @param <R> the type of the {@link Handler}'s result
-   * @param handler the handler to convert
-   * @param f the function to apply to the {@link ActionListener}'s result
-   * before calling the handler
-   * @return the {@link ActionListener}
-   */
-  private <T, R> ActionListener<T> handlerToListener(Handler<AsyncResult<R>> handler, Function<T, R> f) {
     return new ActionListener<T>() {
       @Override
       public void onResponse(T response) {
         vertx.runOnContext(v -> {
-          handler.handle(Future.succeededFuture(f.apply(response)));
+          handler.handle(Future.succeededFuture(response));
         });
       }
 

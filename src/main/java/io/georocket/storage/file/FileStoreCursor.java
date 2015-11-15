@@ -86,13 +86,12 @@ public class FileStoreCursor implements StoreCursor {
    */
   public void start(Handler<AsyncResult<StoreCursor>> handler) {
     JsonObject queryMsg = new JsonObject()
-        .put("action", "query")
         .put("pageSize", pageSize)
         .put("search", search);
     if (path != null) {
       queryMsg.put("path", path);
     }
-    vertx.eventBus().<JsonObject>send(AddressConstants.INDEXER, queryMsg, ar -> {
+    vertx.eventBus().<JsonObject>send(AddressConstants.INDEXER_QUERY, queryMsg, ar -> {
       if (ar.failed()) {
         handler.handle(Future.failedFuture(ar.cause()));
       } else {
@@ -131,14 +130,13 @@ public class FileStoreCursor implements StoreCursor {
     ++pos;
     if (pos >= metas.length) {
       JsonObject queryMsg = new JsonObject()
-          .put("action", "query")
           .put("pageSize", pageSize)
           .put("search", search)
           .put("scrollId", scrollId);
       if (path != null) {
         queryMsg.put("path", path);
       }
-      vertx.eventBus().<JsonObject>send(AddressConstants.INDEXER, queryMsg, ar -> {
+      vertx.eventBus().<JsonObject>send(AddressConstants.INDEXER_QUERY, queryMsg, ar -> {
         if (ar.failed()) {
           handler.handle(Future.failedFuture(ar.cause()));
         } else {
