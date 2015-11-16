@@ -65,6 +65,7 @@ import io.vertx.rx.java.RxHelper;
 import io.vertx.rxjava.core.AbstractVerticle;
 import io.vertx.rxjava.core.eventbus.Message;
 import rx.Observable;
+import rx.Subscriber;
 
 /**
  * Background indexing of chunks added to the store
@@ -75,6 +76,7 @@ public class IndexerVerticle extends AbstractVerticle {
   
   private static final int MAX_ADD_REQUESTS = 1000;
   private static final long BUFFER_TIMESPAN = 5000;
+  private static final int MAX_INSERT_REQUESTS = 5;
   
   private static final String INDEX_NAME = "georocket";
   private static final String TYPE_NAME = "object";
@@ -148,9 +150,38 @@ public class IndexerVerticle extends AbstractVerticle {
     vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_ADD)
       .toObservable()
       .buffer(BUFFER_TIMESPAN, TimeUnit.MILLISECONDS, MAX_ADD_REQUESTS)
-      .subscribe(messages -> {
-        if (!messages.isEmpty()) {
-          onAdd(messages);
+      .onBackpressureBuffer() // unlimited buffer
+      .flatMap(messages -> ensureIndex().map(v -> messages))
+      .subscribe(new Subscriber<List<Message<JsonObject>>>() {
+        private void doRequest() {
+          request(MAX_INSERT_REQUESTS);
+        }
+        
+        @Override
+        public void onStart() {
+          doRequest();
+        }
+
+        @Override
+        public void onCompleted() {
+          // nothing to do here
+        }
+
+        @Override
+        public void onError(Throwable e) {
+          log.error("Could not add chunks to index", e);
+        }
+        
+        @Override
+        public void onNext(List<Message<JsonObject>> messages) {
+          onAdd(messages)
+            .subscribe(v -> {
+              // should never happen
+            }, err -> {
+              log.error("Could not index chunks", err);
+              messages.forEach(msg -> msg.fail(throwableToCode(err), err.getMessage()));
+              doRequest();
+            }, this::doRequest);
         }
       });
   }
@@ -191,10 +222,10 @@ public class IndexerVerticle extends AbstractVerticle {
    * Will be called when chunks should be added to the index
    * @param messages the list of add messages that contain the paths to
    * the chunks to be indexed
+   * @return an observable that completes when the operation has finished
    */
-  private void onAdd(List<Message<JsonObject>> messages) {
-    Observable.from(messages)
-      .flatMap(msg -> ensureIndex().map(v -> msg))
+  private Observable<Void> onAdd(List<Message<JsonObject>> messages) {
+    return Observable.from(messages)
       .flatMap(msg -> {
         // get path to chunk from message
         JsonObject body = msg.body();
@@ -244,13 +275,11 @@ public class IndexerVerticle extends AbstractVerticle {
         i.getRight().add(p.getRight());
         return i;
       })
-      .subscribe(p -> {
+      .flatMap(p -> {
         if (!p.getRight().isEmpty()) {
-          insertDocuments(p.getLeft(), p.getRight());
+          return insertDocuments(p.getLeft(), p.getRight());
         }
-      }, err -> {
-        log.error("Could not add chunks to index", err);
-        messages.forEach(msg -> msg.fail(throwableToCode(err), err.getMessage()));
+        return Observable.empty();
       });
   }
   
@@ -586,18 +615,21 @@ public class IndexerVerticle extends AbstractVerticle {
   }
   
   /**
-   * Inserts multiple Elasticsearch documents to the index.
+   * Inserts multiple Elasticsearch documents to the index. It performs a
+   * bulk request. This method replies to all messages if the bulk request
+   * was successful.
    * @param bulkRequest the {@link BulkRequest} containing the documents
    * @param messages a list of messages from which the index requests were
    * created; items are in the same order as the respective index requests in
    * the given bulk request
+   * @return an observable that completes when the operation has finished
    */
-  private void insertDocuments(BulkRequest bulkRequest, List<Message<JsonObject>> messages) {
+  private Observable<Void> insertDocuments(BulkRequest bulkRequest, List<Message<JsonObject>> messages) {
     log.info("Indexing " + messages.size() + " chunks");
     long startIndexing = System.currentTimeMillis();
     ObservableFuture<BulkResponse> observable = RxHelper.observableFuture();
     client.bulk(bulkRequest, handlerToListener(observable.toHandler()));
-    observable.subscribe(bres -> {
+    return observable.<Void>flatMap(bres -> {
       for (BulkItemResponse item : bres.getItems()) {
         Message<JsonObject> msg = messages.get(item.getItemId());
         if (item.isFailed()) {
@@ -612,10 +644,7 @@ public class IndexerVerticle extends AbstractVerticle {
         log.info("Finished indexing " + messages.size() + " chunks in " +
             (System.currentTimeMillis() - startIndexing) + " ms");
       }
-    }, err -> {
-      log.error("Could not perform bulk request", err);
-      messages.forEach(c -> c.fail(throwableToCode(err),
-          "Could not perform bulk request: " + err.getMessage()));
+      return Observable.empty();
     });
   }
   
