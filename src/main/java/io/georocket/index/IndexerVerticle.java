@@ -135,6 +135,12 @@ public class IndexerVerticle extends AbstractVerticle {
     registerQuery();
   }
   
+  @Override
+  public void stop() {
+    client.close();
+    node.close();
+  }
+  
   /**
    * Register consumer for add messages
    */
@@ -195,14 +201,14 @@ public class IndexerVerticle extends AbstractVerticle {
         String path = body.getString("path");
         if (path == null) {
           msg.fail(400, "Missing path to the chunk to index");
-          return Observable.error(new NoStackTraceThrowable("Missing path to the chunk to index"));
+          return Observable.empty();
         }
         
         // get chunk metadata
         JsonObject metaObj = body.getJsonObject("meta");
         if (metaObj == null) {
-          msg.fail(400, "Missing chunk metadata");
-          return Observable.error(new NoStackTraceThrowable("Missing chunk metadata"));
+          msg.fail(400, "Missing metadata for chunk " + path);
+          return Observable.empty();
         }
         ChunkMeta meta = ChunkMeta.fromJsonObject(metaObj);
         
@@ -227,8 +233,9 @@ public class IndexerVerticle extends AbstractVerticle {
               }
             })
             .map(doc -> Pair.of(documentToIndexRequest(path, doc), msg))
-            .doOnError(err -> {
+            .onErrorResumeNext(err -> {
               msg.fail(throwableToCode(err), err.getMessage());
+              return Observable.empty();
             });
       })
       // create bulk request
@@ -238,16 +245,13 @@ public class IndexerVerticle extends AbstractVerticle {
         return i;
       })
       .subscribe(p -> {
-        insertDocuments(p.getLeft(), p.getRight());
+        if (!p.getRight().isEmpty()) {
+          insertDocuments(p.getLeft(), p.getRight());
+        }
       }, err -> {
         log.error("Could not add chunks to index", err);
+        messages.forEach(msg -> msg.fail(throwableToCode(err), err.getMessage()));
       });
-  }
-  
-  @Override
-  public void stop() {
-    client.close();
-    node.close();
   }
   
   /**
@@ -610,7 +614,8 @@ public class IndexerVerticle extends AbstractVerticle {
       }
     }, err -> {
       log.error("Could not perform bulk request", err);
-      messages.forEach(c -> c.fail(500, "Could not perform bulk request: " + err.getMessage()));
+      messages.forEach(c -> c.fail(throwableToCode(err),
+          "Could not perform bulk request: " + err.getMessage()));
     });
   }
   

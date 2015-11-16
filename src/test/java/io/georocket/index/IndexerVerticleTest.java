@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.Before;
@@ -160,7 +161,7 @@ public class IndexerVerticleTest {
           .put("path", TESTFILE_NAME1);
       vertx.eventBus().send(AddressConstants.INDEXER_ADD, msg, context.asyncAssertFailure(t -> {
         context.assertEquals(400, ((ReplyException)t).failureCode());
-        context.assertEquals("Missing chunk metadata", t.getMessage());
+        context.assertEquals("Missing metadata for chunk " + TESTFILE_NAME1, t.getMessage());
         vertx.undeploy(ivid, context.asyncAssertSuccess(v -> {
           async.complete();
         }));
@@ -189,6 +190,92 @@ public class IndexerVerticleTest {
         vertx.undeploy(ivid, context.asyncAssertSuccess(v -> {
           async.complete();
         }));
+      }));
+    }));
+  }
+  
+  /**
+   * Test if all calls fail if their chunks cannot be found
+   * @param context the test context
+   */
+  @Test
+  public void addNoChunkAbortAll(TestContext context) {
+    Vertx vertx = rule.vertx();
+    Async async = context.async();
+    CountDownLatch latch = new CountDownLatch(2);
+    
+    // deploy indexer verticle
+    vertx.deployVerticle(IndexerVerticle.class.getName(), options,
+        context.asyncAssertSuccess(ivid -> {
+      JsonObject msg1 = new JsonObject()
+          .put("path", TESTFILE_NAME1)
+          .put("meta", TESTFILE_META1.toJsonObject());
+      JsonObject msg2 = new JsonObject()
+          .put("path", TESTFILE_NAME2)
+          .put("meta", TESTFILE_META2.toJsonObject());
+      
+      Handler<Throwable> handler = t -> {
+        context.assertEquals(404, ((ReplyException)t).failureCode());
+        context.assertTrue(t.getMessage().startsWith("Could not find chunk: "));
+        latch.countDown();
+        if (latch.getCount() <= 0) {
+          vertx.undeploy(ivid, context.asyncAssertSuccess(v -> {
+            async.complete();
+          }));
+        }
+      };
+      
+      vertx.eventBus().send(AddressConstants.INDEXER_ADD, msg1, context.asyncAssertFailure(handler));
+      vertx.eventBus().send(AddressConstants.INDEXER_ADD, msg2, context.asyncAssertFailure(handler));
+    }));
+  }
+  
+  /**
+   * Test if only the erroneous calls fail
+   * @param context the test context
+   */
+  @Test
+  public void addNoChunkAbortOne(TestContext context) {
+    Vertx vertx = rule.vertx();
+    Async async = context.async();
+    CountDownLatch latch = new CountDownLatch(3);
+    
+    // deploy indexer verticle
+    vertx.deployVerticle(IndexerVerticle.class.getName(), options,
+        context.asyncAssertSuccess(ivid -> {
+      writeTestFile1(context);
+      
+      JsonObject msg1 = new JsonObject()
+          .put("path", TESTFILE_NAME1)
+          .put("meta", TESTFILE_META1.toJsonObject());
+      JsonObject msg2 = new JsonObject()
+          .put("path", TESTFILE_NAME2)
+          .put("meta", TESTFILE_META2.toJsonObject());
+      JsonObject msg3 = new JsonObject();
+      
+      Runnable handler = () -> {
+        latch.countDown();
+        if (latch.getCount() <= 0) {
+          vertx.undeploy(ivid, context.asyncAssertSuccess(v -> {
+            async.complete();
+          }));
+        }
+      };
+      
+      vertx.eventBus().send(AddressConstants.INDEXER_ADD, msg1, context.asyncAssertSuccess(v -> {
+        handler.run();
+      }));
+      
+      vertx.eventBus().send(AddressConstants.INDEXER_ADD, msg2, context.asyncAssertFailure(t -> {
+        context.assertEquals(404, ((ReplyException)t).failureCode());
+        context.assertEquals("Could not find chunk: " + TESTFILE_NAME2, t.getMessage());
+        handler.run();
+      }));
+      
+      vertx.eventBus().send(AddressConstants.INDEXER_ADD, msg3, context.asyncAssertFailure(t -> {
+        context.assertEquals(400, ((ReplyException)t).failureCode());
+        context.assertEquals("Missing path to the chunk to index", t.getMessage());
+        handler.run();
       }));
     }));
   }
