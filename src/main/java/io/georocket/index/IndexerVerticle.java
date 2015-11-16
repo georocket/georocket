@@ -151,7 +151,6 @@ public class IndexerVerticle extends AbstractVerticle {
       .toObservable()
       .buffer(BUFFER_TIMESPAN, TimeUnit.MILLISECONDS, MAX_ADD_REQUESTS)
       .onBackpressureBuffer() // unlimited buffer
-      .flatMap(messages -> ensureIndex().map(v -> messages))
       .subscribe(new Subscriber<List<Message<JsonObject>>>() {
         private void doRequest() {
           request(MAX_INSERT_REQUESTS);
@@ -169,7 +168,10 @@ public class IndexerVerticle extends AbstractVerticle {
 
         @Override
         public void onError(Throwable e) {
-          log.error("Could not add chunks to index", e);
+          // this bad. it will unsubscribe the consumer from the eventbus!
+          // should never happen anyhow, if it does something else has
+          // completely gone wrong
+          log.fatal("Could not index chunks", e);
         }
         
         @Override
@@ -275,6 +277,7 @@ public class IndexerVerticle extends AbstractVerticle {
         i.getRight().add(p.getRight());
         return i;
       })
+      .flatMap(p -> ensureIndex().map(v -> p))
       .flatMap(p -> {
         if (!p.getRight().isEmpty()) {
           return insertDocuments(p.getLeft(), p.getRight());
