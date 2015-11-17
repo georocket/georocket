@@ -21,6 +21,7 @@ import io.georocket.commands.ImportCommand;
 import io.georocket.commands.SearchCommand;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonObject;
 
 /**
  * GeoRocket command-line interface
@@ -42,8 +43,19 @@ public class GeoRocketCli extends AbstractGeoRocketCommand {
   private Vertx getVertx() {
     if (vertx == null) {
       vertx = Vertx.vertx();
+      configure();
     }
     return vertx;
+  }
+  
+  /**
+   * Configure the tool
+   */
+  private void configure() {
+    // TODO load configuration from file and fall back to default values if necessary
+    JsonObject config = vertx.getOrCreateContext().config();
+    config.put(ConfigConstants.HOST, ConfigConstants.DEFAULT_HOST);
+    config.put(ConfigConstants.PORT, ConfigConstants.DEFAULT_PORT);
   }
   
   /**

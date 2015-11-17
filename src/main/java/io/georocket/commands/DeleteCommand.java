@@ -9,6 +9,7 @@ import de.undercouch.underline.Option.ArgumentType;
 import de.undercouch.underline.OptionDesc;
 import de.undercouch.underline.OptionParserException;
 import de.undercouch.underline.UnknownAttributes;
+import io.georocket.ConfigConstants;
 import io.vertx.core.Handler;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientRequest;
@@ -69,7 +70,9 @@ public class DeleteCommand extends AbstractQueryCommand {
       Handler<Integer> handler) throws OptionParserException, IOException {
     String queryPath = prepareQuery(query, layer);
     HttpClient client = vertx.createHttpClient();
-    HttpClientRequest request = client.delete(63074, "localhost", "/store" + queryPath);
+    String host = config().getString(ConfigConstants.HOST);
+    int port = config().getInteger(ConfigConstants.PORT);
+    HttpClientRequest request = client.delete(port, host, "/store" + queryPath);
     request.exceptionHandler(t -> {
       error(t.getMessage());
       log.error("Could not delete from store", t);

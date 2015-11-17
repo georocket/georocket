@@ -15,6 +15,7 @@ import de.undercouch.underline.OptionParser;
 import de.undercouch.underline.OptionParserException;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonObject;
 
 /**
  * Abstract base class for all GeoRocket commands
@@ -32,6 +33,13 @@ public abstract class AbstractGeoRocketCommand implements GeoRocketCommand {
    */
   public void setVertx(Vertx vertx) {
     this.vertx = vertx;
+  }
+  
+  /**
+   * @return the configuration object
+   */
+  protected JsonObject config() {
+    return vertx.getOrCreateContext().config();
   }
   
   /**

@@ -22,6 +22,7 @@ import de.undercouch.underline.Option.ArgumentType;
 import de.undercouch.underline.OptionDesc;
 import de.undercouch.underline.OptionParserException;
 import de.undercouch.underline.UnknownAttributes;
+import io.georocket.ConfigConstants;
 import io.georocket.util.DurationFormat;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -268,7 +269,9 @@ public class ImportCommand extends AbstractGeoRocketCommand {
       path += "?tags=" + String.join(",", tags);
     }
     
-    HttpClientRequest request = client.post(63074, "localhost", path);
+    String host = config().getString(ConfigConstants.HOST);
+    int port = config().getInteger(ConfigConstants.PORT);
+    HttpClientRequest request = client.post(port, host, path);
     
     request.putHeader("Content-Length", String.valueOf(fileSize));
     

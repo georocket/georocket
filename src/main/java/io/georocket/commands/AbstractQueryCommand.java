@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 
 import com.google.common.base.Splitter;
 
+import io.georocket.ConfigConstants;
 import io.vertx.core.Handler;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientRequest;
@@ -47,7 +48,9 @@ public abstract class AbstractQueryCommand extends AbstractGeoRocketCommand {
       Handler<Integer> handler) throws IOException {
     String queryPath = prepareQuery(query, layer);
     HttpClient client = vertx.createHttpClient();
-    HttpClientRequest request = client.get(63074, "localhost", "/store" + queryPath);
+    String host = config().getString(ConfigConstants.HOST);
+    int port = config().getInteger(ConfigConstants.PORT);
+    HttpClientRequest request = client.get(port, host, "/store" + queryPath);
     request.exceptionHandler(t -> {
       error(t.getMessage());
       log.error("Could not query store", t);
