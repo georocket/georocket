@@ -18,10 +18,10 @@ import org.apache.commons.lang3.tuple.Pair;
 import com.google.common.base.Splitter;
 
 import de.undercouch.underline.InputReader;
+import de.undercouch.underline.Option.ArgumentType;
 import de.undercouch.underline.OptionDesc;
 import de.undercouch.underline.OptionParserException;
 import de.undercouch.underline.UnknownAttributes;
-import de.undercouch.underline.Option.ArgumentType;
 import io.georocket.util.DurationFormat;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -45,6 +45,7 @@ import rx.Observable;
 public class ImportCommand extends AbstractGeoRocketCommand {
   private List<String> patterns;
   private List<String> tags;
+  private String layer;
   
   /**
    * Set the patterns of the files to import
@@ -68,6 +69,17 @@ public class ImportCommand extends AbstractGeoRocketCommand {
     } else {
       this.tags = Splitter.on(',').trimResults().splitToList(tags);
     }
+  }
+  
+  /**
+   * Set the absolute path to the layer to search
+   * @param layer the layer
+   */
+  @OptionDesc(longName = "layer", shortName = "l",
+      description = "absolute path to the destination layer",
+      argumentName = "PATH", argumentType = ArgumentType.STRING)
+  public void setLayer(String layer) {
+    this.layer = layer;
   }
   
   @Override
@@ -241,6 +253,17 @@ public class ImportCommand extends AbstractGeoRocketCommand {
     Handler<AsyncResult<Void>> handler = o.toHandler();
     
     String path = "/store";
+    
+    if (layer != null && !layer.isEmpty()) {
+      if (!layer.endsWith("/")) {
+        layer += "/";
+      }
+      if (!layer.startsWith("/")) {
+        layer = "/" + layer;
+      }
+      path += layer;
+    }
+    
     if (tags != null && !tags.isEmpty()) {
       path += "?tags=" + String.join(",", tags);
     }
