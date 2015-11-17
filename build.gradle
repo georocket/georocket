@@ -34,8 +34,10 @@ dependencies {
     compile 'net.time4j:time4j-core:4.7'
     compile 'org.apache.commons:commons-lang3:3.4'
 
+    testCompile 'com.github.tomakehurst:wiremock:1.57'
     testCompile "io.vertx:vertx-unit:$vertxVersion"
     testCompile 'junit:junit:4.12'
+    testCompile 'org.slf4j:slf4j-jcl:1.7.9'
 }
 
 tasks.eclipse.doLast {
