@@ -105,6 +105,28 @@ public class DeleteCommandTest extends CommandTestBase<DeleteCommand> {
   }
   
   /**
+   * Test to delete the root layer
+   * @param context the test context
+   * @throws Exception if something goes wrong
+   */
+  @Test
+  public void rootLayer(TestContext context) throws Exception {
+    String url = "/store/";
+    stubFor(delete(urlEqualTo(url))
+        .willReturn(aResponse()
+            .withStatus(204)));
+    
+    Async async = context.async();
+    cmd.setEndHandler(exitCode -> {
+      context.assertEquals(0, exitCode);
+      verifyDeleted(url, context);
+      async.complete();
+    });
+    
+    cmd.run(new String[] { "-l", "/" }, in, out);
+  }
+  
+  /**
    * Test a delete with a layer but no query
    * @param context the test context
    * @throws Exception if something goes wrong
