@@ -1,6 +1,7 @@
 package io.georocket;
 
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -106,7 +107,8 @@ public class GeoRocketCli extends AbstractGeoRocketCommand {
   public static void main(String[] args) throws IOException {
     GeoRocketCli cli = new GeoRocketCli();
     try {
-      PrintWriter out = new PrintWriter(System.out);
+      PrintWriter out = new PrintWriter(new OutputStreamWriter(
+          System.out, StandardCharsets.UTF_8));
       cli.setEndHandler(exitCode -> {
         out.flush();
         System.exit(exitCode);

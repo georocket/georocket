@@ -64,7 +64,7 @@ public abstract class AbstractQueryCommand extends AbstractGeoRocketCommand {
         handler.handle(1);
       } else {
         response.handler(buf -> {
-          out.write(buf.toString());
+          out.write(buf.toString("utf-8"));
         });
         response.endHandler(v -> {
           client.close();
