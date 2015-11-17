@@ -25,6 +25,7 @@ public abstract class AbstractGeoRocketCommand implements GeoRocketCommand {
   private OptionGroup<ID> options;
   private boolean displayHelp;
   protected Vertx vertx;
+  private JsonObject config;
   private Handler<Integer> endHandler;
   
   /**
@@ -39,7 +40,15 @@ public abstract class AbstractGeoRocketCommand implements GeoRocketCommand {
    * @return the configuration object
    */
   protected JsonObject config() {
-    return vertx.getOrCreateContext().config();
+    return config;
+  }
+  
+  /**
+   * Set the configuration object
+   * @param config the configuration object
+   */
+  public void setConfig(JsonObject config) {
+    this.config = config;
   }
   
   /**

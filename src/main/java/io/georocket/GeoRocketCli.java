@@ -43,19 +43,21 @@ public class GeoRocketCli extends AbstractGeoRocketCommand {
   private Vertx getVertx() {
     if (vertx == null) {
       vertx = Vertx.vertx();
-      configure();
     }
     return vertx;
   }
   
-  /**
-   * Configure the tool
-   */
-  private void configure() {
+  @Override
+  protected JsonObject config() {
     // TODO load configuration from file and fall back to default values if necessary
-    JsonObject config = vertx.getOrCreateContext().config();
-    config.put(ConfigConstants.HOST, ConfigConstants.DEFAULT_HOST);
-    config.put(ConfigConstants.PORT, ConfigConstants.DEFAULT_PORT);
+    JsonObject config = super.config();
+    if (config == null || config.isEmpty()) {
+      config = new JsonObject()
+        .put(ConfigConstants.HOST, ConfigConstants.DEFAULT_HOST)
+        .put(ConfigConstants.PORT, ConfigConstants.DEFAULT_PORT);
+      setConfig(config);
+    }
+    return config;
   }
   
   /**
@@ -93,6 +95,7 @@ public class GeoRocketCli extends AbstractGeoRocketCommand {
   public void setCommand(AbstractGeoRocketCommand command) {
     this.command = command;
     this.command.setVertx(getVertx());
+    this.command.setConfig(config());
   }
   
   /**
