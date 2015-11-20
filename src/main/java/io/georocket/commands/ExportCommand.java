@@ -22,12 +22,14 @@ public class ExportCommand extends AbstractQueryCommand {
    */
   @UnknownAttributes("LAYER")
   public void setLayer(List<String> layer) {
-    this.layer = String.join(" ", layer);
-    if (!this.layer.endsWith("/")) {
-      this.layer += "/";
-    }
-    if (!this.layer.startsWith("/")) {
-      this.layer = "/" + this.layer;
+    this.layer = String.join(" ", layer).trim();
+    if (!this.layer.isEmpty()) {
+      if (!this.layer.endsWith("/")) {
+        this.layer += "/";
+      }
+      if (!this.layer.startsWith("/")) {
+        this.layer = "/" + this.layer;
+      }
     }
   }
   

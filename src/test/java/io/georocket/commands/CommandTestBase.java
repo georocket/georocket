@@ -57,9 +57,10 @@ public abstract class CommandTestBase<T extends AbstractGeoRocketCommand> {
   
   /**
    * Set up test
+   * @throws Exception if something goes wrong
    */
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
     cmd = createCommand();
     JsonObject config = new JsonObject()
         .put(ConfigConstants.HOST, "localhost")
