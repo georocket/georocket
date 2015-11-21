@@ -147,9 +147,13 @@ public class GeoRocket extends AbstractVerticle {
               handler.handle(Future.failedFuture(openar.cause()));
             } else {
               ChunkReadStream crs = openar.result();
-              Handler<Void> mergeHandler = v -> {
-                crs.close();
-                callback.run();
+              Handler<AsyncResult<Void>> mergeHandler = mergeAr -> {
+                if (mergeAr.failed()) {
+                  handler.handle(mergeAr);
+                } else {
+                  crs.close();
+                  callback.run();
+                }
               };
               try {
                 merger.merge(crs, meta, out, mergeHandler);

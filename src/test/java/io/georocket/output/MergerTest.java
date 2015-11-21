@@ -10,12 +10,14 @@ import io.georocket.BufferReadStream;
 import io.georocket.BufferWriteStream;
 import io.georocket.SimpleChunkReadStream;
 import io.georocket.storage.ChunkMeta;
+import io.georocket.storage.ChunkReadStream;
 import io.georocket.util.XMLStartElement;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import rx.Observable;
 
 /**
  * Test {@link Merger}
@@ -30,6 +32,10 @@ public class MergerTest {
    */
   @Rule
   public RunTestOnContext rule = new RunTestOnContext();
+  
+  private ChunkReadStream createChunkReadStream(Buffer chunk) {
+    return new SimpleChunkReadStream(chunk.length(), new BufferReadStream(chunk));
+  }
   
   /**
    * Test if simple chunks can be merged
@@ -48,13 +54,17 @@ public class MergerTest {
     m.init(cm);
     
     Async async = context.async();
-    m.merge(new SimpleChunkReadStream(chunk1.length(), new BufferReadStream(chunk1)), cm, bws, v1 -> {
-      m.merge(new SimpleChunkReadStream(chunk2.length(), new BufferReadStream(chunk2)), cm, bws, v2 -> {
+    Observable.just(chunk1, chunk2)
+      .map(this::createChunkReadStream)
+      .flatMap(c -> m.mergeObservable(c, cm, bws))
+      .last()
+      .subscribe(v -> {
         m.finishMerge(bws);
         context.assertEquals(XMLHEADER + "<root><test chunk=\"1\"></test><test chunk=\"2\"></test></root>",
             bws.getBuffer().toString());
         async.complete();
+      }, err -> {
+        context.fail(err);
       });
-    });
   }
 }

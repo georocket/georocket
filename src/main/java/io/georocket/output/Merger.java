@@ -5,9 +5,14 @@ import java.util.List;
 import io.georocket.storage.ChunkMeta;
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.util.XMLStartElement;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.streams.WriteStream;
+import io.vertx.rx.java.ObservableFuture;
+import io.vertx.rx.java.RxHelper;
+import rx.Observable;
 
 /**
  * Merges XML chunks using various strategies to create a valid XML document
@@ -62,18 +67,18 @@ public class Merger {
    * Merge a chunk using the current merge strategy. The given chunk should
    * have been passed to {@link #init(ChunkMeta)} first. If it hasn't the method
    * may or may not accept it. If the chunk cannot be merged with the current
-   * strategy, the method will throw an {@link IllegalArgumentException}
+   * strategy, the method will call the given handler with a failed result.
    * @param chunk the chunk to merge
    * @param meta the chunk's metadata
    * @param out the stream to write the merged result to
    * @param handler will be called when the chunk has been merged
-   * @throws IllegalArgumentException if the chunk cannot be merged
-   * @throws IllegalStateException if {@link #init(ChunkMeta)} has never been called before
    */
   public void merge(ChunkReadStream chunk, ChunkMeta meta, WriteStream<Buffer> out,
-      Handler<Void> handler) throws IllegalArgumentException {
+      Handler<AsyncResult<Void>> handler) {
     if (firstParents == null) {
-      throw new IllegalStateException("You must call init() at least once");
+      handler.handle(Future.failedFuture(new IllegalStateException(
+          "You must call init() at least once")));
+      return;
     }
     switch (strategy) {
     case ALL_SAME:
@@ -83,17 +88,35 @@ public class Merger {
   }
   
   /**
+   * Merge a chunk using the current merge strategy. The given chunk should
+   * have been passed to {@link #init(ChunkMeta)} first. If it hasn't the method
+   * may or may not accept it. If the chunk cannot be merged with the current
+   * strategy, the returned observable will fail.
+   * @param chunk the chunk to merge
+   * @param meta the chunk's metadata
+   * @param out the stream to write the merged result to
+   * @return an observable that completes once the chunk has been merged
+   */
+  public Observable<Void> mergeObservable(ChunkReadStream chunk, ChunkMeta meta,
+      WriteStream<Buffer> out) {
+    ObservableFuture<Void> o = RxHelper.observableFuture();
+    merge(chunk, meta, out, o.toHandler());
+    return o;
+  }
+  
+  /**
    * Merge a chunk using the {@link Strategy#ALL_SAME} strategy
    * @param chunk the chunk to merge
    * @param meta the chunk's metadata
    * @param out the stream to write the merged result to
    * @param handler will be called when the chunk has been merged
-   * @throws IllegalArgumentException if the chunk cannot be merged
    */
   private void mergeSame(ChunkReadStream chunk, ChunkMeta meta, WriteStream<Buffer> out,
-      Handler<Void> handler) throws IllegalArgumentException {
+      Handler<AsyncResult<Void>> handler) {
     if (!firstParents.equals(meta.getParents())) {
-      throw new IllegalArgumentException("Chunk cannot be merged with this strategy");
+      handler.handle(Future.failedFuture(new IllegalArgumentException(
+          "Chunk cannot be merged with this strategy")));
+      return;
     }
     
     if (!headerWritten) {
@@ -116,7 +139,12 @@ public class Merger {
       end[0] -= buf.length();
     });
     
-    chunk.endHandler(handler);
+    chunk.exceptionHandler(err -> {
+      chunk.endHandler(null);
+      handler.handle(Future.failedFuture(err));
+    });
+    
+    chunk.endHandler(v -> handler.handle(Future.succeededFuture()));
   }
   
   /**
