@@ -10,7 +10,7 @@ public final class ConfigConstants {
   public static final String PORT = "georocket.port";
   
   public static final String DEFAULT_HOST = "localhost";
-  public static final int DEFAULT_PORT = 63074;
+  public static final int DEFAULT_PORT = 63020;
   
   private ConfigConstants() {
     // hidden constructor
