@@ -23,6 +23,14 @@ public class SimpleChunkReadStream extends DelegateReadStream<Buffer> implements
     this.size = size;
   }
   
+  /**
+   * Create a new read stream from a chunk
+   * @param chunk the chunk
+   */
+  public SimpleChunkReadStream(Buffer chunk) {
+    this(chunk.length(), new BufferReadStream(chunk));
+  }
+  
   @Override
   public long getSize() {
     return size;

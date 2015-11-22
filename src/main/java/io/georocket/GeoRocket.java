@@ -116,8 +116,13 @@ public class GeoRocket extends AbstractVerticle {
         handler.handle(Future.failedFuture(getar.cause()));
       } else {
         iterateCursor(getar.result(), (meta, callback) -> {
-          merger.init(meta);
-          callback.run();
+          merger.init(meta, initar -> {
+            if (initar.failed()) {
+              handler.handle(Future.failedFuture(initar.cause()));
+            } else {
+              callback.run();
+            }
+          });
         }, handler);
       }
     });
