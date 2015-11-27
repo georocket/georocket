@@ -1,3 +1,31 @@
+subprojects {
+    apply plugin: 'eclipse'
+    
+    tasks.eclipse.doLast {
+        File prefsFile = file("${project.projectDir}/.settings/org.eclipse.jdt.core.prefs")
+        def text = prefsFile.text
+        prefsFile.withWriter { w ->
+            w << text
+                .replaceAll('org.eclipse.jdt.core.formatter.indentation.size=[0-9]+',
+                    'org.eclipse.jdt.core.formatter.indentation.size=2')
+                .replaceAll('org.eclipse.jdt.core.formatter.tabulation.char=[a-z]+',
+                    'org.eclipse.jdt.core.formatter.tabulation.char=space')
+                .replaceAll('org.eclipse.jdt.core.formatter.tabulation.size=[0-9]+',
+                    'org.eclipse.jdt.core.formatter.tabulation.size=2')
+        }
+        text = prefsFile.text
+        if (!text.contains('org.eclipse.jdt.core.formatter.indentation.size')) {
+            prefsFile.append('org.eclipse.jdt.core.formatter.indentation.size=2\n')
+        }
+        if (!text.contains('org.eclipse.jdt.core.formatter.tabulation.char')) {
+            prefsFile.append('org.eclipse.jdt.core.formatter.tabulation.char=space\n')
+        }
+        if (!text.contains('org.eclipse.jdt.core.formatter.tabulation.size')) {
+            prefsFile.append('org.eclipse.jdt.core.formatter.tabulation.size=2\n')
+        }
+    }
+}
+
 task wrapper(type: Wrapper) {
     gradleVersion = '2.9'
 }

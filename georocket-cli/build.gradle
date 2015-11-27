@@ -1,9 +1,8 @@
 apply plugin: 'java'
-apply plugin: 'eclipse'
 apply plugin: 'application'
 
 version = '1.0.0-SNAPSHOT'
-group = 'de.fhg.igd'
+group = 'io.georocket'
 sourceCompatibility = '1.8'
 targetCompatibility = '1.8'
 mainClassName = 'io.georocket.GeoRocketCli'
@@ -38,30 +37,6 @@ dependencies {
     testCompile "io.vertx:vertx-unit:$vertxVersion"
     testCompile 'junit:junit:4.12'
     testCompile 'org.slf4j:slf4j-jcl:1.7.9'
-}
-
-tasks.eclipse.doLast {
-    File prefsFile = file("${project.projectDir}/.settings/org.eclipse.jdt.core.prefs")
-    def text = prefsFile.text
-    prefsFile.withWriter { w ->
-        w << text
-            .replaceAll('org.eclipse.jdt.core.formatter.indentation.size=[0-9]+',
-                'org.eclipse.jdt.core.formatter.indentation.size=2')
-            .replaceAll('org.eclipse.jdt.core.formatter.tabulation.char=[a-z]+',
-                'org.eclipse.jdt.core.formatter.tabulation.char=space')
-            .replaceAll('org.eclipse.jdt.core.formatter.tabulation.size=[0-9]+',
-                'org.eclipse.jdt.core.formatter.tabulation.size=2')
-    }
-    text = prefsFile.text
-    if (!text.contains('org.eclipse.jdt.core.formatter.indentation.size')) {
-        prefsFile.append('org.eclipse.jdt.core.formatter.indentation.size=2\n')
-    }
-    if (!text.contains('org.eclipse.jdt.core.formatter.tabulation.char')) {
-        prefsFile.append('org.eclipse.jdt.core.formatter.tabulation.char=space\n')
-    }
-    if (!text.contains('org.eclipse.jdt.core.formatter.tabulation.size')) {
-        prefsFile.append('org.eclipse.jdt.core.formatter.tabulation.size=2\n')
-    }
 }
 
 task generateVersionFile << {
