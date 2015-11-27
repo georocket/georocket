@@ -1,2 +1,6 @@
 build:
   script: "scripts/test.sh"
+cache:
+  paths:
+  - /root/.gradle
+  - /root/.m2
