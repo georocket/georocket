@@ -1,6 +1,5 @@
 build:
-  script: "scripts/test.sh"
+  script: "mkdir -p gradle_cache && GRADLE_USER_HOME=gradle_cache scripts/test.sh"
 cache:
   paths:
-  - /root/.gradle
-  - /root/.m2
+  - gradle_cache
