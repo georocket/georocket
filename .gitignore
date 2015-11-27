@@ -1,0 +1,10 @@
+.classpath
+.externalToolBuilders/
+.gradle/
+.project
+.settings/
+.vertx/
+bin/
+build/
+src-gen/
+gradle.properties
