@@ -39,6 +39,11 @@ public class BufferWriteStream implements WriteStream<Buffer> {
     return this;
   }
   
+  @Override
+  public void end() {
+    // nothing to do here
+  }
+  
   /**
    * @return the buffer
    */

@@ -20,7 +20,7 @@ repositories {
 }
 
 ext {
-    vertxVersion = '3.1.0'
+    vertxVersion = '3.2.0'
 }
 
 dependencies {
