@@ -24,7 +24,7 @@ import io.georocket.storage.ChunkMeta;
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.Store;
 import io.georocket.storage.StoreCursor;
-import io.georocket.storage.file.FileStore;
+import io.georocket.storage.StoreFactory;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.DeploymentOptions;
@@ -365,9 +365,9 @@ public class GeoRocket extends AbstractVerticle {
   public void start(Future<Void> startFuture) {
     log.info("Launching GeoRocket ...");
     
-    store = new FileStore(vertx);
+    store = StoreFactory.createStore(vertx);
     storagePath = vertx.getOrCreateContext().config().getString(
-        ConfigConstants.STORAGE_PATH);
+        ConfigConstants.STORAGE_FILE_PATH);
     
     deployVerticle(IndexerVerticle.class)
       .flatMap(v -> deployVerticle(ImporterVerticle.class))
@@ -435,8 +435,8 @@ public class GeoRocket extends AbstractVerticle {
    */
   private static void setDefaultConf(JsonObject conf) {
     conf.put(ConfigConstants.HOME, "$GEOROCKET_HOME");
-    if (!conf.containsKey(ConfigConstants.STORAGE_PATH)) {
-      conf.put(ConfigConstants.STORAGE_PATH, "$GEOROCKET_HOME/storage");
+    if (!conf.containsKey(ConfigConstants.STORAGE_FILE_PATH)) {
+      conf.put(ConfigConstants.STORAGE_FILE_PATH, "$GEOROCKET_HOME/storage");
     }
   }
   

@@ -43,7 +43,7 @@ public class FileStore extends IndexedStore {
   public FileStore(Vertx vertx) {
     super(vertx);
     String storagePath = vertx.getOrCreateContext().config().getString(
-        ConfigConstants.STORAGE_PATH);
+        ConfigConstants.STORAGE_FILE_PATH);
     this.root = storagePath + "/file";
     this.vertx = vertx;
   }

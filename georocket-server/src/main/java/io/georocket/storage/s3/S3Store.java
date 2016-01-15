@@ -13,12 +13,14 @@ import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.S3Object;
 import com.amazonaws.util.StringInputStream;
 
+import io.georocket.constants.ConfigConstants;
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.indexed.IndexedStore;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonObject;
 
 /**
  * Stores chunks on Amazon S3
@@ -52,8 +54,8 @@ public class S3Store extends IndexedStore {
     if (s3Client == null) {
       BasicAWSCredentials credentials = new BasicAWSCredentials(accessKey, secretKey);
       s3Client = new AmazonS3Client(credentials);
-      s3Client.setEndpoint("http://localhost:4567");
-      s3Client.setS3ClientOptions(new S3ClientOptions().withPathStyleAccess(true));
+      s3Client.setEndpoint(endpoint);
+      s3Client.setS3ClientOptions(new S3ClientOptions().withPathStyleAccess(pathStyleAccess));
     }
   }
 
@@ -72,7 +74,7 @@ public class S3Store extends IndexedStore {
       try {
         ObjectMetadata om = new ObjectMetadata();
         om.setContentLength(chunk.length());
-        s3Client.putObject("georocket", filename, new StringInputStream(chunk), om);
+        s3Client.putObject(bucket, filename, new StringInputStream(chunk), om);
       } catch (UnsupportedEncodingException e) {
         f.fail(e);
         return;
@@ -85,7 +87,7 @@ public class S3Store extends IndexedStore {
   public void getOne(String path, Handler<AsyncResult<ChunkReadStream>> handler) {
     vertx.<S3Object>executeBlocking(f -> {
       ensureS3Client();
-      S3Object r = s3Client.getObject("georocket", path);
+      S3Object r = s3Client.getObject(bucket, path);
       f.complete(r);
     }, ar -> {
       if (ar.failed()) {

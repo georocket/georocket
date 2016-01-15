@@ -57,7 +57,7 @@ public class GeoRocketTest {
     // set GeoRocket home to temporary folder
     JsonObject config = new JsonObject();
     File storagePath = new File(folder.getRoot(), "storage");
-    config.put(ConfigConstants.STORAGE_PATH, storagePath.getAbsolutePath());
+    config.put(ConfigConstants.STORAGE_FILE_PATH, storagePath.getAbsolutePath());
     DeploymentOptions options = new DeploymentOptions();
     options.setConfig(config);
     

@@ -48,13 +48,14 @@ import io.georocket.constants.ConfigConstants;
 import io.georocket.storage.ChunkMeta;
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.Store;
-import io.georocket.storage.file.FileStore;
+import io.georocket.storage.StoreFactory;
 import io.georocket.util.AsyncXMLParser;
 import io.georocket.util.QuotedStringSplitter;
 import io.georocket.util.XMLStartElement;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
 import io.vertx.core.impl.NoStackTraceThrowable;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -112,7 +113,7 @@ public class IndexerVerticle extends AbstractVerticle {
     log.info("Launching indexer ...");
     
     String home = vertx.getOrCreateContext().config().getString(
-        ConfigConstants.STORAGE_PATH);
+        ConfigConstants.STORAGE_FILE_PATH);
     String root = home + "/index";
     
     // start embedded ElasticSearch instance
@@ -130,7 +131,7 @@ public class IndexerVerticle extends AbstractVerticle {
         .node();
     
     client = node.client();
-    store = new FileStore((io.vertx.core.Vertx)vertx.getDelegate());
+    store = StoreFactory.createStore((Vertx)vertx.getDelegate());
     
     registerAdd();
     registerDelete();

@@ -86,7 +86,7 @@ public class IndexerVerticleTest {
   public void setUp() {
     storagePath = new File(folder.getRoot(), "storage");
     JsonObject config = new JsonObject()
-        .put(ConfigConstants.STORAGE_PATH, storagePath.getAbsolutePath());
+        .put(ConfigConstants.STORAGE_FILE_PATH, storagePath.getAbsolutePath());
     options = new DeploymentOptions().setConfig(config);
   }
   
