@@ -1,6 +1,7 @@
 package io.georocket.storage.file;
 
 import java.io.FileNotFoundException;
+import java.nio.file.Paths;
 import java.util.Queue;
 
 import org.bson.types.ObjectId;
@@ -8,6 +9,7 @@ import org.bson.types.ObjectId;
 import io.georocket.constants.ConfigConstants;
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.indexed.IndexedStore;
+import io.georocket.util.PathUtils;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -44,7 +46,7 @@ public class FileStore extends IndexedStore {
     super(vertx);
     String storagePath = vertx.getOrCreateContext().config().getString(
         ConfigConstants.STORAGE_FILE_PATH);
-    this.root = storagePath + "/file";
+    this.root = Paths.get(storagePath, "file").toString();
     this.vertx = vertx;
   }
   
@@ -53,7 +55,7 @@ public class FileStore extends IndexedStore {
     if (path == null || path.isEmpty()) {
       path = "/";
     }
-    String dir = root + path;
+    String dir = Paths.get(root, path).toString();
     String finalPath = path;
     
     // create storage folder
@@ -69,7 +71,7 @@ public class FileStore extends IndexedStore {
       
       // open new file
       FileSystem fs = vertx.fileSystem();
-      fs.open(dir + "/" + filename, new OpenOptions(), openar -> {
+      fs.open(Paths.get(dir, filename).toString(), new OpenOptions(), openar -> {
         if (openar.failed()) {
           handler.handle(Future.failedFuture(openar.cause()));
           return;
@@ -83,7 +85,8 @@ public class FileStore extends IndexedStore {
           if (writear.failed()) {
             handler.handle(Future.failedFuture(writear.cause()));
           } else {
-            handler.handle(Future.succeededFuture(finalPath + "/" + filename));
+            String result = PathUtils.join(finalPath, filename);
+            handler.handle(Future.succeededFuture(result));
           }
         });
       });
@@ -92,7 +95,7 @@ public class FileStore extends IndexedStore {
   
   @Override
   public void getOne(String path, Handler<AsyncResult<ChunkReadStream>> handler) {
-    String absolutePath = root + "/" + path;
+    String absolutePath = Paths.get(root, path).toString();
     
     // check if chunk exists
     FileSystem fs = vertx.fileSystem();
@@ -136,7 +139,7 @@ public class FileStore extends IndexedStore {
     
     String path = paths.poll();
     FileSystem fs = vertx.fileSystem();
-    String absolutePath = root + "/" + path;
+    String absolutePath = Paths.get(root, path).toString();
     fs.delete(absolutePath, deleteAr -> {
       if (deleteAr.failed()) {
         handler.handle(Future.failedFuture(deleteAr.cause()));

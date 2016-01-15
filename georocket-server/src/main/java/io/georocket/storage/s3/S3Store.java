@@ -1,7 +1,7 @@
 package io.georocket.storage.s3;
 
+import java.io.IOException;
 import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
 import java.util.Queue;
 
 import org.bson.types.ObjectId;
@@ -16,6 +16,7 @@ import com.amazonaws.util.StringInputStream;
 import io.georocket.constants.ConfigConstants;
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.indexed.IndexedStore;
+import io.georocket.util.PathUtils;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -67,15 +68,15 @@ public class S3Store extends IndexedStore {
     
     // generate new file name
     String id = new ObjectId().toString();
-    String filename = path + "/" + id;
+    String filename = PathUtils.join(path, id);
     
     vertx.executeBlocking(f -> {
       ensureS3Client();
-      try {
-        ObjectMetadata om = new ObjectMetadata();
-        om.setContentLength(chunk.length());
-        s3Client.putObject(bucket, filename, new StringInputStream(chunk), om);
-      } catch (UnsupportedEncodingException e) {
+      ObjectMetadata om = new ObjectMetadata();
+      om.setContentLength(chunk.length());
+      try (InputStream is = new StringInputStream(chunk)) {
+        s3Client.putObject(bucket, PathUtils.removeLeadingSlash(filename), is, om);
+      } catch (IOException e) {
         f.fail(e);
         return;
       }
@@ -87,7 +88,7 @@ public class S3Store extends IndexedStore {
   public void getOne(String path, Handler<AsyncResult<ChunkReadStream>> handler) {
     vertx.<S3Object>executeBlocking(f -> {
       ensureS3Client();
-      S3Object r = s3Client.getObject(bucket, path);
+      S3Object r = s3Client.getObject(bucket, PathUtils.normalize(path));
       f.complete(r);
     }, ar -> {
       if (ar.failed()) {
@@ -108,7 +109,7 @@ public class S3Store extends IndexedStore {
       return;
     }
     
-    String path = paths.poll();
+    String path = PathUtils.removeLeadingSlash(PathUtils.normalize(paths.poll()));
     vertx.executeBlocking(f -> {
       ensureS3Client();
       s3Client.deleteObject(bucket, path);
