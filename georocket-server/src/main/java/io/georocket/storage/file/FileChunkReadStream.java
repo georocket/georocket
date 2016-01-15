@@ -2,6 +2,8 @@ package io.georocket.storage.file;
 
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.util.DelegateReadStream;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.file.AsyncFile;
 
@@ -32,7 +34,7 @@ public class FileChunkReadStream extends DelegateReadStream<Buffer> implements C
   }
 
   @Override
-  public void close() {
-    file.close();
+  public void close(Handler<AsyncResult<Void>> handler) {
+    file.close(handler);
   }
 }

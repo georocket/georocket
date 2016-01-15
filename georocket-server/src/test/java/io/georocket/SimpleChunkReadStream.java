@@ -2,6 +2,9 @@ package io.georocket;
 
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.util.DelegateReadStream;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.streams.ReadStream;
 
@@ -37,7 +40,9 @@ public class SimpleChunkReadStream extends DelegateReadStream<Buffer> implements
   }
 
   @Override
-  public void close() {
-    // nothing to do
+  public void close(Handler<AsyncResult<Void>> handler) {
+    if (handler != null) {
+      handler.handle(Future.succeededFuture());
+    }
   }
 }
