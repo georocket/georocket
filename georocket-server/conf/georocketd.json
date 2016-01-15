@@ -1,4 +1,10 @@
 {
   "georocket.port": 63020,
-  "georocket.storage.path": "$GEOROCKET_HOME/storage"
+  "georocket.storage.class": "io.georocket.storage.file.FileStore",
+  "georocket.storage.file.path": "$GEOROCKET_HOME/storage",
+  "georocket.storage.s3.accessKey": "foo",
+  "georocket.storage.s3.secretKey": "bar",
+  "georocket.storage.s3.endpoint": "http://localhost:4567",
+  "georocket.storage.s3.bucket": "georocket",
+  "georocket.storage.s3.pathStyleAccess": true
 }

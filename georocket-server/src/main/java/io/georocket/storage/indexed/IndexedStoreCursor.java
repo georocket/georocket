@@ -1,4 +1,4 @@
-package io.georocket.storage.file;
+package io.georocket.storage.indexed;
 
 import io.georocket.constants.AddressConstants;
 import io.georocket.storage.ChunkMeta;
@@ -11,10 +11,10 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
 /**
- * Implementation of {@link StoreCursor} for the {@link FileStore}
+ * Implementation of {@link StoreCursor} for indexed chunk stores
  * @author Michel Kraemer
  */
-public class FileStoreCursor implements StoreCursor {
+public class IndexedStoreCursor implements StoreCursor {
   /**
    * The Vert.x instance
    */
@@ -73,7 +73,7 @@ public class FileStoreCursor implements StoreCursor {
    * @param path the path where to perform the search (may be null if the
    * whole store should be searched)
    */
-  public FileStoreCursor(Vertx vertx, int pageSize, String search, String path) {
+  public IndexedStoreCursor(Vertx vertx, int pageSize, String search, String path) {
     this.vertx = vertx;
     this.pageSize = pageSize;
     this.search = search;

@@ -1,18 +1,13 @@
 package io.georocket.storage.file;
 
 import java.io.FileNotFoundException;
-import java.util.ArrayDeque;
-import java.util.List;
 import java.util.Queue;
 
 import org.bson.types.ObjectId;
 
-import io.georocket.constants.AddressConstants;
 import io.georocket.constants.ConfigConstants;
-import io.georocket.storage.ChunkMeta;
 import io.georocket.storage.ChunkReadStream;
-import io.georocket.storage.Store;
-import io.georocket.storage.StoreCursor;
+import io.georocket.storage.indexed.IndexedStore;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -22,19 +17,15 @@ import io.vertx.core.file.AsyncFile;
 import io.vertx.core.file.FileProps;
 import io.vertx.core.file.FileSystem;
 import io.vertx.core.file.OpenOptions;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
 import rx.Observable;
 
 /**
- * A verticle storing chunks on the file system
+ * Stores chunks on the file system
  * @author Michel Kraemer
  */
-public class FileStore implements Store {
-  private static final int PAGE_SIZE = 100;
-
+public class FileStore extends IndexedStore {
   /**
    * The folder where the chunks should be saved
    */
@@ -47,9 +38,10 @@ public class FileStore implements Store {
   
   /**
    * Default constructor
-   * @param vertx the Vertx instance
+   * @param vertx the Vert.x instance
    */
   public FileStore(Vertx vertx) {
+    super(vertx);
     String storagePath = vertx.getOrCreateContext().config().getString(
         ConfigConstants.STORAGE_PATH);
     this.root = storagePath + "/file";
@@ -57,8 +49,7 @@ public class FileStore implements Store {
   }
   
   @Override
-  public void add(String chunk, ChunkMeta meta, String path, List<String> tags,
-      Handler<AsyncResult<Void>> handler) {
+  protected void doAddChunk(String chunk, String path, Handler<AsyncResult<String>> handler) {
     if (path == null || path.isEmpty()) {
       path = "/";
     }
@@ -89,23 +80,11 @@ public class FileStore implements Store {
         Buffer buf = Buffer.buffer(chunk);
         f.write(buf, 0, writear -> {
           f.close();
-          
           if (writear.failed()) {
             handler.handle(Future.failedFuture(writear.cause()));
-            return;
+          } else {
+            handler.handle(Future.succeededFuture(finalPath + "/" + filename));
           }
-          
-          // start indexing
-          JsonObject indexMsg = new JsonObject()
-              .put("path", finalPath + "/" + filename)
-              .put("meta", meta.toJsonObject());
-          if (tags != null) {
-            indexMsg.put("tags", new JsonArray(tags));
-          }
-          vertx.eventBus().publish(AddressConstants.INDEXER_ADD, indexMsg);
-          
-          // tell sender that writing was successful
-          handler.handle(Future.succeededFuture());
         });
       });
     });
@@ -149,102 +128,7 @@ public class FileStore implements Store {
   }
   
   @Override
-  public void get(String search, String path, Handler<AsyncResult<StoreCursor>> handler) {
-    new FileStoreCursor(vertx, PAGE_SIZE, search, path).start(handler);
-  }
-  
-  @Override
-  public void delete(String search, String path, Handler<AsyncResult<Void>> handler) {
-    new FileStoreCursor(vertx, PAGE_SIZE, search, path).start(ar -> {
-      if (ar.failed()) {
-        handler.handle(Future.failedFuture(ar.cause()));
-      } else {
-        StoreCursor cursor = ar.result();
-        Queue<String> paths = new ArrayDeque<>();
-        doDelete(cursor, paths, handler);
-      }
-    });
-  }
-  
-  /**
-   * Iterate over a cursor and delete all returned chunks from the index
-   * and from the store.
-   * @param cursor the cursor to iterate over
-   * @param paths an empty queue (used internally for recursion)
-   * @param handler will be called when all chunks have been deleted
-   */
-  private void doDelete(StoreCursor cursor, Queue<String> paths,
-      Handler<AsyncResult<Void>> handler) {
-    // handle response of bulk delete operation
-    Handler<AsyncResult<Void>> handleBulk = bulkAr -> {
-      if (bulkAr.failed()) {
-        handler.handle(Future.failedFuture(bulkAr.cause()));
-      } else {
-        doDelete(cursor, paths, handler);
-      }
-    };
-    
-    // while cursor has items ...
-    if (cursor.hasNext()) {
-      cursor.next(ar -> {
-        if (ar.failed()) {
-          handler.handle(Future.failedFuture(ar.cause()));
-        } else {
-          // add item to queue
-          paths.add(cursor.getChunkPath());
-          
-          if (paths.size() >= PAGE_SIZE) {
-            // if there are enough items in the queue, bulk delete them
-            doDeleteBulk(paths, handleBulk);
-          } else {
-            // otherwise proceed with next item from cursor
-            doDelete(cursor, paths, handler);
-          }
-        }
-      });
-    } else {
-      // cursor does not return any more items
-      if (!paths.isEmpty()) {
-        // bulk delete the remaining ones
-        doDeleteBulk(paths, handleBulk);
-      } else {
-        // end operation
-        handler.handle(Future.succeededFuture());
-      }
-    }
-  }
-  
-  /**
-   * Deletes all chunks with the given paths from the index and from the store.
-   * Removes all items from the given queue.
-   * @param paths the queue of paths of chunks to delete (will be empty when
-   * the operation has finished)
-   * @param handler will be called when the operation has finished
-   */
-  private void doDeleteBulk(Queue<String> paths, Handler<AsyncResult<Void>> handler) {
-    // delete from index first so the chunks cannot be found anymore
-    JsonArray jsonPaths = new JsonArray();
-    paths.forEach(jsonPaths::add);
-    JsonObject indexMsg = new JsonObject()
-        .put("paths", jsonPaths);
-    vertx.eventBus().send(AddressConstants.INDEXER_DELETE, indexMsg, ar -> {
-      if (ar.failed()) {
-        handler.handle(Future.failedFuture(ar.cause()));
-      } else {
-        // now delete all chunks from file system and clear the queue
-        doDeleteChunks(paths, handler);
-      }
-    });
-  }
-  
-  /**
-   * Deletes all chunks with the given paths from the store. Removes all items
-   * from the given queue.
-   * @param paths the queue of paths of chunks to delete (will be empty when
-   * the operation has finished)
-   * @param handler will be called when the operation has finished
-   */
-  private void doDeleteChunks(Queue<String> paths, Handler<AsyncResult<Void>> handler) {
+  protected void doDeleteChunks(Queue<String> paths, Handler<AsyncResult<Void>> handler) {
     if (paths.isEmpty()) {
       handler.handle(Future.succeededFuture());
       return;
