@@ -1,4 +1,4 @@
-package io.georocket.util;
+package io.georocket.util.io;
 
 import java.io.IOException;
 import java.io.InputStream;

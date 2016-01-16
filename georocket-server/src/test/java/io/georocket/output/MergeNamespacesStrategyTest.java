@@ -6,9 +6,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import io.georocket.BufferWriteStream;
-import io.georocket.SimpleChunkReadStream;
 import io.georocket.storage.ChunkMeta;
 import io.georocket.util.XMLStartElement;
+import io.georocket.util.io.DelegateChunkReadStream;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -64,8 +64,8 @@ public class MergeNamespacesStrategyTest {
     BufferWriteStream bws = new BufferWriteStream();
     strategy.init(META1, context.asyncAssertSuccess(v1 -> {
       strategy.init(META2, context.asyncAssertSuccess(v2 -> {
-        strategy.merge(new SimpleChunkReadStream(CHUNK1), META1, bws, context.asyncAssertSuccess(v3 -> {
-          strategy.merge(new SimpleChunkReadStream(CHUNK2), META2, bws, context.asyncAssertSuccess(v4 -> {
+        strategy.merge(new DelegateChunkReadStream(CHUNK1), META1, bws, context.asyncAssertSuccess(v3 -> {
+          strategy.merge(new DelegateChunkReadStream(CHUNK2), META2, bws, context.asyncAssertSuccess(v4 -> {
             strategy.finishMerge(bws);
             context.assertEquals(XMLHEADER + EXPECTEDROOT + CONTENTS1 + CONTENTS2 + "</" + EXPECTEDROOT.getName() + ">",
                 bws.getBuffer().toString("utf-8"));
@@ -87,8 +87,8 @@ public class MergeNamespacesStrategyTest {
     BufferWriteStream bws = new BufferWriteStream();
     strategy.init(META1, context.asyncAssertSuccess(v1 -> {
       // skip second init
-      strategy.merge(new SimpleChunkReadStream(CHUNK1), META1, bws, context.asyncAssertSuccess(v3 -> {
-        strategy.merge(new SimpleChunkReadStream(CHUNK2), META2, bws, context.asyncAssertFailure(err -> {
+      strategy.merge(new DelegateChunkReadStream(CHUNK1), META1, bws, context.asyncAssertSuccess(v3 -> {
+        strategy.merge(new DelegateChunkReadStream(CHUNK2), META2, bws, context.asyncAssertFailure(err -> {
           async.complete();
         }));
       }));

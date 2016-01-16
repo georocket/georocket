@@ -1,7 +1,7 @@
-package io.georocket;
+package io.georocket.util.io;
 
+import io.georocket.BufferReadStream;
 import io.georocket.storage.ChunkReadStream;
-import io.georocket.util.DelegateReadStream;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -13,7 +13,7 @@ import io.vertx.core.streams.ReadStream;
  * doesn't need to be closed or is closed by the caller.
  * @author Michel Kraemer
  */
-public class SimpleChunkReadStream extends DelegateReadStream<Buffer> implements ChunkReadStream {
+public class DelegateChunkReadStream extends DelegateReadStream<Buffer> implements ChunkReadStream {
   private final long size;
   
   /**
@@ -21,7 +21,7 @@ public class SimpleChunkReadStream extends DelegateReadStream<Buffer> implements
    * @param size the chunk's size
    * @param delegate the underlying read stream
    */
-  public SimpleChunkReadStream(long size, ReadStream<Buffer> delegate) {
+  public DelegateChunkReadStream(long size, ReadStream<Buffer> delegate) {
     super(delegate);
     this.size = size;
   }
@@ -30,7 +30,7 @@ public class SimpleChunkReadStream extends DelegateReadStream<Buffer> implements
    * Create a new read stream from a chunk
    * @param chunk the chunk
    */
-  public SimpleChunkReadStream(Buffer chunk) {
+  public DelegateChunkReadStream(Buffer chunk) {
     this(chunk.length(), new BufferReadStream(chunk));
   }
   

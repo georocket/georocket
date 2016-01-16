@@ -8,10 +8,10 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import io.georocket.BufferWriteStream;
-import io.georocket.SimpleChunkReadStream;
 import io.georocket.storage.ChunkMeta;
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.util.XMLStartElement;
+import io.georocket.util.io.DelegateChunkReadStream;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -63,7 +63,7 @@ public class MergerTest {
     metas
       .flatMap(meta -> m.initObservable(meta).map(v -> meta))
       .toList()
-      .flatMap(l -> chunks.map(SimpleChunkReadStream::new)
+      .flatMap(l -> chunks.map(DelegateChunkReadStream::new)
           .<ChunkMeta, Pair<ChunkReadStream, ChunkMeta>>zipWith(l, Pair::of))
       .flatMap(p -> m.mergeObservable(p.getLeft(), p.getRight(), bws))
       .last()

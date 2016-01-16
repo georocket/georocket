@@ -6,9 +6,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import io.georocket.BufferWriteStream;
-import io.georocket.SimpleChunkReadStream;
 import io.georocket.storage.ChunkMeta;
 import io.georocket.util.XMLStartElement;
+import io.georocket.util.io.DelegateChunkReadStream;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -38,8 +38,8 @@ public class AllSameStrategyTest {
     BufferWriteStream bws = new BufferWriteStream();
     strategy.init(cm, context.asyncAssertSuccess(v1 -> {
       strategy.init(cm, context.asyncAssertSuccess(v2 -> {
-        strategy.merge(new SimpleChunkReadStream(chunk1), cm, bws, context.asyncAssertSuccess(v3 -> {
-          strategy.merge(new SimpleChunkReadStream(chunk2), cm, bws, context.asyncAssertSuccess(v4 -> {
+        strategy.merge(new DelegateChunkReadStream(chunk1), cm, bws, context.asyncAssertSuccess(v3 -> {
+          strategy.merge(new DelegateChunkReadStream(chunk2), cm, bws, context.asyncAssertSuccess(v4 -> {
             strategy.finishMerge(bws);
             context.assertEquals(XMLHEADER + "<root><test chunk=\"1\"></test><test chunk=\"2\"></test></root>",
                 bws.getBuffer().toString("utf-8"));
@@ -61,8 +61,8 @@ public class AllSameStrategyTest {
     BufferWriteStream bws = new BufferWriteStream();
     strategy.init(cm, context.asyncAssertSuccess(v1 -> {
       // skip second init
-      strategy.merge(new SimpleChunkReadStream(chunk1), cm, bws, context.asyncAssertSuccess(v3 -> {
-        strategy.merge(new SimpleChunkReadStream(chunk2), cm, bws, context.asyncAssertSuccess(v4 -> {
+      strategy.merge(new DelegateChunkReadStream(chunk1), cm, bws, context.asyncAssertSuccess(v3 -> {
+        strategy.merge(new DelegateChunkReadStream(chunk2), cm, bws, context.asyncAssertSuccess(v4 -> {
           strategy.finishMerge(bws);
           context.assertEquals(XMLHEADER + "<root><test chunk=\"1\"></test><test chunk=\"2\"></test></root>",
               bws.getBuffer().toString("utf-8"));
@@ -117,7 +117,7 @@ public class AllSameStrategyTest {
     MergeStrategy strategy = new AllSameStrategy();
     BufferWriteStream bws = new BufferWriteStream();
     strategy.init(cm, context.asyncAssertSuccess(v1 -> {
-      strategy.merge(new SimpleChunkReadStream(chunk2), cm2, bws, context.asyncAssertFailure(err -> {
+      strategy.merge(new DelegateChunkReadStream(chunk2), cm2, bws, context.asyncAssertFailure(err -> {
         async.complete();
       }));
     }));

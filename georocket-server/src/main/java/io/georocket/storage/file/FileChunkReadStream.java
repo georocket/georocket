@@ -1,7 +1,7 @@
 package io.georocket.storage.file;
 
 import io.georocket.storage.ChunkReadStream;
-import io.georocket.util.DelegateReadStream;
+import io.georocket.util.io.DelegateReadStream;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;

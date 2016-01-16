@@ -1,4 +1,4 @@
-package io.georocket.util;
+package io.georocket.util.io;
 
 import io.vertx.core.Handler;
 import io.vertx.core.streams.ReadStream;

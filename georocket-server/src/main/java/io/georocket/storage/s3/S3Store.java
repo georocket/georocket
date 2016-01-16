@@ -10,11 +10,11 @@ import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.S3ClientOptions;
 
-import io.georocket.SimpleChunkReadStream;
 import io.georocket.constants.ConfigConstants;
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.indexed.IndexedStore;
 import io.georocket.util.PathUtils;
+import io.georocket.util.io.DelegateChunkReadStream;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -126,7 +126,7 @@ public class S3Store extends IndexedStore {
         if (response.statusCode() == 200) {
           String contentLength = response.getHeader("Content-Length");
           long chunkSize = Long.parseLong(contentLength);
-          handler.handle(Future.succeededFuture(new SimpleChunkReadStream(chunkSize, response)));
+          handler.handle(Future.succeededFuture(new DelegateChunkReadStream(chunkSize, response)));
         } else {
           handler.handle(Future.failedFuture(response.statusMessage()));
         }
