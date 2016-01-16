@@ -28,4 +28,20 @@ public final class ThrowableHelper {
     }
     return 500;
   }
+  
+  /**
+   * Get the given throwable's message or return a default one if it is
+   * <code>null</code>
+   * @param t the throwable's message
+   * @param defaultMessage the message to return if the one of the throwable
+   * is <code>null</code>
+   * @return the message
+   */
+  public static String throwableToMessage(Throwable t, String defaultMessage) {
+    String m = t.getMessage();
+    if (m == null) {
+      return defaultMessage;
+    }
+    return m;
+  }
 }

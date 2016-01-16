@@ -1,6 +1,7 @@
 package io.georocket;
 
 import static io.georocket.util.ThrowableHelper.throwableToCode;
+import static io.georocket.util.ThrowableHelper.throwableToMessage;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -96,7 +97,7 @@ public class GeoRocket extends AbstractVerticle {
       if (!(err instanceof FileNotFoundException)) {
         log.error("Could not perform query", err);
       }
-      response.setStatusCode(throwableToCode(err)).end(err.getMessage());
+      response.setStatusCode(throwableToCode(err)).end(throwableToMessage(err, ""));
     });
   }
   
