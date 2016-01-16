@@ -7,5 +7,8 @@
   "georocket.storage.s3.host": "localhost",
   "georocket.storage.s3.port": 12345,
   "georocket.storage.s3.bucket": "georocket",
-  "georocket.storage.s3.pathStyleAccess": true
+  "georocket.storage.s3.pathStyleAccess": true,
+  "georocket.storage.mongodb.host": "localhost",
+  "georocket.storage.mongodb.port": 27017,
+  "georocket.storage.mongodb.database": "georocket"
 }
