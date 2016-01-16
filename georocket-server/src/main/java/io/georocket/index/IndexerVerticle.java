@@ -23,7 +23,6 @@ import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.Requests;
 import org.elasticsearch.common.settings.Settings;
@@ -35,6 +34,7 @@ import org.elasticsearch.node.Node;
 import org.elasticsearch.node.NodeBuilder;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
+import org.elasticsearch.search.sort.SortOrder;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMap.Builder;
@@ -337,7 +337,7 @@ public class IndexerVerticle extends AbstractVerticle {
           .setTypes(TYPE_NAME)
           .setScroll(timeout)
           .setSize(pageSize)
-          .setSearchType(SearchType.SCAN) // do not sort results (faster)
+          .addSort("_doc", SortOrder.ASC) // sort by doc (fastest way to scroll)
           .setPostFilter(makeQuery(search, path))
           .execute(listener);
     } else {
