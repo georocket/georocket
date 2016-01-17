@@ -19,6 +19,7 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.http.HttpClientRequest;
@@ -90,8 +91,9 @@ public class S3Store extends IndexedStore {
         handler.handle(Future.failedFuture(ar.cause()));
         return;
       }
+      Buffer chunkBuf = Buffer.buffer(chunk);
       HttpClientRequest request = client.put(ar.result().getFile());
-      request.putHeader("Content-Length", String.valueOf(chunk.length()));
+      request.putHeader("Content-Length", String.valueOf(chunkBuf.length()));
       request.exceptionHandler(t -> {
         handler.handle(Future.failedFuture(t));
       });
@@ -102,7 +104,7 @@ public class S3Store extends IndexedStore {
           handler.handle(Future.failedFuture(response.statusMessage()));
         }
       });
-      request.end(chunk);
+      request.end(chunkBuf);
     });
   }
 
