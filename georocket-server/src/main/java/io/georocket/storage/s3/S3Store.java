@@ -98,16 +98,18 @@ public class S3Store extends IndexedStore {
         handler.handle(Future.failedFuture(t));
       });
       request.handler(response -> {
-        if (response.statusCode() == 200) {
-          handler.handle(Future.succeededFuture(filename));
-        } else {
-          handler.handle(Future.failedFuture(response.statusMessage()));
-        }
+        response.endHandler(v -> {
+          if (response.statusCode() == 200) {
+            handler.handle(Future.succeededFuture(filename));
+          } else {
+            handler.handle(Future.failedFuture(response.statusMessage()));
+          }
+        });
       });
       request.end(chunkBuf);
     });
   }
-
+  
   @Override
   public void getOne(String path, Handler<AsyncResult<ChunkReadStream>> handler) {
     String key = PathUtils.removeLeadingSlash(PathUtils.normalize(path));
@@ -159,11 +161,13 @@ public class S3Store extends IndexedStore {
         handler.handle(Future.failedFuture(t));
       });
       request.handler(response -> {
-        if (response.statusCode() == 204) {
-          doDeleteChunks(paths, handler);
-        } else {
-          handler.handle(Future.failedFuture(response.statusMessage()));
-        }
+        response.endHandler(v -> {
+          if (response.statusCode() == 204) {
+            doDeleteChunks(paths, handler);
+          } else {
+            handler.handle(Future.failedFuture(response.statusMessage()));
+          }
+        });
       });
       request.end();
     });
