@@ -2,19 +2,32 @@ var asciidoctor = require("gulp-asciidoctor");
 var del = require("del");
 var gulp = require("gulp");
 var livereload = require("gulp-livereload");
+var path = require("path");
 
-gulp.task("build", function() {
-  return gulp.src("src/**/*.adoc")
+var paths = {
+  asciidoctor_js: "node_modules/asciidoctor.js/dist",
+  build: "build",
+  src: "src"
+};
+
+gulp.task("css", function() {
+  return gulp.src(path.join(paths.asciidoctor_js, "css", "asciidoctor.css"))
+    .pipe(gulp.dest(paths.build));
+});
+
+gulp.task("build", ["css"], function() {
+  return gulp.src(path.join(paths.src, "**", "*.adoc"))
     .pipe(asciidoctor({
-      base_dir: "src"
+      base_dir: paths.src,
+      doctype:'article'
     }))
-    .pipe(gulp.dest("build"))
+    .pipe(gulp.dest(paths.build))
     .pipe(livereload());
 });
 
 gulp.task("watch", ["build"], function() {
   livereload.listen();
-  return gulp.watch(["src/**/*.adoc"], ["build"]);
+  return gulp.watch([path.join(paths.src, "**", "*.adoc")], ["build"]);
 });
 
 gulp.task("clean", function(cb) {
