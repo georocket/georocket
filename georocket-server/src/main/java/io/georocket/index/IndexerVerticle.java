@@ -51,6 +51,7 @@ import io.georocket.storage.Store;
 import io.georocket.storage.StoreFactory;
 import io.georocket.util.AsyncXMLParser;
 import io.georocket.util.QuotedStringSplitter;
+import io.georocket.util.RxUtils;
 import io.georocket.util.XMLStartElement;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -67,6 +68,7 @@ import io.vertx.rxjava.core.AbstractVerticle;
 import io.vertx.rxjava.core.eventbus.Message;
 import rx.Observable;
 import rx.Subscriber;
+import rx.functions.Func1;
 
 /**
  * Background indexing of chunks added to the store
@@ -78,6 +80,8 @@ public class IndexerVerticle extends AbstractVerticle {
   private static final int MAX_ADD_REQUESTS = 1000;
   private static final long BUFFER_TIMESPAN = 5000;
   private static final int MAX_INSERT_REQUESTS = 5;
+  private static final int MAX_RETRIES = 5;
+  private static final int RETRY_INTERVAL = 1000;
   
   private static final String INDEX_NAME = "georocket";
   private static final String TYPE_NAME = "object";
@@ -142,6 +146,14 @@ public class IndexerVerticle extends AbstractVerticle {
   public void stop() {
     client.close();
     node.close();
+  }
+  
+  /**
+   * @return a function that can be passed to {@link Observable#retryWhen(Func1)}
+   * @see RxUtils#makeRetry(int, int, Logger)
+   */
+  private Func1<Observable<? extends Throwable>, Observable<Long>> makeRetry() {
+    return RxUtils.makeRetry(MAX_RETRIES, RETRY_INTERVAL, log);
   }
   
   /**
@@ -254,11 +266,7 @@ public class IndexerVerticle extends AbstractVerticle {
         log.trace("Indexing " + path);
         
         // open chunk and create IndexRequest
-        return openChunk(path)
-            .flatMap(chunk -> {
-              // convert chunk to document and close it
-              return chunkToDocument(chunk).finallyDo(chunk::close);
-            })
+        return openChunkToDocument(path)
             .doOnNext(doc -> {
               // add metadata and tags to document
               addMeta(doc, meta);
@@ -296,6 +304,23 @@ public class IndexerVerticle extends AbstractVerticle {
     ObservableFuture<ChunkReadStream> observable = RxHelper.observableFuture();
     store.getOne(path, observable.toHandler());
     return observable;
+  }
+  
+  /**
+   * Open a chunk and convert to to an Elasticsearch document. Retry
+   * operation several times before failing.
+   * @param path the path to the chunk to open
+   * @return an observable that emits the document
+   */
+  private Observable<Map<String, Object>> openChunkToDocument(String path) {
+    return Observable.<Map<String, Object>>create(subscriber -> {
+      openChunk(path)
+        .flatMap(chunk -> {
+          // convert chunk to document and close it
+          return chunkToDocument(chunk).finallyDo(chunk::close);
+        })
+        .subscribe(subscriber);
+    }).retryWhen(makeRetry());
   }
   
   /**

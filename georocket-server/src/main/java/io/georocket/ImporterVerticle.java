@@ -8,9 +8,11 @@ import io.georocket.constants.AddressConstants;
 import io.georocket.constants.ConfigConstants;
 import io.georocket.input.FirstLevelSplitter;
 import io.georocket.input.Splitter;
+import io.georocket.storage.ChunkMeta;
 import io.georocket.storage.Store;
 import io.georocket.storage.StoreFactory;
 import io.georocket.util.AsyncXMLParser;
+import io.georocket.util.RxUtils;
 import io.georocket.util.Window;
 import io.vertx.core.Vertx;
 import io.vertx.core.file.OpenOptions;
@@ -33,6 +35,9 @@ import rx.Observable;
  */
 public class ImporterVerticle extends AbstractVerticle {
   private static Logger log = LoggerFactory.getLogger(ImporterVerticle.class);
+  
+  private static final int MAX_RETRIES = 5;
+  private static final int RETRY_INTERVAL = 1000;
   
   private Store store;
   private String incoming;
@@ -119,8 +124,8 @@ public class ImporterVerticle extends AbstractVerticle {
           // pause stream while chunk is being written
           f.pause();
           
-          ObservableFuture<Void> o = RxHelper.observableFuture();
-          store.add(result.getChunk(), result.getMeta(), layer, tags, o.toHandler());
+          Observable<Void> o = addToStore(result.getChunk(),
+              result.getMeta(), layer, tags);
           return o.doOnNext(v -> {
             // go ahead
             f.resume();
@@ -128,5 +133,37 @@ public class ImporterVerticle extends AbstractVerticle {
         })
         .last() // "wait" for last event (i.e. end of file)
         .finallyDo(xmlParser::close);
+  }
+  
+  /**
+   * Add a chunk to the store
+   * @param chunk the chunk to add
+   * @param meta the chunk's metadata
+   * @param layer the layer the chunk should be added to (may be null)
+   * @param tags the list of tags to attach to the chunk (may be null)
+   * @return an observable that will emit exactly one item when the
+   * operation has finished
+   */
+  private Observable<Void> addToStoreNoRetry(String chunk, ChunkMeta meta,
+      String layer, List<String> tags) {
+    ObservableFuture<Void> o = RxHelper.observableFuture();
+    store.add(chunk, meta, layer, tags, o.toHandler());
+    return o;
+  }
+  
+  /**
+   * Add a chunk to the store. Retry operation several times before failing.
+   * @param chunk the chunk to add
+   * @param meta the chunk's metadata
+   * @param layer the layer the chunk should be added to (may be null)
+   * @param tags the list of tags to attach to the chunk (may be null)
+   * @return an observable that will emit exactly one item when the
+   * operation has finished
+   */
+  private Observable<Void> addToStore(String chunk, ChunkMeta meta,
+      String layer, List<String> tags) {
+    return Observable.<Void>create(subscriber -> {
+      addToStoreNoRetry(chunk, meta, layer, tags).subscribe(subscriber);
+    }).retryWhen(RxUtils.makeRetry(MAX_RETRIES, RETRY_INTERVAL, log));
   }
 }
