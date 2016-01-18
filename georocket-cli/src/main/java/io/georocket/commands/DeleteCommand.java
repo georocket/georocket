@@ -53,7 +53,7 @@ public class DeleteCommand extends AbstractQueryCommand {
 
   @Override
   public String getUsageDescription() {
-    return "Delete from the GeoData store";
+    return "Delete from the GeoRocket data store";
   }
   
   @Override
