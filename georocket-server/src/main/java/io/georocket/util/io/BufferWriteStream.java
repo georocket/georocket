@@ -1,4 +1,4 @@
-package io.georocket;
+package io.georocket.util.io;
 
 import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;

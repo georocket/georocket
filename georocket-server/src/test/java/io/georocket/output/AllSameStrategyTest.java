@@ -5,9 +5,9 @@ import java.util.Arrays;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import io.georocket.BufferWriteStream;
 import io.georocket.storage.ChunkMeta;
 import io.georocket.util.XMLStartElement;
+import io.georocket.util.io.BufferWriteStream;
 import io.georocket.util.io.DelegateChunkReadStream;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.ext.unit.Async;

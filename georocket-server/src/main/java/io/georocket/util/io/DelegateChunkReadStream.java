@@ -1,6 +1,5 @@
 package io.georocket.util.io;
 
-import io.georocket.BufferReadStream;
 import io.georocket.storage.ChunkReadStream;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
