@@ -7,7 +7,8 @@ var path = require("path");
 var paths = {
   asciidoctor_js: "node_modules/asciidoctor.js/dist",
   build: "build",
-  src: "src"
+  src: "src",
+  images: "src/images"
 };
 
 gulp.task("css", function() {
@@ -15,7 +16,12 @@ gulp.task("css", function() {
     .pipe(gulp.dest(paths.build));
 });
 
-gulp.task("build", ["css"], function() {
+gulp.task("images", function() {
+  return gulp.src(path.join(paths.images, "**", "*"))
+    .pipe(gulp.dest(path.join(paths.build, "images")));
+});
+
+gulp.task("build", ["css", "images"], function() {
   return gulp.src(path.join(paths.src, "**", "*.adoc"))
     .pipe(asciidoctor({
       base_dir: paths.src,

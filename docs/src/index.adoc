@@ -223,3 +223,7 @@ Example:
 === Architecture
 
 TODO
+
+image::images/architecture.png[caption="Figure 1: ", title="The architecture of GeoRocket", alt="GeoRocket architecture diagram", width="70%", align="center"]
+
+image::images/secondary-data-store.png[caption="Figure 2: ", title="Secondary data store", alt="Secondary data store", width="52%", align="center"]
