@@ -169,17 +169,50 @@ CAUTION: This is a dangerous operation. It will remove everything that is stored
 
 == HTTP interface
 
-GeoRocket Server provides an (REST-like) HTTP interface that you can use to access the data store and to embed GeoRocket in your application.
+GeoRocket Server provides an (REST-like) HTTP interface that you can use to interact with the data store as well as to embed GeoRocket in your application.
 
-=== GET
+=== GET file
+
+Search the data store for chunks that match a given <<query-language, query>>. Merge the chunks found and return the result as a file.
+
+===== Resource URL
+
+  /store/:path
+
+===== Parameters
+
+[cols="1,2"]
+|===
+| *path* +
+  _(required)_
+| The absolute path to a layer to search. Use the root layer `/` to query the whole data store.
+| *search* +
+  _(optional)_
+| An URL-encoded <<query-language, query string>>. If no query string is provided all chunks from the requested layer will be returned.
+|===
+
+===== Example request
+
+  GET /store/CityModel?search=LOD1+textured+13.378,52.515,13.380,52.517
+
+===== Example response
+
+```
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<CityModel ...>
+  ...
+</CityModel>
+```
+
+=== POST file
 
 TODO
 
-=== POST
+=== DELETE chunks
 
 TODO
 
-=== DELETE
+=== DELETE layer
 
 TODO
 
