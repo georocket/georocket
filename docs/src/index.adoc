@@ -54,7 +54,7 @@ Finally, export the contents of the whole store to a file using the `export` com
 
   ./georocket-cli export / > my_new_file.gml
 
-TIP: You can also search for individual features and export only a part of the previously imported file. Refer to the <<search-command>> section.
+TIP: You can also search for individual features (chunks) and export only a part of the previously imported file. Refer to the <<search-command>> section.
 
 That's it! You have successfully imported your first file into GeoRocket.
 
@@ -108,7 +108,7 @@ Use slashes to import to sub-layers.
 
   georocket-cli import --layer CityModel/LOD1/Center myfile.xml
 
-You may attach tags to imported files. Tags are human-readable labels that you can use to search for files or features stored in GeoRocket. Use a comma to separate multiple tags.
+You may attach tags to imported files. Tags are human-readable labels that you can use to search for files or chunks stored in GeoRocket. Use a comma to separate multiple tags.
 
   georocket-cli import --tags city,district,lod1 myfile.xml
 
@@ -131,7 +131,7 @@ WARNING: Exporting the whole data store may take a while depending on how much d
 [[search-command]]
 === Search command
 
-Search the GeoRocket data store and export individual geospatial features. Provide a <<query-language, query>> to the search command as follows.
+Search the GeoRocket data store and export individual geospatial features (chunks). Provide a <<query-language, query>> to the search command as follows.
 
   georocket-cli search myquery
 
@@ -149,7 +149,7 @@ See the <<query-language>> section for a full description of all possible terms 
 
 === Delete command
 
-Remove geospatial features or whole layers from the GeoRocket data store. Provide a <<query-language, query>> to the delete command to select the features to delete.
+Remove geospatial features (chunks) or whole layers from the GeoRocket data store. Provide a <<query-language, query>> to the delete command to select the features to delete.
 
   georocket-cli delete myquery
 
@@ -157,7 +157,7 @@ You can also restrict the delete command to a certain layer.
 
   georocket-cli delete --layer CityModel myquery
 
-Delete a whole layer (including all its features and sub-layers) as follows.
+Delete a whole layer (including all its chunks and sub-layers) as follows.
 
   georocket-cli delete --layer CityModel/LOD1
 
