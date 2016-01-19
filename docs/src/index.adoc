@@ -16,6 +16,14 @@ GeoRocket is a high-performance data store for geospatial files. It can store 3D
 * GeoRocket ist made for the Cloud. Based on the Open-Source toolkit http://vertx.io[Vert.x] it is reactive and can handle big files and a large number of parallel requests.
 * GeoRocket is Open-Source
 
+=== Architecture
+
+TODO
+
+image::images/architecture.png[caption="Figure 1: ", title="The architecture of GeoRocket", alt="GeoRocket architecture diagram", width="70%", align="center"]
+
+image::images/secondary-data-store.png[caption="Figure 2: ", title="Secondary data store", alt="Secondary data store", width="52%", align="center"]
+
 == Getting started
 
 GeoRocket consists of two components: the server and the command-line interface (CLI). Download the _Server_ and _CLI_ bundles from the GeoRocket website and extract them to a directory of your choice.
@@ -219,11 +227,3 @@ Example:
 * File backend
 * Amazon S3
 * MongoDB
-
-=== Architecture
-
-TODO
-
-image::images/architecture.png[caption="Figure 1: ", title="The architecture of GeoRocket", alt="GeoRocket architecture diagram", width="70%", align="center"]
-
-image::images/secondary-data-store.png[caption="Figure 2: ", title="Secondary data store", alt="Secondary data store", width="52%", align="center"]
