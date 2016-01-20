@@ -2,6 +2,8 @@
   "georocket.port": 63020,
   "georocket.storage.class": "io.georocket.storage.file.FileStore",
   "georocket.storage.file.path": "$GEOROCKET_HOME/storage",
+  "georocket.storage.hdfs.defaultFS": "hdfs://127.0.0.1:9000",
+  "georocket.storage.hdfs.path": "/georocket/",
   "georocket.storage.s3.accessKey": "",
   "georocket.storage.s3.secretKey": "",
   "georocket.storage.s3.host": "localhost",
