@@ -7,7 +7,7 @@ v1.0.0-SNAPSHOT
 :docinfo1:
 :icons: font
 :source-highlighter: highlight.js
- 
+
 Copyright (C) 2015-2016 Fraunhofer Institute for Computer Graphics Research IGD
 
 == Introduction
@@ -23,9 +23,11 @@ GeoRocket is a high-performance data store for geospatial files. It can store 3D
 
 TODO
 
-image::images/architecture.png[caption="Figure 1: ", title="The architecture of GeoRocket", alt="GeoRocket architecture diagram", width="70%", align="center"]
+.The architecture of GeoRocket
+image::images/architecture.svg[alt="GeoRocket architecture diagram", width="70%", align="center"]
 
-image::images/secondary-data-store.png[caption="Figure 2: ", title="Secondary data store", alt="Secondary data store", width="52%", align="center"]
+.Secondary data store
+image::images/secondary-data-store.svg[alt="Secondary data store", width="52%", align="center"]
 
 == Getting started
 
@@ -200,12 +202,13 @@ Search the data store for chunks that match a given <<query-language, query>>. M
 
 ===== Example response
 
-```
+[source, xml]
+----
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <CityModel ...>
   ...
 </CityModel>
-```
+----
 
 === POST file
 
