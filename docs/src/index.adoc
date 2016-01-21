@@ -172,7 +172,7 @@ CAUTION: This is a dangerous operation. It will remove everything that is stored
 
 == HTTP interface
 
-GeoRocket Server provides an (REST-like) HTTP interface that you can use to interact with the data store as well as to embed GeoRocket in your application.
+GeoRocket Server provides an (REST-like) HTTP interface that you can use to interact with the data store as well as to embed GeoRocket in your application. By default GeoRocket listens to incoming connections on port 63020.
 
 === GET file
 
@@ -263,3 +263,4 @@ Example:
 * File backend
 * Amazon S3
 * MongoDB
+* HDFS
