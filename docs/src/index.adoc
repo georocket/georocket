@@ -216,21 +216,37 @@ Search the data store for chunks that match a given <<query-language, query>>. M
 [cols="1,2"]
 |===
 | *path* +
-  _(required)_
-| The absolute path to a layer to search. Use the root layer `/` to query the whole data store.
+  _(optional)_
+| The absolute path to a layer to search. Omit this parameter to query the whole data store.
 | *search* +
   _(optional)_
-| An URL-encoded <<query-language, query string>>. If no query string is provided all chunks from the requested layer will be returned.
+| A URL-encoded <<query-language, query string>>. If no query string is provided all chunks from the requested layer will be returned.
+|===
+
+===== Status codes
+
+[cols="1,2"]
+|===
+| *200*
+| The operation was successful
+| *400*
+| The provided information was invalid (e.g. malformed query)
+| *404*
+| The requested chunks were not found or the query returned an empty result
+| *500*
+| An unexpected error occurred on the server side
 |===
 
 ===== Example request
 
-  GET /store/CityModel?search=LOD1+textured+13.378,52.515,13.380,52.517
+  GET /store/CityModel?search=LOD1+textured+13.378,52.515,13.380,52.517 HTTP/1.1
 
 ===== Example response
 
-[source, xml]
 ----
+HTTP/1.1 200 OK
+Transfer-Encoding: chunked
+
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <CityModel ...>
   ...
@@ -239,15 +255,103 @@ Search the data store for chunks that match a given <<query-language, query>>. M
 
 === POST file
 
-TODO
+Import a file into GeoRocket. Split the file into chunks and put them into the data store.
+
+===== Resource URL
+
+  /store/:path
+
+===== Parameters
+
+[cols="1,2"]
+|===
+| *path* +
+  _(optional)_
+| The absolute path to a layer where the chunks from the imported file should be stored. Omit this parameter to put the chunks into the data store's root layer `/`.
+| *tags* +
+  _(optional)_
+| A comma-separated list of tags (i.e. labels) to attach to each imported chunk.
+|===
+
+===== Status codes
+
+[cols="1,2"]
+|===
+| *202*
+| The operation was successful. The file was accepted for importing and is now being processed asynchronously.
+| *400*
+| The provided information was invalid (e.g. malformed input file)
+| *500*
+| An unexpected error occurred on the server side
+|===
+
+===== Example request
+
+----
+POST /store/CityModel?tags=LOD1,textured HTTP/1.1
+Content-Length: 35903517
+
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<CityModel ...>
+  ...
+</CityModel>
+----
+
+==== Example response
+
+----
+HTTP/1.1 202 Accepted file - importing in progress
+Content-Length: 0
+----
 
 === DELETE chunks
 
-TODO
+Delete chunks or layers from the data store.
 
-=== DELETE layer
+===== Resource URL
 
-TODO
+  /store/:path
+
+===== Parameters
+
+[cols="1,2"]
+|===
+| *path* +
+  _(optional)_
+| The absolute path to the layer from which chunks matching the given query should be deleted. If no query is given this is the path to the layer to delete (including all its contents--sub-layers and chunks).
+| *search* +
+  _(optional)_
+| A URL-encoded <<query-language, query string>> specifying which chunks should be deleted. If no query string is provided the whole layer is deleted.
+|===
+
+CAUTION: If you don't specify a layer (`path`) nor a query (`search`) then the whole contents of the GeoRocket data store will be deleted.
+
+===== Status codes
+
+[cols="1,2"]
+|===
+| *204*
+| The operation was successful. The matching chunks were deleted from the data store.
+| *400*
+| The provided information was invalid (e.g. malformed query)
+| *500*
+| An unexpected error occurred on the server side
+|===
+
+NOTE: This HTTP method is idempotent. Even if the given query returns no results (i.e. if there is nothing to delete) the operation completes successfully with a status code of `204`.
+
+===== Example request
+
+----
+DELETE /store/CityModel?search=LOD1 HTTP/1.1
+----
+
+==== Example response
+
+----
+HTTP/1.1 204 No Content
+Content-Length: 0
+----
 
 [[query-language]]
 == Query language
