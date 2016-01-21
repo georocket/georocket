@@ -14,24 +14,51 @@ Copyright (C) 2015-2016 Fraunhofer Institute for Computer Graphics Research IGD
 
 GeoRocket is a high-performance data store for geospatial files. It can store 3D city models (e.g. CityGML), GML files or any other XML-based geospatial data sets. GeoRocket provides the following features:
 
-* High performance data storage with multiple backends such as Amazon S3, MongoDB, distributed file systems (e.g. HDFS or Ceph), or your local hard drive (enabled by default)
+* High performance data storage with multiple back-ends such as Amazon S3, MongoDB, distributed file systems (e.g. HDFS or Ceph), or your local hard drive (enabled by default)
 * Support for high-speed search features based on the popular Open-Source framework https://www.elastic.co/[Elasticsearch]. You can perform spatial queries and search for attributes, layers and tags.
-* GeoRocket ist made for the Cloud. Based on the Open-Source toolkit http://vertx.io[Vert.x] it is reactive and can handle big files and a large number of parallel requests.
+* GeoRocket is made for the Cloud. Based on the Open-Source toolkit http://vertx.io[Vert.x] it is reactive and can handle big files and a large number of parallel requests.
 * GeoRocket is Open-Source
 
 === Architecture
 
-TODO
+GeoRocket has a http://www.reactivemanifesto.org/[reactive], scalable and asynchronous software architecture. Imported files are split into chunks that are indexed individually. The data store keeps unprocessed chunks. This enables you to later retrieve the original file that you put into GeoRocket without losing any information.footnote:[Exported files might have a slightly different formatting. Whitespaces between chunks might be different, but other than that, exported files contain the exact same information as imported ones.]
 
+The following figure depicts the software architecture of GeoRocket.
+
+[[figure-georocket-architecture]]
 .The architecture of GeoRocket
 image::images/architecture.svg[alt="GeoRocket architecture diagram", width="70%", align="center"]
+
+The import process starts in the upper left corner. Every imported file is first split into individual chunks. Depending on the input format chunks have different meanings. CityGML files, for example, are split into individual `cityObjectMember` objects which are typically the buildings of a city model.
+
+Attached to each chunk is metadata containing additional information describing the chunk. This includes tags specified by the client and other automatically generated attributes.
+
+The chunks are put into the GeoRocket data store. There are several data store implementations supporting different back-ends such as Amazon S3, HDFS, MongoDB or the local hard drive (default).
+
+Immediately after a chunk has been put into the data store the indexer starts working asynchronously in the background. It reads new chunks from the data store and analyses them for known patterns. It recognises spatial coordinates, attributes and other content. The indexer creates a directory of every item found--the '`index`'.
+
+The export process starts with querying the indexer for chunks matching the <<query-language, criteria>> supplied by the client. These chunks are then retrieved from the data store (together with their metadata) and merged into a result file.
+
+==== Secondary data store
+
+GeoRocket's architecture allows for the creation of secondary data stores that co-exist with the main data store where the original chunks are kept. The following figure depicts the process:
 
 .Secondary data store
 image::images/secondary-data-store.svg[alt="Secondary data store", width="52%", align="center"]
 
+Whenever a new chunk is added to the data store a custom processor can retrieve it to create a secondary data store. Data from this store can then be served directly to the client without further processing. Possible use cases for this scenario are:
+
+* Optimize 3D scenes for web-based visualisation. Create a secondary data store that contains https://www.khronos.org/gltf[glTF] files. glTF is a specification for the efficient transmission of 3D scenes to the browser.
+* Convert all chunks stored in CityGML version 2 to CityGML version 1 for clients that are incompatible to version 2.
+* Process a 3D city model and derive LOD1 buildings from LOD2 or LOD3.
+
+The advantage of keeping a secondary data store is that it is created automatically in the background when new data is added to GeoRocket. This avoids manual processing. Individual processors may even keep the secondary data store up to date incrementally and only re-create those parts that have changed since it has been created or updated the last time.
+
 == Getting started
 
 GeoRocket consists of two components: the server and the command-line interface (CLI). Download the _Server_ and _CLI_ bundles from the GeoRocket website and extract them to a directory of your choice.
+
+NOTE: GeoRocket requires http://www.oracle.com/technetwork/java/index.html[Java 8] or higher to be installed on your system.
 
 Open your command prompt and change to the directory where you installed GeoRocket Server. Execute `georocketd` to run the server.
 
