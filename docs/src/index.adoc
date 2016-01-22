@@ -1,6 +1,6 @@
 = GeoRocket User Documentation
 Michel Krämer <michel.kraemer@igd.fraunhofer.de>
-v1.0.0-SNAPSHOT
+v1.0.0-alpha.1
 :toc: right
 :homepage: http://georocket.io
 :numbered:
@@ -62,7 +62,7 @@ NOTE: GeoRocket requires http://www.oracle.com/technetwork/java/index.html[Java 
 
 Open your command prompt and change to the directory where you installed GeoRocket Server. Execute `georocketd` to run the server.
 
-  cd georocket-server-1.0.0-SNAPSHOT/bin
+  cd georocket-server-1.0.0-alpha.1/bin
   ./georocketd
 
 Please wait a couple of seconds until you see the following message:
@@ -73,7 +73,7 @@ The has launched and now waits for incoming HTTP requests on port `63020` (defau
 
 Next open another command prompt and change to the directory where you installed GeoRocket CLI. Run `georocket-cli` to access the server through a convenient command-line application.
 
-  cd georocket-cli-1.0.0-SNAPSHOT/bin
+  cd georocket-cli-1.0.0-alpha.1/bin
   ./georocket-cli
 
 You can now import your first geospatial file. Suppose your file is called `/home/user/my_file.gml`. Issue the following command to import it to GeoRocket.
@@ -98,11 +98,11 @@ GeoRocket comes with a handy command-line interface (CLI) letting you interact w
 ====
 In the following sections it is assumed that you have the `georocket-cli` executable in your path. If you have not done so already, you may add it to your path with the following command (Linux):
 
-  export PATH=/path/to/georocket-cli-1.0.0-SNAPSHOT/bin:$PATH
+  export PATH=/path/to/georocket-cli-1.0.0-alpha.1/bin:$PATH
 
 Or under Windows do:
 
-  set PATH=C:\path\to\georocket-cli-1.0.0-SNAPSHOT\bin;%PATH%
+  set PATH=C:\path\to\georocket-cli-1.0.0-alpha.1\bin;%PATH%
 ====
 
 === Help command
@@ -356,7 +356,7 @@ Content-Length: 0
 [[query-language]]
 == Query language
 
-NOTE: As of version 1.0.0-SNAPSHOT the query language is rather limited. At the moment you can only specify strings and bounding boxes.
+NOTE: As of version 1.0.0-alpha.1 the query language is rather limited. At the moment you can only specify strings and bounding boxes.
 
 === Strings
 
@@ -376,7 +376,7 @@ or
 
   minimum longitude, minimum latitude, maximum longitude, maximum latitude
 
-NOTE: As of version 1.0.0-SNAPSHOT GeoRocket only supports spatial queries given in WGS84 coordinates (longitude/latitude). However, data stored in GeoRocket can have an arbitrary spatial reference system as long as it is specified in the original file.
+NOTE: As of version 1.0.0-alpha.1 GeoRocket only supports spatial queries given in WGS84 coordinates (longitude/latitude). However, data stored in GeoRocket can have an arbitrary spatial reference system as long as it is specified in the original file.
 
 Example:
 
