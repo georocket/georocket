@@ -113,7 +113,7 @@ public class IndexerVerticle extends AbstractVerticle {
   private boolean indexEnsured;
   
   @Override
-  public void start() {
+  public void start(Future<Void> startFuture) {
     log.info("Launching indexer ...");
     
     String home = vertx.getOrCreateContext().config().getString(
@@ -127,19 +127,31 @@ public class IndexerVerticle extends AbstractVerticle {
         .put("path.data", root + "/data")
         .put("http.enabled", true) // TODO enable HTTP for debugging purpose only!
         .build();
-    node = NodeBuilder.nodeBuilder()
-        .settings(settings)
-        .clusterName("georocket-cluster")
-        .data(true)
-        .local(true)
-        .node();
     
-    client = node.client();
-    store = StoreFactory.createStore((Vertx)vertx.getDelegate());
-    
-    registerAdd();
-    registerDelete();
-    registerQuery();
+    vertx.<Node>executeBlocking(f -> {
+      f.complete(NodeBuilder.nodeBuilder()
+          .settings(settings)
+          .clusterName("georocket-cluster")
+          .data(true)
+          .local(true)
+          .node());
+    }, ar -> {
+      if (ar.failed()) {
+        startFuture.fail(ar.cause());
+        return;
+      }
+      
+      node = ar.result();
+      client = node.client();
+      
+      store = StoreFactory.createStore((Vertx)vertx.getDelegate());
+      
+      registerAdd();
+      registerDelete();
+      registerQuery();
+      
+      startFuture.complete();
+    });
   }
   
   @Override
