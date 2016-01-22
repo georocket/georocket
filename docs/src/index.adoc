@@ -390,11 +390,113 @@ Example:
 
   string1 string2 13.378,52.515,13.380,52.517 string3
 
-== Advanced topics
+== Server configuration
 
-=== Configuration
+You can configure GeoRocket server by editing the file `conf/georocketd.json` in the application directory. The file must be a valid JSON file containing a single object. The following sections describe possible configuration keys and values.
 
-* File backend
-* Amazon S3
-* MongoDB
-* HDFS
+=== HTTP interface
+
+[cols="1,2"]
+|===
+| *georocket.port* +
+  _(default: 63020)_
+| The TCP port GeoRocket should listen on.
+|===
+
+=== Back-ends
+
+[cols="1,2"]
+|===
+| *georocket.storage.class* +
+  _(defaults to the <<config-backend-file, File back-end>>)_
+| The data store implementation to use. Possible values include: +
+  `io.georocket.storage.file.FileStore` +
+  `io.georocket.storage.hdfs.HDFSStore` +
+  `io.georocket.storage.mongodb.MongoDBStore` +
+  `io.georocket.storage.s3.S3Store`
+|===
+
+[[config-backend-file]]
+==== File back-end
+
+===== Data store implementation
+
+  io.georocket.storage.file.FileStore
+
+===== Configuration
+
+[cols="2,2"]
+|===
+| *georocket.storage.file.path* +
+  _(required)_
+| The path on the local hard drive where the data store should be located.
+|===
+
+==== HDFS
+
+===== Data store implementation
+
+  io.georocket.storage.hdfs.HDFSStore
+
+===== Configuration
+
+[cols="2,2"]
+|===
+| *georocket.storage.hdfs.defaultFS* +
+  _(required)_
+| The endpoint of the HDFS NameNode
+| *georocket.storage.hdfs.path* +
+  _(required)_
+| The path on the distributed file system where the chunks should be stored. The directory must exist and write permissions must have been granted to the user executing GeoRocket.
+|===
+
+==== MongoDB
+
+===== Data store implementation
+
+  io.georocket.storage.mongodb.MongoDBStore
+
+===== Configuration
+
+[cols="2,2"]
+|===
+| *georocket.storage.mongodb.host* +
+  _(required)_
+| The host MongoDB is running on
+| *georocket.storage.mongodb.port* +
+  _(required)_
+| The port MongoDB is listening on
+| *georocket.storage.mongodb.database* +
+  _(required)_
+| The database where the chunks should be stored
+|===
+
+==== Amazon S3
+
+===== Data store implementation
+
+  io.georocket.storage.s3.S3Store
+
+===== Configuration
+
+[cols="2,2"]
+|===
+| *georocket.storage.s3.accessKey* +
+  _(required)_
+| The Amazon S3 Access Key used for authentication
+| *georocket.storage.s3.secretKey* +
+  _(required)_
+| The Amazon S3 Secret Key used for authentication
+| *georocket.storage.s3.host* +
+  _(required)_
+| The host of the S3 endpoint
+| *georocket.storage.s3.port* +
+  _(required)_
+| The port of the S3 endpoint
+| *georocket.storage.s3.bucket* +
+  _(required)_
+| The S3 bucket where chunks should be stored
+| *georocket.storage.s3.pathStyleAccess* +
+  _(required)_
+| `true` if path-style access to the S3 bucket is used or `false` if a sub-domain is used
+|===
