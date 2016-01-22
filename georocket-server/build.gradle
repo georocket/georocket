@@ -65,12 +65,21 @@ startScripts {
     }
 }
 
-// include 'conf' directory in distribution
 distributions {
     main {
         contents {
+            // include 'conf' directory in distribution
             from(projectDir) {
                 include 'conf/**/*'
+            }
+
+            // include 'docs' in distribution
+            from(tasks.getByPath(':docs:asciidoctor')) {
+                into "docs"
+                eachFile { f ->
+                    f.path = f.path.replaceFirst(/html5\//, '')
+                }
+                includeEmptyDirs = false
             }
         }
     }

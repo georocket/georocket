@@ -13,3 +13,5 @@ asciidoctor {
 liveReload {
     docRoot asciidoctor.outputDir.canonicalPath
 }
+
+assemble.dependsOn(asciidoctor)
