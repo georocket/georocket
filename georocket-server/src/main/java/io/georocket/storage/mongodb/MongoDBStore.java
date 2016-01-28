@@ -31,9 +31,13 @@ import io.vertx.core.json.JsonObject;
  */
 public class MongoDBStore extends IndexedStore {
   private final Vertx vertx;
-  private final MongoClient mongoClient;
-  private final DB database;
-  private final GridFS gridfs;
+  private final String host;
+  private final int port;
+  private final String databaseName;
+  
+  private MongoClient mongoClient;
+  private DB database;
+  private GridFS gridfs;
 
   /**
    * Constructs a new store
@@ -44,20 +48,58 @@ public class MongoDBStore extends IndexedStore {
     this.vertx = vertx;
     
     JsonObject config = vertx.getOrCreateContext().config();
-    String host = config.getString(ConfigConstants.STORAGE_MONGODB_HOST);
-    int port = config.getInteger(ConfigConstants.STORAGE_MONGODB_PORT, 27017);
-    String databaseName = config.getString(ConfigConstants.STORAGE_MONGODB_DATABASE);
-    
-    mongoClient = new MongoClient(host, port);
-    // TODO getDB is deprecated. Use new GridFS API as soon as it's available
-    database = mongoClient.getDB(databaseName);
-    gridfs = new GridFS(database);
+    host = config.getString(ConfigConstants.STORAGE_MONGODB_HOST);
+    port = config.getInteger(ConfigConstants.STORAGE_MONGODB_PORT, 27017);
+    databaseName = config.getString(ConfigConstants.STORAGE_MONGODB_DATABASE);
+  }
+  
+  /**
+   * Get or create the MongoDB client
+   * Note: this method must be synchronized because we're accessing the
+   * {@link #mongoClient} field and we're calling this method from a worker thread.
+   * @return the MongoDB client
+   */
+  private synchronized MongoClient getMongoClient() {
+    if (mongoClient == null) {
+      mongoClient = new MongoClient(host, port);
+    }
+    return mongoClient;
+  }
+  
+  /**
+   * Get or create the MongoDB database
+   * Note: this method must be synchronized because we're accessing the
+   * {@link #database} field and we're calling this method from a worker thread.
+   * @return the MongoDB client
+   */
+  private synchronized DB getDB() {
+    if (database == null) {
+      // TODO getDB is deprecated. Use new GridFS API as soon as it's available
+      database = getMongoClient().getDB(databaseName); 
+    }
+    return database;
+  }
+  
+  /**
+   * Get or create the MongoDB GridFS instance
+   * Note: this method must be synchronized because we're accessing the
+   * {@link #gridfs} field and we're calling this method from a worker thread.
+   * @return the MongoDB client
+   */
+  private synchronized GridFS getGridFS() {
+    if (gridfs == null) {
+      gridfs = new GridFS(getDB());
+    }
+    return gridfs;
   }
 
   @Override
   public void getOne(String path, Handler<AsyncResult<ChunkReadStream>> handler) {
     vertx.<GridFSDBFile>executeBlocking(f -> {
-      GridFSDBFile file = gridfs.findOne(PathUtils.normalize(path));
+      GridFSDBFile file;
+      synchronized (MongoDBStore.this) {
+        file = getGridFS().findOne(PathUtils.normalize(path));
+      }
       f.complete(file);
     }, ar -> {
       if (ar.failed()) {
@@ -82,7 +124,10 @@ public class MongoDBStore extends IndexedStore {
     String filename = PathUtils.join(path, id);
     
     vertx.executeBlocking(f -> {
-      GridFSInputFile file = gridfs.createFile(filename);
+      GridFSInputFile file;
+      synchronized (MongoDBStore.this) {
+        file = getGridFS().createFile(filename);
+      }
       try (OutputStream os = file.getOutputStream();
           OutputStreamWriter writer = new OutputStreamWriter(os, StandardCharsets.UTF_8)) {
         writer.write(chunk);
@@ -103,7 +148,9 @@ public class MongoDBStore extends IndexedStore {
     
     String path = PathUtils.normalize(paths.poll());
     vertx.executeBlocking(f -> {
-      gridfs.remove(path);
+      synchronized (MongoDBStore.this) {
+        getGridFS().remove(path);
+      }
       f.complete();
     }, ar -> {
       if (ar.failed()) {

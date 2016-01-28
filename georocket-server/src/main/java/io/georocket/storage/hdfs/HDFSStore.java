@@ -51,21 +51,32 @@ public class HDFSStore extends IndexedStore {
     configuration.set("fs.defaultFS", defaultFS);
   }
   
-  private void ensureFS() throws IOException {
+  /**
+   * Get or create the HDFS file system
+   * Note: this method must be synchronized because we're accessing the
+   * {@link #fs} field and we're calling this method from a worker thread.
+   * @return the MongoDB client
+   */
+  private synchronized FileSystem getFS() throws IOException {
     if (fs == null) {
       fs = FileSystem.get(configuration);
     }
+    return fs;
   }
 
   @Override
   public void getOne(String path, Handler<AsyncResult<ChunkReadStream>> handler) {
     vertx.<Pair<Long, InputStream>>executeBlocking(f -> {
       try {
-        ensureFS();
         Path p = new Path(PathUtils.join(root, path));
-        FileStatus status = fs.getFileStatus(p);
-        long size = status.getLen();
-        FSDataInputStream is = fs.open(p);
+        long size;
+        FSDataInputStream is;
+        synchronized (HDFSStore.this) {
+          FileSystem fs = getFS();
+          FileStatus status = fs.getFileStatus(p);
+          size = status.getLen();
+          is = fs.open(p);
+        }
         f.complete(Pair.of(size, is));
       } catch (IOException e) {
         f.fail(e);
@@ -78,6 +89,16 @@ public class HDFSStore extends IndexedStore {
         handler.handle(Future.succeededFuture(new MongoDBChunkReadStream(p.getValue(), p.getKey(), vertx)));
       }
     });
+  }
+  
+  /**
+   * Create a new file on HDFS
+   * @param filename the file name
+   * @return an output stream that you can use to write the new file
+   * @throws IOException if the file cannot be created
+   */
+  private synchronized FSDataOutputStream createFile(String filename) throws IOException {
+    return getFS().create(new Path(PathUtils.join(root, filename)), false);
   }
 
   @Override
@@ -92,8 +113,7 @@ public class HDFSStore extends IndexedStore {
 
     vertx.executeBlocking(f -> {
       try {
-        ensureFS();
-        try (FSDataOutputStream os = fs.create(new Path(PathUtils.join(root, filename)), false);
+        try (FSDataOutputStream os = createFile(filename);
             OutputStreamWriter writer = new OutputStreamWriter(os, StandardCharsets.UTF_8)) {
           writer.write(chunk);
         }
@@ -115,8 +135,9 @@ public class HDFSStore extends IndexedStore {
     String path = PathUtils.join(root, paths.poll());
     vertx.executeBlocking(f -> {
       try {
-        ensureFS();
-        fs.delete(new Path(path), false);
+        synchronized (HDFSStore.this) {
+          getFS().delete(new Path(path), false);
+        }
       } catch (IOException e) {
         f.fail(e);
         return;

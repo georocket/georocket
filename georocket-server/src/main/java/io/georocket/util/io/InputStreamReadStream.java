@@ -66,7 +66,9 @@ public class InputStreamReadStream implements ReadStream<Buffer> {
         byte[] buf = new byte[READ_BUFFER_SIZE];
         int read;
         try {
-          read = is.read(buf, 0, READ_BUFFER_SIZE);
+          synchronized (InputStreamReadStream.this) {
+            read = is.read(buf, 0, READ_BUFFER_SIZE);
+          }
         } catch (IOException e) {
           f.fail(e);
           return;
@@ -154,7 +156,9 @@ public class InputStreamReadStream implements ReadStream<Buffer> {
     closed = true;
     vertx.<Void>executeBlocking(f -> {
       try {
-        is.close();
+        synchronized (InputStreamReadStream.this) {
+          is.close();
+        }
       } catch (IOException e) {
         f.fail(e);
         return;

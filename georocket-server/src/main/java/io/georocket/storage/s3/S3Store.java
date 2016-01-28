@@ -66,13 +66,32 @@ public class S3Store extends IndexedStore {
     client = vertx.createHttpClient(options);
   }
   
-  private void ensureS3Client() {
+  /**
+   * Get or initialize the S3 client.
+   * Note: this method must be synchronized because we're accessing the
+   * {@link #s3Client} field and we're calling this method from a worker thread.
+   * @return the S3 client
+   */
+  private synchronized AmazonS3Client getS3Client() {
     if (s3Client == null) {
       BasicAWSCredentials credentials = new BasicAWSCredentials(accessKey, secretKey);
       s3Client = new AmazonS3Client(credentials);
       s3Client.setEndpoint("http://" + host + ":" + port);
       s3Client.setS3ClientOptions(new S3ClientOptions().withPathStyleAccess(pathStyleAccess));
     }
+    return s3Client;
+  }
+  
+  /**
+   * Generate a pre-signed URL that can be used to make an HTTP request.
+   * Note: this method must be synchronized because we're accessing the
+   * {@link #s3Client} field and we're calling this method from a worker thread.
+   * @param key the key of the S3 object to query
+   * @param method the HTTP method that will be used in the request
+   * @return the presigned URL
+   */
+  private synchronized URL generatePresignedUrl(String key, HttpMethod method) {
+    return getS3Client().generatePresignedUrl(bucket, key, null, method);
   }
 
   @Override
@@ -87,9 +106,7 @@ public class S3Store extends IndexedStore {
     String key = PathUtils.removeLeadingSlash(filename);
     
     vertx.<URL>executeBlocking(f -> {
-      ensureS3Client();
-      URL u = s3Client.generatePresignedUrl(bucket, key, null, HttpMethod.PUT);
-      f.complete(u);
+      f.complete(generatePresignedUrl(key, HttpMethod.PUT));
     }, ar -> {
       if (ar.failed()) {
         handler.handle(Future.failedFuture(ar.cause()));
@@ -134,9 +151,7 @@ public class S3Store extends IndexedStore {
   public void getOne(String path, Handler<AsyncResult<ChunkReadStream>> handler) {
     String key = PathUtils.removeLeadingSlash(PathUtils.normalize(path));
     vertx.<URL>executeBlocking(f -> {
-      ensureS3Client();
-      URL u = s3Client.generatePresignedUrl(bucket, key, null, HttpMethod.GET);
-      f.complete(u);
+      f.complete(generatePresignedUrl(key, HttpMethod.GET));
     }, ar -> {
       if (ar.failed()) {
         handler.handle(Future.failedFuture(ar.cause()));
@@ -183,9 +198,7 @@ public class S3Store extends IndexedStore {
     
     String key = PathUtils.removeLeadingSlash(PathUtils.normalize(paths.poll()));
     vertx.<URL>executeBlocking(f -> {
-      ensureS3Client();
-      URL u = s3Client.generatePresignedUrl(bucket, key, null, HttpMethod.DELETE);
-      f.complete(u);
+      f.complete(generatePresignedUrl(key, HttpMethod.DELETE));
     }, ar -> {
       if (ar.failed()) {
         handler.handle(Future.failedFuture(ar.cause()));
