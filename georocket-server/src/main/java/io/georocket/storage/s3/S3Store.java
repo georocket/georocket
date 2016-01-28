@@ -24,12 +24,16 @@ import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 /**
  * Stores chunks on Amazon S3
  * @author Michel Kraemer
  */
 public class S3Store extends IndexedStore {
+  private static Logger log = LoggerFactory.getLogger(S3Store.class);
+  
   private final Vertx vertx;
   private AmazonS3Client s3Client;
   private final String accessKey;
@@ -91,21 +95,37 @@ public class S3Store extends IndexedStore {
         handler.handle(Future.failedFuture(ar.cause()));
         return;
       }
+      
+      URL u = ar.result();
+      log.debug("PUT " + u);
+      
       Buffer chunkBuf = Buffer.buffer(chunk);
-      HttpClientRequest request = client.put(ar.result().getFile());
+      HttpClientRequest request = client.put(u.getFile());
+      
+      request.putHeader("Host", u.getHost());
       request.putHeader("Content-Length", String.valueOf(chunkBuf.length()));
+      
       request.exceptionHandler(t -> {
         handler.handle(Future.failedFuture(t));
       });
+      
       request.handler(response -> {
+        Buffer errorBody = Buffer.buffer();
+        if (response.statusCode() != 200) {
+          response.handler(buf -> {
+            errorBody.appendBuffer(buf);
+          });
+        }
         response.endHandler(v -> {
           if (response.statusCode() == 200) {
             handler.handle(Future.succeededFuture(filename));
           } else {
+            log.error(errorBody);
             handler.handle(Future.failedFuture(response.statusMessage()));
           }
         });
       });
+      
       request.end(chunkBuf);
     });
   }
@@ -122,19 +142,34 @@ public class S3Store extends IndexedStore {
         handler.handle(Future.failedFuture(ar.cause()));
         return;
       }
+      
+      URL u = ar.result();
+      log.debug("GET " + u);
+      
       HttpClientRequest request = client.get(ar.result().getFile());
+      request.putHeader("Host", u.getHost());
+      
       request.exceptionHandler(t -> {
         handler.handle(Future.failedFuture(t));
       });
+      
       request.handler(response -> {
         if (response.statusCode() == 200) {
           String contentLength = response.getHeader("Content-Length");
           long chunkSize = Long.parseLong(contentLength);
           handler.handle(Future.succeededFuture(new DelegateChunkReadStream(chunkSize, response)));
         } else {
-          handler.handle(Future.failedFuture(response.statusMessage()));
+          Buffer errorBody = Buffer.buffer();
+          response.handler(buf -> {
+            errorBody.appendBuffer(buf);
+          });
+          response.endHandler(v -> {
+            log.error(errorBody);
+            handler.handle(Future.failedFuture(response.statusMessage()));
+          });
         }
       });
+      
       request.end();
     });
   }
@@ -156,19 +191,34 @@ public class S3Store extends IndexedStore {
         handler.handle(Future.failedFuture(ar.cause()));
         return;
       }
+      
+      URL u = ar.result();
+      log.debug("DELETE " + u);
+      
       HttpClientRequest request = client.delete(ar.result().getFile());
+      request.putHeader("Host", u.getHost());
+      
       request.exceptionHandler(t -> {
         handler.handle(Future.failedFuture(t));
       });
+      
       request.handler(response -> {
+        Buffer errorBody = Buffer.buffer();
+        if (response.statusCode() != 204) {
+          response.handler(buf -> {
+            errorBody.appendBuffer(buf);
+          });
+        }
         response.endHandler(v -> {
           if (response.statusCode() == 204) {
             doDeleteChunks(paths, handler);
           } else {
+            log.error(errorBody);
             handler.handle(Future.failedFuture(response.statusMessage()));
           }
         });
       });
+      
       request.end();
     });
   }
