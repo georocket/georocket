@@ -34,7 +34,7 @@ public class GmlIdIndexerFactory implements XMLIndexerFactory {
   }
 
   @Override
-  public QueryBuilder makeQuery(String search) {
+  public QueryBuilder compileQuery(String search) {
     return QueryBuilders.termQuery("gmlIds", search);
   }
 }

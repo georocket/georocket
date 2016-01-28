@@ -1,0 +1,19 @@
+{
+  "query": "1,2,3,4",
+  "queryCompilers": ["io.georocket.index.xml.BoundingBoxIndexerFactory"],
+  "expected": {
+    "geo_shape": {
+      "bbox": {
+        "shape": {
+          "type": "envelope",
+          "coordinates": [
+            [1.0, 4.0],
+            [3.0, 2.0]
+          ]
+        },
+        "relation": "intersects"
+      },
+      "_name": null
+    }
+  }
+}

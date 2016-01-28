@@ -52,7 +52,7 @@ public class BoundingBoxIndexerFactory implements XMLIndexerFactory {
   }
 
   @Override
-  public QueryBuilder makeQuery(String search) {
+  public QueryBuilder compileQuery(String search) {
     Iterable<String> coords = Splitter.on(',').trimResults().split(search);
     Iterator<String> coordsIter = coords.iterator();
     double minX = Double.parseDouble(coordsIter.next());

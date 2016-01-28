@@ -59,4 +59,19 @@ public class PathUtils {
     }
     return path;
   }
+
+  /**
+   * Ensures the given chunk path ends with a trailing slash
+   * @param path the path
+   * @return the path with a trailing slash
+   */
+  public static String addTrailingSlash(String path) {
+    if (path == null) {
+      return null;
+    }
+    if (!path.isEmpty() && path.charAt(path.length() - 1) == '/') {
+      return path;
+    }
+    return path + "/";
+  }
 }

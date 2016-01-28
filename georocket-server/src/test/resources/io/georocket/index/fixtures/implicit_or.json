@@ -1,0 +1,16 @@
+{
+  "query": "foo bar",
+  "expected": {
+    "bool": {
+      "should": [{
+        "term": {
+          "tags": "foo"
+        }
+      }, {
+        "term": {
+          "tags": "bar"
+        }
+      }]
+    }
+  }
+}

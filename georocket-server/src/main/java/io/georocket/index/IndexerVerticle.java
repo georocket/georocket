@@ -27,9 +27,6 @@ import org.elasticsearch.client.Client;
 import org.elasticsearch.client.Requests;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.TimeValue;
-import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.QueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.node.Node;
 import org.elasticsearch.node.NodeBuilder;
 import org.elasticsearch.search.SearchHit;
@@ -39,8 +36,6 @@ import org.elasticsearch.search.sort.SortOrder;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMap.Builder;
 
-import io.georocket.api.index.IndexerFactory;
-import io.georocket.api.index.IndexerFactory.MatchPriority;
 import io.georocket.api.index.xml.XMLIndexer;
 import io.georocket.api.index.xml.XMLIndexerFactory;
 import io.georocket.constants.AddressConstants;
@@ -50,7 +45,6 @@ import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.Store;
 import io.georocket.storage.StoreFactory;
 import io.georocket.util.AsyncXMLParser;
-import io.georocket.util.QuotedStringSplitter;
 import io.georocket.util.RxUtils;
 import io.georocket.util.XMLStartElement;
 import io.vertx.core.AsyncResult;
@@ -108,6 +102,11 @@ public class IndexerVerticle extends AbstractVerticle {
       ServiceLoader.load(XMLIndexerFactory.class);
   
   /**
+   * Compiles search strings to Elasticsearch documents
+   */
+  private DefaultQueryCompiler queryCompiler;
+  
+  /**
    * True if {@link #ensureIndex()} has been called at least once
    */
   private boolean indexEnsured;
@@ -144,6 +143,7 @@ public class IndexerVerticle extends AbstractVerticle {
       node = ar.result();
       client = node.client();
       
+      queryCompiler = new DefaultQueryCompiler(xmlIndexerFactoryLoader);
       store = StoreFactory.createStore((Vertx)vertx.getDelegate());
       
       registerAdd();
@@ -376,7 +376,7 @@ public class IndexerVerticle extends AbstractVerticle {
           .setScroll(timeout)
           .setSize(pageSize)
           .addSort("_doc", SortOrder.ASC) // sort by doc (fastest way to scroll)
-          .setPostFilter(makeQuery(search, path))
+          .setPostFilter(queryCompiler.compileQuery(search, path))
           .execute(listener);
     } else {
       // continue searching
@@ -418,65 +418,6 @@ public class IndexerVerticle extends AbstractVerticle {
         return Observable.just(null);
       }
     });
-  }
-  
-  /**
-   * Creates an ElasticSearch query from the given search string
-   * @param search the search string
-   * @param path the path where to perform the search (may be null if the
-   * whole store should be searched)
-   * @return the query
-   */
-  private QueryBuilder makeQuery(String search, String path) {
-    QueryBuilder qb = makeQuery(search);
-    if (path != null && !path.equals("/")) {
-      String prefix = path.endsWith("/") ? path : path + "/";
-      return QueryBuilders.boolQuery()
-          .should(qb)
-          .must(QueryBuilders.boolQuery()
-              .should(QueryBuilders.termQuery("_id", path))
-              .should(QueryBuilders.prefixQuery("_id", prefix)));
-    }
-    return qb;
-  }
-  
-  /**
-   * Creates an ElasticSearch query from the given search string
-   * @param search the search string
-   * @return the query
-   */
-  private QueryBuilder makeQuery(String search) {
-    if (search == null || search.isEmpty()) {
-      // match everything my default
-      return QueryBuilders.matchAllQuery();
-    }
-    
-    // split search query
-    List<String> searches = QuotedStringSplitter.split(search);
-    if (searches.size() == 1) {
-      search = searches.get(0);
-      
-      BoolQueryBuilder bqb = QueryBuilders.boolQuery();
-      bqb.should(QueryBuilders.termQuery("tags", search));
-      
-      for (IndexerFactory f : xmlIndexerFactoryLoader) {
-        MatchPriority mp = f.getQueryPriority(search);
-        if (mp == MatchPriority.ONLY) {
-          return f.makeQuery(search);
-        } else if (mp == MatchPriority.SHOULD) {
-          bqb.should(f.makeQuery(search));
-        } else if (mp == MatchPriority.MUST) {
-          bqb.must(f.makeQuery(search));
-        }
-      }
-      
-      return bqb;
-    }
-    
-    // call #makeQuery for every part of the search query recursively
-    BoolQueryBuilder bqb = QueryBuilders.boolQuery();
-    searches.stream().map(this::makeQuery).forEach(bqb::should);
-    return bqb;
   }
   
   /**

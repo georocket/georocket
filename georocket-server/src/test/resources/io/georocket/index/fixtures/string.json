@@ -1,0 +1,8 @@
+{
+  "query": "bla",
+  "expected": {
+    "term": {
+      "tags": "bla"
+    }
+  }
+}
