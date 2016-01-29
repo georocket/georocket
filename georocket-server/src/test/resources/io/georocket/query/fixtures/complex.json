@@ -1,0 +1,45 @@
+{
+  "query": "AND(foo bar OR(test1 test2)) hello NOT(world \"you\")",
+  "expected": {
+    "bool": {
+      "must": [{
+        "term": {
+          "tags": "foo"
+        }
+      }, {
+        "term": {
+          "tags": "bar"
+        }
+      }, {
+        "bool": {
+          "should": [{
+            "term": {
+              "tags": "test1"
+            }
+          }, {
+            "term": {
+              "tags": "test2"
+            }
+          }]
+        }
+      }],
+      "should": [{
+        "term": {
+          "tags": "hello"
+        }
+      }, {
+        "bool": {
+          "must_not": [{
+            "term": {
+              "tags": "world"
+            }
+          }, {
+            "term": {
+              "tags": "you"
+            }
+          }]
+        }
+      }]
+    }
+  }
+}

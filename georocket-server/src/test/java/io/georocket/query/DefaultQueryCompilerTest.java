@@ -80,4 +80,20 @@ public class DefaultQueryCompilerTest {
   public void boundingBoxOrString() {
     expectFixture("bounding_box_or_string");
   }
+  
+  /**
+   * Test query with logical AND
+   */
+  @Test
+  public void and() {
+    expectFixture("and");
+  }
+  
+  /**
+   * Test complex query
+   */
+  @Test
+  public void complex() {
+    expectFixture("complex");
+  }
 }

@@ -1,0 +1,16 @@
+{
+  "query": "AND(foo bar)",
+  "expected": {
+    "bool": {
+      "must": [{
+        "term": {
+          "tags": "foo"
+        }
+      }, {
+        "term": {
+          "tags": "bar"
+        }
+      }]
+    }
+  }
+}
