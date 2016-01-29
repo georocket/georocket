@@ -1,4 +1,4 @@
-package io.georocket.index;
+package io.georocket.query;
 
 import static org.junit.Assert.assertEquals;
 
@@ -10,7 +10,7 @@ import java.util.List;
 import org.apache.commons.io.IOUtils;
 import org.junit.Test;
 
-import io.georocket.api.index.QueryCompiler;
+import io.georocket.api.query.QueryCompiler;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;

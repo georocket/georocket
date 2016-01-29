@@ -1,4 +1,4 @@
-package io.georocket.index;
+package io.georocket.query;
 
 import java.util.Collections;
 import java.util.List;
@@ -9,8 +9,8 @@ import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.TermQueryBuilder;
 
-import io.georocket.api.index.QueryCompiler;
 import io.georocket.api.index.xml.XMLIndexerFactory;
+import io.georocket.api.query.QueryCompiler;
 import io.georocket.util.PathUtils;
 import io.georocket.util.QuotedStringSplitter;
 

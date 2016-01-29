@@ -2,6 +2,8 @@ package io.georocket.api.index;
 
 import java.util.Map;
 
+import io.georocket.api.query.QueryCompiler;
+
 /**
  * Factory for {@link Indexer} objects
  * @author Michel Kraemer

@@ -1,4 +1,4 @@
-package io.georocket.api.index;
+package io.georocket.api.query;
 
 import org.elasticsearch.index.query.QueryBuilder;
 
