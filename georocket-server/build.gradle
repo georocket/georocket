@@ -1,4 +1,5 @@
 apply plugin: 'java'
+apply plugin: 'antlr'
 apply plugin: 'application'
 
 version = '1.0.0-alpha.1'
@@ -47,6 +48,8 @@ dependencies {
 
     testCompile "io.vertx:vertx-unit:$vertxVersion"
     testCompile 'junit:junit:4.12'
+    
+    antlr 'org.antlr:antlr4:4.5.1'
 }
 
 // customize start scripts
@@ -84,6 +87,8 @@ distributions {
         }
     }
 }
+
+eclipseClasspath.dependsOn(generateGrammarSource)
 
 // Fix command-length issue in windows startscript
 // see https://issues.gradle.org/browse/GRADLE-2992

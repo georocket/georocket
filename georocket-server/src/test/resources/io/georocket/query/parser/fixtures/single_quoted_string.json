@@ -1,0 +1,13 @@
+{
+  "query": "str 'foo\\' bar'",
+  "expected": {
+    "type": "query",
+    "children": [{
+      "type": "string",
+      "text": "str"
+    }, {
+      "type": "string",
+      "text": "foo' bar"
+    }]
+  }
+}
