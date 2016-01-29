@@ -35,7 +35,7 @@ public interface QueryCompiler {
   }
   
   /**
-   * Get the priority with which the query returned by {@link #makeQuery(String)}
+   * Get the priority with which the query returned by {@link #compileQuery(String)}
    * should be applied for the given search string
    * @param search the search string
    * @return the priority

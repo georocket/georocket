@@ -56,6 +56,7 @@ public class HDFSStore extends IndexedStore {
    * Note: this method must be synchronized because we're accessing the
    * {@link #fs} field and we're calling this method from a worker thread.
    * @return the MongoDB client
+   * @throws IOException if the file system instance could not be created
    */
   private synchronized FileSystem getFS() throws IOException {
     if (fs == null) {
