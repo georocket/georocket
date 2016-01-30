@@ -382,13 +382,55 @@ Example:
 
   13.378,52.515,13.380,52.517
 
-=== Logical OR
+=== Logical operators
 
-By default all terms in a query are combined by logical OR. Use a space character to separate multiple terms.
+The operators <<OR>>, <<AND>> and <<NOT>> can be used to logically combine terms in a query. They are applied using the following notation:
+
+  <operator>(<operand_1> <operand_2> ... <operand_n>)
+
+Operands are separated by a space character. Logical operations can be nested.
+
+Examples:
+
+  AND(a b)
+  AND(a NOT(b))
+  OR(NOT(a) NOT(b))
+
+==== OR
+
+Use the logical OR operator to search for chunks that match at least one of the given operands.
 
 Example:
 
-  string1 string2 13.378,52.515,13.380,52.517 string3
+  OR(foo 13.378,52.515,13.380,52.517 bar)
+
+This example matches all chunks that have a tag or indexed attribute with the value `foo` or `bar` as well as those that are within the bounding box `13.378,52.515,13.380,52.517`.
+
+By default, if you don't specify a logical operation, all top-level terms in a query are combined by OR. Just use a space character to separate operands. The following query is a shorthand for the example above.
+
+Example:
+
+  foo 13.378,52.515,13.380,52.517 bar
+
+==== AND
+
+Use the logical AND operator to search for chunks that match all of the given operands.
+
+Example:
+
+  AND(13.378,52.515,13.380,52.517 foobar)
+
+This example matches all chunks that are within the bounding box `13.378,52.515,13.380,52.517` and that have a tag or indexed attribute with a value of `foobar`.
+
+==== NOT
+
+Use the logical NOT operator to search for chunks that match none of the given operands.
+
+Example:
+
+  NOT(13.378,52.515,13.380,52.517 foobar)
+
+This example matches all chunks that are not within the bounding box `13.378,52.515,13.380,52.517` and that don't have a tag or indexed attribute with a value of `foobar`.
 
 == Server configuration
 
