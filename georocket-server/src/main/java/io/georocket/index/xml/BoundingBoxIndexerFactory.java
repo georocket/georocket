@@ -33,13 +33,13 @@ public class BoundingBoxIndexerFactory implements XMLIndexerFactory {
 
   @Override
   public Map<String, Object> getMapping() {
-    return ImmutableMap.of("bbox", ImmutableMap.of(
+    return ImmutableMap.of("properties", ImmutableMap.of("bbox", ImmutableMap.of(
         "type", "geo_shape",
         "tree", "quadtree", // see https://github.com/elastic/elasticsearch/issues/14181
         "precision", "29" // this is the maximum level
         // quadtree uses less memory and seems to be a lot faster than geohash
         // see http://tech.taskrabbit.com/blog/2015/06/09/elasticsearch-geohash-vs-geotree/
-    ));
+    )));
   }
 
   @Override

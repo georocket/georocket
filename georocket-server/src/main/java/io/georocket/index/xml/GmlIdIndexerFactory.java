@@ -22,10 +22,10 @@ public class GmlIdIndexerFactory implements XMLIndexerFactory {
 
   @Override
   public Map<String, Object> getMapping() {
-    return ImmutableMap.of("gmlIds", ImmutableMap.of(
+    return ImmutableMap.of("properties", ImmutableMap.of("gmlIds", ImmutableMap.of(
         "type", "string", // array of strings actually, auto-supported by Elasticsearch
         "index", "not_analyzed" // do not analyze (i.e. tokenize) this field, use the actual value
-    ));
+    )));
   }
 
   @Override

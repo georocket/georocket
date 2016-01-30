@@ -2,8 +2,9 @@ package io.georocket.index;
 
 import static io.georocket.util.ThrowableHelper.throwableToCode;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,9 +33,7 @@ import org.elasticsearch.node.NodeBuilder;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.sort.SortOrder;
-
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableMap.Builder;
+import org.yaml.snakeyaml.Yaml;
 
 import io.georocket.api.index.xml.XMLIndexer;
 import io.georocket.api.index.xml.XMLIndexerFactory;
@@ -46,6 +45,7 @@ import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.Store;
 import io.georocket.storage.StoreFactory;
 import io.georocket.util.AsyncXMLParser;
+import io.georocket.util.MapUtils;
 import io.georocket.util.RxUtils;
 import io.georocket.util.XMLStartElement;
 import io.vertx.core.AsyncResult;
@@ -526,56 +526,23 @@ public class IndexerVerticle extends AbstractVerticle {
    * @return an observable that will emit a single item when the index
    * has been created
    */
+  @SuppressWarnings("unchecked")
   private Observable<Void> createIndex() {
-    Map<String, Object> integerNoIndex = ImmutableMap.of(
-        "type", "integer",
-        "index", "no"
-    );
-    Map<String, Object> stringNoIndex = ImmutableMap.of(
-        "type", "string",
-        "index", "no"
-    );
+    // load default mapping
+    Yaml yaml = new Yaml();
+    Map<String, Object> source;
+    try (InputStream is = this.getClass().getResourceAsStream("index_defaults.yaml")) {
+      source = (Map<String, Object>)yaml.load(is);
+    } catch (IOException e) {
+      return Observable.error(e);
+    }
     
-    Builder<String, Object> propertiesBuilder = ImmutableMap.<String, Object>builder()
-        .put("tags", ImmutableMap.of(
-            "type", "string", // array of strings actually, auto-supported by Elasticsearch
-            "index", "not_analyzed"
-        ))
-        
-        // metadata: don't index it
-        .put("chunkStart", integerNoIndex)
-        .put("chunkEnd", integerNoIndex)
-        .put("chunkParents", ImmutableMap.of(
-            "type", "object",
-            "properties", ImmutableMap.builder()
-                .put("prefix", stringNoIndex)
-                .put("localName", stringNoIndex)
-                .put("namespacePrefixes", stringNoIndex)
-                .put("namespaceUris", stringNoIndex)
-                .put("attributePrefixes", stringNoIndex)
-                .put("attributeLocalNames", stringNoIndex)
-                .put("attributeValues", stringNoIndex)
-                .build()
-        ));
+    // remove unnecessary node
+    source.remove("variables");
     
-    // add all properties from XML indexers
+    // merge all properties from XML indexers
     xmlIndexerFactoryLoader.forEach(factory ->
-        propertiesBuilder.putAll(factory.getMapping()));
-    
-    Map<String, Object> source = ImmutableMap.of(
-        "properties", propertiesBuilder.build(),
-        
-        // Do not save the original indexed document to save space. only include metadata!
-        // See https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-source-field.html
-        // for the drawbacks of this approach!
-        "_source", ImmutableMap.of(
-            "includes", Arrays.asList(
-                "chunkStart",
-                "chunkEnd",
-                "chunkParents"
-             )
-        )
-    );
+        MapUtils.deepMerge(source, factory.getMapping()));
     
     CreateIndexRequest request = Requests.createIndexRequest(INDEX_NAME)
         .mapping(TYPE_NAME, source);

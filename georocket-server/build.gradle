@@ -45,6 +45,7 @@ dependencies {
     compile 'org.geotools:gt-referencing:14.0'
     compile 'org.mongodb:bson:3.2.1'
     compile 'org.mongodb:mongodb-driver:3.2.1'
+    compile 'org.yaml:snakeyaml:1.16'
 
     testCompile "io.vertx:vertx-unit:$vertxVersion"
     testCompile 'junit:junit:4.12'

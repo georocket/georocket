@@ -1,0 +1,37 @@
+# HEADS UP: the 'variables' node will be removed after parsing!
+variables:
+  integer_no_index: &integer_no_index
+    type: integer
+    index: "no"
+  string_no_index: &string_no_index
+    type: string
+    index: "no"
+
+# Properties to index
+properties:
+  # tags attached to chunks
+  tags:
+    type: string  # array of strings actually, auto-supported by Elasticsearch
+    index: not_analyzed
+  # metadata: don't index it
+  chunkStart: *integer_no_index
+  chunkEnd: *integer_no_index
+  chunkParents:
+    type: object
+    properties:
+      prefix: *string_no_index
+      localName: *string_no_index
+      namespacePrefixes: *string_no_index
+      namespaceUris: *string_no_index
+      attributePrefixes: *string_no_index
+      attributeLocalNames: *string_no_index
+      attributeValues: *string_no_index
+
+# Do not save the original indexed document to save space. only include metadata!
+# See https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-source-field.html
+# for the drawbacks of this approach!
+_source:
+  includes:
+  - chunkStart
+  - chunkEnd
+  - chunkParents

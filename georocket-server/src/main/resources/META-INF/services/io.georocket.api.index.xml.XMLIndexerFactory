@@ -1,2 +1,3 @@
 io.georocket.index.xml.BoundingBoxIndexerFactory
+io.georocket.index.xml.GenericAttributeIndexerFactory
 io.georocket.index.xml.GmlIdIndexerFactory
