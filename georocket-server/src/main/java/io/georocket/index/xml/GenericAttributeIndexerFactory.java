@@ -31,6 +31,15 @@ public class GenericAttributeIndexerFactory implements XMLIndexerFactory {
                 "index", "not_analyzed"
             )
         )
+    )), "properties", ImmutableMap.of("genAttrs", ImmutableMap.of(
+        // TODO remove hidden field when issue 16098 has been fixed
+        // https://github.com/elastic/elasticsearch/issues/16098
+        "properties", ImmutableMap.of(
+            "$$$$HIDDEN_FIELD_WORKAROUND_FOR_ELASTICSEARCH_ISSUE_16098$$$$", ImmutableMap.of(
+                "type", "string",
+                "index", "no"
+            )
+        )
     )));
   }
 
