@@ -1,6 +1,7 @@
 package io.georocket.query;
 
 import java.util.ArrayDeque;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.ServiceLoader;
@@ -12,6 +13,8 @@ import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.TermQueryBuilder;
+
+import com.google.common.collect.ImmutableList;
 
 import io.georocket.api.index.xml.XMLIndexerFactory;
 import io.georocket.api.query.QueryCompiler;
@@ -33,20 +36,22 @@ public class DefaultQueryCompiler implements QueryCompiler {
   /**
    * Query compilers for individual properties
    */
-  private final Iterable<? extends QueryCompiler> queryCompilers;
+  private final Collection<? extends QueryCompiler> queryCompilers;
   
   /**
    * Default constructor
    */
   public DefaultQueryCompiler() {
-    this(ServiceLoader.load(XMLIndexerFactory.class));
+    // load factories now and not lazily to avoid concurrent modifications to
+    // the service loader's internal cache
+    this(ImmutableList.copyOf(ServiceLoader.load(XMLIndexerFactory.class)));
   }
   
   /**
    * Constructs the compiler
    * @param queryCompilers query compilers for individual properties
    */
-  public DefaultQueryCompiler(Iterable<? extends QueryCompiler> queryCompilers) {
+  public DefaultQueryCompiler(Collection<? extends QueryCompiler> queryCompilers) {
     if (queryCompilers == null) {
       this.queryCompilers = Collections.emptyList();
     } else {

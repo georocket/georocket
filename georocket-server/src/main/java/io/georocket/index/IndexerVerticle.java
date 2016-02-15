@@ -35,6 +35,8 @@ import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.sort.SortOrder;
 import org.yaml.snakeyaml.Yaml;
 
+import com.google.common.collect.ImmutableList;
+
 import io.georocket.api.index.xml.XMLIndexer;
 import io.georocket.api.index.xml.XMLIndexerFactory;
 import io.georocket.constants.AddressConstants;
@@ -97,10 +99,9 @@ public class IndexerVerticle extends AbstractVerticle {
   private Store store;
   
   /**
-   * A service loader for {@link XMLIndexerFactory} objects
+   * A list of {@link XMLIndexerFactory} objects
    */
-  private ServiceLoader<XMLIndexerFactory> xmlIndexerFactoryLoader =
-      ServiceLoader.load(XMLIndexerFactory.class);
+  private ImmutableList<XMLIndexerFactory> xmlIndexerFactories;
   
   /**
    * Compiles search strings to Elasticsearch documents
@@ -128,6 +129,10 @@ public class IndexerVerticle extends AbstractVerticle {
         .put("http.enabled", true) // TODO enable HTTP for debugging purpose only!
         .build();
     
+    // load xml indexer factories now and not lazily to avoid concurrent
+    // modifications to the service loader's internal cache
+    xmlIndexerFactories = ImmutableList.copyOf(ServiceLoader.load(XMLIndexerFactory.class));
+    
     vertx.<Node>executeBlocking(f -> {
       f.complete(NodeBuilder.nodeBuilder()
           .settings(settings)
@@ -144,7 +149,7 @@ public class IndexerVerticle extends AbstractVerticle {
       node = ar.result();
       client = node.client();
       
-      queryCompiler = new DefaultQueryCompiler(xmlIndexerFactoryLoader);
+      queryCompiler = new DefaultQueryCompiler(xmlIndexerFactories);
       store = StoreFactory.createStore((Vertx)vertx.getDelegate());
       
       registerAdd();
@@ -430,7 +435,7 @@ public class IndexerVerticle extends AbstractVerticle {
     AsyncXMLParser xmlParser = new AsyncXMLParser();
     
     List<XMLIndexer> indexers = new ArrayList<>();
-    xmlIndexerFactoryLoader.forEach(factory -> indexers.add(factory.createIndexer()));
+    xmlIndexerFactories.forEach(factory -> indexers.add(factory.createIndexer()));
     
     return RxHelper.toObservable(chunk)
       .flatMap(xmlParser::feed)
@@ -541,7 +546,7 @@ public class IndexerVerticle extends AbstractVerticle {
     source.remove("variables");
     
     // merge all properties from XML indexers
-    xmlIndexerFactoryLoader.forEach(factory ->
+    xmlIndexerFactories.forEach(factory ->
         MapUtils.deepMerge(source, factory.getMapping()));
     
     CreateIndexRequest request = Requests.createIndexRequest(INDEX_NAME)
