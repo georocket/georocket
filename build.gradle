@@ -1,5 +1,6 @@
 subprojects {
     apply plugin: 'eclipse'
+    apply plugin: 'idea'
     
     plugins.withType(EclipsePlugin) {
         tasks.eclipse.doLast {
