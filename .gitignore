@@ -10,3 +10,9 @@ build/
 node_modules/
 src-gen/
 gradle.properties
+.idea/
+docs/docs.iml
+georocket-cli/georocket-cli.iml
+georocket-server/georocket-server.iml
+georocket.iml
+
