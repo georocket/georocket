@@ -93,6 +93,7 @@ public class ImporterVerticle extends AbstractVerticle {
     fs.openObservable(filename, openOptions)
       .flatMap(f -> importXML(f, layer, tags).finallyDo(() -> {
         // delete file from 'incoming' folder
+        log.info("Deleting " + filename + " from incoming folder");
         f.closeObservable()
           .flatMap(v -> fs.deleteObservable(filename))
           .subscribe(v -> {}, err -> {
