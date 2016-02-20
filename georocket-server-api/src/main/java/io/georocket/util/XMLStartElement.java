@@ -8,6 +8,7 @@ import io.vertx.core.json.JsonObject;
 /**
  * A simple class describing an XML start element with optional prefix,
  * namespaces and attributes.
+ * @since 1.0.0
  * @author Michel Kraemer
  */
 public class XMLStartElement {

@@ -37,10 +37,10 @@ import org.yaml.snakeyaml.Yaml;
 
 import com.google.common.collect.ImmutableList;
 
-import io.georocket.api.index.xml.XMLIndexer;
-import io.georocket.api.index.xml.XMLIndexerFactory;
 import io.georocket.constants.AddressConstants;
 import io.georocket.constants.ConfigConstants;
+import io.georocket.index.xml.XMLIndexer;
+import io.georocket.index.xml.XMLIndexerFactory;
 import io.georocket.query.DefaultQueryCompiler;
 import io.georocket.storage.ChunkMeta;
 import io.georocket.storage.ChunkReadStream;

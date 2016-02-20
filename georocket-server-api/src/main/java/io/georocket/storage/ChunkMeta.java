@@ -9,6 +9,7 @@ import io.vertx.core.json.JsonObject;
 
 /**
  * Metadata for a chunk
+ * @since 1.0.0
  * @author Michel Kraemer
  */
 public class ChunkMeta {

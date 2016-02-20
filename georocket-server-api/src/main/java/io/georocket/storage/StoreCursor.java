@@ -5,6 +5,7 @@ import io.vertx.core.Handler;
 
 /**
  * A cursor that can be used to iterate over chunks in a {@link Store}
+ * @since 1.0.0
  * @author Michel Kraemer
  */
 public interface StoreCursor {

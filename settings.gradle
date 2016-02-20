@@ -1,3 +1,4 @@
 include 'georocket-cli'
 include 'georocket-server'
+include 'georocket-server-api'
 include 'docs'

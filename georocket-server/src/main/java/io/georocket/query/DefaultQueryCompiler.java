@@ -16,8 +16,7 @@ import org.elasticsearch.index.query.TermQueryBuilder;
 
 import com.google.common.collect.ImmutableList;
 
-import io.georocket.api.index.xml.XMLIndexerFactory;
-import io.georocket.api.query.QueryCompiler;
+import io.georocket.index.xml.XMLIndexerFactory;
 import io.georocket.query.parser.QueryBaseListener;
 import io.georocket.query.parser.QueryLexer;
 import io.georocket.query.parser.QueryParser;

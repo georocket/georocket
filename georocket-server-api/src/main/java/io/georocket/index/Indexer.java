@@ -1,9 +1,10 @@
-package io.georocket.api.index;
+package io.georocket.index;
 
 import java.util.Map;
 
 /**
  * Indexes chunks
+ * @since 1.0.0
  * @author Michel Kraemer
  */
 public interface Indexer {

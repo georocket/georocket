@@ -1,5 +1,6 @@
 /storage/
 .classpath
+.DS_Store
 .externalToolBuilders/
 .gradle/
 .project

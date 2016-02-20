@@ -16,7 +16,6 @@ import org.opengis.referencing.operation.TransformException;
 
 import com.google.common.collect.ImmutableMap;
 
-import io.georocket.api.index.xml.XMLIndexer;
 import io.georocket.util.CompoundCRSDecoder;
 import io.georocket.util.XMLStreamEvent;
 

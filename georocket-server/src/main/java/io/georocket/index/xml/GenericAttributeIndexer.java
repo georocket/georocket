@@ -7,7 +7,6 @@ import javax.xml.stream.events.XMLEvent;
 
 import com.google.common.collect.ImmutableMap;
 
-import io.georocket.api.index.xml.XMLIndexer;
 import io.georocket.util.XMLStreamEvent;
 
 /**
