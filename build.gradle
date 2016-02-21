@@ -1,6 +1,17 @@
 subprojects {
     apply plugin: 'eclipse'
     
+    plugins.withType(JavaPlugin) {
+        version = '1.0.0-alpha.1'
+        group = 'io.georocket'
+        sourceCompatibility = '1.8'
+        targetCompatibility = '1.8'
+    }
+    
+    ext {
+        vertxVersion = '3.2.0'
+    }
+    
     plugins.withType(EclipsePlugin) {
         tasks.eclipse.doLast {
             File prefsFile = file("${project.projectDir}/.settings/org.eclipse.jdt.core.prefs")
