@@ -28,7 +28,8 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Created by Andrej Sajenko on 16/02/16.
+ * Test {@link FileStore}
+ * @author Andrej Sajenko
  */
 @RunWith(VertxUnitRunner.class)
 public class FileStoreTest {
@@ -175,7 +176,7 @@ public class FileStoreTest {
 
       context.assertEquals(filePath, Paths.get(fileDestinationFolder.toString(), paths.getString(0)));
 
-      req.reply(""); // Value is not used in Store
+      req.reply(null); // Value is not used in Store
 
       asyncIndexerDelete.complete();
     });
@@ -200,8 +201,6 @@ public class FileStoreTest {
 
       // TODO: delete with path and check for the path
 
-
-      // todo: Create valid reply
       Long totalHits = 1L;
       String scrollId = "0";
       JsonArray hits = new JsonArray();
