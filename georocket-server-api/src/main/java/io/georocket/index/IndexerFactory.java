@@ -1,11 +1,12 @@
-package io.georocket.api.index;
+package io.georocket.index;
 
 import java.util.Map;
 
-import io.georocket.api.query.QueryCompiler;
+import io.georocket.query.QueryCompiler;
 
 /**
  * Factory for {@link Indexer} objects
+ * @since 1.0.0
  * @author Michel Kraemer
  */
 public interface IndexerFactory extends QueryCompiler {

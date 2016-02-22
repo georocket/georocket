@@ -7,6 +7,7 @@ import io.vertx.core.Handler;
 
 /**
  * A store for chunks
+ * @since 1.0.0
  * @author Michel Kraemer
  */
 public interface Store {

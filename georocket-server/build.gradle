@@ -25,7 +25,8 @@ ext {
 }
 
 dependencies {
-    compile "io.vertx:vertx-core:$vertxVersion"
+    compile project(':georocket-server-api')
+
     compile "io.vertx:vertx-rx-java:$vertxVersion"
     compile "io.vertx:vertx-web:$vertxVersion"
     
@@ -39,7 +40,6 @@ dependencies {
     compile 'org.apache.commons:commons-lang3:3.4'
     compile 'org.apache.hadoop:hadoop-common:2.7.1'
     compile 'org.apache.hadoop:hadoop-hdfs:2.7.1'
-    compile 'org.elasticsearch:elasticsearch:2.1.1'
     compile 'org.geotools:gt-epsg-extension:14.0'
     compile 'org.geotools:gt-epsg-hsql:14.0'
     compile 'org.geotools:gt-referencing:14.0'

@@ -7,6 +7,7 @@ import io.vertx.core.streams.ReadStream;
 
 /**
  * A read stream for chunks
+ * @since 1.0.0
  * @author Michel Kraemer
  */
 public interface ChunkReadStream extends ReadStream<Buffer> {

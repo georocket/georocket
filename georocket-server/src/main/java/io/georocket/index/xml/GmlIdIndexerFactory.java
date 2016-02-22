@@ -7,9 +7,6 @@ import org.elasticsearch.index.query.QueryBuilders;
 
 import com.google.common.collect.ImmutableMap;
 
-import io.georocket.api.index.xml.XMLIndexer;
-import io.georocket.api.index.xml.XMLIndexerFactory;
-
 /**
  * Create instances of {@link GmlIdIndexer}
  * @author Michel Kraemer

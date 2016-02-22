@@ -1,9 +1,10 @@
-package io.georocket.api.query;
+package io.georocket.query;
 
 import org.elasticsearch.index.query.QueryBuilder;
 
 /**
  * Compiles search strings to Elasticsearch documents
+ * @since 1.0.0
  * @author Michel Kraemer
  */
 public interface QueryCompiler {

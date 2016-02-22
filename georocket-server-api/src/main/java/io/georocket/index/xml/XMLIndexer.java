@@ -1,10 +1,11 @@
-package io.georocket.api.index.xml;
+package io.georocket.index.xml;
 
-import io.georocket.api.index.Indexer;
+import io.georocket.index.Indexer;
 import io.georocket.util.XMLStreamEvent;
 
 /**
  * Indexes XML chunks
+ * @since 1.0.0
  * @author Michel Kraemer
  */
 public interface XMLIndexer extends Indexer {

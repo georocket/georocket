@@ -4,6 +4,7 @@ import javax.xml.stream.XMLStreamReader;
 
 /**
  * An event produced by {@link AsyncXMLParser}
+ * @since 1.0.0
  * @author Michel Kraemer
  */
 public class XMLStreamEvent {

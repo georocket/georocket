@@ -1,9 +1,10 @@
-package io.georocket.api.index.xml;
+package io.georocket.index.xml;
 
-import io.georocket.api.index.IndexerFactory;
+import io.georocket.index.IndexerFactory;
 
 /**
  * Factory for {@link XMLIndexer} objects
+ * @since 1.0.0
  * @author Michel Kraemer
  */
 public interface XMLIndexerFactory extends IndexerFactory {
