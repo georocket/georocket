@@ -14,6 +14,7 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.bson.types.ObjectId;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -34,6 +35,8 @@ import java.util.List;
 @RunWith(VertxUnitRunner.class)
 public class FileStoreTest {
 
+  // TODO: do everything with an optional path and without one
+
   /**
    * Run the test on a Vert.x test context
    */
@@ -47,28 +50,96 @@ public class FileStoreTest {
   public TemporaryFolder folder = new TemporaryFolder();
 
 
+  private Path storagePath;
+
+  @Before
+  public void setUp() {
+    storagePath = Paths.get(folder.getRoot().getAbsolutePath(), "storage");
+  }
+
+  private static String chunkContent = "<b>This is a chunk content</b>";
+  private static String search = "irrelevant but necessary value"; // value is irrelevant for the test, because this test do not use the Indexer
+
+  private static JsonObject indexerQueryReplyMsg;
+
+  private static String id = new ObjectId().toString();
+  private static JsonArray parents = new JsonArray();
+  private static int start = 0;
+  private static int end = 5;
+  private static Long totalHits = 1L;
+  private static String scrollId = "0";
+  static {
+    JsonArray hits = new JsonArray();
+    JsonObject hit = new JsonObject()
+        .put("parents", parents)
+        .put("start", start)
+        .put("end", end)
+        .put("id", id);
+
+    hits.add(hit);
+
+    indexerQueryReplyMsg = new JsonObject()
+        .put("totalHits", totalHits)
+        .put("scrollId", scrollId)
+        .put("hits", hits);
+  }
+
+  private void registerIndexerQueryConsumer(Vertx vertx, TestContext context, Async async) {
+    vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_QUERY).handler(request -> {
+      JsonObject msg = request.body();
+
+      // todo: Check Body values
+      if (!msg.containsKey("pageSize")) context.fail("Malformed Message: expected to have 'pageSize' attribute");
+      int pageSize = msg.getInteger("pageSize"); // pageSize == IndexStore.PAGE_SIZE | msg need this attribute
+
+      if (!msg.containsKey("search")) context.fail("Malformed Message: expected to have 'search' attribute");
+      String indxSearch = msg.getString("search");
+
+      context.assertEquals(search, indxSearch);
+
+      request.reply(indexerQueryReplyMsg);
+
+      async.complete();
+    });
+  }
+
+  private Path createFileWithContent(TestContext context, String id, String content, String subPath) {
+
+    Path fileDestinationFolder = Paths.get(storagePath.toString(), "file");
+        fileDestinationFolder = subPath == null || subPath.isEmpty() ? fileDestinationFolder : Paths.get(fileDestinationFolder.toString(), subPath);
+
+    Path filePath = Paths.get(fileDestinationFolder.toString(), id);
+
+    try {
+      Files.createDirectories(fileDestinationFolder);
+      Files.write(filePath, content.getBytes());
+    } catch (IOException ex) {
+      context.fail("Failed to create test files: " + ex.getMessage());
+    }
+
+    return filePath;
+  }
+  private Path createFileWithContent(TestContext context, String id, String content) {
+    return this.createFileWithContent(context, id, content, "");
+  }
+
+  private void setConfig(Vertx vertx) {
+    vertx.getOrCreateContext().config().put(ConfigConstants.STORAGE_FILE_PATH, storagePath.toString());
+  }
+
+
   @Test
   public void testGetOne(TestContext context) throws Exception {
     Vertx vertx = rule.vertx();
     Async asyncGetOne = context.async();
 
-    Path storagePath = Paths.get(folder.getRoot().getAbsolutePath(), "storage");
+    Path filePath = this.createFileWithContent(context, id, chunkContent);
 
-    // Create file with chunk as content
-    String filename = new ObjectId().toString();
-    Path fileDestinationFolder = Paths.get(storagePath.toString(), "file");
-    Path filePath = Paths.get(fileDestinationFolder.toString(), filename);
-
-    String chunkContent = "<b>This is a test chunk</b>";
-
-    Files.createDirectories(fileDestinationFolder);
-    Files.write(filePath, chunkContent.getBytes());
-
-    vertx.getOrCreateContext().config().put(ConfigConstants.STORAGE_FILE_PATH, storagePath.toString());
+    this.setConfig(vertx);
 
     FileStore fileStore = new FileStore(vertx);
 
-    fileStore.getOne(filename, h -> {
+    fileStore.getOne(id, h -> {
       ChunkReadStream chunkReadStream = h.result();
 
       chunkReadStream.handler(buffer -> {
@@ -82,6 +153,15 @@ public class FileStoreTest {
 
   @Test
   public void testAdd(TestContext context) throws Exception {
+    this.testAddHelper(context, null); // without path
+  }
+
+  @Test
+  public void testAddWithoutSubFolder(TestContext context) throws Exception {
+    this.testAddHelper(context, "subFolder"); // with path
+  }
+
+  public void testAddHelper(TestContext context, String path) throws Exception {
     String chunk = "<b>This is a test chunk</b>";
     String XMLHEADER = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n";
     String xml = XMLHEADER + "<root>\n<object><child></child></object>\n</root>";
@@ -93,8 +173,7 @@ public class FileStoreTest {
     Async asyncIndexerAdd = context.async();
     Async asyncAdd = context.async();
 
-    File storagePath = new File(folder.getRoot(), "storage");
-    vertx.getOrCreateContext().config().put(ConfigConstants.STORAGE_FILE_PATH, storagePath.getAbsolutePath());
+    this.setConfig(vertx);
 
     FileStore fileStore = new FileStore(vertx);
 
@@ -112,12 +191,15 @@ public class FileStoreTest {
     // register query
     vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_QUERY).handler(h -> context.fail("Indexer should not be notified for query on add of a store!"));
 
-    fileStore.add(chunk, meta, null, tags, context.asyncAssertSuccess(err -> {
-      final File file = Paths.get(storagePath.getAbsolutePath() + "/file").toFile();
-      if (!file.exists()) context.fail("FileStore did not wrote a file: " + file.getAbsolutePath());
-      File[] files = file.listFiles();
+    fileStore.add(chunk, meta, path, tags, context.asyncAssertSuccess(err -> {
+      Path root = Paths.get(storagePath.toString(), "/file");
+      root = (path == null || path.isEmpty()) ? root : Paths.get(root.toString(), path);
 
-      if (files.length == 0) context.fail("FileStore did not wrote a file in: " + file.getAbsolutePath());
+      final File folder = root.toFile();
+      if (!folder.exists()) context.fail("FileStore did not wrote a folder: " + folder.getAbsolutePath());
+      File[] files = folder.listFiles();
+
+      if (files.length == 0) context.fail("FileStore did not wrote a file in: " + folder.getAbsolutePath());
       final File first = files[0];
 
       try {
@@ -136,32 +218,25 @@ public class FileStoreTest {
 
   @Test
   public void testDelete(TestContext context) throws Exception {
-    // public void delete(String search, String path, Handler<AsyncResult<Void>> handler)
+    this.testDeleteHelper(context, null);
+  }
 
+  @Test
+  public void testDeleteWithSubfolder(TestContext context) throws Exception {
+    this.testDeleteHelper(context, "subFolderA/subFolderB");
+  }
+
+  public void testDeleteHelper(TestContext context, String path) throws Exception {
     final Vertx vertx = rule.vertx();
     final Async asyncIndexerQuery = context.async();
     final Async asyncIndexerDelete = context.async();
     final Async asyncDelete = context.async();
 
-    final Path storagePath = Paths.get(folder.getRoot().getAbsolutePath(), "storage");
-
-
-    // Create file with chunk as content
-    String filename = new ObjectId().toString();
-    Path fileDestinationFolder = Paths.get(storagePath.toString(), "file");
-    Path filePath = Paths.get(fileDestinationFolder.toString(), filename);
-
-    String chunkContent = "<b>This is a test chunk</b>";
-
-    Files.createDirectories(fileDestinationFolder);
-    Files.write(filePath, chunkContent.getBytes());
-
-    vertx.getOrCreateContext().config().put(ConfigConstants.STORAGE_FILE_PATH, storagePath.toString());
+    this.setConfig(vertx);
+    Path filePath = this.createFileWithContent(context, id, chunkContent, path);
+    Path fileDestinationFolder = filePath.getParent();
 
     FileStore fileStore = new FileStore(vertx);
-
-    String search = "irrelevant but necessary value"; // value is irrelevant for the test, because this test do not use the Indexer
-    String path = ""; // todo create test which use the path
 
     // register add
     vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_ADD).handler(h -> context.fail("Indexer should not be notified on delete of a store!"));
@@ -182,48 +257,9 @@ public class FileStoreTest {
     });
 
     // register query
-    vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_QUERY).handler(request -> {
-      JsonObject msg = request.body();
-
-      // todo: Check Body values
-      if (!msg.containsKey("pageSize")) context.fail("Malformed Message: expected to have 'pageSize' attribute");
-      int pageSize = msg.getInteger("pageSize");
-      /*
-      pageSize == IndexStore.PAGE_SIZE
-      this test expects only a number because i can not know the
-      current value (the used page size is a private constant in IndexedStore)
-       */
-
-      if (!msg.containsKey("search")) context.fail("Malformed Message: expected to have 'search' attribute");
-      String indxSearch = msg.getString("search");
-
-      context.assertEquals(search, indxSearch);
-
-      // TODO: delete with path and check for the path
-
-      Long totalHits = 1L;
-      String scrollId = "0";
-      JsonArray hits = new JsonArray();
-      JsonObject hit = new JsonObject()
-          .put("parents", new JsonArray())
-          .put("start", 0)
-          .put("end", 5)
-          .put("id", filename);
-
-      hits.add(hit);
-
-      JsonObject replyMsg = new JsonObject()
-          .put("totalHits", totalHits)
-          .put("scrollId", scrollId)
-          .put("hits", hits);
-
-      request.reply(replyMsg);
-
-      asyncIndexerQuery.complete();
-    });
+    this.registerIndexerQueryConsumer(vertx, context, asyncIndexerQuery);
 
     fileStore.delete(search, path, context.asyncAssertSuccess(h -> {
-      // todo: check: are all the files erased
 
       if (Files.exists(filePath)) context.fail("File with chunk's should be deleted on Storage::delete");
 
@@ -233,73 +269,28 @@ public class FileStoreTest {
 
   @Test
   public void testGet(TestContext context) throws Exception {
+    this.testGetHelper(context, null);
+  }
+
+  @Test
+  public void testGetWithSubfolder(TestContext context) throws Exception {
+    this.testGetHelper(context, "subFolder");
+  }
+
+  public void testGetHelper(TestContext context, String path) throws Exception {
     final Vertx vertx = rule.vertx();
     final Async asyncQuery = context.async();
     final Async asyncGet = context.async();
 
-    final Path storagePath = Paths.get(folder.getRoot().getAbsolutePath(), "storage");
-
-    // Create file with chunk as content
-    String filename = new ObjectId().toString();
-    Path fileDestinationFolder = Paths.get(storagePath.toString(), "file");
-    Path filePath = Paths.get(fileDestinationFolder.toString(), filename);
-
-    String chunkContent = "<b>This is a test chunk</b>";
-
-    Files.createDirectories(fileDestinationFolder);
-    Files.write(filePath, chunkContent.getBytes());
-
-    vertx.getOrCreateContext().config().put(ConfigConstants.STORAGE_FILE_PATH, storagePath.toString());
+    Path filePath = this.createFileWithContent(context, id, chunkContent, path);
+    Path fileDestinationFolder = filePath.getParent();
+    this.setConfig(vertx);
 
     FileStore fileStore = new FileStore(vertx);
 
-    String search = "irrelevant but necessary value"; // value is irrelevant for the test, because this test do not use the Indexer
-    String path = ""; // todo create test which use the path
-
-    JsonArray parents = new JsonArray();
-    int start = 0;
-    int end = 5;
 
     // register query
-    vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_QUERY).handler(request -> {
-      JsonObject msg = request.body();
-
-      // todo: Check Body values
-      if (!msg.containsKey("pageSize")) context.fail("Malformed Message: expected to have 'pageSize' attribute");
-      int pageSize = msg.getInteger("pageSize");
-      /*
-      pageSize == IndexStore.PAGE_SIZE
-      this test expects only a number because i can not know the
-      current value (the used page size is a private constant in IndexedStore)
-       */
-
-      if (!msg.containsKey("search")) context.fail("Malformed Message: expected to have 'search' attribute");
-      String indxSearch = msg.getString("search");
-
-      context.assertEquals(search, indxSearch);
-
-      // TODO: delete with path and check for the path
-
-      Long totalHits = 1L;
-      String scrollId = "0";
-      JsonArray hits = new JsonArray();
-      JsonObject hit = new JsonObject()
-          .put("parents", parents)
-          .put("start", start)
-          .put("end", end)
-          .put("id", filename);
-
-      hits.add(hit);
-
-      JsonObject replyMsg = new JsonObject()
-          .put("totalHits", totalHits)
-          .put("scrollId", scrollId)
-          .put("hits", hits);
-
-      request.reply(replyMsg);
-
-      asyncQuery.complete();
-    });
+    this.registerIndexerQueryConsumer(vertx, context, asyncQuery);
 
     fileStore.get(search, path, ar -> {
       StoreCursor cursor = ar.result();
@@ -314,9 +305,11 @@ public class FileStoreTest {
 
         String fileName = cursor.getChunkPath();
 
-        context.assertEquals(filename, fileName);
+        context.assertEquals(id, fileName);
 
-        final Path expectedFilePath = Paths.get(fileDestinationFolder.toString(), fileName);
+        Path expectedFilePath = Paths.get(fileDestinationFolder.toString(), fileName);
+
+
         if (!Files.exists(expectedFilePath)) context.fail("File '" + expectedFilePath.toString() + "' expected but not found.");
 
         try {
