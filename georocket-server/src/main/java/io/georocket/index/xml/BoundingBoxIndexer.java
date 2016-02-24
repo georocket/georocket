@@ -18,6 +18,8 @@ import com.google.common.collect.ImmutableMap;
 
 import io.georocket.util.CompoundCRSDecoder;
 import io.georocket.util.XMLStreamEvent;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 /**
  * Indexes bounding boxes of inserted chunks
@@ -25,6 +27,7 @@ import io.georocket.util.XMLStreamEvent;
  */
 public class BoundingBoxIndexer implements XMLIndexer {
   private static final CoordinateReferenceSystem WGS84 = DefaultGeographicCRS.WGS84;
+  private static Logger log = LoggerFactory.getLogger(BoundingBoxIndexer.class);
   
   /**
    * The string of the detected CRS
@@ -304,10 +307,24 @@ public class BoundingBoxIndexer implements XMLIndexer {
     }
   }
   
+  /**
+   * Check if the current bounding box contains valid values for WGS84
+   * @return true if the current bounding box is valid, false otherwise
+   */
+  private boolean validate() {
+    return (minX >= -180.0 && minY >= -90.0 && maxX <= 180.0 && maxY <= 90.0);
+  }
+  
   @Override
   public Map<String, Object> getResult() {
     if (!boundingBoxInitialized) {
       // the chunk's bounding box is unknown. do not add it to the index
+      return ImmutableMap.of();
+    }
+    if (!validate()) {
+      boundingBoxInitialized = false;
+      log.warn("Invalid bounding box [" + minX + "," + minY + "," + maxX + "," + maxY + "]. "
+          + "Values outside [-180.0, -90.0, 180.0, 90.0]. Skipping chunk.");
       return ImmutableMap.of();
     }
     //System.out.println(minX + "," + minY + "," + maxX + "," + maxY);
