@@ -13,6 +13,8 @@ import de.undercouch.underline.OptionIntrospector;
 import de.undercouch.underline.OptionIntrospector.ID;
 import de.undercouch.underline.OptionParser;
 import de.undercouch.underline.OptionParserException;
+import io.georocket.ConfigConstants;
+import io.georocket.client.GeoRocketClient;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
@@ -153,5 +155,15 @@ public abstract class AbstractGeoRocketCommand implements GeoRocketCommand {
   public boolean checkArguments() {
     // nothing to check by default. subclasses may override
     return true;
+  }
+  
+  /**
+   * Create a new GeoRocket client
+   * @return the client
+   */
+  protected GeoRocketClient createClient() {
+    String host = config().getString(ConfigConstants.HOST);
+    int port = config().getInteger(ConfigConstants.PORT);
+    return new GeoRocketClient(host, port, vertx);
   }
 }
