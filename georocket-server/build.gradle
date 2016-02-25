@@ -50,6 +50,7 @@ dependencies {
     testCompile "io.vertx:vertx-unit:$vertxVersion"
     testCompile 'junit:junit:4.12'
     testCompile 'de.bwaldvogel:mongo-java-server:1.5.0'
+    testCompile 'de.flapdoodle.embed:de.flapdoodle.embed.mongo:1.50.2'
     
     antlr 'org.antlr:antlr4:4.5.1'
 }

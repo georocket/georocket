@@ -35,8 +35,6 @@ import java.util.List;
 @RunWith(VertxUnitRunner.class)
 public class FileStoreTest {
 
-  // TODO: do everything with an optional path and without one
-
   /**
    * Run the test on a Vert.x test context
    */
@@ -88,7 +86,6 @@ public class FileStoreTest {
     vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_QUERY).handler(request -> {
       JsonObject msg = request.body();
 
-      // todo: Check Body values
       if (!msg.containsKey("pageSize")) context.fail("Malformed Message: expected to have 'pageSize' attribute");
       int pageSize = msg.getInteger("pageSize"); // pageSize == IndexStore.PAGE_SIZE | msg need this attribute
 

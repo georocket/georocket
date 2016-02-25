@@ -15,5 +15,6 @@ gradle.properties
 docs/docs.iml
 georocket-cli/georocket-cli.iml
 georocket-server/georocket-server.iml
+georocket-server-api/georocket-server-api.iml
 georocket.iml
 
