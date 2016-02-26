@@ -271,7 +271,7 @@ public class StoreClient {
    * be <code>null</code> to protect against requests that accidentally delete
    * the whole data store. If you want to do so, use
    * {@link #delete(String, String, Handler)} and provide an empty
-   * <code>query</code> and the root layer <code>/</code>.)</p>
+   * <code>query</code> and the root layer <code>/</code>.)
    * @param handler a handler that will be called when the operation has
    * finished
    */
