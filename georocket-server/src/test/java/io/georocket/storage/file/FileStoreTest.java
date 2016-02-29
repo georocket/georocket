@@ -159,7 +159,6 @@ public class FileStoreTest {
   }
 
   public void testAddHelper(TestContext context, String path) throws Exception {
-    String chunk = "<b>This is a test chunk</b>";
     String XMLHEADER = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n";
     String xml = XMLHEADER + "<root>\n<object><child></child></object>\n</root>";
     ChunkMeta meta = new ChunkMeta(Arrays.asList(new XMLStartElement("root")), XMLHEADER.length() + 7, xml.length() - 8);
@@ -188,7 +187,7 @@ public class FileStoreTest {
     // register query
     vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_QUERY).handler(h -> context.fail("Indexer should not be notified for query on add of a store!"));
 
-    fileStore.add(chunk, meta, path, tags, context.asyncAssertSuccess(err -> {
+    fileStore.add(chunkContent, meta, path, tags, context.asyncAssertSuccess(err -> {
       Path root = Paths.get(storagePath.toString(), "/file");
       root = (path == null || path.isEmpty()) ? root : Paths.get(root.toString(), path);
 
@@ -204,7 +203,7 @@ public class FileStoreTest {
         if (lines.isEmpty()) context.fail("FileStore did not wrote any content in file: " + first.getAbsolutePath());
 
         final String firstLine = lines.get(0);
-        context.assertEquals(chunk, firstLine);
+        context.assertEquals(chunkContent, firstLine);
 
         asyncAdd.complete();
       } catch (IOException ex) {
@@ -224,10 +223,10 @@ public class FileStoreTest {
   }
 
   public void testDeleteHelper(TestContext context, String path) throws Exception {
-    final Vertx vertx = rule.vertx();
-    final Async asyncIndexerQuery = context.async();
-    final Async asyncIndexerDelete = context.async();
-    final Async asyncDelete = context.async();
+    Vertx vertx = rule.vertx();
+    Async asyncIndexerQuery = context.async();
+    Async asyncIndexerDelete = context.async();
+    Async asyncDelete = context.async();
 
     this.setConfig(vertx);
     Path filePath = this.createFileWithContent(context, id, chunkContent, path);
@@ -275,9 +274,9 @@ public class FileStoreTest {
   }
 
   public void testGetHelper(TestContext context, String path) throws Exception {
-    final Vertx vertx = rule.vertx();
-    final Async asyncQuery = context.async();
-    final Async asyncGet = context.async();
+    Vertx vertx = rule.vertx();
+    Async asyncQuery = context.async();
+    Async asyncGet = context.async();
 
     Path filePath = this.createFileWithContent(context, id, chunkContent, path);
     Path fileDestinationFolder = filePath.getParent();
