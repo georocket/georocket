@@ -1,10 +1,6 @@
 apply plugin: 'java'
 apply plugin: 'application'
 
-version = '1.0.0-alpha.1'
-group = 'io.georocket'
-sourceCompatibility = '1.8'
-targetCompatibility = '1.8'
 mainClassName = 'io.georocket.GeoRocketCli'
 
 repositories {
@@ -19,15 +15,12 @@ repositories {
     mavenCentral()
 }
 
-ext {
-    vertxVersion = '3.2.0'
-}
-
 dependencies {
+    compile project(':georocket-client-api')
+    
     compile "io.vertx:vertx-core:$vertxVersion"
     compile "io.vertx:vertx-rx-java:$vertxVersion"
     
-    compile 'com.google.guava:guava:18.0'
     compile 'commons-io:commons-io:2.4'
     compile 'de.undercouch:underline:1.0.0'
     compile 'net.time4j:time4j-core:4.7'

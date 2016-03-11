@@ -14,6 +14,7 @@ import de.undercouch.underline.InputReader;
 import de.undercouch.underline.OptionDesc;
 import de.undercouch.underline.OptionParserException;
 import de.undercouch.underline.StandardInputReader;
+import io.georocket.client.GeoRocketClient;
 import io.georocket.commands.AbstractGeoRocketCommand;
 import io.georocket.commands.DeleteCommand;
 import io.georocket.commands.ExportCommand;
@@ -54,8 +55,8 @@ public class GeoRocketCli extends AbstractGeoRocketCommand {
     JsonObject config = super.config();
     if (config == null || config.isEmpty()) {
       config = new JsonObject()
-        .put(ConfigConstants.HOST, ConfigConstants.DEFAULT_HOST)
-        .put(ConfigConstants.PORT, ConfigConstants.DEFAULT_PORT);
+        .put(ConfigConstants.HOST, GeoRocketClient.DEFAULT_HOST)
+        .put(ConfigConstants.PORT, GeoRocketClient.DEFAULT_PORT);
       setConfig(config);
     }
     return config;

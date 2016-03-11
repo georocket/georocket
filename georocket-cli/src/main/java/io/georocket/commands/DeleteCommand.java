@@ -9,10 +9,9 @@ import de.undercouch.underline.Option.ArgumentType;
 import de.undercouch.underline.OptionDesc;
 import de.undercouch.underline.OptionParserException;
 import de.undercouch.underline.UnknownAttributes;
-import io.georocket.ConfigConstants;
+import io.georocket.client.GeoRocketClient;
 import io.vertx.core.Handler;
-import io.vertx.core.http.HttpClient;
-import io.vertx.core.http.HttpClientRequest;
+import io.vertx.core.impl.NoStackTraceThrowable;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
@@ -68,29 +67,19 @@ public class DeleteCommand extends AbstractQueryCommand {
   @Override
   public void doRun(String[] remainingArgs, InputReader in, PrintWriter out,
       Handler<Integer> handler) throws OptionParserException, IOException {
-    String queryPath = prepareQuery(query, layer);
-    HttpClient client = vertx.createHttpClient();
-    String host = config().getString(ConfigConstants.HOST);
-    int port = config().getInteger(ConfigConstants.PORT);
-    HttpClientRequest request = client.delete(port, host, "/store" + queryPath);
-    request.exceptionHandler(t -> {
-      error(t.getMessage());
-      log.error("Could not delete from store", t);
-      client.close();
-      handler.handle(1);
-    });
-    request.handler(response -> {
-      if (response.statusCode() != 204) {
-        error(response.statusMessage());
+    GeoRocketClient client = createClient();
+    client.getStore().delete(query, layer, ar -> {
+      if (ar.failed()) {
         client.close();
+        Throwable t = ar.cause();
+        error(t.getMessage());
+        if (!(t instanceof NoStackTraceThrowable)) {
+          log.error("Could not delete from store", t);
+        }
         handler.handle(1);
       } else {
-        response.endHandler(v -> {
-          client.close();
-          handler.handle(0);
-        });
+        handler.handle(0);
       }
     });
-    request.end();
   }
 }

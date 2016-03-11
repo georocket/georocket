@@ -9,6 +9,7 @@ import java.nio.file.Paths;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Queue;
 
 import org.apache.commons.io.FilenameUtils;
@@ -22,21 +23,20 @@ import de.undercouch.underline.Option.ArgumentType;
 import de.undercouch.underline.OptionDesc;
 import de.undercouch.underline.OptionParserException;
 import de.undercouch.underline.UnknownAttributes;
-import io.georocket.ConfigConstants;
+import io.georocket.client.GeoRocketClient;
 import io.georocket.util.DurationFormat;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.file.AsyncFile;
 import io.vertx.core.file.OpenOptions;
-import io.vertx.core.http.HttpClientOptions;
+import io.vertx.core.streams.Pump;
+import io.vertx.core.streams.WriteStream;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
 import io.vertx.rxjava.core.Vertx;
-import io.vertx.rxjava.core.file.AsyncFile;
 import io.vertx.rxjava.core.file.FileSystem;
-import io.vertx.rxjava.core.http.HttpClient;
-import io.vertx.rxjava.core.http.HttpClientRequest;
-import io.vertx.rxjava.core.streams.Pump;
 import rx.Observable;
 
 /**
@@ -178,9 +178,7 @@ public class ImportCommand extends AbstractGeoRocketCommand {
     }
     
     Vertx vertx = new Vertx(this.vertx);
-    
-    HttpClientOptions options = new HttpClientOptions().setKeepAlive(true);
-    HttpClient client = vertx.createHttpClient(options);
+    GeoRocketClient client = createClient();
     
     int queueSize = queue.size();
     doImport(queue, client, vertx, exitCode -> {
@@ -202,12 +200,12 @@ public class ImportCommand extends AbstractGeoRocketCommand {
   /**
    * Import files using a HTTP client and finally call a handler
    * @param files the files to import
-   * @param client the HTTP client
+   * @param client the GeoRocket client
    * @param vertx the Vert.x instance
    * @param handler the handler to call when all files have been imported
    */
-  private void doImport(Queue<String> files, HttpClient client, Vertx vertx,
-      Handler<Integer> handler) {
+  private void doImport(Queue<String> files, GeoRocketClient client,
+      Vertx vertx, Handler<Integer> handler) {
     if (files.isEmpty()) {
       handler.handle(0);
       return;
@@ -227,7 +225,7 @@ public class ImportCommand extends AbstractGeoRocketCommand {
       // get file size
       .flatMap(f -> fs.propsObservable(path).map(props -> Pair.of(f, props.size())))
       // import file
-      .flatMap(f -> importFile(f.getLeft(), f.getRight(), client))
+      .flatMap(f -> importFile((AsyncFile)f.getLeft().getDelegate(), f.getRight(), client))
       .map(v -> {
         System.out.println("done");
         return v;
@@ -246,58 +244,31 @@ public class ImportCommand extends AbstractGeoRocketCommand {
    * Upload a file to GeoRocket
    * @param f the file to upload (will be closed at the end)
    * @param fileSize the file's size
-   * @param client the HTTP client to use
+   * @param client the GeoRocket client to use
    * @return an observable that will emit when the file has been uploaded
    */
-  private Observable<Void> importFile(AsyncFile f, long fileSize, HttpClient client) {
+  private Observable<Void> importFile(AsyncFile f, long fileSize,
+      GeoRocketClient client) {
     ObservableFuture<Void> o = RxHelper.observableFuture();
     Handler<AsyncResult<Void>> handler = o.toHandler();
     
-    String path = "/store";
+    WriteStream<Buffer> out = client.getStore().startImport(layer, tags,
+        Optional.of(fileSize), handler);
     
-    if (layer != null && !layer.isEmpty()) {
-      if (!layer.endsWith("/")) {
-        layer += "/";
-      }
-      if (!layer.startsWith("/")) {
-        layer = "/" + layer;
-      }
-      path += layer;
-    }
-    
-    if (tags != null && !tags.isEmpty()) {
-      path += "?tags=" + String.join(",", tags);
-    }
-    
-    String host = config().getString(ConfigConstants.HOST);
-    int port = config().getInteger(ConfigConstants.PORT);
-    HttpClientRequest request = client.post(port, host, path);
-    
-    request.putHeader("Content-Length", String.valueOf(fileSize));
-    
-    Pump pump = Pump.pump(f, request);
+    Pump pump = Pump.pump(f, out);
     f.endHandler(v -> {
       f.close();
-      request.end();
+      out.end();
     });
     
     Handler<Throwable> exceptionHandler = t -> {
       f.endHandler(null);
       f.close();
-      request.end();
+      out.end();
       handler.handle(Future.failedFuture(t));
     };
     f.exceptionHandler(exceptionHandler);
-    request.exceptionHandler(exceptionHandler);
-    
-    request.handler(response -> {
-      if (response.statusCode() != 202) {
-        handler.handle(Future.failedFuture("GeoRocket did not accept the file "
-            + "(status code " + response.statusCode() + ": " + response.statusMessage() + ")"));
-      } else {
-        handler.handle(Future.succeededFuture());
-      }
-    });
+    out.exceptionHandler(exceptionHandler);
     
     pump.start();
     

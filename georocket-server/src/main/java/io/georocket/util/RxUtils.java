@@ -22,7 +22,7 @@ public final class RxUtils {
    * in order to create a stream that is retried multiple times before failing.</p>
    * <p>Example:</p>
    * <pre>
-   * Observable.create(subscriber -> {
+   * Observable.create(subscriber -&gt; {
    *    // retryWhen will re-subscribe in case of error so this code
    *    // will be executed 5 times and finally fail with the given exception
    *    Observable.&lt;String&gt;error(new IllegalStateException()).subscribe(subscriber);
@@ -42,7 +42,7 @@ public final class RxUtils {
    * in order to create a stream that is retried multiple times before failing.</p>
    * <p>Example:</p>
    * <pre>
-   * Observable.create(subscriber -> {
+   * Observable.create(subscriber -&gt; {
    *    // retryWhen will re-subscribe in case of error so this code
    *    // will be executed 5 times and finally fail with the given exception
    *    Observable.&lt;String&gt;error(new IllegalStateException()).subscribe(subscriber);
