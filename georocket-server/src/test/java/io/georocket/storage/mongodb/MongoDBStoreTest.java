@@ -94,7 +94,7 @@ public class MongoDBStoreTest extends StorageTest {
       ) {
         writer.write(chunkContent);
       } catch (IOException ex) {
-        context.fail("Test preparations failed: could not write a file to mongo db - " + ex.getMessage());
+        context.fail("Test preparations failed: could not write a file in mongo db - " + ex.getMessage());
       }
 
       client.close();
@@ -115,7 +115,7 @@ public class MongoDBStoreTest extends StorageTest {
       List<GridFSDBFile> files = gridFS.find(query);
 
       if (files.isEmpty()) {
-        context.fail("MongoDB did not save a entity");
+        context.fail("MongoDB did not saved a entity");
       }
 
       GridFSDBFile file = files.get(0);
@@ -148,7 +148,7 @@ public class MongoDBStoreTest extends StorageTest {
       List<GridFSDBFile> files = gridFS.find(query);
 
       if (!files.isEmpty()) {
-        context.fail("File with chunks should be deleted on Storage::delete. Contains: " + files);
+        context.fail("Store should be empty after calling Storage::delete. Contains: " + files);
       }
 
       client.close();

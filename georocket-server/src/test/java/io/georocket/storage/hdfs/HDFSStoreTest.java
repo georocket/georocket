@@ -27,7 +27,7 @@ import java.util.List;
 public class HDFSStoreTest extends StorageTest {
 
   /**
-   * Create a temporary tempFolder
+   * Create a temporary folder
    */
   @Rule
   public TemporaryFolder tempFolder = new TemporaryFolder();
@@ -85,13 +85,13 @@ public class HDFSStoreTest extends StorageTest {
       File folder = new File(fileDestination);
 
       if (!folder.exists()) {
-        context.fail("Test expected to find a tempFolder after calling HDFSStore::add. FolderPath('" + folder.getAbsolutePath() + "')");
+        context.fail("Test expected to find a folder after calling HDFSStore::add. FolderPath('" + folder.getAbsolutePath() + "')");
       }
 
       File[] files = folder.listFiles();
 
       if (files == null || files.length != 2) {
-        context.fail("Test expected to find two file after calling HDFSStore::add FolderPath('" + folder.getAbsolutePath() + "')");
+        context.fail("Test expected to find two files after calling HDFSStore::add FolderPath('" + folder.getAbsolutePath() + "')");
       }
 
       // Hadoop client create two files, one starts with a point '.' and ends with the extension ".crc". The other file contains the needed content.

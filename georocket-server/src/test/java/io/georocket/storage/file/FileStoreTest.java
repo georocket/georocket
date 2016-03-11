@@ -79,7 +79,7 @@ public class FileStoreTest extends StorageTest {
       File folder = new File(destinationFolder);
 
       if (!folder.exists()) {
-        context.fail("Test expected to find a tempFolder after calling FileStore::add. FolderPath('" + folder.getAbsolutePath() + "')");
+        context.fail("Test expected to find a folder after calling FileStore::add. FolderPath('" + folder.getAbsolutePath() + "')");
       }
 
       File[] files = folder.listFiles();

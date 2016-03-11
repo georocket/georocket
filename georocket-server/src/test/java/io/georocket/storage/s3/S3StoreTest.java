@@ -46,6 +46,9 @@ public class S3StoreTest extends StorageTest {
     public static final String CONTENT_LENGTH = "Content-Length";
   }
 
+  /**
+   * The http mock test rule
+   */
   @Rule
   public WireMockRule wireMockRule = new WireMockRule(S3_PORT);
 

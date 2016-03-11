@@ -23,7 +23,7 @@ import java.util.List;
 /**
  * Abstract test implementation for a {@link Store}
  *
- * This class defined test methods for the Store interface and should be used as base class for
+ * This class defines test methods for the store interface and should be used as base class for
  * all concrete Store tests.
  *
  * A concrete store test implement only the data preparation and some validation methods which have
@@ -41,7 +41,7 @@ abstract public class StorageTest {
   public RunTestOnContext rule = new RunTestOnContext();
 
   /**
-   * Test data: tempFolder name which is used to call the test with tempFolder
+   * Test data: tempFolder name which is used to call the test with a folder
    */
   protected final static String testFolder = "testFolder";
 
@@ -79,10 +79,30 @@ abstract public class StorageTest {
    * Test data: a randomly generated id for all tests.
    */
   protected final static String id = new ObjectId().toString();
+
+  /**
+   * Test data: the parents of one hit
+   */
   protected final static JsonArray parents = new JsonArray();
+
+  /**
+   * Test data: start of a hit
+   */
   protected final static int start = 0;
+
+  /**
+   * Test data: end of a hit
+   */
   protected final static int end = 5;
+
+  /**
+   * Test data: Total amount of hits
+   */
   protected final static Long totalHits = 1L;
+
+  /**
+   * Test data: scroll id
+   */
   protected final static String scrollId = "0";
 
 
@@ -132,17 +152,17 @@ abstract public class StorageTest {
    * Call context.fail(...) if the data preparation failed!
    *
    * @param context The current test context.
-   * @param vertx A vertx instance of one test.
-   * @param path The path where to create the data (@Nullable).
+   * @param vertx A vertx instance for one test.
+   * @param path The path for the data (@Nullable).
    *
-   * @return A Handler which will be called in a test where test data are needed.
+   * @return A Handler which will be called in a test, where test data are needed.
    */
   protected abstract Handler<Future<String>> prepare_Data(TestContext context, Vertx vertx, String path);
 
   /**
-   * Validate the the add method. Will be called after the store add's data.
+   * Validate the add method. Will be called after the store added data.
    *
-   * Notice: Look on the protected attributes of this class to know which data where used for the store add method. These will be used for the @Store::add method.
+   * Notice: Look on the protected attributes of this class to know which data were used for the store add method. These will be used for the @Store::add method.
    * Use context.assert ... and context.fail to validate the test.
    *
    * @param context The current test context.
@@ -161,7 +181,7 @@ abstract public class StorageTest {
    *
    * @param context The current test context.
    * @param vertx A vertx instance of one test.
-   * @param path The path where the data where created (@Nullable: if not used for @prepare_Data)
+   * @param path The path where the data were created (@Nullable: if not used for @prepare_Data)
    *
    * @return A Handler which will be called in a test where test data are needed.
    */
@@ -280,6 +300,13 @@ abstract public class StorageTest {
     this.testGetOne(context, null);
   }
 
+  /**
+   * Apply the Store::delete with a not existing path and expects an success (no exceptions or failure codes).
+   *
+   * @param context Test context
+   *
+   * @throws Exception
+   */
   @Test
   public void testDeleteNonExistingEntity(TestContext context) throws Exception {
     Vertx vertx = rule.vertx();
@@ -289,7 +316,7 @@ abstract public class StorageTest {
     Store store = this.createStore(vertx);
 
     // register add
-    vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_ADD).handler(h -> context.fail("Indexer should not be notified on delete of a store!"));
+    vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_ADD).handler(h -> context.fail("Indexer should not be notified for a add event after Store::delete was called!"));
 
     // register delete
     vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_DELETE).handler(req -> context.fail("INDEXER_DELETE should not be notified if no file was found."));
@@ -360,9 +387,9 @@ abstract public class StorageTest {
     });
 
     // register delete
-    vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_DELETE).handler(h -> context.fail("Indexer should not be notified for delete on add of a store!"));
+    vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_DELETE).handler(h -> context.fail("Indexer should not be notified for a delete event after Store::add was called!"));
     // register query
-    vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_QUERY).handler(h -> context.fail("Indexer should not be notified for query on add of a store!"));
+    vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_QUERY).handler(h -> context.fail("Indexer should not be notified for a query event after Store::add was called!"));
 
     store.add(chunkContent, meta, path, tags, context.asyncAssertSuccess(err -> {
       vertx.executeBlocking(
@@ -394,7 +421,7 @@ abstract public class StorageTest {
           Store store = this.createStore(vertx);
 
           // register add
-          vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_ADD).handler(h -> context.fail("Indexer should not be notified on delete of a store!"));
+          vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_ADD).handler(h -> context.fail("Indexer should not be notified for a add event after Store::delete was called!"));
           // register delete
           vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_DELETE).handler(req -> {
             JsonObject msg = req.body();
@@ -406,7 +433,7 @@ abstract public class StorageTest {
             JsonArray paths = msg.getJsonArray("paths");
 
             if(paths.size() != 1) {
-              context.fail("Expected to find exact one path in MSG, found: " + paths.size());
+              context.fail("Expected to find exact one path in message, found: " + paths.size());
             }
 
             String notifiedPath = paths.getString(0);
@@ -451,9 +478,9 @@ abstract public class StorageTest {
     // register query
     this.mockIndexer_Query(vertx, context, asyncQuery, _path);
     // register delete
-    vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_DELETE).handler(h -> context.fail("Indexer should not be notified for delete on get of a store!"));
+    vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_DELETE).handler(h -> context.fail("Indexer should not be notified for a delete event after Store::get was called!"));
     // register query
-    vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_ADD).handler(h -> context.fail("Indexer should not be notified for add on get of a store!"));
+    vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_ADD).handler(h -> context.fail("Indexer should not be notified for a add event after Store::get was called!"));
 
     vertx.<String>executeBlocking(
         this.prepare_Data(context, vertx, _path), // IO Operation => blocked call
@@ -466,7 +493,7 @@ abstract public class StorageTest {
             StoreCursor cursor = ar.result();
 
             if (!cursor.hasNext()) {
-              context.fail("Cursor is empty: Expected to have one element.");
+              context.fail("Cursor is empty: Expected one element.");
             }
 
             cursor.next(h -> {
