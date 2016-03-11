@@ -52,7 +52,6 @@ dependencies {
     testCompile 'de.bwaldvogel:mongo-java-server:1.5.0'
     testCompile 'io.vertx:vertx-mongo-embedded-db:3.2.1'
     testCompile 'com.github.tomakehurst:wiremock:1.57'
-    testCompile 'org.apache.hadoop:hadoop-test:1.2.1'
     
     antlr 'org.antlr:antlr4:4.5.1'
 }

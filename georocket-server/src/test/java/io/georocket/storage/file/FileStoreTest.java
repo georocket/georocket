@@ -3,6 +3,7 @@ package io.georocket.storage.file;
 import io.georocket.constants.ConfigConstants;
 import io.georocket.storage.StorageTest;
 import io.georocket.storage.Store;
+import io.georocket.util.PathUtils;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
@@ -25,23 +26,25 @@ import java.util.List;
 public class FileStoreTest extends StorageTest {
 
   /**
-   * Create a temporary folder
+   * Create a temporary tempFolder
    */
   @Rule
-  public TemporaryFolder folder = new TemporaryFolder();
+  public TemporaryFolder tempFolder = new TemporaryFolder();
 
-  protected Path storagePath;
+  private String fileStoreRoot;
+  private String fileDestination;
 
   /**
    * Set up test dependencies.
    */
   @Before
   public void setUp() throws Exception {
-    storagePath = Paths.get(folder.getRoot().getAbsolutePath(), "storage");
+    fileStoreRoot = tempFolder.getRoot().getAbsolutePath();
+    fileDestination = PathUtils.join(fileStoreRoot, "file");
   }
 
   private void configureVertx(Vertx vertx) {
-    vertx.getOrCreateContext().config().put(ConfigConstants.STORAGE_FILE_PATH, storagePath.toString());
+    vertx.getOrCreateContext().config().put(ConfigConstants.STORAGE_FILE_PATH, fileStoreRoot);
   }
 
   @Override
@@ -53,54 +56,53 @@ public class FileStoreTest extends StorageTest {
   @Override
   protected Handler<Future<String>> prepare_Data(TestContext context, Vertx vertx, String subPath) {
     return h -> {
-      Path fileFolder = Paths.get(storagePath.toString(), "file");
-      Path fileDestinationFolder = subPath == null || subPath.isEmpty() ? fileFolder : Paths.get(fileFolder.toString(), subPath);
+      String destinationFolder = subPath == null || subPath.isEmpty() ? fileDestination : PathUtils.join(fileDestination, subPath);
 
-      Path filePath = Paths.get(fileDestinationFolder.toString(), id);
+      Path filePath = Paths.get(destinationFolder.toString(), id);
 
       try {
-        Files.createDirectories(fileDestinationFolder);
+        Files.createDirectories(Paths.get(destinationFolder));
         Files.write(filePath, chunkContent.getBytes());
       } catch (IOException ex) {
-        context.fail("Failed to create test files: " + ex.getMessage());
+        context.fail("Test file creation failed.: " + ex.getMessage());
       }
 
-      h.complete(filePath.toString().replace(fileFolder.toString() + "/", ""));
+      h.complete(filePath.toString().replace(fileDestination + "/", ""));
     };
   }
 
   @Override
   protected Handler<Future<Object>> validate_after_Store_add(TestContext context, Vertx vertx, String path) {
     return h -> {
-      Path root = Paths.get(storagePath.toString(), "/file");
-      root = (path == null || path.isEmpty()) ? root : Paths.get(root.toString(), path);
+      String destinationFolder = path == null || path.isEmpty() ? fileDestination : PathUtils.join(fileDestination, path);
 
-      File folder = root.toFile();
+      File folder = new File(destinationFolder);
 
       if (!folder.exists()) {
-        context.fail("FileStore did not wrote a folder: " + folder.getAbsolutePath());
+        context.fail("Test expected to find a tempFolder after calling FileStore::add. FolderPath('" + folder.getAbsolutePath() + "')");
       }
 
       File[] files = folder.listFiles();
 
-      if (files.length == 0) {
-        context.fail("FileStore did not wrote a file in: " + folder.getAbsolutePath());
+      if (files == null || files.length != 1) {
+        context.fail("Test expected to find one file after calling FileStore::add FolderPath('" + folder.getAbsolutePath() + "')");
       }
 
-      File first = files[0];
+      File file = files[0];
 
       try {
-        List<String> lines = Files.readAllLines(first.toPath());
+        List<String> lines = Files.readAllLines(file.toPath());
 
         if (lines.isEmpty()) {
-          context.fail("FileStore did not wrote any content in file: " + first.getAbsolutePath());
+          context.fail("Test expected to find any content after calling FileStore::add FilePath('" + file.getAbsolutePath() + "')");
         }
 
         String firstLine = lines.get(0);
+
         context.assertEquals(chunkContent, firstLine);
 
       } catch (IOException ex) {
-        context.fail("Could not read the file: " + ex.getMessage());
+        context.fail("Could not read a file where the test expected to find one, after calling FileStore::add.  ExMsg: " + ex.getMessage());
       }
 
       h.complete();
@@ -111,7 +113,7 @@ public class FileStoreTest extends StorageTest {
   protected Handler<Future<Object>> validate_after_Store_delete(TestContext context, Vertx vertx, String path) {
     return h -> {
       if (Files.exists(Paths.get(path))) {
-        context.fail("Test expected to find zero files after calling HDFSStore::delete. FilePath('" + path + "')");
+        context.fail("Test expected to find zero files after calling FileStore::delete. FilePath('" + path + "')");
       }
 
       h.complete();

@@ -8,6 +8,7 @@ import io.georocket.util.PathUtils;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.impl.Utils;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.TestContext;
 import org.junit.After;
@@ -29,7 +30,7 @@ public class S3StoreTest extends StorageTest {
   private static String  S3_BUCKET            = "testbucket";
   private static boolean S3_PATH_STYLE_ACCESS = true;
 
-  private static final class HTTP {
+  private static final class Http {
     public static final class Types {
       public static final String XML  = "application/xml";
       public static final String TEXT = "text/plain";
@@ -45,21 +46,17 @@ public class S3StoreTest extends StorageTest {
     public static final String CONTENT_LENGTH = "Content-Length";
   }
 
-  private static String HTTP_REQUEST_HOST_FOR_BUCKED = String.format("%s.s3.amazonaws.com", S3_BUCKET);
-
   @Rule
   public WireMockRule wireMockRule = new WireMockRule(S3_PORT);
 
 
+  private static String pathWithLeadingSlash(String ... paths) {
+    return "/" + PathUtils.join(paths);
+  }
 
-  private static final String pathWithoutFolder = String.format("/%s/%s", S3_BUCKET, StorageTest.id);
-  private static final String pathWithFolder = String.format("/%s/%s/%s", S3_BUCKET, StorageTest.testFolder, StorageTest.id);
-
-  private static final String uriPatternWithoutFolder = pathWithoutFolder + "/*";
-  private static final String uriPatternWithFolder = pathWithFolder + "/*";
-
-
-
+  /**
+   * Set up test dependencies.
+   */
   @Before
   public void setUp() {
     wireMockRule.start();
@@ -67,58 +64,58 @@ public class S3StoreTest extends StorageTest {
     // Mock http request for getOne
     wireMockRule.stubFor(
         // Request
-        get(urlPathMatching(uriPatternWithoutFolder))
+        get(urlPathMatching(pathWithLeadingSlash(S3_BUCKET, StorageTest.id, "*")))
             .willReturn(aResponse()
-                .withStatus(HTTP.Codes.OK)
+                .withStatus(Http.Codes.OK)
 
-                .withHeader(HTTP.CONTENT_LENGTH,    String.valueOf(StorageTest.chunkContent.length()))
-                .withHeader(HTTP.CONTENT_TYPE,      HTTP.Types.XML)
-                .withHeader(HTTP.CONNECTION,        "close")
-                .withHeader(HTTP.SERVER,            "AmazonS3")
+                .withHeader(Http.CONTENT_LENGTH,    String.valueOf(StorageTest.chunkContent.length()))
+                .withHeader(Http.CONTENT_TYPE,      Http.Types.XML)
+                .withHeader(Http.CONNECTION,        "close")
+                .withHeader(Http.SERVER,            "AmazonS3")
 
                 .withBody(StorageTest.chunkContent)
             )
     );
 
-    // Mock http request for add without folder
+    // Mock http request for add without tempFolder
     wireMockRule.stubFor(
-        put(urlPathMatching(String.format("/%s/*", S3_BUCKET)))
-            .withHeader(HTTP.CONTENT_LENGTH,    equalTo(String.valueOf(StorageTest.chunkContent.length())))
+        put(urlPathMatching(pathWithLeadingSlash(S3_BUCKET, "*")))
+            .withHeader(Http.CONTENT_LENGTH,    equalTo(String.valueOf(StorageTest.chunkContent.length())))
 
             .withRequestBody(equalTo(StorageTest.chunkContent))
 
             .willReturn(aResponse()
-                .withStatus(HTTP.Codes.OK)
+                .withStatus(Http.Codes.OK)
             )
     );
 
     wireMockRule.stubFor(
-        put(urlPathMatching(String.format("/%s/%s/*", S3_BUCKET, StorageTest.testFolder)))
-            .withHeader(HTTP.CONTENT_LENGTH,    equalTo(String.valueOf(StorageTest.chunkContent.length())))
+        put(urlPathMatching(pathWithLeadingSlash(S3_BUCKET, StorageTest.testFolder, "*")))
+            .withHeader(Http.CONTENT_LENGTH,    equalTo(String.valueOf(StorageTest.chunkContent.length())))
 
             .withRequestBody(equalTo(StorageTest.chunkContent))
 
             .willReturn(aResponse()
-                .withStatus(HTTP.Codes.OK)
+                .withStatus(Http.Codes.OK)
             )
     );
 
-    // Mock http request for delete without folder
+    // Mock http request for delete without tempFolder
     wireMockRule.stubFor(
-        delete(urlPathMatching(uriPatternWithoutFolder))
+        delete(urlPathMatching(pathWithLeadingSlash(S3_BUCKET, StorageTest.id, "*")))
 
         .willReturn(aResponse()
-            .withStatus(HTTP.Codes.NO_CONTENT)
+            .withStatus(Http.Codes.NO_CONTENT)
         )
     );
 
-    // Mock http request for delete with folder
+    // Mock http request for delete with tempFolder
     wireMockRule.stubFor(
-        delete(urlPathMatching(uriPatternWithFolder))
+        delete(urlPathMatching(pathWithLeadingSlash(S3_BUCKET, StorageTest.testFolder, StorageTest.id, "*")))
 
-            .willReturn(aResponse()
-                .withStatus(HTTP.Codes.NO_CONTENT)
-            )
+        .willReturn(aResponse()
+            .withStatus(Http.Codes.NO_CONTENT)
+        )
     );
   }
 
@@ -130,12 +127,12 @@ public class S3StoreTest extends StorageTest {
   private void configureVertx(Vertx vertx) {
     JsonObject config = vertx.getOrCreateContext().config();
 
-    config.put(ConfigConstants.STORAGE_S3_ACCESS_KEY, S3_ACCESS_KEY);
-    config.put(ConfigConstants.STORAGE_S3_SECRET_KEY, S3_SECRET_KEY);
-    config.put(ConfigConstants.STORAGE_S3_HOST, S3_HOST);
-    config.put(ConfigConstants.STORAGE_S3_PORT, S3_PORT);
-    config.put(ConfigConstants.STORAGE_S3_BUCKET, S3_BUCKET);
-    config.put(ConfigConstants.STORAGE_S3_PATH_STYLE_ACCESS, S3_PATH_STYLE_ACCESS);
+    config.put(ConfigConstants.STORAGE_S3_ACCESS_KEY,           S3_ACCESS_KEY);
+    config.put(ConfigConstants.STORAGE_S3_SECRET_KEY,           S3_SECRET_KEY);
+    config.put(ConfigConstants.STORAGE_S3_HOST,                 S3_HOST);
+    config.put(ConfigConstants.STORAGE_S3_PORT,                 S3_PORT);
+    config.put(ConfigConstants.STORAGE_S3_BUCKET,               S3_BUCKET);
+    config.put(ConfigConstants.STORAGE_S3_PATH_STYLE_ACCESS,    S3_PATH_STYLE_ACCESS);
   }
 
   @Override
@@ -152,7 +149,7 @@ public class S3StoreTest extends StorageTest {
   @Override
   protected Handler<Future<Object>> validate_after_Store_add(TestContext context, Vertx vertx, String path) {
     return h -> {
-      verify(putRequestedFor(urlPathMatching(path == null || path.isEmpty() ? String.format("/%s/*", S3_BUCKET) : String.format("/%s/%s/*", S3_BUCKET, StorageTest.testFolder))));
+      verify(putRequestedFor(urlPathMatching(path == null || path.isEmpty() ? pathWithLeadingSlash(S3_BUCKET, "*") : pathWithLeadingSlash(S3_BUCKET, path, "*"))));
 
       h.complete();
     };
@@ -161,7 +158,7 @@ public class S3StoreTest extends StorageTest {
   @Override
   protected Handler<Future<Object>> validate_after_Store_delete(TestContext context, Vertx vertx, String path) {
     return h -> {
-      verify(deleteRequestedFor(urlPathMatching(path == null || path.isEmpty() ? uriPatternWithoutFolder : uriPatternWithFolder)));
+      verify(deleteRequestedFor(urlPathMatching(path == null || path.isEmpty() ? pathWithLeadingSlash(S3_BUCKET, StorageTest.id, "*") : pathWithLeadingSlash(S3_BUCKET, path, StorageTest.id, "*"))));
 
       h.complete();
     };

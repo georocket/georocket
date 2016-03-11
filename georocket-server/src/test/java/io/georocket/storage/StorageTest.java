@@ -13,7 +13,6 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.bson.types.ObjectId;
-import org.codehaus.jettison.json.JSONObject;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -34,6 +33,7 @@ import java.util.List;
  */
 @RunWith(VertxUnitRunner.class)
 abstract public class StorageTest {
+
   /**
    * Run the test on a Vert.x test context
    */
@@ -41,7 +41,7 @@ abstract public class StorageTest {
   public RunTestOnContext rule = new RunTestOnContext();
 
   /**
-   * Test data: folder name which is used to call the test with folder
+   * Test data: tempFolder name which is used to call the test with tempFolder
    */
   protected final static String testFolder = "testFolder";
 
@@ -86,6 +86,13 @@ abstract public class StorageTest {
   protected final static String scrollId = "0";
 
 
+  /**
+   * Create a JsonObject to simulate a reply from an indexer.
+   *
+   * @param path The path which is used as prefix of the id (@Nullable).
+   *
+   * @return A reply msg.
+   */
   protected static JsonObject createIndexerQueryReply(String path) {
 
     if (path != null && !path.isEmpty()) {
@@ -110,7 +117,7 @@ abstract public class StorageTest {
   }
 
   /**
-   * Create a store implementation of a store which should be tested.
+   * Create a store implementation of a store which must be tested.
    *
    * @param vertx A vertx instance for one test
    *
@@ -126,7 +133,7 @@ abstract public class StorageTest {
    *
    * @param context The current test context.
    * @param vertx A vertx instance of one test.
-   * @param path The path where to create the data (Nulladble).
+   * @param path The path where to create the data (@Nullable).
    *
    * @return A Handler which will be called in a test where test data are needed.
    */
@@ -140,7 +147,7 @@ abstract public class StorageTest {
    *
    * @param context The current test context.
    * @param vertx A vertx instance of one test.
-   * @param path The path where the data where created (Nullable: if not used for @prepare_Data)
+   * @param path The path where the data where created (@Nullable: if not used for @prepare_Data)
    *
    * @return A Handler which will be called in a test where test data are needed.
    */
@@ -154,7 +161,7 @@ abstract public class StorageTest {
    *
    * @param context The current test context.
    * @param vertx A vertx instance of one test.
-   * @param path The path where the data where created (Nullable: if not used for @prepare_Data)
+   * @param path The path where the data where created (@Nullable: if not used for @prepare_Data)
    *
    * @return A Handler which will be called in a test where test data are needed.
    */
@@ -174,9 +181,9 @@ abstract public class StorageTest {
         context.fail("Malformed Message: expected to have 'search' attribute");
       }
 
-      String indxSearch = msg.getString("search");
+      String indexSearch = msg.getString("search");
 
-      context.assertEquals(search, indxSearch);
+      context.assertEquals(search, indexSearch);
 
       request.reply(createIndexerQueryReply(path));
 
@@ -273,13 +280,39 @@ abstract public class StorageTest {
     this.testGetOne(context, null);
   }
 
+  @Test
+  public void testDeleteNonExistingEntity(TestContext context) throws Exception {
+    Vertx vertx = rule.vertx();
+    Async async = context.async();
+    Async asyncIndexerQuery = context.async();
+
+    Store store = this.createStore(vertx);
+
+    // register add
+    vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_ADD).handler(h -> context.fail("Indexer should not be notified on delete of a store!"));
+
+    // register delete
+    vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_DELETE).handler(req -> context.fail("INDEXER_DELETE should not be notified if no file was found."));
+
+    // register query
+    vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_QUERY).handler(request -> {
+      request.fail(404, "NOT FOUND");
+
+      asyncIndexerQuery.complete();
+    });
+
+    store.delete(search, "NOT_EXISTING_PATH", context.asyncAssertSuccess(h -> {
+      async.complete();
+    }));
+  }
+
   /**
    * Add test data to a storage and retrive the data with the @getOne method to compare them.
    *
    * Notice: uses the @prepare_Data
    *
    * @param context Test context
-   * @param _path The path where to look for data (nullable).
+   * @param _path The path where to look for data (@Nullable).
    *
    * @throws Exception
    */
@@ -306,7 +339,7 @@ abstract public class StorageTest {
    * Add test data and compare the data with the stored one.
    *
    * @param context Test context
-   * @param path Path where to add data (nullable).
+   * @param path Path where to add data (@Nullable).
    *
    * @throws Exception
    */
@@ -343,7 +376,7 @@ abstract public class StorageTest {
    * Add test data and try to delete them with the Store::delete method, then check the storage for any data.
    *
    * @param context Test context
-   * @param _path Path where the data can be found (nullable).
+   * @param _path Path where the data can be found (@Nullable).
    *
    * @throws Exception
    */
@@ -403,10 +436,10 @@ abstract public class StorageTest {
   }
 
   /**
-   * Add test data with meta data and try to retrive them with the Storage::testGet method
+   * Add test data with meta data and try to retrieve them with the Storage::testGet method
    *
    * @param context Test context.
-   * @param _path The path where the data can be found (nullable).
+   * @param _path The path where the data can be found (@Nullable).
    *
    * @throws Exception
    */
