@@ -25,8 +25,8 @@ import io.georocket.constants.ConfigConstants;
 import io.georocket.storage.StorageTest;
 import io.georocket.storage.Store;
 import io.georocket.util.PathUtils;
+import io.vertx.core.AsyncResult;
 import io.vertx.core.DeploymentOptions;
-import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
@@ -80,46 +80,36 @@ public class MongoDBStoreTest extends StorageTest {
 
   @Override
   protected Store createStore(Vertx vertx) {
-    this.configureVertx(vertx);
+    configureVertx(vertx);
     return new MongoDBStore(vertx);
   }
 
   @Override
-  protected Handler<Future<String>> prepareData(TestContext context, Vertx vertx, String _path) {
-    return h -> {
-      MongoClient client = new MongoClient(new ServerAddress(serverAddress));
-      DB db = client.getDB(MONGODB_DBNAME);
-
-      String path = _path;
-
-      GridFS gridFS = new GridFS(db);
-
-      if (path == null || path.isEmpty()) {
-        path = "";
-      }
-
-      String filename = PathUtils.join(path, ID);
-
-      GridFSInputFile file = gridFS.createFile(filename);
-
-      try (
+  protected void prepareData(TestContext context, Vertx vertx, String path,
+      Handler<AsyncResult<String>> handler) {
+    String filename = PathUtils.join(path, ID);
+    vertx.<String>executeBlocking(f -> {
+      try (MongoClient client = new MongoClient(new ServerAddress(serverAddress))) {
+        DB db = client.getDB(MONGODB_DBNAME);
+        GridFS gridFS = new GridFS(db);
+        GridFSInputFile file = gridFS.createFile(filename);
+        try (
           OutputStream os = file.getOutputStream();
           OutputStreamWriter writer = new OutputStreamWriter(os, StandardCharsets.UTF_8)
-      ) {
-        writer.write(CHUNK_CONTENT);
+        ) {
+          writer.write(CHUNK_CONTENT);
+          f.complete(filename);
+        }
       } catch (IOException ex) {
-        context.fail("Test preparations failed: could not write a file in mongo db - " + ex.getMessage());
+        f.fail(ex);
       }
-
-      client.close();
-
-      h.complete(filename);
-    };
+    }, handler);
   }
 
   @Override
-  protected Handler<Future<Object>> validateAfterStoreAdd(TestContext context, Vertx vertx, String path) {
-    return h -> {
+  protected void validateAfterStoreAdd(TestContext context, Vertx vertx,
+      String path, Handler<AsyncResult<Void>> handler) {
+    vertx.executeBlocking(f -> {
       MongoClient client = new MongoClient(new ServerAddress(serverAddress));
       DB db = client.getDB(MONGODB_DBNAME);
       GridFS gridFS = new GridFS(db);
@@ -127,10 +117,7 @@ public class MongoDBStoreTest extends StorageTest {
       DBObject query = new BasicDBObject();
 
       List<GridFSDBFile> files = gridFS.find(query);
-
-      if (files.isEmpty()) {
-        context.fail("MongoDB did not saved a entity");
-      }
+      context.assertFalse(files.isEmpty());
 
       GridFSDBFile file = files.get(0);
       InputStream is = file.getInputStream();
@@ -146,14 +133,14 @@ public class MongoDBStoreTest extends StorageTest {
 
       client.close();
 
-      h.complete();
-    };
+      f.complete();
+    }, handler);
   }
 
   @Override
-  protected Handler<Future<Object>> validateAfterStoreDelete(TestContext context,
-      Vertx vertx, String path) {
-    return h -> {
+  protected void validateAfterStoreDelete(TestContext context, Vertx vertx,
+      String path, Handler<AsyncResult<Void>> handler) {
+    vertx.executeBlocking(f -> {
       MongoClient client = new MongoClient(new ServerAddress(serverAddress));
       DB db = client.getDB(MONGODB_DBNAME);
       GridFS gridFS = new GridFS(db);
@@ -161,14 +148,11 @@ public class MongoDBStoreTest extends StorageTest {
       DBObject query = new BasicDBObject();
 
       List<GridFSDBFile> files = gridFS.find(query);
-
-      if (!files.isEmpty()) {
-        context.fail("Store should be empty after calling Storage::delete. Contains: " + files);
-      }
+      context.assertTrue(files.isEmpty());
 
       client.close();
 
-      h.complete();
-    };
+      f.complete();
+    }, handler);
   }
 }

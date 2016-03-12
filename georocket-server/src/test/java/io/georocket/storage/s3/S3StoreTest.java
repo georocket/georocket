@@ -20,6 +20,7 @@ import io.georocket.constants.ConfigConstants;
 import io.georocket.storage.StorageTest;
 import io.georocket.storage.Store;
 import io.georocket.util.PathUtils;
+import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
@@ -149,35 +150,30 @@ public class S3StoreTest extends StorageTest {
 
   @Override
   protected Store createStore(Vertx vertx) {
-    this.configureVertx(vertx);
+    configureVertx(vertx);
     return new S3Store(vertx);
   }
 
   @Override
-  protected Handler<Future<String>> prepareData(TestContext context, Vertx vertx, String path) {
-    return h -> h.complete(PathUtils.join(path, ID));
+  protected void prepareData(TestContext context, Vertx vertx, String path,
+      Handler<AsyncResult<String>> handler) {
+    handler.handle(Future.succeededFuture(PathUtils.join(path, ID)));
   }
 
   @Override
-  protected Handler<Future<Object>> validateAfterStoreAdd(TestContext context,
-      Vertx vertx, String path) {
-    return h -> {
-      verify(putRequestedFor(urlPathMatching(path == null || path.isEmpty() ?
-          pathWithLeadingSlash(S3_BUCKET, "*") : pathWithLeadingSlash(S3_BUCKET, path, "*"))));
-
-      h.complete();
-    };
+  protected void validateAfterStoreAdd(TestContext context, Vertx vertx,
+      String path, Handler<AsyncResult<Void>> handler) {
+    verify(putRequestedFor(urlPathMatching(path == null || path.isEmpty() ?
+        pathWithLeadingSlash(S3_BUCKET, "*") : pathWithLeadingSlash(S3_BUCKET, path, "*"))));
+    handler.handle(Future.succeededFuture());
   }
 
   @Override
-  protected Handler<Future<Object>> validateAfterStoreDelete(TestContext context,
-      Vertx vertx, String path) {
-    return h -> {
-      verify(deleteRequestedFor(urlPathMatching(path == null || path.isEmpty() ?
-          pathWithLeadingSlash(S3_BUCKET, ID, "*") :
-            pathWithLeadingSlash(S3_BUCKET, path, ID, "*"))));
-
-      h.complete();
-    };
+  protected void validateAfterStoreDelete(TestContext context, Vertx vertx,
+      String path, Handler<AsyncResult<Void>> handler) {
+    verify(deleteRequestedFor(urlPathMatching(path == null || path.isEmpty() ?
+        pathWithLeadingSlash(S3_BUCKET, ID, "*") :
+          pathWithLeadingSlash(S3_BUCKET, path, ID, "*"))));
+    handler.handle(Future.succeededFuture());
   }
 }

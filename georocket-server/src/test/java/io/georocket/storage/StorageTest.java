@@ -12,7 +12,7 @@ import org.junit.runner.RunWith;
 import io.georocket.constants.AddressConstants;
 import io.georocket.util.PathUtils;
 import io.georocket.util.XMLStartElement;
-import io.vertx.core.Future;
+import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
@@ -152,10 +152,10 @@ abstract public class StorageTest {
    * @param context The current test context.
    * @param vertx A Vert.x instance for one test.
    * @param path The path for the data (may be null).
-   * @return A Handler which will be called in a test, where test data are needed.
+   * @param handler will be called when the test data has been prepared
    */
-  protected abstract Handler<Future<String>> prepareData(TestContext context,
-      Vertx vertx, String path);
+  protected abstract void prepareData(TestContext context, Vertx vertx,
+      String path, Handler<AsyncResult<String>> handler);
 
   /**
    * <p>Validate the add method. Will be called after the store added data.</p>
@@ -166,43 +166,37 @@ abstract public class StorageTest {
    * @param context The current test context.
    * @param vertx A Vert.x instance of one test.
    * @param path The path where the data was created (may be null if not used
-   * for {@link #prepareData(TestContext, Vertx, String)})
-   * @return A Handler which will be called in a test where test data are needed.
+   * for {@link #prepareData(TestContext, Vertx, String, Handler)})
+   * @param handler will be called when the validation has finished
    */
-  protected abstract Handler<Future<Object>> validateAfterStoreAdd(
-      TestContext context, Vertx vertx, String path);
+  protected abstract void validateAfterStoreAdd(TestContext context, Vertx vertx,
+      String path, Handler<AsyncResult<Void>> handler);
 
   /**
    * <p>Validate the delete method of a test. Will be called after the store
    * deleted data.</p>
    * <p>Heads up: look on the protected attributes and your
-   * {@link #prepareData(TestContext, Vertx, String)} implementation to know
-   * which data you have deleted with the
+   * {@link #prepareData(TestContext, Vertx, String, Handler)} implementation
+   * to know which data you have deleted with the
    * {@link Store#delete(String, String, Handler)} method.
    * Use context.assert ... and context.fail to validate the test.</p>
    * @param context The current test context.
    * @param vertx A Vert.x instance of one test.
    * @param path The path where the data were created (may be null if not used
-   * for {@link #prepareData(TestContext, Vertx, String)})
-   * @return A Handler which will be called in a test where test data are needed.
+   * for {@link #prepareData(TestContext, Vertx, String, Handler)})
+   * @param handler will be called when the validation has finished
    */
-  protected abstract Handler<Future<Object>> validateAfterStoreDelete(
-      TestContext context, Vertx vertx, String path);
+  protected abstract void validateAfterStoreDelete(TestContext context,
+      Vertx vertx, String path, Handler<AsyncResult<Void>> handler);
 
   private void mockIndexerQuery(Vertx vertx, TestContext context, Async async, String path) {
     vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_QUERY).handler(request -> {
       JsonObject msg = request.body();
 
-      if (!msg.containsKey("pageSize")) {
-        context.fail("Malformed Message: expected to have 'pageSize' attribute");
-      }
-
-      if (!msg.containsKey("search")) {
-        context.fail("Malformed Message: expected to have 'search' attribute");
-      }
+      context.assertTrue(msg.containsKey("pageSize"));
+      context.assertTrue(msg.containsKey("search"));
 
       String indexSearch = msg.getString("search");
-
       context.assertEquals(SEARCH, indexSearch);
 
       request.reply(createIndexerQueryReply(path));
@@ -217,7 +211,7 @@ abstract public class StorageTest {
    */
   @Test
   public void testAddWithoutSubfolder(TestContext context) {
-    this.testAdd(context, null);
+    testAdd(context, null);
   }
 
   /**
@@ -226,7 +220,7 @@ abstract public class StorageTest {
    */
   @Test
   public void testAddWithSubfolder(TestContext context) {
-    this.testAdd(context, TEST_FOLDER);
+    testAdd(context, TEST_FOLDER);
   }
 
   /**
@@ -235,7 +229,7 @@ abstract public class StorageTest {
    */
   @Test
   public void testDeleteWithoutSubfolder(TestContext context) {
-    this.testDelete(context, null);
+    testDelete(context, null);
   }
 
   /**
@@ -244,7 +238,7 @@ abstract public class StorageTest {
    */
   @Test
   public void testDeleteWithSubfolder(TestContext context) {
-    this.testDelete(context, TEST_FOLDER);
+    testDelete(context, TEST_FOLDER);
   }
 
   /**
@@ -253,7 +247,7 @@ abstract public class StorageTest {
    */
   @Test
   public void testGetWithoutSubfolder(TestContext context) {
-    this.testGet(context, null);
+    testGet(context, null);
   }
 
   /**
@@ -262,7 +256,7 @@ abstract public class StorageTest {
    */
   @Test
   public void testGetWithSubfolder(TestContext context) {
-    this.testGet(context, TEST_FOLDER);
+    testGet(context, TEST_FOLDER);
   }
 
   /**
@@ -271,7 +265,7 @@ abstract public class StorageTest {
    */
   @Test
   public void testGetOneWithoutFolder(TestContext context) {
-    this.testGetOne(context, null);
+    testGetOne(context, null);
   }
 
   /**
@@ -286,19 +280,19 @@ abstract public class StorageTest {
     Async async = context.async();
     Async asyncIndexerQuery = context.async();
 
-    Store store = this.createStore(vertx);
+    Store store = createStore(vertx);
 
     // register add
-    vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_ADD).handler(h ->
+    vertx.eventBus().consumer(AddressConstants.INDEXER_ADD).handler(h ->
       context.fail("Indexer should not be notified for a add event after "
           + "Store::delete was called!"));
 
     // register delete
-    vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_DELETE).handler(r ->
+    vertx.eventBus().consumer(AddressConstants.INDEXER_DELETE).handler(r ->
       context.fail("INDEXER_DELETE should not be notified if no file was found."));
 
     // register query
-    vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_QUERY).handler(r -> {
+    vertx.eventBus().consumer(AddressConstants.INDEXER_QUERY).handler(r -> {
       r.fail(404, "NOT FOUND");
       asyncIndexerQuery.complete();
     });
@@ -311,7 +305,7 @@ abstract public class StorageTest {
   /**
    * <p>Add test data to a storage and retrieve the data with the
    * {@link Store#getOne(String, Handler)} method to compare them.</p>
-   * <p>Heads up: uses the {@link #prepareData(TestContext, Vertx, String)}</p>
+   * <p>Uses {@link #prepareData(TestContext, Vertx, String, Handler)}</p>
    * @param context Test context
    * @param path The path where to look for data (may be null)
    */
@@ -319,19 +313,15 @@ abstract public class StorageTest {
     Vertx vertx = rule.vertx();
     Async async = context.async();
 
-    vertx.<String>executeBlocking(
-        this.prepareData(context, vertx, path),
-        fa -> {
-          Store store = this.createStore(vertx);
-
-          store.getOne(ID, context.asyncAssertSuccess(h -> {
-            h.handler(buffer -> {
-              String receivedChunk = new String(buffer.getBytes());
-              context.assertEquals(CHUNK_CONTENT, receivedChunk);
-            }).endHandler(end -> async.complete());
-          }));
-        }
-    );
+    prepareData(context, vertx, path, context.asyncAssertSuccess(resultPath -> {
+      Store store = createStore(vertx);
+      store.getOne(ID, context.asyncAssertSuccess(h -> {
+        h.handler(buffer -> {
+          String receivedChunk = new String(buffer.getBytes());
+          context.assertEquals(CHUNK_CONTENT, receivedChunk);
+        }).endHandler(end -> async.complete());
+      }));
+    }));
   }
 
   /**
@@ -344,7 +334,7 @@ abstract public class StorageTest {
     Async asyncIndexerAdd = context.async();
     Async asyncAdd = context.async();
 
-    Store store = this.createStore(vertx);
+    Store store = createStore(vertx);
 
     vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_ADD).handler(h -> {
       JsonObject index = h.body();
@@ -356,29 +346,28 @@ abstract public class StorageTest {
     });
 
     // register delete
-    vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_DELETE).handler(h ->
+    vertx.eventBus().consumer(AddressConstants.INDEXER_DELETE).handler(h ->
       context.fail("Indexer should not be notified for a delete event after"
           + "Store::add was called!"));
     
     // register query
-    vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_QUERY).handler(h ->
+    vertx.eventBus().consumer(AddressConstants.INDEXER_QUERY).handler(h ->
       context.fail("Indexer should not be notified for a query event after"
           + "Store::add was called!"));
 
     store.add(CHUNK_CONTENT, META, path, TAGS, context.asyncAssertSuccess(err -> {
-      vertx.executeBlocking(
-          validateAfterStoreAdd(context, vertx, path), // IO Operation => blocked call
-          f -> asyncAdd.complete()
-      );
+      validateAfterStoreAdd(context, vertx, path, context.asyncAssertSuccess(v -> {
+        asyncAdd.complete();
+      }));
     }));
   }
 
   /**
    * Add test data and try to delete them with the 
    * {@link Store#delete(String, String, Handler)} method, then check the
-   * storage for any data.
+   * storage for any data
    * @param context Test context
-   * @param path Path where the data can be found (may be null).
+   * @param path Path where the data can be found (may be null)
    */
   public void testDelete(TestContext context, String path) {
     Vertx vertx = rule.vertx();
@@ -386,54 +375,39 @@ abstract public class StorageTest {
     Async asyncIndexerDelete = context.async();
     Async asyncDelete = context.async();
 
-    vertx.<String>executeBlocking(
-        this.prepareData(context, vertx, path), // IO Operation => blocked call
-        fa -> {
-          String resultPath = fa.result();
+    prepareData(context, vertx, path, context.asyncAssertSuccess(resultPath -> {
+      Store store = createStore(vertx);
 
-          Store store = this.createStore(vertx);
+      // register add
+      vertx.eventBus().consumer(AddressConstants.INDEXER_ADD).handler(h ->
+        context.fail("Indexer should not be notified for a add event after"
+            + "Store::delete was called!"));
+      
+      // register delete
+      vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_DELETE).handler(req -> {
+        JsonObject msg = req.body();
+        context.assertTrue(msg.containsKey("paths"));
 
-          // register add
-          vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_ADD).handler(h ->
-            context.fail("Indexer should not be notified for a add event after"
-                + "Store::delete was called!"));
-          
-          // register delete
-          vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_DELETE).handler(req -> {
-            JsonObject msg = req.body();
+        JsonArray paths = msg.getJsonArray("paths");
+        context.assertEquals(1, paths.size());
 
-            if (!msg.containsKey("paths")) {
-              context.fail("Malformed Message: expected to have 'pageSize' attribute");
-            }
+        String notifiedPath = paths.getString(0);
+        context.assertEquals(resultPath, notifiedPath);
 
-            JsonArray paths = msg.getJsonArray("paths");
+        req.reply(null); // Value is not used in Store
 
-            if (paths.size() != 1) {
-              context.fail("Expected to find exact one path in message, found: " + paths.size());
-            }
+        asyncIndexerDelete.complete();
+      });
 
-            String notifiedPath = paths.getString(0);
+      // register query
+      mockIndexerQuery(vertx, context, asyncIndexerQuery, path);
 
-            context.assertEquals(resultPath, notifiedPath);
-
-            req.reply(null); // Value is not used in Store
-
-            asyncIndexerDelete.complete();
-          });
-
-          // register query
-          this.mockIndexerQuery(vertx, context, asyncIndexerQuery, path);
-
-          store.delete(SEARCH, path,
-              context.asyncAssertSuccess(h ->
-                  vertx.executeBlocking(
-                      validateAfterStoreDelete(context, vertx, resultPath), // IO Operation => blocked call
-                      f -> asyncDelete.complete()
-                  )
-              )
-          );
-        }
-    );
+      store.delete(SEARCH, path, context.asyncAssertSuccess(h -> {
+        validateAfterStoreDelete(context, vertx, resultPath, context.asyncAssertSuccess(v -> {
+          asyncDelete.complete();
+        }));
+      }));
+    }));
   }
 
   /**
@@ -448,48 +422,39 @@ abstract public class StorageTest {
     Async asyncGet = context.async();
 
     // register query
-    this.mockIndexerQuery(vertx, context, asyncQuery, path);
+    mockIndexerQuery(vertx, context, asyncQuery, path);
     
     // register delete
-    vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_DELETE).handler(h ->
+    vertx.eventBus().consumer(AddressConstants.INDEXER_DELETE).handler(h ->
       context.fail("Indexer should not be notified for a delete event after"
           + "Store::get was called!"));
     
     // register query
-    vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_ADD).handler(h ->
+    vertx.eventBus().consumer(AddressConstants.INDEXER_ADD).handler(h ->
       context.fail("Indexer should not be notified for an add event after"
           + "Store::get was called!"));
 
-    vertx.<String>executeBlocking(
-        this.prepareData(context, vertx, path), // IO Operation => blocked call
-        fa -> {
-          String resultPath = fa.result();
+    prepareData(context, vertx, path, context.asyncAssertSuccess(resultPath -> {
+      Store store = createStore(vertx);
 
-          Store store = this.createStore(vertx);
+      store.get(SEARCH, resultPath, ar -> {
+        StoreCursor cursor = ar.result();
+        context.assertTrue(cursor.hasNext());
 
-          store.get(SEARCH, resultPath, ar -> {
-            StoreCursor cursor = ar.result();
+        cursor.next(h -> {
+          ChunkMeta meta = h.result();
 
-            if (!cursor.hasNext()) {
-              context.fail("Cursor is empty: Expected one element.");
-            }
+          context.assertEquals(END, meta.getEnd());
+          context.assertEquals(START, meta.getStart());
 
-            cursor.next(h -> {
-              ChunkMeta meta = h.result();
+          String fileName = cursor.getChunkPath();
 
-              context.assertEquals(END, meta.getEnd());
-              // context.assertEquals(parents, meta.getParents());
-              context.assertEquals(START, meta.getStart());
+          context.assertEquals(resultPath == null || resultPath.isEmpty() ?
+              ID : PathUtils.join(path, ID), fileName);
 
-              String fileName = cursor.getChunkPath();
-
-              context.assertEquals(resultPath == null || resultPath.isEmpty() ?
-                  ID : PathUtils.join(path, ID), fileName);
-
-              asyncGet.complete();
-            });
-          });
-        }
-    );
+          asyncGet.complete();
+        });
+      });
+    }));
   }
 }

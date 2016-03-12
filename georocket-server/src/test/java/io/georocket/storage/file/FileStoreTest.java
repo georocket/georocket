@@ -15,7 +15,7 @@ import io.georocket.constants.ConfigConstants;
 import io.georocket.storage.StorageTest;
 import io.georocket.storage.Store;
 import io.georocket.util.PathUtils;
-import io.vertx.core.Future;
+import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.ext.unit.TestContext;
@@ -25,7 +25,6 @@ import io.vertx.ext.unit.TestContext;
  * @author Andrej Sajenko
  */
 public class FileStoreTest extends StorageTest {
-
   /**
    * Create a temporary tempFolder
    */
@@ -50,82 +49,64 @@ public class FileStoreTest extends StorageTest {
 
   @Override
   protected Store createStore(Vertx vertx) {
-    this.configureVertx(vertx);
+    configureVertx(vertx);
     return new FileStore(vertx);
   }
 
   @Override
-  protected Handler<Future<String>> prepareData(TestContext context, Vertx vertx, String subPath) {
-    return h -> {
+  protected void prepareData(TestContext context, Vertx vertx, String subPath,
+      Handler<AsyncResult<String>> handler) {
+    vertx.executeBlocking(f -> {
       String destinationFolder = subPath == null || subPath.isEmpty() ?
           fileDestination : PathUtils.join(fileDestination, subPath);
-
       Path filePath = Paths.get(destinationFolder.toString(), ID);
-
       try {
         Files.createDirectories(Paths.get(destinationFolder));
         Files.write(filePath, CHUNK_CONTENT.getBytes());
+        f.complete(filePath.toString().replace(fileDestination + "/", ""));
       } catch (IOException ex) {
-        context.fail("Test file creation failed.: " + ex.getMessage());
+        f.fail(ex);
       }
-
-      h.complete(filePath.toString().replace(fileDestination + "/", ""));
-    };
+    }, handler);
   }
 
   @Override
-  protected Handler<Future<Object>> validateAfterStoreAdd(TestContext context, Vertx vertx, String path) {
-    return h -> {
+  protected void validateAfterStoreAdd(TestContext context, Vertx vertx,
+      String path, Handler<AsyncResult<Void>> handler) {
+    vertx.executeBlocking(f -> {
       String destinationFolder = path == null || path.isEmpty() ?
           fileDestination : PathUtils.join(fileDestination, path);
-
+      
       File folder = new File(destinationFolder);
-
-      if (!folder.exists()) {
-        context.fail("Test expected to find a folder after calling "
-            + "FileStore::add. FolderPath('" + folder.getAbsolutePath() + "')");
-      }
+      context.assertTrue(folder.exists());
 
       File[] files = folder.listFiles();
-
-      if (files == null || files.length != 1) {
-        context.fail("Test expected to find one file after calling "
-            + "FileStore::add FolderPath('" + folder.getAbsolutePath() + "')");
-      }
-
+      context.assertNotNull(files);
+      context.assertEquals(1, files.length);
       File file = files[0];
 
+      List<String> lines;
       try {
-        List<String> lines = Files.readAllLines(file.toPath());
-
-        if (lines.isEmpty()) {
-          context.fail("Test expected to find any content after calling "
-              + "FileStore::add FilePath('" + file.getAbsolutePath() + "')");
-        }
-
-        String firstLine = lines.get(0);
-
-        context.assertEquals(CHUNK_CONTENT, firstLine);
-
+        lines = Files.readAllLines(file.toPath());
       } catch (IOException ex) {
-        context.fail("Could not read a file where the test expected to find "
-            + "one, after calling FileStore::add.  ExMsg: " + ex.getMessage());
+        f.fail(ex);
+        return;
       }
-
-      h.complete();
-    };
+      
+      context.assertFalse(lines.isEmpty());
+      String firstLine = lines.get(0);
+      context.assertEquals(CHUNK_CONTENT, firstLine);
+      
+      f.complete();
+    }, handler);
   }
 
   @Override
-  protected Handler<Future<Object>> validateAfterStoreDelete(TestContext context,
-      Vertx vertx, String path) {
-    return h -> {
-      if (Files.exists(Paths.get(path))) {
-        context.fail("Test expected to find zero files after calling "
-            + "FileStore::delete. FilePath('" + path + "')");
-      }
-
-      h.complete();
-    };
+  protected void validateAfterStoreDelete(TestContext context,
+      Vertx vertx, String path, Handler<AsyncResult<Void>> handler) {
+    vertx.executeBlocking(f -> {
+      context.assertFalse(Files.exists(Paths.get(path)));
+      f.complete();
+    }, handler);
   }
 }
