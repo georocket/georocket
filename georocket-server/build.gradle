@@ -39,10 +39,10 @@ dependencies {
     compile 'org.mongodb:mongodb-driver:3.2.1'
     compile 'org.yaml:snakeyaml:1.16'
 
+    testCompile 'com.github.tomakehurst:wiremock:1.57'
+    testCompile "io.vertx:vertx-mongo-embedded-db:$vertxVersion"
     testCompile "io.vertx:vertx-unit:$vertxVersion"
     testCompile 'junit:junit:4.12'
-    testCompile 'io.vertx:vertx-mongo-embedded-db:3.2.1'
-    testCompile 'com.github.tomakehurst:wiremock:1.57'
     
     antlr 'org.antlr:antlr4:4.5.1'
 }
