@@ -1,22 +1,5 @@
 package io.georocket.storage.mongodb;
 
-import com.mongodb.*;
-import com.mongodb.gridfs.GridFS;
-import com.mongodb.gridfs.GridFSDBFile;
-import com.mongodb.gridfs.GridFSInputFile;
-import io.georocket.constants.ConfigConstants;
-import io.georocket.storage.StorageTest;
-import io.georocket.storage.Store;
-import io.georocket.util.PathUtils;
-import io.vertx.core.*;
-import io.vertx.core.json.JsonObject;
-import io.vertx.ext.embeddedmongo.EmbeddedMongoVerticle;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.RunTestOnContext;
-import org.apache.commons.io.Charsets;
-import org.apache.commons.io.IOUtils;
-import org.junit.Before;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -25,6 +8,33 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
+import org.apache.commons.io.Charsets;
+import org.apache.commons.io.IOUtils;
+import org.junit.Before;
+
+import com.mongodb.BasicDBObject;
+import com.mongodb.DB;
+import com.mongodb.DBObject;
+import com.mongodb.MongoClient;
+import com.mongodb.ServerAddress;
+import com.mongodb.gridfs.GridFS;
+import com.mongodb.gridfs.GridFSDBFile;
+import com.mongodb.gridfs.GridFSInputFile;
+
+import io.georocket.constants.ConfigConstants;
+import io.georocket.storage.StorageTest;
+import io.georocket.storage.Store;
+import io.georocket.util.PathUtils;
+import io.vertx.core.DeploymentOptions;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.VertxOptions;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.embeddedmongo.EmbeddedMongoVerticle;
+import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.RunTestOnContext;
+
 /**
  * Test {@link MongoDBStore}
  * @author Andrej Sajenko
@@ -32,8 +42,12 @@ import java.util.List;
 public class MongoDBStoreTest extends StorageTest {
   private static long MAX_WORKER_EXECUTION_TIME = 30 * 60 * 1000;
 
+  /**
+   * Default constructor
+   */
   public MongoDBStoreTest() {
-    super.rule = new RunTestOnContext(new VertxOptions().setMaxWorkerExecuteTime(MAX_WORKER_EXECUTION_TIME));
+    super.rule = new RunTestOnContext(new VertxOptions()
+        .setMaxWorkerExecuteTime(MAX_WORKER_EXECUTION_TIME));
   }
 
   private static String MONGODB_DBNAME = "testdb";
@@ -71,7 +85,7 @@ public class MongoDBStoreTest extends StorageTest {
   }
 
   @Override
-  protected Handler<Future<String>> prepare_Data(TestContext context, Vertx vertx, String _path) {
+  protected Handler<Future<String>> prepareData(TestContext context, Vertx vertx, String _path) {
     return h -> {
       MongoClient client = new MongoClient(new ServerAddress(serverAddress));
       DB db = client.getDB(MONGODB_DBNAME);
@@ -84,7 +98,7 @@ public class MongoDBStoreTest extends StorageTest {
         path = "";
       }
 
-      String filename = PathUtils.join(path, id);
+      String filename = PathUtils.join(path, ID);
 
       GridFSInputFile file = gridFS.createFile(filename);
 
@@ -92,7 +106,7 @@ public class MongoDBStoreTest extends StorageTest {
           OutputStream os = file.getOutputStream();
           OutputStreamWriter writer = new OutputStreamWriter(os, StandardCharsets.UTF_8)
       ) {
-        writer.write(chunkContent);
+        writer.write(CHUNK_CONTENT);
       } catch (IOException ex) {
         context.fail("Test preparations failed: could not write a file in mongo db - " + ex.getMessage());
       }
@@ -104,7 +118,7 @@ public class MongoDBStoreTest extends StorageTest {
   }
 
   @Override
-  protected Handler<Future<Object>> validate_after_Store_add(TestContext context, Vertx vertx, String path) {
+  protected Handler<Future<Object>> validateAfterStoreAdd(TestContext context, Vertx vertx, String path) {
     return h -> {
       MongoClient client = new MongoClient(new ServerAddress(serverAddress));
       DB db = client.getDB(MONGODB_DBNAME);
@@ -128,7 +142,7 @@ public class MongoDBStoreTest extends StorageTest {
         context.fail("Could not read GridDSDBFile: " + ex.getMessage());
       }
 
-      context.assertEquals(chunkContent, content);
+      context.assertEquals(CHUNK_CONTENT, content);
 
       client.close();
 
@@ -137,7 +151,8 @@ public class MongoDBStoreTest extends StorageTest {
   }
 
   @Override
-  protected Handler<Future<Object>> validate_after_Store_delete(TestContext context, Vertx vertx, String path) {
+  protected Handler<Future<Object>> validateAfterStoreDelete(TestContext context,
+      Vertx vertx, String path) {
     return h -> {
       MongoClient client = new MongoClient(new ServerAddress(serverAddress));
       DB db = client.getDB(MONGODB_DBNAME);
