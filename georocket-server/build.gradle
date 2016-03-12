@@ -41,7 +41,6 @@ dependencies {
 
     testCompile "io.vertx:vertx-unit:$vertxVersion"
     testCompile 'junit:junit:4.12'
-    testCompile 'de.bwaldvogel:mongo-java-server:1.5.0'
     testCompile 'io.vertx:vertx-mongo-embedded-db:3.2.1'
     testCompile 'com.github.tomakehurst:wiremock:1.57'
     
