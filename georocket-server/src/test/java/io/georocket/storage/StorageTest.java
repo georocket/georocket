@@ -449,8 +449,7 @@ abstract public class StorageTest {
 
           String fileName = cursor.getChunkPath();
 
-          context.assertEquals(resultPath == null || resultPath.isEmpty() ?
-              ID : PathUtils.join(path, ID), fileName);
+          context.assertEquals(PathUtils.join(path, ID), fileName);
 
           asyncGet.complete();
         });
