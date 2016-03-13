@@ -163,17 +163,14 @@ public class S3StoreTest extends StorageTest {
   @Override
   protected void validateAfterStoreAdd(TestContext context, Vertx vertx,
       String path, Handler<AsyncResult<Void>> handler) {
-    verify(putRequestedFor(urlPathMatching(path == null || path.isEmpty() ?
-        pathWithLeadingSlash(S3_BUCKET, "*") : pathWithLeadingSlash(S3_BUCKET, path, "*"))));
+    verify(putRequestedFor(urlPathMatching(pathWithLeadingSlash(S3_BUCKET, path, "*"))));
     handler.handle(Future.succeededFuture());
   }
 
   @Override
   protected void validateAfterStoreDelete(TestContext context, Vertx vertx,
       String path, Handler<AsyncResult<Void>> handler) {
-    verify(deleteRequestedFor(urlPathMatching(path == null || path.isEmpty() ?
-        pathWithLeadingSlash(S3_BUCKET, ID, "*") :
-          pathWithLeadingSlash(S3_BUCKET, path, ID, "*"))));
+    verify(deleteRequestedFor(urlPathMatching(pathWithLeadingSlash(S3_BUCKET, path, "*"))));
     handler.handle(Future.succeededFuture());
   }
 }
