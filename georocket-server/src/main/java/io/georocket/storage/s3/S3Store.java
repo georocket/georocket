@@ -223,11 +223,14 @@ public class S3Store extends IndexedStore {
           });
         }
         response.endHandler(v -> {
-          if (response.statusCode() == 204) {
-            doDeleteChunks(paths, handler);
-          } else {
-            log.error(errorBody);
-            handler.handle(Future.failedFuture(response.statusMessage()));
+          switch (response.statusCode()) {
+            case 204:
+            case 404:
+              doDeleteChunks(paths, handler);
+              break;
+            default:
+              log.error(errorBody);
+              handler.handle(Future.failedFuture(response.statusMessage()));
           }
         });
       });

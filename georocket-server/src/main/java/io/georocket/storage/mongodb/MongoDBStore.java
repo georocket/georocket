@@ -149,7 +149,11 @@ public class MongoDBStore extends IndexedStore {
     String path = PathUtils.normalize(paths.poll());
     vertx.executeBlocking(f -> {
       synchronized (MongoDBStore.this) {
-        getGridFS().remove(path);
+        GridFS gridFS = getGridFS();
+
+        if (!gridFS.find(path).isEmpty()) {
+          gridFS.remove(path);
+        }
       }
       f.complete();
     }, ar -> {

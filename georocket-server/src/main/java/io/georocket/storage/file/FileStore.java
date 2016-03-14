@@ -140,12 +140,24 @@ public class FileStore extends IndexedStore {
     String path = paths.poll();
     FileSystem fs = vertx.fileSystem();
     String absolutePath = Paths.get(root, path).toString();
-    fs.delete(absolutePath, deleteAr -> {
-      if (deleteAr.failed()) {
-        handler.handle(Future.failedFuture(deleteAr.cause()));
+
+    fs.exists(absolutePath, existAr -> {
+      if (existAr.failed()) {
+        handler.handle(Future.failedFuture(existAr.cause()));
       } else {
-        doDeleteChunks(paths, handler);
+        if (existAr.result()) {
+          fs.delete(absolutePath, deleteAr -> {
+            if (deleteAr.failed()) {
+              handler.handle(Future.failedFuture(deleteAr.cause()));
+            } else {
+              doDeleteChunks(paths, handler);
+            }
+          });
+        } else {
+          doDeleteChunks(paths, handler);
+        }
       }
     });
+
   }
 }
