@@ -274,7 +274,6 @@ abstract public class StorageTest {
    * @param context Test context
    */
   @Test
-  @Ignore("Expected to fail at the moment")
   public void testDeleteNonExistingEntity(TestContext context) {
     Vertx vertx = rule.vertx();
     Async async = context.async();
