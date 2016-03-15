@@ -4,7 +4,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.bson.types.ObjectId;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -89,7 +88,7 @@ abstract public class StorageTest {
   /**
    * Test data: path to a non existing entity
    */
-  protected final static String PATH_TO_NON_EXISTING_ENTITY = PathUtils.join(ID);
+  protected final static String PATH_TO_NON_EXISTING_ENTITY = ID;
 
   /**
    * Test data: the parents of one hit
