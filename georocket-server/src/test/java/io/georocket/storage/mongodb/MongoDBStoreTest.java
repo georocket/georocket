@@ -50,8 +50,8 @@ public class MongoDBStoreTest extends StorageTest {
 
   private static final MongodStarter starter = MongodStarter.getDefaultInstance();
 
-  private MongodExecutable _mongodExe;
-  private MongodProcess    _mongod;
+  private MongodExecutable mongodExe;
+  private MongodProcess mongod;
 
   /**
    * Default constructor
@@ -66,21 +66,24 @@ public class MongoDBStoreTest extends StorageTest {
 
   /**
    * Set up test dependencies.
+   * @throws Exception if the embedded MongoDB instance could not be started
    */
   @Before
   public void setUp() throws Exception {
-
-    _mongodExe = starter.prepare(new MongodConfigBuilder()
+    mongodExe = starter.prepare(new MongodConfigBuilder()
         .version(Version.Main.PRODUCTION)
         .net(new Net(serverAddress.getPort(), Network.localhostIsIPv6()))
         .build());
-    _mongod = _mongodExe.start();
+    mongod = mongodExe.start();
   }
 
+  /**
+   * Uninitialize tests
+   */
   @After
   public void tearDown() {
-    _mongod.stop();
-    _mongodExe.stop();
+    mongod.stop();
+    mongodExe.stop();
   }
 
   private void configureVertx(Vertx vertx) {
