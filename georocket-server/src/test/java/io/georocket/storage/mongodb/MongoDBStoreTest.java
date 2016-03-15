@@ -8,8 +8,16 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
+import de.flapdoodle.embed.mongo.MongodExecutable;
+import de.flapdoodle.embed.mongo.MongodProcess;
+import de.flapdoodle.embed.mongo.MongodStarter;
+import de.flapdoodle.embed.mongo.config.MongodConfigBuilder;
+import de.flapdoodle.embed.mongo.config.Net;
+import de.flapdoodle.embed.mongo.distribution.Version;
+import de.flapdoodle.embed.process.runtime.Network;
 import org.apache.commons.io.Charsets;
 import org.apache.commons.io.IOUtils;
+import org.junit.After;
 import org.junit.Before;
 
 import com.mongodb.BasicDBObject;
@@ -26,12 +34,10 @@ import io.georocket.storage.StorageTest;
 import io.georocket.storage.Store;
 import io.georocket.util.PathUtils;
 import io.vertx.core.AsyncResult;
-import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.embeddedmongo.EmbeddedMongoVerticle;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.RunTestOnContext;
 
@@ -41,6 +47,11 @@ import io.vertx.ext.unit.junit.RunTestOnContext;
  */
 public class MongoDBStoreTest extends StorageTest {
   private static long MAX_WORKER_EXECUTION_TIME = 30 * 60 * 1000;
+
+  private static final MongodStarter starter = MongodStarter.getDefaultInstance();
+
+  private MongodExecutable _mongodExe;
+  private MongodProcess    _mongod;
 
   /**
    * Default constructor
@@ -57,17 +68,19 @@ public class MongoDBStoreTest extends StorageTest {
    * Set up test dependencies.
    */
   @Before
-  public void setUp() {
-    Vertx vertx = rule.vertx();
+  public void setUp() throws Exception {
 
-    vertx.getOrCreateContext().config().put("port", serverAddress.getPort());
+    _mongodExe = starter.prepare(new MongodConfigBuilder()
+        .version(Version.Main.PRODUCTION)
+        .net(new Net(serverAddress.getPort(), Network.localhostIsIPv6()))
+        .build());
+    _mongod = _mongodExe.start();
+  }
 
-    vertx.deployVerticle(
-        EmbeddedMongoVerticle.class.getName(),
-        new DeploymentOptions()
-            .setWorker(true)
-            .setConfig(vertx.getOrCreateContext().config())
-    );
+  @After
+  public void tearDown() {
+    _mongod.stop();
+    _mongodExe.stop();
   }
 
   private void configureVertx(Vertx vertx) {
