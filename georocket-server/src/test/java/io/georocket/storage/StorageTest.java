@@ -4,7 +4,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.bson.types.ObjectId;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -85,6 +84,11 @@ abstract public class StorageTest {
    * Test data: a randomly generated id for all tests.
    */
   protected final static String ID = new ObjectId().toString();
+
+  /**
+   * Test data: path to a non existing entity
+   */
+  protected final static String PATH_TO_NON_EXISTING_ENTITY = ID;
 
   /**
    * Test data: the parents of one hit
@@ -270,11 +274,10 @@ abstract public class StorageTest {
 
   /**
    * Apply the {@link Store#delete(String, String, Handler)} with a
-   * non-existing path and expects an success (no exceptions or failure codes).
+   * non-existing path and expects a success (no exceptions or failure codes).
    * @param context Test context
    */
   @Test
-  @Ignore("Expected to fail at the moment")
   public void testDeleteNonExistingEntity(TestContext context) {
     Vertx vertx = rule.vertx();
     Async async = context.async();
@@ -299,6 +302,50 @@ abstract public class StorageTest {
 
     store.delete(SEARCH, "NOT_EXISTING_PATH", context.asyncAssertSuccess(h -> {
       async.complete();
+    }));
+  }
+
+  /**
+   * Apply the {@link Store#delete(String, String, Handler)} with a
+   * existing path but non existing entity and expects a success (no exceptions or failure codes).
+   * @param context Test context
+   */
+  @Test
+  public void testDeleteNonExistingEntityWithPath(TestContext context) {
+    Vertx vertx = rule.vertx();
+    Async asyncIndexerQuery = context.async();
+    Async asyncIndexerDelete = context.async();
+    Async asyncDelete = context.async();
+
+    Store store = createStore(vertx);
+
+    // register add
+    vertx.eventBus().consumer(AddressConstants.INDEXER_ADD).handler(h ->
+        context.fail("Indexer should not be notified for a add event after"
+            + "Store::delete was called!"));
+
+    // register delete
+    vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_DELETE).handler(req -> {
+      JsonObject msg = req.body();
+      context.assertTrue(msg.containsKey("paths"));
+
+      JsonArray paths = msg.getJsonArray("paths");
+      context.assertEquals(1, paths.size());
+
+      String notifiedPath = paths.getString(0);
+      context.assertEquals(PATH_TO_NON_EXISTING_ENTITY, notifiedPath);
+
+      req.reply(null); // Value is not used in Store
+
+      asyncIndexerDelete.complete();
+    });
+
+    // register query
+    // the null argument depend on the static PATH_TO_NON_EXISTING_ENTITY attribute value
+    mockIndexerQuery(vertx, context, asyncIndexerQuery, null);
+
+    store.delete(SEARCH, null, context.asyncAssertSuccess(h -> {
+      asyncDelete.complete();
     }));
   }
 

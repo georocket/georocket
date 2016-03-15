@@ -137,7 +137,12 @@ public class HDFSStore extends IndexedStore {
     vertx.executeBlocking(f -> {
       try {
         synchronized (HDFSStore.this) {
-          getFS().delete(new Path(path), false);
+          FileSystem fs = getFS();
+          Path hdfsPath = new Path(path);
+
+          if (fs.exists(hdfsPath)) {
+            fs.delete(hdfsPath, false);
+          }
         }
       } catch (IOException e) {
         f.fail(e);

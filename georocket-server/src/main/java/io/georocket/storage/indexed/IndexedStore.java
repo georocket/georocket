@@ -12,6 +12,7 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.eventbus.ReplyException;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
@@ -57,6 +58,16 @@ public abstract class IndexedStore implements Store {
   public void delete(String search, String path, Handler<AsyncResult<Void>> handler) {
     new IndexedStoreCursor(vertx, PAGE_SIZE, search, path).start(ar -> {
       if (ar.failed()) {
+        Throwable cause = ar.cause();
+        if (cause instanceof ReplyException) {
+          // Cast to get access to the failure code
+          ReplyException ex = (ReplyException) cause;
+
+          if (ex.failureCode() == 404) {
+            handler.handle(Future.succeededFuture());
+            return;
+          }
+        }
         handler.handle(Future.failedFuture(ar.cause()));
       } else {
         StoreCursor cursor = ar.result();

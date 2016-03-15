@@ -40,7 +40,7 @@ dependencies {
     compile 'org.yaml:snakeyaml:1.16'
 
     testCompile 'com.github.tomakehurst:wiremock:1.57'
-    testCompile "io.vertx:vertx-mongo-embedded-db:$vertxVersion"
+    testCompile "de.flapdoodle.embed:de.flapdoodle.embed.mongo:1.50.2"
     testCompile "io.vertx:vertx-unit:$vertxVersion"
     testCompile 'junit:junit:4.12'
     
