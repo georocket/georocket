@@ -14,6 +14,11 @@ import static org.junit.Assert.*;
  */
 public class ThrowableHelperTest {
 
+  /**
+   * Test code of {@link ReplyException}
+   *
+   * @throws Exception
+   */
   @Test
   public void testThrowableToCode_ReplyException() throws Exception {
     int expectedCode = 505;
@@ -25,6 +30,11 @@ public class ThrowableHelperTest {
     assertEquals(expectedCode, statusCode);
   }
 
+  /**
+   * Test code of {@link IllegalArgumentException}
+   *
+   * @throws Exception
+   */
   @Test
   public void testThrowableToCode_IllegalArgument() throws Exception {
     int expectedCode = 400;
@@ -36,6 +46,11 @@ public class ThrowableHelperTest {
     assertEquals(expectedCode, statusCode);
   }
 
+  /**
+   * Test code of {@link FileNotFoundException}
+   *
+   * @throws Exception
+   */
   @Test
   public void testThrowableToCode_FileNotFound() throws Exception {
     int expectedCode = 404;
@@ -47,6 +62,11 @@ public class ThrowableHelperTest {
     assertEquals(expectedCode, statusCode);
   }
 
+  /**
+   * Test code of unknown throwables.
+   *
+   * @throws Exception
+   */
   @Test
   public void testThrowableToCode_Throwable() throws Exception {
     int expectedCode = 500;
@@ -58,6 +78,11 @@ public class ThrowableHelperTest {
     assertEquals(expectedCode, statusCode);
   }
 
+  /**
+   * Test throwable message
+   *
+   * @throws Exception
+   */
   @Test
   public void testThrowableToMessage_Message() throws Exception {
     String expectedMessage = "A Error happen!";
@@ -70,6 +95,11 @@ public class ThrowableHelperTest {
     assertEquals(expectedMessage, message);
   }
 
+  /**
+   * Test default message
+   *
+   * @throws Exception
+   */
   @Test
   public void testThrowableToMessage_Default() throws Exception {
     String defaultMessage = "Oops!";
