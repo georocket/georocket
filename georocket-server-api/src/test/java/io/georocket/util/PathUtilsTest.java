@@ -1,143 +1,112 @@
 package io.georocket.util;
 
-import static org.junit.Assert.*;
-import static io.georocket.util.PathUtils.*;
+import static io.georocket.util.PathUtils.addTrailingSlash;
+import static io.georocket.util.PathUtils.isAbsolute;
+import static io.georocket.util.PathUtils.join;
+import static io.georocket.util.PathUtils.normalize;
+import static io.georocket.util.PathUtils.removeLeadingSlash;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
+import org.junit.Test;
+
 /**
  * Test {@link PathUtils}
  * @author Andrej Sajenko
  */
 public class PathUtilsTest {
-
   /**
    * Test join with preceding and descending slashes
-   *
-   * @throws Exception
    */
-  @org.junit.Test
-  public void plainJoin() throws Exception {
+  @Test
+  public void plainJoin() {
     assertEquals("abc", join("abc"));
-
     assertEquals("aa/bb", join("aa", "bb"));
-
     assertEquals("/aa/bb", join("/aa", "bb"));
-
     assertEquals("/aa/bb", join("/aa", "/bb"));
-
     assertEquals("/aa/bb/", join("/aa", "/bb/"));
   }
 
   /**
    * Test join with null and empty arguments
-   *
-   * @throws Exception
    */
-  @org.junit.Test
-  public void emptyArgumentsJoin() throws Exception {
+  @Test
+  public void emptyArgumentsJoin() {
     assertEquals("", join());
-
     assertEquals("aa", join("aa", null));
-
     assertEquals("aa/bb", join("aa", "", "bb"));
   }
 
   /**
    * Test join normalization
-   *
-   * @throws Exception
    */
-  @org.junit.Test
-  public void normalizeJoin() throws Exception {
+  @Test
+  public void normalizeJoin() {
     assertEquals("bb", join("./aa", "../bb"));
-
     assertEquals("aa/bb", join("./aa", "./bb"));
   }
+  
   /**
    * Test normalize on double slashes
-   *
-   * @throws Exception
    */
-  @org.junit.Test
-  public void normalizeNormalizedPaths() throws Exception {
+  @Test
+  public void normalizeNormalizedPaths() {
     assertEquals("abc", normalize("abc"));
-
     assertEquals("/abc/abc", normalize("/abc/abc"));
   }
 
-
   /**
    * Test normalize on double slashes
-   *
-   * @throws Exception
    */
-  @org.junit.Test
-  public void testNormalize() throws Exception {
+  @Test
+  public void testNormalize() {
     assertEquals("/abc", normalize("//abc"));
-
     assertEquals("/abc/abc/", normalize("//abc//abc//"));
-
     assertEquals("/abc/", normalize("/abc/"));
   }
 
   /**
    * Test normalize with relative in out paths.
-   *
-   * @throws Exception
    */
-  @org.junit.Test
-  public void relativeInOutNormalize() throws Exception {
+  @Test
+  public void relativeInOutNormalize() {
     assertEquals("abc", normalize("./abc"));
-
     assertEquals("../abc", normalize("../abc"));
-
     assertEquals("../../abc", normalize("../../abc"));
-
     assertEquals("bb", normalize("./abc/../bb"));
-
     assertEquals("", normalize("./abc/../"));
   }
 
   /**
    * Test the absolute path check.
-   *
-   * @throws Exception
    */
-  @org.junit.Test
-  public void testIsAbsolute() throws Exception {
+  @Test
+  public void testIsAbsolute() {
     assertTrue(isAbsolute("/absolute/path"));
-
     assertFalse(isAbsolute("relative/path"));
-
     assertFalse(isAbsolute(""));
   }
 
   /**
    * Remove leading slash
-   *
-   * @throws Exception
    */
-  @org.junit.Test
-  public void testRemoveLeadingSlash() throws Exception {
+  @Test
+  public void testRemoveLeadingSlash() {
     assertEquals("abc", removeLeadingSlash("/abc"));
-
     assertEquals("abc/abc", removeLeadingSlash("/abc/abc"));
-
     String pathWithoutLeadingSlash = "abc/abc";
     assertEquals(pathWithoutLeadingSlash, removeLeadingSlash(pathWithoutLeadingSlash));
   }
 
   /**
    * Add trailing slash
-   *
-   * @throws Exception
    */
-  @org.junit.Test
-  public void testAddTrailingSlash() throws Exception {
+  @Test
+  public void testAddTrailingSlash() {
     assertEquals("abc/", addTrailingSlash("abc"));
-
     assertEquals("/abc/abc/", addTrailingSlash("/abc/abc"));
-
     assertEquals("/abc/abc/", addTrailingSlash("/abc/abc/"));
-
     assertEquals("/", addTrailingSlash(""));
   }
 }
