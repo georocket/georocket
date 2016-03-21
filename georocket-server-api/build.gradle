@@ -8,4 +8,6 @@ dependencies {
     compile "io.vertx:vertx-core:$vertxVersion"
     
     compile 'org.elasticsearch:elasticsearch:2.1.1'
+
+    testCompile 'junit:junit:4.12'
 }
