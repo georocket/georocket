@@ -1,6 +1,7 @@
 package io.georocket;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -116,6 +117,7 @@ public class ImporterVerticle extends AbstractVerticle {
     AsyncXMLParser xmlParser = new AsyncXMLParser();
     Window window = new Window();
     Splitter splitter = new FirstLevelSplitter(window);
+    AtomicInteger processing = new AtomicInteger(0);
     return f.toObservable()
         .map(buf -> (io.vertx.core.buffer.Buffer)buf.getDelegate())
         .doOnNext(window::append)
@@ -125,11 +127,18 @@ public class ImporterVerticle extends AbstractVerticle {
           // pause stream while chunk is being written
           f.pause();
           
+          // count number of chunks being written
+          processing.incrementAndGet();
+          
           Observable<Void> o = addToStore(result.getChunk(),
               result.getMeta(), layer, tags);
           return o.doOnNext(v -> {
-            // go ahead
-            f.resume();
+            // resume stream only after all chunks from the current
+            // buffer have been stored
+            if (processing.decrementAndGet() == 0) {
+              // go ahead
+              f.resume();
+            }
           });
         })
         .last() // "wait" for last event (i.e. end of file)
