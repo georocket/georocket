@@ -116,13 +116,13 @@ public class BoundingBoxIndexer implements XMLIndexer, CRSAware {
     XMLStreamReader reader = event.getXMLReader();
     if (event.getEvent() == XMLEvent.START_ELEMENT) {
       // parse SRS and try to decode it
-      handleSrsName(getAttribute("srsName", reader));
+      handleSrsName(reader.getAttributeValue(null, "srsName"));
       
       // check if we've got an element containing spatial coordinates
       String localName = reader.getLocalName();
       if (localName.equals("Envelope")) {
         // try to parse the spatial dimension of this envelope
-        handleSrsDimension(getAttribute("srsDimension", reader));
+        handleSrsDimension(reader.getAttributeValue(null, "srsDimension"));
       } else if (localName.equals("lowerCorner") || localName.equals("upperCorner")) {
         // lower and upper corner of an envelope
         parseCorner = true;
@@ -131,7 +131,7 @@ public class BoundingBoxIndexer implements XMLIndexer, CRSAware {
         // list of positions of a GML geometry
         parsePosList = true;
         stringBuilder = new StringBuilder();
-        handleSrsDimension(getAttribute("srsDimension", reader));
+        handleSrsDimension(reader.getAttributeValue(null, "srsDimension"));
       }
     } else if (event.getEvent() == XMLEvent.CHARACTERS) {
       if (parseCorner || parsePosList) {
@@ -153,24 +153,6 @@ public class BoundingBoxIndexer implements XMLIndexer, CRSAware {
         srsDimension = -1;
       }
     }
-  }
-  
-  /**
-   * Find an attribute's value. Just compare the attribute's local name and
-   * ignore the namespace
-   * @param localName the attribute's local name
-   * @param reader the XML reader
-   * @return the attribute's value or null if there is no such attibute
-   */
-  private String getAttribute(String localName, XMLStreamReader reader) {
-    int ac = reader.getAttributeCount();
-    for (int i = 0; i < ac; ++i) {
-      String name = reader.getAttributeLocalName(i);
-      if (name.equalsIgnoreCase(localName)) {
-        return reader.getAttributeValue(i);
-      }
-    }
-    return null;
   }
   
   /**

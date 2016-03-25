@@ -7,6 +7,7 @@ import java.util.stream.Stream;
 
 import io.georocket.constants.AddressConstants;
 import io.georocket.constants.ConfigConstants;
+import io.georocket.index.xml.CRSIndexer;
 import io.georocket.input.FirstLevelSplitter;
 import io.georocket.input.Splitter;
 import io.georocket.storage.ChunkMeta;
@@ -119,10 +120,17 @@ public class ImporterVerticle extends AbstractVerticle {
     Window window = new Window();
     Splitter splitter = new FirstLevelSplitter(window);
     AtomicInteger processing = new AtomicInteger(0);
+    CRSIndexer crsIndexer = new CRSIndexer();
     return f.toObservable()
         .map(buf -> (io.vertx.core.buffer.Buffer)buf.getDelegate())
         .doOnNext(window::append)
         .flatMap(xmlParser::feed)
+        .doOnNext(e -> {
+          // save the first CRS found in the file
+          if (crsIndexer.getCRS() == null) {
+            crsIndexer.onEvent(e);
+          }
+        })
         .flatMap(splitter::onEventObservable)
         .flatMap(result -> {
           // pause stream while chunk is being written
@@ -131,7 +139,7 @@ public class ImporterVerticle extends AbstractVerticle {
           // count number of chunks being written
           processing.incrementAndGet();
           
-          IndexMeta indexMeta = new IndexMeta(tags, null);
+          IndexMeta indexMeta = new IndexMeta(tags, crsIndexer.getCRS());
           Observable<Void> o = addToStore(result.getChunk(), result.getMeta(),
               layer, indexMeta);
           return o.doOnNext(v -> {
