@@ -281,10 +281,13 @@ public class IndexerVerticle extends AbstractVerticle {
         List<String> tags = tagsArr != null ? tagsArr.stream().flatMap(o -> o != null ?
             Stream.of(o.toString()) : Stream.of()).collect(Collectors.toList()) : null;
         
+        // get fallback CRS
+        String fallbackCRSString = body.getString("fallbackCRSString");
+        
         log.trace("Indexing " + path);
         
         // open chunk and create IndexRequest
-        return openChunkToDocument(path)
+        return openChunkToDocument(path, fallbackCRSString)
             .doOnNext(doc -> {
               // add metadata and tags to document
               addMeta(doc, meta);
@@ -328,14 +331,18 @@ public class IndexerVerticle extends AbstractVerticle {
    * Open a chunk and convert to to an Elasticsearch document. Retry
    * operation several times before failing.
    * @param path the path to the chunk to open
+   * @param fallbackCRSString a string representing the CRS that should be used
+   * to index the chunk if it does not specify a CRS itself (may be null if no
+   * CRS is available as fallback)
    * @return an observable that emits the document
    */
-  private Observable<Map<String, Object>> openChunkToDocument(String path) {
+  private Observable<Map<String, Object>> openChunkToDocument(String path,
+      String fallbackCRSString) {
     return Observable.<Map<String, Object>>create(subscriber -> {
       openChunk(path)
         .flatMap(chunk -> {
           // convert chunk to document and close it
-          return chunkToDocument(chunk).finallyDo(chunk::close);
+          return chunkToDocument(chunk, fallbackCRSString).finallyDo(chunk::close);
         })
         .subscribe(subscriber);
     }).retryWhen(makeRetry());
@@ -429,13 +436,23 @@ public class IndexerVerticle extends AbstractVerticle {
   /**
    * Convert a chunk to a Elasticsearch document
    * @param chunk the chunk to convert
+   * @param fallbackCRSString a string representing the CRS that should be used
+   * to index the chunk if it does not specify a CRS itself (may be null if no
+   * CRS is available as fallback)
    * @return an observable that will emit the document
    */
-  private Observable<Map<String, Object>> chunkToDocument(ChunkReadStream chunk) {
+  private Observable<Map<String, Object>> chunkToDocument(ChunkReadStream chunk,
+      String fallbackCRSString) {
     AsyncXMLParser xmlParser = new AsyncXMLParser();
     
     List<XMLIndexer> indexers = new ArrayList<>();
-    xmlIndexerFactories.forEach(factory -> indexers.add(factory.createIndexer()));
+    xmlIndexerFactories.forEach(factory -> {
+      XMLIndexer i = factory.createIndexer();
+      if (fallbackCRSString != null && i instanceof CRSAware) {
+        ((CRSAware)i).setFallbackCRSString(fallbackCRSString);
+      }
+      indexers.add(i);
+    });
     
     return RxHelper.toObservable(chunk)
       .flatMap(xmlParser::feed)

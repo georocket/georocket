@@ -1,11 +1,11 @@
 package io.georocket.storage.indexed;
 
 import java.util.ArrayDeque;
-import java.util.List;
 import java.util.Queue;
 
 import io.georocket.constants.AddressConstants;
 import io.georocket.storage.ChunkMeta;
+import io.georocket.storage.IndexMeta;
 import io.georocket.storage.Store;
 import io.georocket.storage.StoreCursor;
 import io.vertx.core.AsyncResult;
@@ -34,7 +34,8 @@ public abstract class IndexedStore implements Store {
   }
   
   @Override
-  public void add(String chunk, ChunkMeta meta, String path, List<String> tags, Handler<AsyncResult<Void>> handler) {
+  public void add(String chunk, ChunkMeta chunkMeta, String path,
+      IndexMeta indexMeta, Handler<AsyncResult<Void>> handler) {
     doAddChunk(chunk, path, ar -> {
       if (ar.failed()) {
         handler.handle(Future.failedFuture(ar.cause()));
@@ -42,9 +43,12 @@ public abstract class IndexedStore implements Store {
         // start indexing
         JsonObject indexMsg = new JsonObject()
             .put("path", ar.result())
-            .put("meta", meta.toJsonObject());
-        if (tags != null) {
-          indexMsg.put("tags", new JsonArray(tags));
+            .put("meta", chunkMeta.toJsonObject());
+        if (indexMeta != null && indexMeta.getTags() != null) {
+          indexMsg.put("tags", new JsonArray(indexMeta.getTags()));
+        }
+        if (indexMeta != null && indexMeta.getFallbackCRSString() != null) {
+          indexMsg.put("fallbackCRSString", indexMeta.getFallbackCRSString());
         }
         vertx.eventBus().publish(AddressConstants.INDEXER_ADD, indexMsg);
         

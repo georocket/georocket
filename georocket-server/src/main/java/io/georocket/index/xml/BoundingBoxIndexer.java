@@ -16,6 +16,7 @@ import org.opengis.referencing.operation.TransformException;
 
 import com.google.common.collect.ImmutableMap;
 
+import io.georocket.index.CRSAware;
 import io.georocket.util.CompoundCRSDecoder;
 import io.georocket.util.XMLStreamEvent;
 import io.vertx.core.logging.Logger;
@@ -25,7 +26,7 @@ import io.vertx.core.logging.LoggerFactory;
  * Indexes bounding boxes of inserted chunks
  * @author Michel Kraemer
  */
-public class BoundingBoxIndexer implements XMLIndexer {
+public class BoundingBoxIndexer implements XMLIndexer, CRSAware {
   private static final CoordinateReferenceSystem WGS84 = DefaultGeographicCRS.WGS84;
   private static Logger log = LoggerFactory.getLogger(BoundingBoxIndexer.class);
   
@@ -103,6 +104,11 @@ public class BoundingBoxIndexer implements XMLIndexer {
       }
     }
     return false;
+  }
+  
+  @Override
+  public void setFallbackCRSString(String crsStr) {
+    handleSrsName(crsStr);
   }
   
   @Override

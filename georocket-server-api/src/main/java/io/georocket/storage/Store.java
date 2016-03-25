@@ -1,7 +1,5 @@
 package io.georocket.storage;
 
-import java.util.List;
-
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 
@@ -14,12 +12,12 @@ public interface Store {
   /**
    * Add a chunk to the store
    * @param chunk the chunk to add
-   * @param meta the chunk's metadata
+   * @param chunkMeta the chunk's metadata
    * @param path the path where the chunk should be stored (may be null)
-   * @param tags the list of tags to attach to the chunk (may be null)
+   * @param indexMeta metadata affecting the way the chunk will be indexed
    * @param handler will be called when the chunk has been added to the store
    */
-  void add(String chunk, ChunkMeta meta, String path, List<String> tags,
+  void add(String chunk, ChunkMeta chunkMeta, String path, IndexMeta indexMeta,
       Handler<AsyncResult<Void>> handler);
   
   /**

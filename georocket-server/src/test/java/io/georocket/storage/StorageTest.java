@@ -74,6 +74,11 @@ abstract public class StorageTest {
   protected final static ChunkMeta META =
       new ChunkMeta(Arrays.asList(new XMLStartElement("root")),
           XML_HEADER.length() + 7, XML.length() - 8);
+  
+  /**
+   * Test data: fallback CRS for chunk indexing
+   */
+  protected final static String FALLBACK_CRS_STRING = "EPSG:25832";
 
   /**
    * Test data: a sample tag list for an Store::add method
@@ -165,7 +170,7 @@ abstract public class StorageTest {
    * <p>Validate the add method. Will be called after the store added data.</p>
    * <p>Heads up: look on the protected attributes of this class to know which
    * data were used for the store add method. These will be used for the
-   * {@link Store#add(String, ChunkMeta, String, List, Handler)} method.
+   * {@link Store#add(String, ChunkMeta, String, IndexMeta, Handler)} method.
    * Use context.assert ... and context.fail to validate the test.</p>
    * @param context The current test context.
    * @param vertx A Vert.x instance of one test.
@@ -388,6 +393,7 @@ abstract public class StorageTest {
 
       context.assertEquals(META.toJsonObject(), index.getJsonObject("meta"));
       context.assertEquals(new JsonArray(TAGS), index.getJsonArray("tags"));
+      context.assertEquals(FALLBACK_CRS_STRING, index.getString("fallbackCRSString"));
 
       asyncIndexerAdd.complete();
     });
@@ -402,7 +408,8 @@ abstract public class StorageTest {
       context.fail("Indexer should not be notified for a query event after"
           + "Store::add was called!"));
 
-    store.add(CHUNK_CONTENT, META, path, TAGS, context.asyncAssertSuccess(err -> {
+    IndexMeta indexMeta = new IndexMeta(TAGS, FALLBACK_CRS_STRING);
+    store.add(CHUNK_CONTENT, META, path, indexMeta, context.asyncAssertSuccess(err -> {
       validateAfterStoreAdd(context, vertx, path, context.asyncAssertSuccess(v -> {
         asyncAdd.complete();
       }));

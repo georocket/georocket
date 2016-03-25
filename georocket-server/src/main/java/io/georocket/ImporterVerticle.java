@@ -10,6 +10,7 @@ import io.georocket.constants.ConfigConstants;
 import io.georocket.input.FirstLevelSplitter;
 import io.georocket.input.Splitter;
 import io.georocket.storage.ChunkMeta;
+import io.georocket.storage.IndexMeta;
 import io.georocket.storage.Store;
 import io.georocket.storage.StoreFactory;
 import io.georocket.util.AsyncXMLParser;
@@ -130,8 +131,9 @@ public class ImporterVerticle extends AbstractVerticle {
           // count number of chunks being written
           processing.incrementAndGet();
           
-          Observable<Void> o = addToStore(result.getChunk(),
-              result.getMeta(), layer, tags);
+          IndexMeta indexMeta = new IndexMeta(tags, null);
+          Observable<Void> o = addToStore(result.getChunk(), result.getMeta(),
+              layer, indexMeta);
           return o.doOnNext(v -> {
             // resume stream only after all chunks from the current
             // buffer have been stored
@@ -150,14 +152,14 @@ public class ImporterVerticle extends AbstractVerticle {
    * @param chunk the chunk to add
    * @param meta the chunk's metadata
    * @param layer the layer the chunk should be added to (may be null)
-   * @param tags the list of tags to attach to the chunk (may be null)
+   * @param indexMeta metadata specifying how the chunk should be indexed
    * @return an observable that will emit exactly one item when the
    * operation has finished
    */
   private Observable<Void> addToStoreNoRetry(String chunk, ChunkMeta meta,
-      String layer, List<String> tags) {
+      String layer, IndexMeta indexMeta) {
     ObservableFuture<Void> o = RxHelper.observableFuture();
-    store.add(chunk, meta, layer, tags, o.toHandler());
+    store.add(chunk, meta, layer, indexMeta, o.toHandler());
     return o;
   }
   
@@ -166,14 +168,14 @@ public class ImporterVerticle extends AbstractVerticle {
    * @param chunk the chunk to add
    * @param meta the chunk's metadata
    * @param layer the layer the chunk should be added to (may be null)
-   * @param tags the list of tags to attach to the chunk (may be null)
+   * @param indexMeta metadata specifying how the chunk should be indexed
    * @return an observable that will emit exactly one item when the
    * operation has finished
    */
   private Observable<Void> addToStore(String chunk, ChunkMeta meta,
-      String layer, List<String> tags) {
+      String layer, IndexMeta indexMeta) {
     return Observable.<Void>create(subscriber -> {
-      addToStoreNoRetry(chunk, meta, layer, tags).subscribe(subscriber);
+      addToStoreNoRetry(chunk, meta, layer, indexMeta).subscribe(subscriber);
     }).retryWhen(RxUtils.makeRetry(MAX_RETRIES, RETRY_INTERVAL, log));
   }
 }
