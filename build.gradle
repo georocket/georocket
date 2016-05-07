@@ -1,19 +1,14 @@
 subprojects {
     apply plugin: 'eclipse'
     apply plugin: 'idea'
-    
+    apply plugin: 'signing'
+
     plugins.withType(JavaPlugin) {
-        version = '1.0.0-alpha.1'
+        version = '1.0.0-SNAPSHOT'
         group = 'io.georocket'
         sourceCompatibility = '1.8'
         targetCompatibility = '1.8'
-    }
-    
-    ext {
-        vertxVersion = '3.2.0'
-    }
-    
-    plugins.withType(JavaPlugin) {
+
         eclipse {
             jdt.file.withProperties { properties ->
                 properties['org.eclipse.jdt.core.formatter.indentation.size'] = '2'
@@ -21,6 +16,85 @@ subprojects {
                 properties['org.eclipse.jdt.core.formatter.tabulation.char'] = 'space'
             }
         }
+
+        plugins.withType(MavenPlugin) {
+            // package javadoc into a jar file
+            task packageJavadoc(type: Jar, dependsOn: 'javadoc') {
+                from javadoc.destinationDir
+                classifier = 'javadoc'
+            }
+
+            // package source into a jar file
+            task packageSources(type: Jar) {
+                from sourceSets.main.allSource
+                classifier = 'sources'
+            }
+
+            // define artifacts for upload
+            artifacts {
+                archives jar
+                archives packageJavadoc
+                archives packageSources
+            }
+
+            // sign all artifacts
+            signing {
+                required { !version.endsWith('SNAPSHOT') && gradle.taskGraph.hasTask('uploadArchives') }
+                sign configurations.archives
+            }
+
+            // remove test dependencies from configuration-to-scope mapping
+            // this also removes them from the maven pom file
+            conf2ScopeMappings.mappings.remove(configurations.testCompile)
+
+            uploadArchives.repositories.mavenDeployer {
+                // sign artifacts before upload
+                beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+
+                // upload to sonatype OSS
+                repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2") {
+                    authentication(userName: this.hasProperty('sonatypeUsername') ? sonatypeUsername : '',
+                        password: this.hasProperty('sonatypePassword') ? sonatypePassword : '')
+                }
+                snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots") {
+                    authentication(userName: this.hasProperty('sonatypeUsername') ? sonatypeUsername : '',
+                        password: this.hasProperty('sonatypePassword') ? sonatypePassword : '')
+                }
+
+                // pom file details
+                pom.project {
+                    packaging 'jar'
+                    description 'GeoRocket is a high-performance data store for geospatial files'
+                    url 'http://georocket.io'
+
+                    scm {
+                        url 'scm:git:git://github.com/georocket/georocket.git'
+                        connection 'scm:git:git://github.com/georocket/georocket.git'
+                        developerConnection 'scm:git:git://github.com/georocket/georocket.git'
+                    }
+
+                    licenses {
+                        license {
+                            name 'The Apache Software License, Version 2.0'
+                            url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                            distribution 'repo'
+                        }
+                    }
+
+                    developers {
+                        developer {
+                            id 'michel-kraemer'
+                            name 'Michel Kraemer'
+                            email 'michel@undercouch.de'
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    ext {
+        vertxVersion = '3.2.0'
     }
 }
 
