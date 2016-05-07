@@ -1,4 +1,4 @@
-GeoRocket
+GeoRocket [![Build Status](https://travis-ci.org/georocket/georocket.svg?branch=master)](https://travis-ci.org/georocket/georocket)
 =========
 
 *GeoRocket is a high-performance data store for geospatial files.* It is schema
