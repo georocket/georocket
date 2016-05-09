@@ -1,5 +1,0 @@
-build:
-  script: "mkdir -p gradle_cache && GRADLE_USER_HOME=gradle_cache scripts/test.sh"
-cache:
-  paths:
-  - gradle_cache
