@@ -59,7 +59,7 @@ startScripts {
         windowsScriptFile.text = windowsScriptFile.text
             .replaceFirst('set APP_HOME=.*', '$0\r\nset GEOROCKET_HOME=%APP_HOME%')
         unixScriptFile.text = unixScriptFile.text
-            .replaceFirst('APP_HOME=.*', '$0\r\nexport GEOROCKET_HOME=\\$APP_HOME')
+            .replaceFirst('APP_HOME=.*', '$0\nexport GEOROCKET_HOME=\\$APP_HOME')
     }
 }
 
