@@ -1,0 +1,17 @@
+.classpath
+.DS_Store
+.externalToolBuilders/
+.git/
+.gradle/
+.project
+.settings/
+.vertx/
+bin/
+build/
+node_modules/
+src-gen/
+storage/
+Dockerfile
+gradle.properties
+.idea/
+*.iml
