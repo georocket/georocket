@@ -1,8 +1,20 @@
 package io.georocket.storage.s3;
 
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
+import java.util.Objects;
 import java.util.Queue;
 
+import com.amazonaws.services.s3.model.ListObjectsRequest;
+import com.fasterxml.aalto.util.URLUtil;
+import com.sun.javafx.fxml.builder.URLBuilder;
+import com.sun.tools.classfile.Code_attribute;
+import io.georocket.util.AsyncXMLParser;
+import io.georocket.util.RxUtils;
+import io.georocket.util.XMLStreamEvent;
+import io.vertx.rx.java.RxHelper;
 import org.bson.types.ObjectId;
 
 import com.amazonaws.HttpMethod;
@@ -26,6 +38,11 @@ import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import rx.Observable;
+
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamReader;
+import javax.xml.stream.events.XMLEvent;
 
 /**
  * Stores chunks on Amazon S3
@@ -33,7 +50,7 @@ import io.vertx.core.logging.LoggerFactory;
  */
 public class S3Store extends IndexedStore {
   private static Logger log = LoggerFactory.getLogger(S3Store.class);
-  
+
   private final Vertx vertx;
   private AmazonS3Client s3Client;
   private final String accessKey;
@@ -43,7 +60,7 @@ public class S3Store extends IndexedStore {
   private final String bucket;
   private final boolean pathStyleAccess;
   private final HttpClient client;
-  
+
   /**
    * Constructs a new store
    * @param vertx the Vert.x instance
@@ -51,7 +68,7 @@ public class S3Store extends IndexedStore {
   public S3Store(Vertx vertx) {
     super(vertx);
     this.vertx = vertx;
-    
+
     JsonObject config = vertx.getOrCreateContext().config();
     accessKey = config.getString(ConfigConstants.STORAGE_S3_ACCESS_KEY);
     secretKey = config.getString(ConfigConstants.STORAGE_S3_SECRET_KEY);
@@ -59,13 +76,13 @@ public class S3Store extends IndexedStore {
     port = config.getInteger(ConfigConstants.STORAGE_S3_PORT, 80);
     bucket = config.getString(ConfigConstants.STORAGE_S3_BUCKET);
     pathStyleAccess = config.getBoolean(ConfigConstants.STORAGE_S3_PATH_STYLE_ACCESS, true);
-    
+
     HttpClientOptions options = new HttpClientOptions();
     options.setDefaultHost(host);
     options.setDefaultPort(port);
     client = vertx.createHttpClient(options);
   }
-  
+
   /**
    * Get or initialize the S3 client.
    * Note: this method must be synchronized because we're accessing the
@@ -81,7 +98,7 @@ public class S3Store extends IndexedStore {
     }
     return s3Client;
   }
-  
+
   /**
    * Generate a pre-signed URL that can be used to make an HTTP request.
    * Note: this method must be synchronized because we're accessing the
@@ -99,12 +116,12 @@ public class S3Store extends IndexedStore {
     if (path == null || path.isEmpty()) {
       path = "/";
     }
-    
+
     // generate new file name
     String id = new ObjectId().toString();
     String filename = PathUtils.join(path, id);
     String key = PathUtils.removeLeadingSlash(filename);
-    
+
     vertx.<URL>executeBlocking(f -> {
       f.complete(generatePresignedUrl(key, HttpMethod.PUT));
     }, ar -> {
@@ -112,20 +129,20 @@ public class S3Store extends IndexedStore {
         handler.handle(Future.failedFuture(ar.cause()));
         return;
       }
-      
+
       URL u = ar.result();
       log.debug("PUT " + u);
-      
+
       Buffer chunkBuf = Buffer.buffer(chunk);
       HttpClientRequest request = client.put(u.getFile());
-      
+
       request.putHeader("Host", u.getHost());
       request.putHeader("Content-Length", String.valueOf(chunkBuf.length()));
-      
+
       request.exceptionHandler(t -> {
         handler.handle(Future.failedFuture(t));
       });
-      
+
       request.handler(response -> {
         Buffer errorBody = Buffer.buffer();
         if (response.statusCode() != 200) {
@@ -142,11 +159,11 @@ public class S3Store extends IndexedStore {
           }
         });
       });
-      
+
       request.end(chunkBuf);
     });
   }
-  
+
   @Override
   public void getOne(String path, Handler<AsyncResult<ChunkReadStream>> handler) {
     String key = PathUtils.removeLeadingSlash(PathUtils.normalize(path));
@@ -157,17 +174,17 @@ public class S3Store extends IndexedStore {
         handler.handle(Future.failedFuture(ar.cause()));
         return;
       }
-      
+
       URL u = ar.result();
       log.debug("GET " + u);
-      
+
       HttpClientRequest request = client.get(ar.result().getFile());
       request.putHeader("Host", u.getHost());
-      
+
       request.exceptionHandler(t -> {
         handler.handle(Future.failedFuture(t));
       });
-      
+
       request.handler(response -> {
         if (response.statusCode() == 200) {
           String contentLength = response.getHeader("Content-Length");
@@ -184,7 +201,119 @@ public class S3Store extends IndexedStore {
           });
         }
       });
-      
+
+      request.end();
+    });
+  }
+
+  public static URI appendUri(String uri, String appendQuery) throws URISyntaxException {
+    URI oldUri = new URI(uri);
+
+    String newQuery = oldUri.getQuery();
+    if (newQuery == null) {
+      newQuery = appendQuery;
+    } else {
+      newQuery += "&" + appendQuery;
+    }
+
+    URI newUri = new URI(oldUri.getScheme(), oldUri.getAuthority(),
+        oldUri.getPath(), newQuery, oldUri.getFragment());
+
+    return newUri;
+  }
+
+  private URL prepandQuery(URL source, String query) throws URISyntaxException, MalformedURLException {
+    URI oldUri = source.toURI();
+
+    String queryPart = oldUri.getQuery();
+    if (queryPart == null) {
+      queryPart = query;
+    } else {
+      queryPart = query + "&" + queryPart;
+    }
+
+    URI result = new URI(oldUri.getScheme(), oldUri.getAuthority(), oldUri.getPath(), queryPart, oldUri.getFragment());
+
+    return result.toURL();
+  }
+
+  @Override
+  public void getStoredSize(Handler<AsyncResult<Long>> handler) {
+    // http://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketGET.html
+    vertx.<URL>executeBlocking(f -> {
+      URL url = generatePresignedUrl("", HttpMethod.GET);
+      try {
+        url = prepandQuery(url, "list-type=2");
+        f.complete(url);
+      } catch (Exception ex) {
+        log.fatal("Got a Malformed amazon s3 url");
+        f.fail(ex);
+      }
+    }, ar -> {
+      if (ar.failed()) {
+        handler.handle(Future.failedFuture(ar.cause()));
+        return;
+      }
+      URL url = ar.result();
+      log.debug("GET " + url);
+
+      HttpClientRequest request = this.client.get(url.getFile());
+      request.putHeader("Host", url.getHost());
+
+      request.exceptionHandler(ex -> {
+        handler.handle(Future.failedFuture(ex));
+      });
+
+      request.handler(response -> {
+        if (response.statusCode() == 200) {
+          String contentType = response.getHeader("Content-Type");
+
+          if (contentType.contains("application/xml")) {
+            Buffer bodyBuffer = Buffer.buffer();
+
+            response.handler(bodyBuffer::appendBuffer).endHandler( v -> {
+              AsyncXMLParser parser = new AsyncXMLParser();
+
+              Observable<XMLStreamEvent> sizeElements = parser.feed(bodyBuffer).filter((xmlEvent) -> {
+                XMLStreamReader reader = xmlEvent.getXMLReader();
+
+                boolean isStartEvent = xmlEvent.getEvent() == XMLEvent.START_ELEMENT;
+
+                return isStartEvent && "Size".equals(reader.getLocalName());
+              });
+
+              Observable<Long> sizes = sizeElements.map(e -> {
+                try {
+                  XMLStreamReader reader = e.getXMLReader();
+                  String sizeAsText = reader.getElementText();
+
+                  return Long.parseLong(sizeAsText);
+                } catch (XMLStreamException ex) {
+                  log.warn("S3: Expected to find a element with text content only! Will continue with '0' as size for this element");
+                  return 0L;
+                }
+              });
+
+              Observable<Long> size = sizes.reduce(0L, (a, b) -> a + b);
+
+              size.subscribe(l -> handler.handle(Future.succeededFuture(l)));
+
+            });
+
+          } else {
+            handler.handle(Future.failedFuture("Expected xml as result."));
+          }
+        } else {
+          Buffer errorBody = Buffer.buffer();
+          response
+              .handler(errorBody::appendBuffer)
+              .endHandler(v -> {
+                log.error(errorBody);
+                handler.handle(Future.failedFuture(response.statusMessage()));
+              });
+        }
+      });
+
       request.end();
     });
   }
@@ -195,7 +324,7 @@ public class S3Store extends IndexedStore {
       handler.handle(Future.succeededFuture());
       return;
     }
-    
+
     String key = PathUtils.removeLeadingSlash(PathUtils.normalize(paths.poll()));
     vertx.<URL>executeBlocking(f -> {
       f.complete(generatePresignedUrl(key, HttpMethod.DELETE));
@@ -204,17 +333,17 @@ public class S3Store extends IndexedStore {
         handler.handle(Future.failedFuture(ar.cause()));
         return;
       }
-      
+
       URL u = ar.result();
       log.debug("DELETE " + u);
-      
+
       HttpClientRequest request = client.delete(ar.result().getFile());
       request.putHeader("Host", u.getHost());
-      
+
       request.exceptionHandler(t -> {
         handler.handle(Future.failedFuture(t));
       });
-      
+
       request.handler(response -> {
         Buffer errorBody = Buffer.buffer();
         if (response.statusCode() != 204) {
@@ -234,7 +363,7 @@ public class S3Store extends IndexedStore {
           }
         });
       });
-      
+
       request.end();
     });
   }

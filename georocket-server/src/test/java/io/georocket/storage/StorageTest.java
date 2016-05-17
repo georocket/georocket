@@ -74,7 +74,7 @@ abstract public class StorageTest {
   protected final static ChunkMeta META =
       new ChunkMeta(Arrays.asList(new XMLStartElement("root")),
           XML_HEADER.length() + 7, XML.length() - 8);
-  
+
   /**
    * Test data: fallback CRS for chunk indexing
    */
@@ -212,6 +212,25 @@ abstract public class StorageTest {
 
       async.complete();
     });
+  }
+
+  /**
+   * Get the current size of the storage. Expect it to be greater zero.
+   * @param context test context
+   */
+  @Test
+  public void testGetSize(TestContext context) {
+    Vertx vertx = rule.vertx();
+    Async async = context.async();
+
+    prepareData(context, vertx, null, context.asyncAssertSuccess(resultPath -> {
+      Store store = createStore(vertx);
+
+      store.getStoredSize(context.asyncAssertSuccess(sh -> {
+        context.assertTrue(sh > 0);
+        async.complete();
+      }));
+    }));
   }
 
   /**
@@ -402,7 +421,7 @@ abstract public class StorageTest {
     vertx.eventBus().consumer(AddressConstants.INDEXER_DELETE).handler(h ->
       context.fail("Indexer should not be notified for a delete event after"
           + "Store::add was called!"));
-    
+
     // register query
     vertx.eventBus().consumer(AddressConstants.INDEXER_QUERY).handler(h ->
       context.fail("Indexer should not be notified for a query event after"
@@ -417,7 +436,7 @@ abstract public class StorageTest {
   }
 
   /**
-   * Add test data and try to delete them with the 
+   * Add test data and try to delete them with the
    * {@link Store#delete(String, String, Handler)} method, then check the
    * storage for any data
    * @param context Test context
@@ -436,7 +455,7 @@ abstract public class StorageTest {
       vertx.eventBus().consumer(AddressConstants.INDEXER_ADD).handler(h ->
         context.fail("Indexer should not be notified for a add event after"
             + "Store::delete was called!"));
-      
+
       // register delete
       vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_DELETE).handler(req -> {
         JsonObject msg = req.body();
@@ -477,12 +496,12 @@ abstract public class StorageTest {
 
     // register query
     mockIndexerQuery(vertx, context, asyncQuery, path);
-    
+
     // register delete
     vertx.eventBus().consumer(AddressConstants.INDEXER_DELETE).handler(h ->
       context.fail("Indexer should not be notified for a delete event after"
           + "Store::get was called!"));
-    
+
     // register query
     vertx.eventBus().consumer(AddressConstants.INDEXER_ADD).handler(h ->
       context.fail("Indexer should not be notified for an add event after"

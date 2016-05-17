@@ -19,7 +19,7 @@ public interface Store {
    */
   void add(String chunk, ChunkMeta chunkMeta, String path, IndexMeta indexMeta,
       Handler<AsyncResult<Void>> handler);
-  
+
   /**
    * Get a chunk from the store. The returned {@link ChunkReadStream} must
    * be closed after use to release all resources.
@@ -27,7 +27,7 @@ public interface Store {
    * @param handler will be called when the chunk has been retrieved from the store
    */
   void getOne(String path, Handler<AsyncResult<ChunkReadStream>> handler);
-  
+
   /**
    * Delete all chunks from the store that match a given query
    * @param search the search query
@@ -35,7 +35,7 @@ public interface Store {
    * @param handler will be called when the chunk has been deleted
    */
   void delete(String search, String path, Handler<AsyncResult<Void>> handler);
-  
+
   /**
    * Get a number of chunks from the store using quick-search
    * @param search the search query
@@ -43,4 +43,10 @@ public interface Store {
    * @param handler will be called when the chunks have been retrieved from the store
    */
   void get(String search, String path, Handler<AsyncResult<StoreCursor>> handler);
+
+  /**
+   * Get the current stored size in bytes.
+   * @param handler Will be called when the data size have been retrieved from the store
+   */
+  void getStoredSize(Handler<AsyncResult<Long>> handler);
 }

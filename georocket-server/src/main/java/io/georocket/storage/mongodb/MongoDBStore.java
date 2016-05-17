@@ -7,6 +7,7 @@ import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.Queue;
 
+import com.mongodb.CommandResult;
 import org.bson.types.ObjectId;
 
 import com.mongodb.DB;
@@ -34,7 +35,7 @@ public class MongoDBStore extends IndexedStore {
   private final String host;
   private final int port;
   private final String databaseName;
-  
+
   private MongoClient mongoClient;
   private DB database;
   private GridFS gridfs;
@@ -46,13 +47,13 @@ public class MongoDBStore extends IndexedStore {
   public MongoDBStore(Vertx vertx) {
     super(vertx);
     this.vertx = vertx;
-    
+
     JsonObject config = vertx.getOrCreateContext().config();
     host = config.getString(ConfigConstants.STORAGE_MONGODB_HOST);
     port = config.getInteger(ConfigConstants.STORAGE_MONGODB_PORT, 27017);
     databaseName = config.getString(ConfigConstants.STORAGE_MONGODB_DATABASE);
   }
-  
+
   /**
    * Get or create the MongoDB client
    * Note: this method must be synchronized because we're accessing the
@@ -65,7 +66,7 @@ public class MongoDBStore extends IndexedStore {
     }
     return mongoClient;
   }
-  
+
   /**
    * Get or create the MongoDB database
    * Note: this method must be synchronized because we're accessing the
@@ -75,11 +76,11 @@ public class MongoDBStore extends IndexedStore {
   private synchronized DB getDB() {
     if (database == null) {
       // TODO getDB is deprecated. Use new GridFS API as soon as it's available
-      database = getMongoClient().getDB(databaseName); 
+      database = getMongoClient().getDB(databaseName);
     }
     return database;
   }
-  
+
   /**
    * Get or create the MongoDB GridFS instance
    * Note: this method must be synchronized because we're accessing the
@@ -114,15 +115,39 @@ public class MongoDBStore extends IndexedStore {
   }
 
   @Override
+  public void getStoredSize(Handler<AsyncResult<Long>> handler) {
+    vertx.<CommandResult>executeBlocking(f -> {
+      CommandResult cr;
+      synchronized (MongoDBStore.this) {
+        cr = getGridFS().getDB().getStats();
+      }
+      f.complete(cr);
+    }, ar -> {
+      if (ar.failed()) {
+        handler.handle(Future.failedFuture(ar.cause()));
+      } else  {
+        CommandResult cr = ar.result();
+
+        if (!cr.containsField("dataSize")) {
+          handler.handle(Future.failedFuture("MongoDB does not contain a field dataSize"));
+          return;
+        }
+
+        handler.handle(Future.succeededFuture(cr.getLong("dataSize")));
+      }
+    });
+  }
+
+  @Override
   protected void doAddChunk(String chunk, String path, Handler<AsyncResult<String>> handler) {
     if (path == null || path.isEmpty()) {
       path = "/";
     }
-    
+
     // generate new file name
     String id = new ObjectId().toString();
     String filename = PathUtils.join(path, id);
-    
+
     vertx.executeBlocking(f -> {
       GridFSInputFile file;
       synchronized (MongoDBStore.this) {
@@ -145,7 +170,7 @@ public class MongoDBStore extends IndexedStore {
       handler.handle(Future.succeededFuture());
       return;
     }
-    
+
     String path = PathUtils.normalize(paths.poll());
     vertx.executeBlocking(f -> {
       synchronized (MongoDBStore.this) {
