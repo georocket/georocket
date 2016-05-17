@@ -8,11 +8,7 @@ import java.util.Queue;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.*;
 import org.bson.types.ObjectId;
 
 import io.georocket.constants.ConfigConstants;
@@ -35,7 +31,7 @@ public class HDFSStore extends IndexedStore {
   private final Configuration configuration;
   private final String root;
   private FileSystem fs;
-  
+
   /**
    * Constructs a new store
    * @param vertx the Vert.x instance
@@ -43,14 +39,14 @@ public class HDFSStore extends IndexedStore {
   public HDFSStore(Vertx vertx) {
     super(vertx);
     this.vertx = vertx;
-    
+
     JsonObject config = vertx.getOrCreateContext().config();
     root = config.getString(ConfigConstants.STORAGE_HDFS_PATH);
     String defaultFS = config.getString(ConfigConstants.STORAGE_HDFS_DEFAULT_FS);
     configuration = new Configuration();
     configuration.set("fs.defaultFS", defaultFS);
   }
-  
+
   /**
    * Get or create the HDFS file system
    * Note: this method must be synchronized because we're accessing the
@@ -91,7 +87,28 @@ public class HDFSStore extends IndexedStore {
       }
     });
   }
-  
+
+  @Override
+  public void getStoredSize(Handler<AsyncResult<Long>> handler) {
+    vertx.<Long>executeBlocking(f -> {
+      try {
+        synchronized (HDFSStore.this) {
+          FileSystem fs     = getFS();
+          FsStatus   status = fs.getStatus();
+          f.complete(status.getUsed());
+        }
+      } catch (IOException e) {
+        f.fail(e);
+      }
+    }, ar -> {
+      if (ar.failed()) {
+        handler.handle(Future.failedFuture(ar.cause()));
+      } else {
+        handler.handle(Future.succeededFuture(ar.result()));
+      }
+    });
+  }
+
   /**
    * Create a new file on HDFS
    * @param filename the file name
@@ -107,7 +124,7 @@ public class HDFSStore extends IndexedStore {
     if (path == null || path.isEmpty()) {
       path = "/";
     }
-    
+
     // generate new file name
     String id = new ObjectId().toString();
     String filename = PathUtils.join(path, id);

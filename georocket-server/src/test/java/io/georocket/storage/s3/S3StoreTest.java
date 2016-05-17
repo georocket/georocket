@@ -1,15 +1,5 @@
 package io.georocket.storage.s3;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
-import static com.github.tomakehurst.wiremock.client.WireMock.delete;
-import static com.github.tomakehurst.wiremock.client.WireMock.deleteRequestedFor;
-import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
-import static com.github.tomakehurst.wiremock.client.WireMock.get;
-import static com.github.tomakehurst.wiremock.client.WireMock.put;
-import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
-import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
-import static com.github.tomakehurst.wiremock.client.WireMock.verify;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -26,6 +16,8 @@ import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.TestContext;
+
+import static com.github.tomakehurst.wiremock.client.WireMock.*;
 
 /**
  * Test {@link S3Store}
@@ -108,6 +100,49 @@ public class S3StoreTest extends StorageTest {
             .willReturn(aResponse()
                 .withStatus(Http.Codes.OK)
             )
+    );
+
+    String listItems = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+        "<ListBucketResult xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\">\n" +
+        "  <Name>quotes</Name>\n" +
+        "  <Prefix>E</Prefix>\n" +
+        "  <StartAfter>ExampleGuide.pdf</StartAfter>\n" +
+        "  <KeyCount>3</KeyCount>\n" +
+        "  <MaxKeys>3</MaxKeys>\n" +
+        "  <IsTruncated>false</IsTruncated>\n" +
+        "  <Contents>\n" +
+        "    <Key>ExampleObject1.txt</Key>\n" +
+        "    <LastModified>2013-09-17T18:07:53.000Z</LastModified>\n" +
+        "    <ETag>&quot;599bab3ed2c697f1d26842727561fd94&quot;</ETag>\n" +
+        "    <Size>857</Size>\n" +
+        "    <StorageClass>REDUCED_REDUNDANCY</StorageClass>\n" +
+        "  </Contents>\n" +
+        "  <Contents>\n" +
+        "    <Key>ExampleObject2.txt</Key>\n" +
+        "    <LastModified>2013-09-17T18:07:53.000Z</LastModified>\n" +
+        "    <ETag>&quot;599bab3ed2c697f1d26842727561fd20&quot;</ETag>\n" +
+        "    <Size>233</Size>\n" +
+        "    <StorageClass>REDUCED_REDUNDANCY</StorageClass>\n" +
+        "  </Contents>\n" +
+        "  <Contents>\n" +
+        "    <Key>ExampleObject3.txt</Key>\n" +
+        "    <LastModified>2013-09-17T18:07:53.000Z</LastModified>\n" +
+        "    <ETag>&quot;599bab3ed2c697f1d26842727561fd30&quot;</ETag>\n" +
+        "    <Size>412</Size>\n" +
+        "    <StorageClass>REDUCED_REDUNDANCY</StorageClass>\n" +
+        "  </Contents>\n" +
+        "</ListBucketResult>";
+
+    wireMockRule.stubFor(
+        get(urlMatching(pathWithLeadingSlash(S3_BUCKET) + "/\\?list-type=2.*"))
+
+        .willReturn(aResponse()
+            .withStatus(Http.Codes.OK)
+            .withHeader("Content-Type", "application/xml")
+            .withHeader("Content-Length", String.valueOf(listItems.length()))
+
+            .withBody(listItems)
+        )
     );
 
     // Mock http request for delete without tempFolder
