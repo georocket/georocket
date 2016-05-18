@@ -1,4 +1,4 @@
-FROM java:8-jdk
+FROM isuper/jdk_8
 MAINTAINER Michel Kraemer <michel.kraemer@igd.fraunhofer.de>
 
 # compile and install GeoRocket server
