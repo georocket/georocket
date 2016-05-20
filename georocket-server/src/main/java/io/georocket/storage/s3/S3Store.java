@@ -1,31 +1,15 @@
 package io.georocket.storage.s3;
 
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.util.Objects;
-import java.util.Queue;
-
-import com.amazonaws.services.s3.model.ListObjectsRequest;
-import com.fasterxml.aalto.util.URLUtil;
-import com.sun.javafx.fxml.builder.URLBuilder;
-import com.sun.tools.classfile.Code_attribute;
-import io.georocket.util.AsyncXMLParser;
-import io.georocket.util.RxUtils;
-import io.georocket.util.XMLStreamEvent;
-import io.vertx.rx.java.RxHelper;
-import org.bson.types.ObjectId;
-
 import com.amazonaws.HttpMethod;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.S3ClientOptions;
-
 import io.georocket.constants.ConfigConstants;
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.indexed.IndexedStore;
+import io.georocket.util.AsyncXMLParser;
 import io.georocket.util.PathUtils;
+import io.georocket.util.XMLStreamEvent;
 import io.georocket.util.io.DelegateChunkReadStream;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -38,11 +22,17 @@ import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import org.bson.types.ObjectId;
 import rx.Observable;
 
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 import javax.xml.stream.events.XMLEvent;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.util.Queue;
 
 /**
  * Stores chunks on Amazon S3
