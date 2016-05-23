@@ -125,7 +125,7 @@ public class MongoDBStore extends IndexedStore {
     }, ar -> {
       if (ar.failed()) {
         handler.handle(Future.failedFuture(ar.cause()));
-      } else  {
+      } else {
         CommandResult cr = ar.result();
 
         if (!cr.containsField("dataSize")) {
