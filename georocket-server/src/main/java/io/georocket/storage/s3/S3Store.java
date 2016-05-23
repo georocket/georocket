@@ -4,12 +4,13 @@ import com.amazonaws.HttpMethod;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.S3ClientOptions;
+import com.amazonaws.services.s3.model.ListObjectsV2Request;
+import com.amazonaws.services.s3.model.ListObjectsV2Result;
+import com.amazonaws.services.s3.model.S3ObjectSummary;
 import io.georocket.constants.ConfigConstants;
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.indexed.IndexedStore;
-import io.georocket.util.AsyncXMLParser;
 import io.georocket.util.PathUtils;
-import io.georocket.util.XMLStreamEvent;
 import io.georocket.util.io.DelegateChunkReadStream;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -23,15 +24,9 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.bson.types.ObjectId;
-import rx.Observable;
 
-import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.XMLStreamReader;
-import javax.xml.stream.events.XMLEvent;
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
+import java.util.List;
 import java.util.Queue;
 
 /**
@@ -196,115 +191,38 @@ public class S3Store extends IndexedStore {
     });
   }
 
-  public static URI appendUri(String uri, String appendQuery) throws URISyntaxException {
-    URI oldUri = new URI(uri);
-
-    String newQuery = oldUri.getQuery();
-    if (newQuery == null) {
-      newQuery = appendQuery;
-    } else {
-      newQuery += "&" + appendQuery;
-    }
-
-    URI newUri = new URI(oldUri.getScheme(), oldUri.getAuthority(),
-        oldUri.getPath(), newQuery, oldUri.getFragment());
-
-    return newUri;
-  }
-
-  private URL prepandQuery(URL source, String query) throws URISyntaxException, MalformedURLException {
-    URI oldUri = source.toURI();
-
-    String queryPart = oldUri.getQuery();
-    if (queryPart == null) {
-      queryPart = query;
-    } else {
-      queryPart = query + "&" + queryPart;
-    }
-
-    URI result = new URI(oldUri.getScheme(), oldUri.getAuthority(), oldUri.getPath(), queryPart, oldUri.getFragment());
-
-    return result.toURL();
-  }
-
   @Override
   public void getStoredSize(Handler<AsyncResult<Long>> handler) {
-    // http://docs.aws.amazon.com/AmazonS3/latest/API/RESTBucketGET.html
-    vertx.<URL>executeBlocking(f -> {
-      URL url = generatePresignedUrl("", HttpMethod.GET);
-      try {
-        url = prepandQuery(url, "list-type=2");
-        f.complete(url);
-      } catch (Exception ex) {
-        log.fatal("Got a Malformed amazon s3 url");
-        f.fail(ex);
-      }
-    }, ar -> {
-      if (ar.failed()) {
-        handler.handle(Future.failedFuture(ar.cause()));
-        return;
-      }
-      URL url = ar.result();
-      log.debug("GET " + url);
+    vertx.<Long>executeBlocking(f -> {
+      // http://docs.aws.amazon.com/AmazonS3/latest/dev/ListingObjectKeysUsingJava.html
+      ListObjectsV2Request req = new ListObjectsV2Request().withBucketName(bucket);
+      ListObjectsV2Result result;
+      Long size = 0L;
 
-      HttpClientRequest request = this.client.get(url.getFile());
-      request.putHeader("Host", url.getHost());
+      System.out.println("Request: " + req.toString());
 
-      request.exceptionHandler(ex -> {
-        handler.handle(Future.failedFuture(ex));
-      });
+      do {
+        result = getS3Client().listObjectsV2(req);
+        System.out.println("Result: " + result);
 
-      request.handler(response -> {
-        if (response.statusCode() == 200) {
-          String contentType = response.getHeader("Content-Type");
 
-          if (contentType.contains("application/xml")) {
-            Buffer bodyBuffer = Buffer.buffer();
+        List<S3ObjectSummary> summaries = result.getObjectSummaries();
 
-            response.handler(bodyBuffer::appendBuffer).endHandler( v -> {
-              AsyncXMLParser parser = new AsyncXMLParser();
+        System.out.println("Summeries: [" + summaries.size() + "] " + summaries);
 
-              Observable<XMLStreamEvent> sizeElements = parser.feed(bodyBuffer).filter((xmlEvent) -> {
-                XMLStreamReader reader = xmlEvent.getXMLReader();
-
-                boolean isStartEvent = xmlEvent.getEvent() == XMLEvent.START_ELEMENT;
-
-                return isStartEvent && "Size".equals(reader.getLocalName());
-              });
-
-              Observable<Long> sizes = sizeElements.map(e -> {
-                try {
-                  XMLStreamReader reader = e.getXMLReader();
-                  String sizeAsText = reader.getElementText();
-
-                  return Long.parseLong(sizeAsText);
-                } catch (XMLStreamException ex) {
-                  log.warn("S3: Expected to find a element with text content only! Will continue with '0' as size for this element");
-                  return 0L;
-                }
-              });
-
-              Observable<Long> size = sizes.reduce(0L, (a, b) -> a + b);
-
-              size.subscribe(l -> handler.handle(Future.succeededFuture(l)));
-
-            });
-
-          } else {
-            handler.handle(Future.failedFuture("Expected xml as result."));
-          }
-        } else {
-          Buffer errorBody = Buffer.buffer();
-          response
-              .handler(errorBody::appendBuffer)
-              .endHandler(v -> {
-                log.error(errorBody);
-                handler.handle(Future.failedFuture(response.statusMessage()));
-              });
+        for (S3ObjectSummary objectSummary : result.getObjectSummaries()) {
+          size = size + objectSummary.getSize();
         }
-      });
 
-      request.end();
+        req.setContinuationToken(result.getNextContinuationToken());
+      } while (result.isTruncated());
+    }, h -> {
+      if (h.failed()) {
+        log.fatal("Could not calculate the used size of amazon S3 bucket.");
+        handler.handle(Future.failedFuture(h.cause()));
+      } else {
+        handler.handle(Future.succeededFuture(h.result()));
+      }
     });
   }
 
