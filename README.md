@@ -10,30 +10,36 @@ GeoRocket is ready for the Cloud. It is event-driven and scalable. GeoRocket
 offers APIs and an HTTP interface which allows it to be integrated in existing
 applications.
 
+How to use the Docker image to run GeoRocket
+--------------------------------------------
 
-Usage
------
+### Start a GeoRocket instance
 
-``docker run --name georocket -d -p 63020:63020 georocket/georocket``
+    docker run --name georocket -d -p 63020:63020 georocket/georocket
 
-* GeoRocket is accesible over the Port 63020 
-* Also the default volume is ``/data/georocket/storage``
+This launches GeoRocket in a Docker container and makes it available at
+<http://localhost:63020>.
 
-Use a host directory as a data volume
--------------------------------------
+### Use a host directory as a data volume
 
-``docker run --name georocket -d -p 63020:63020 -v /myStorage:/data/georocket/storage georocket/georocket``
+    docker run --name georocket -d -p 63020:63020 -v /my/own/storage:/data/georocket/storage georocket/georocket
 
-This mounts the host directory ``myStorage`` into the container storage. Replace *myStorage* with your desired location.
+The default storage location inside the container is `/data/georocket/storage`.
+This command mounts the host directory `/my/own/storage` into the container.
+Replace `/my/own/storage` with the directory on your host where GeoRocket should
+store its chunks and index.
 
-Use MongoDB container as data store
------------------------------------
+### Use a MongoDB container as data store
 
-**Start MongoDB container**
-``docker run --name some-mongo -d mongo``
+#### 1. Start MongoDB container
 
-**Adjust the config**
-The default GeoRocket config([here](https://github.com/georocket/georocket/blob/master/georocket-server/conf/georocketd.json)) expects a mongo instance on *localhost*. Therefore you have to create a new config with the following values. (Don't mind the remaining settings which are used nevertheless) 
+    docker run --name some-mongo -d mongo
+
+#### 2. Adjust configuration
+
+The [default GeoRocket config file](georocket-server/conf/georocketd.json)
+expects a MongoDB instance on `localhost`. You have to create a new file with
+the following content. 
 
 ```json
 {
@@ -43,14 +49,18 @@ The default GeoRocket config([here](https://github.com/georocket/georocket/blob/
 }
 ```
 
-**Start GeoRocket**
-Start the GeoRocket container and mount the new config.
+#### 3. Start GeoRocket
 
-``docker run --link some-mongo:mongo -d -p 63020:63020 -v $(pwd)/georocketd.json:/usr/local/georocket-server/conf/georocketd.json georocket/georocket``
+Start the GeoRocket container and mount the new config file.
 
-**Note:** The name of the mongo container has to match the name of the *link* parameter.
-**See also:** [MongoDB Container](https://hub.docker.com/_/mongo/) 
+    docker run --link some-mongo:mongo -d -p 63020:63020 -v /path/to/configfile/georocketd.json:/usr/local/georocket-server/conf/georocketd.json -v /my/own/storage:/data/georocket/storage georocket/georocket
 
+Replace `/path/to/configfile` with the name of the directory on your host where
+your new config file is located. Additionally, replace `/my/own/storage` with
+the directory where GeoRocket should store its index.
+
+**Note:** The name of the MongoDB container has to match the name of the *link*
+parameter. See also: [MongoDB Container](https://hub.docker.com/_/mongo/) 
 
 License
 -------
