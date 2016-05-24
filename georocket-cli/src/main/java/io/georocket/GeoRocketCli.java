@@ -1,11 +1,13 @@
 package io.georocket;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 
 import de.undercouch.underline.CommandDesc;
@@ -23,6 +25,7 @@ import io.georocket.commands.ImportCommand;
 import io.georocket.commands.SearchCommand;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
 
 /**
@@ -30,6 +33,8 @@ import io.vertx.core.json.JsonObject;
  * @author Michel Kraemer
  */
 public class GeoRocketCli extends AbstractGeoRocketCommand {
+  private static File geoRocketCliHome;
+  
   private boolean displayVersion;
   private AbstractGeoRocketCommand command;
   
@@ -51,12 +56,29 @@ public class GeoRocketCli extends AbstractGeoRocketCommand {
   
   @Override
   protected JsonObject config() {
-    // TODO load configuration from file and fall back to default values if necessary
     JsonObject config = super.config();
     if (config == null || config.isEmpty()) {
-      config = new JsonObject()
-        .put(ConfigConstants.HOST, GeoRocketClient.DEFAULT_HOST)
-        .put(ConfigConstants.PORT, GeoRocketClient.DEFAULT_PORT);
+      // load configuration file
+      File confDir = new File(geoRocketCliHome, "conf");
+      File confFile = new File(confDir, "georocket.json");
+      config = new JsonObject();
+      try {
+        String confFileStr = FileUtils.readFileToString(confFile, "UTF-8");
+        config = new JsonObject(confFileStr);
+      } catch (IOException e) {
+        System.err.println("Could not read config file " + confFile + ":" + e.getMessage());
+      } catch (DecodeException e) {
+        System.err.println("Invalid config file: " + e.getMessage());
+      }
+      
+      // set default values
+      if (!config.containsKey(ConfigConstants.HOST)) {
+        config.put(ConfigConstants.HOST, GeoRocketClient.DEFAULT_HOST);
+      }
+      if (!config.containsKey(ConfigConstants.PORT)) {
+        config.put(ConfigConstants.PORT, GeoRocketClient.DEFAULT_PORT);
+      }
+      
       setConfig(config);
     }
     return config;
@@ -106,6 +128,22 @@ public class GeoRocketCli extends AbstractGeoRocketCommand {
    * @throws IOException if a stream could not be read
    */
   public static void main(String[] args) throws IOException {
+    // get GEOROCKET_CLI_HOME
+    String geoRocketCliHomeStr = System.getenv("GEOROCKET_CLI_HOME");
+    if (geoRocketCliHomeStr == null) {
+      System.err.println("Environment variable GEOROCKET_CLI_HOME not set. "
+          + "Using current working directory.");
+      geoRocketCliHomeStr = new File(".").getAbsolutePath();
+    }
+    try {
+      geoRocketCliHome = new File(geoRocketCliHomeStr).getCanonicalFile();
+    } catch (IOException e) {
+      System.err.println("Invalid GeoRocket home: " + geoRocketCliHomeStr);
+      System.exit(1);
+      return;
+    }
+    
+    // start CLI
     GeoRocketCli cli = new GeoRocketCli();
     try {
       PrintWriter out = new PrintWriter(new OutputStreamWriter(

@@ -3,6 +3,7 @@ package io.georocket.client;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.Collection;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -252,7 +253,10 @@ public class StoreClient {
     HttpClientRequest request = client.get("/store" + queryPath);
     request.exceptionHandler(t -> handler.handle(Future.failedFuture(t)));
     request.handler(response -> {
-      if (response.statusCode() != 200) {
+      if (response.statusCode() == 404) {
+        handler.handle(Future.failedFuture(new NoSuchElementException(
+            response.statusMessage())));
+      } else if (response.statusCode() != 200) {
         handler.handle(Future.failedFuture(response.statusMessage()));
       } else {
         handler.handle(Future.succeededFuture(response));

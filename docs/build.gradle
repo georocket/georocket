@@ -5,6 +5,7 @@ plugins {
 
 apply plugin: 'org.asciidoctor.convert'
 apply plugin: 'org.kordamp.gradle.livereload'
+apply plugin: 'maven'
 
 asciidoctor {
     sourceDir 'src'
@@ -12,6 +13,30 @@ asciidoctor {
 
 liveReload {
     docRoot asciidoctor.outputDir.canonicalPath
+}
+
+// package compiled files into a jar file
+task jar(type: Jar, dependsOn: asciidoctor) {
+    from asciidoctor.outputDir
+}
+
+// package source into a jar file
+task packageSources(type: Jar) {
+    from asciidoctor.sourceDir
+    classifier = 'sources'
+}
+
+artifacts {
+    archives jar
+    archives packageSources
+}
+
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            pom.artifactId = 'georocket-docs'
+        }
+    }
 }
 
 assemble.dependsOn(asciidoctor)

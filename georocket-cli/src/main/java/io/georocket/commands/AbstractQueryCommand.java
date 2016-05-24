@@ -2,6 +2,7 @@ package io.georocket.commands;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.NoSuchElementException;
 
 import io.georocket.client.GeoRocketClient;
 import io.vertx.core.Handler;
@@ -30,7 +31,9 @@ public abstract class AbstractQueryCommand extends AbstractGeoRocketCommand {
     client.getStore().search(query, layer, ar -> {
       if (ar.failed()) {
         error(ar.cause().getMessage());
-        log.error("Could not query store", ar.cause());
+        if (!(ar.cause() instanceof NoSuchElementException)) {
+          log.error("Could not query store", ar.cause());
+        }
         handler.handle(1);
       } else {
         ar.result().handler(buf -> {
