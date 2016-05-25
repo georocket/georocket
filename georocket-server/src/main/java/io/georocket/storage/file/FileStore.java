@@ -4,6 +4,9 @@ import java.io.FileNotFoundException;
 import java.nio.file.Paths;
 import java.util.Queue;
 
+import io.vertx.core.file.*;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import org.bson.types.ObjectId;
 
 import io.georocket.constants.ConfigConstants;
@@ -15,10 +18,6 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.file.AsyncFile;
-import io.vertx.core.file.FileProps;
-import io.vertx.core.file.FileSystem;
-import io.vertx.core.file.OpenOptions;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
 import rx.Observable;
@@ -28,16 +27,17 @@ import rx.Observable;
  * @author Michel Kraemer
  */
 public class FileStore extends IndexedStore {
+  private static Logger log = LoggerFactory.getLogger(FileStore.class);
   /**
    * The folder where the chunks should be saved
    */
   private final String root;
-  
+
   /**
    * The vertx container
    */
   private final Vertx vertx;
-  
+
   /**
    * Default constructor
    * @param vertx the Vert.x instance
@@ -49,7 +49,7 @@ public class FileStore extends IndexedStore {
     this.root = Paths.get(storagePath, "file").toString();
     this.vertx = vertx;
   }
-  
+
   @Override
   protected void doAddChunk(String chunk, String path, Handler<AsyncResult<String>> handler) {
     if (path == null || path.isEmpty()) {
@@ -57,18 +57,18 @@ public class FileStore extends IndexedStore {
     }
     String dir = Paths.get(root, path).toString();
     String finalPath = path;
-    
+
     // create storage folder
     vertx.fileSystem().mkdirs(dir, ar -> {
       if (ar.failed()) {
         handler.handle(Future.failedFuture(ar.cause()));
         return;
       }
-      
+
       // generate new file name
       String id = new ObjectId().toString();
       String filename = id;
-      
+
       // open new file
       FileSystem fs = vertx.fileSystem();
       fs.open(Paths.get(dir, filename).toString(), new OpenOptions(), openar -> {
@@ -76,7 +76,7 @@ public class FileStore extends IndexedStore {
           handler.handle(Future.failedFuture(openar.cause()));
           return;
         }
-        
+
         // write contents to file
         AsyncFile f = openar.result();
         Buffer buf = Buffer.buffer(chunk);
@@ -92,11 +92,11 @@ public class FileStore extends IndexedStore {
       });
     });
   }
-  
+
   @Override
   public void getOne(String path, Handler<AsyncResult<ChunkReadStream>> handler) {
     String absolutePath = Paths.get(root, path).toString();
-    
+
     // check if chunk exists
     FileSystem fs = vertx.fileSystem();
     ObservableFuture<Boolean> observable = RxHelper.observableFuture();
@@ -129,14 +129,28 @@ public class FileStore extends IndexedStore {
         handler.handle(Future.failedFuture(err));
       });
   }
-  
+
+  @Override
+  public void getStoredSize(Handler<AsyncResult<Long>> handler) {
+    vertx.fileSystem().fsProps("/", props -> {
+      if (props.failed()) {
+        log.warn("Failed to retrieve the properties of a file");
+        handler.handle(Future.failedFuture(props.cause()));
+      } else {
+        FileSystemProps fsp = props.result();
+        Long size = fsp.totalSpace() - fsp.usableSpace();
+        handler.handle(Future.succeededFuture(size));
+      }
+    });
+  }
+
   @Override
   protected void doDeleteChunks(Queue<String> paths, Handler<AsyncResult<Void>> handler) {
     if (paths.isEmpty()) {
       handler.handle(Future.succeededFuture());
       return;
     }
-    
+
     String path = paths.poll();
     FileSystem fs = vertx.fileSystem();
     String absolutePath = Paths.get(root, path).toString();
