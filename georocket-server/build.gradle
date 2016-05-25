@@ -1,6 +1,7 @@
 apply plugin: 'java'
 apply plugin: 'antlr'
 apply plugin: 'application'
+apply plugin: 'maven'
 
 mainClassName = 'io.georocket.GeoRocket'
 
@@ -21,8 +22,8 @@ dependencies {
 
     compile "io.vertx:vertx-rx-java:$vertxVersion"
     compile "io.vertx:vertx-web:$vertxVersion"
-    
-    compile 'com.amazonaws:aws-java-sdk-s3:1.10.46'
+
+    compile 'com.amazonaws:aws-java-sdk-s3:1.11.2'
     compile 'com.fasterxml:aalto-xml:0.9.11'
     compile 'com.google.guava:guava:18.0'
     compile 'com.vividsolutions:jts:1.12'
@@ -43,7 +44,7 @@ dependencies {
     testCompile "de.flapdoodle.embed:de.flapdoodle.embed.mongo:1.50.2"
     testCompile "io.vertx:vertx-unit:$vertxVersion"
     testCompile 'junit:junit:4.12'
-    
+
     antlr 'org.antlr:antlr4:4.5.1'
 }
 
@@ -51,7 +52,7 @@ dependencies {
 startScripts {
     // customize application name
     applicationName = 'georocketd'
-    
+
     // set GEOROCKET_HOME environment variable
     doLast {
         def windowsScriptFile = file(getWindowsScript())
