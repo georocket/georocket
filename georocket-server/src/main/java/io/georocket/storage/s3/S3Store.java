@@ -26,7 +26,6 @@ import io.vertx.core.logging.LoggerFactory;
 import org.bson.types.ObjectId;
 
 import java.net.URL;
-import java.util.List;
 import java.util.Queue;
 
 /**
@@ -199,16 +198,8 @@ public class S3Store extends IndexedStore {
       ListObjectsV2Result result;
       Long size = 0L;
 
-      System.out.println("Request: " + req.toString());
-
       do {
         result = getS3Client().listObjectsV2(req);
-        System.out.println("Result: " + result);
-
-
-        List<S3ObjectSummary> summaries = result.getObjectSummaries();
-
-        System.out.println("Summeries: [" + summaries.size() + "] " + summaries);
 
         for (S3ObjectSummary objectSummary : result.getObjectSummaries()) {
           size = size + objectSummary.getSize();
@@ -216,6 +207,8 @@ public class S3Store extends IndexedStore {
 
         req.setContinuationToken(result.getNextContinuationToken());
       } while (result.isTruncated());
+
+      f.complete(size);
     }, h -> {
       if (h.failed()) {
         log.fatal("Could not calculate the used size of amazon S3 bucket.");
