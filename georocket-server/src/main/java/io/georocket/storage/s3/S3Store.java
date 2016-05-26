@@ -1,5 +1,10 @@
 package io.georocket.storage.s3;
 
+import java.net.URL;
+import java.util.Queue;
+
+import org.bson.types.ObjectId;
+
 import com.amazonaws.HttpMethod;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.services.s3.AmazonS3Client;
@@ -7,6 +12,7 @@ import com.amazonaws.services.s3.S3ClientOptions;
 import com.amazonaws.services.s3.model.ListObjectsV2Request;
 import com.amazonaws.services.s3.model.ListObjectsV2Result;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
+
 import io.georocket.constants.ConfigConstants;
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.indexed.IndexedStore;
@@ -23,10 +29,6 @@ import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import org.bson.types.ObjectId;
-
-import java.net.URL;
-import java.util.Queue;
 
 /**
  * Stores chunks on Amazon S3
@@ -191,12 +193,11 @@ public class S3Store extends IndexedStore {
   }
 
   @Override
-  public void getStoredSize(Handler<AsyncResult<Long>> handler) {
+  public void getSize(Handler<AsyncResult<Long>> handler) {
     vertx.<Long>executeBlocking(f -> {
-      // http://docs.aws.amazon.com/AmazonS3/latest/dev/ListingObjectKeysUsingJava.html
       ListObjectsV2Request req = new ListObjectsV2Request().withBucketName(bucket);
       ListObjectsV2Result result;
-      Long size = 0L;
+      long size = 0;
 
       do {
         result = getS3Client().listObjectsV2(req);
@@ -211,7 +212,7 @@ public class S3Store extends IndexedStore {
       f.complete(size);
     }, h -> {
       if (h.failed()) {
-        log.fatal("Could not calculate the used size of amazon S3 bucket.");
+        log.error("Could not calculate the used size of Amazon S3 bucket", h.cause());
         handler.handle(Future.failedFuture(h.cause()));
       } else {
         handler.handle(Future.succeededFuture(h.result()));

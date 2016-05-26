@@ -4,9 +4,6 @@ import java.io.FileNotFoundException;
 import java.nio.file.Paths;
 import java.util.Queue;
 
-import io.vertx.core.file.*;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 import org.bson.types.ObjectId;
 
 import io.georocket.constants.ConfigConstants;
@@ -18,6 +15,13 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
+import io.vertx.core.file.AsyncFile;
+import io.vertx.core.file.FileProps;
+import io.vertx.core.file.FileSystem;
+import io.vertx.core.file.FileSystemProps;
+import io.vertx.core.file.OpenOptions;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
 import rx.Observable;
@@ -28,6 +32,7 @@ import rx.Observable;
  */
 public class FileStore extends IndexedStore {
   private static Logger log = LoggerFactory.getLogger(FileStore.class);
+
   /**
    * The folder where the chunks should be saved
    */
@@ -131,10 +136,10 @@ public class FileStore extends IndexedStore {
   }
 
   @Override
-  public void getStoredSize(Handler<AsyncResult<Long>> handler) {
+  public void getSize(Handler<AsyncResult<Long>> handler) {
     vertx.fileSystem().fsProps("/", props -> {
       if (props.failed()) {
-        log.warn("Failed to retrieve the properties of a file");
+        log.error("Failed to retrieve the properties of a file", props.cause());
         handler.handle(Future.failedFuture(props.cause()));
       } else {
         FileSystemProps fsp = props.result();

@@ -7,9 +7,9 @@ import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.Queue;
 
-import com.mongodb.CommandResult;
 import org.bson.types.ObjectId;
 
+import com.mongodb.CommandResult;
 import com.mongodb.DB;
 import com.mongodb.MongoClient;
 import com.mongodb.gridfs.GridFS;
@@ -115,25 +115,23 @@ public class MongoDBStore extends IndexedStore {
   }
 
   @Override
-  public void getStoredSize(Handler<AsyncResult<Long>> handler) {
-    vertx.<CommandResult>executeBlocking(f -> {
+  public void getSize(Handler<AsyncResult<Long>> handler) {
+    vertx.<Long>executeBlocking(f -> {
       CommandResult cr;
       synchronized (MongoDBStore.this) {
         cr = getGridFS().getDB().getStats();
+        if (!cr.containsField("dataSize")) {
+          f.fail("GridFS storage statistics do not contain a field named 'dataSize'");
+          return;
+        } else {
+          f.complete(cr.getLong("dataSize"));
+        }
       }
-      f.complete(cr);
     }, ar -> {
       if (ar.failed()) {
         handler.handle(Future.failedFuture(ar.cause()));
       } else {
-        CommandResult cr = ar.result();
-
-        if (!cr.containsField("dataSize")) {
-          handler.handle(Future.failedFuture("MongoDB does not contain a field dataSize"));
-          return;
-        }
-
-        handler.handle(Future.succeededFuture(cr.getLong("dataSize")));
+        handler.handle(Future.succeededFuture(ar.result()));
       }
     });
   }

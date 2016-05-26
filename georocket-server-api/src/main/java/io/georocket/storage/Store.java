@@ -45,8 +45,9 @@ public interface Store {
   void get(String search, String path, Handler<AsyncResult<StoreCursor>> handler);
 
   /**
-   * Get the current stored size in bytes.
-   * @param handler Will be called when the data size have been retrieved from the store
+   * Get the store's current size in bytes (i.e. the number of bytes occupied
+   * by stored chunks)
+   * @param handler will be called when the data size has been calculated
    */
-  void getStoredSize(Handler<AsyncResult<Long>> handler);
+  void getSize(Handler<AsyncResult<Long>> handler);
 }

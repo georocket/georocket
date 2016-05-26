@@ -226,7 +226,7 @@ abstract public class StorageTest {
     prepareData(context, vertx, null, context.asyncAssertSuccess(resultPath -> {
       Store store = createStore(vertx);
 
-      store.getStoredSize(context.asyncAssertSuccess(sh -> {
+      store.getSize(context.asyncAssertSuccess(sh -> {
         context.assertTrue(sh > 0);
         async.complete();
       }));

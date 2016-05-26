@@ -8,7 +8,12 @@ import java.util.Queue;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.*;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.FsStatus;
+import org.apache.hadoop.fs.Path;
 import org.bson.types.ObjectId;
 
 import io.georocket.constants.ConfigConstants;
@@ -89,12 +94,12 @@ public class HDFSStore extends IndexedStore {
   }
 
   @Override
-  public void getStoredSize(Handler<AsyncResult<Long>> handler) {
+  public void getSize(Handler<AsyncResult<Long>> handler) {
     vertx.<Long>executeBlocking(f -> {
       try {
         synchronized (HDFSStore.this) {
-          FileSystem fs     = getFS();
-          FsStatus   status = fs.getStatus();
+          FileSystem fs = getFS();
+          FsStatus status = fs.getStatus();
           f.complete(status.getUsed());
         }
       } catch (IOException e) {
