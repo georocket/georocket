@@ -80,7 +80,10 @@ public class S3Store extends IndexedStore {
       BasicAWSCredentials credentials = new BasicAWSCredentials(accessKey, secretKey);
       s3Client = new AmazonS3Client(credentials);
       s3Client.setEndpoint("http://" + host + ":" + port);
-      s3Client.setS3ClientOptions(new S3ClientOptions().withPathStyleAccess(pathStyleAccess));
+      S3ClientOptions options = S3ClientOptions.builder()
+          .setPathStyleAccess(pathStyleAccess)
+          .build();
+      s3Client.setS3ClientOptions(options);
     }
     return s3Client;
   }
