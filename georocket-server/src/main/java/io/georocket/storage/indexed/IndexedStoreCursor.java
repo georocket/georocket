@@ -115,7 +115,7 @@ public class IndexedStoreCursor implements StoreCursor {
     for (int i = 0; i < count; ++i) {
       JsonObject hit = hits.getJsonObject(i);
       ids[i] = hit.getString("id");
-      metas[i] = ChunkMeta.fromJsonObject(hit);
+      metas[i] = getChunkMetaFromJson(hit);
     }
   }
 
@@ -157,4 +157,14 @@ public class IndexedStoreCursor implements StoreCursor {
     }
     return ids[pos];
   }
+
+  /**
+   * Override this method to provide own ChunkMeta type
+   * @param chunkMetaJson The JsonObject representing the Chunk Meta
+   * @return The ChunkMeta Object for the given JsonObject
+   */
+  protected ChunkMeta getChunkMetaFromJson(JsonObject chunkMetaJson) {
+    return ChunkMeta.fromJsonObject(chunkMetaJson);
+  }
+
 }
