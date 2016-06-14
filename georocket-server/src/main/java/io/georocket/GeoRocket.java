@@ -20,6 +20,7 @@ import io.georocket.constants.AddressConstants;
 import io.georocket.constants.ConfigConstants;
 import io.georocket.index.IndexerVerticle;
 import io.georocket.output.Merger;
+import io.georocket.output.XMLMerger;
 import io.georocket.storage.ChunkMeta;
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.Store;
@@ -84,7 +85,7 @@ public class GeoRocket extends AbstractVerticle {
     
     // perform two searches: first initialize the merger and then
     // merge all retrieved chunks
-    Merger merger = new Merger();
+    Merger merger = getMerger(context);
     ObservableFuture<Void> o = RxHelper.observableFuture();
     initializeMerger(merger, search, path, o.toHandler());
     o.flatMap(v -> {
@@ -369,7 +370,7 @@ public class GeoRocket extends AbstractVerticle {
     storagePath = vertx.getOrCreateContext().config().getString(
         ConfigConstants.STORAGE_FILE_PATH);
     
-    deployVerticle(IndexerVerticle.class)
+    deployVerticle(getIndexerVerticle())
       .flatMap(v -> deployVerticle(ImporterVerticle.class))
       .flatMap(v -> deployHttpServer())
       .subscribe(id -> {
@@ -441,27 +442,27 @@ public class GeoRocket extends AbstractVerticle {
   }
   
   /**
-   * Runs the server
-   * @param args the command line arguments
+   * Get the Class used for result merging.
+   * Different requested data/format types need different Merger.
+   * @param context the context may used to decide on a merger.
+   * @return the merger to use, {@link XMLMerger} for default.
    */
-  public static void main(String[] args) {
-    // get GEOROCKET_HOME
-    String geoRocketHomeStr = System.getenv("GEOROCKET_HOME");
-    if (geoRocketHomeStr == null) {
-      log.info("Environment variable GEOROCKET_HOME not set. Using current "
-          + "working directory.");
-      geoRocketHomeStr = new File(".").getAbsolutePath();
-    }
-    try {
-      geoRocketHome = new File(geoRocketHomeStr).getCanonicalFile();
-    } catch (IOException e) {
-      log.error("Invalid GeoRocket home: " + geoRocketHomeStr);
-      System.exit(1);
-      return;
-    }
-    
-    log.info("Using GeoRocket home " + geoRocketHome);
-    
+  public Merger getMerger(RoutingContext context){
+      return new XMLMerger();
+  }
+  
+  /**
+   * 
+   * @return the IndexerVerticle class that will be used for indexing.
+   */
+  protected Class<? extends IndexerVerticle> getIndexerVerticle(){
+    return IndexerVerticle.class;
+  }
+  
+  /**
+   * @return The configuration provided by the conf file.
+   */
+  protected static JsonObject createConfiguration() {
     // load configuration file
     File confDir = new File(geoRocketHome, "conf");
     File confFile = new File(confDir, "georocketd.json");
@@ -480,11 +481,68 @@ public class GeoRocket extends AbstractVerticle {
     
     // replace variables in config
     replaceConfVariables(conf);
+    return conf;
+  }
+  
+
+  /**
+   * Set the GeoRocket home directory, if possible.
+   * 
+   * @throws IOException
+   *           An I/O error occurs, if the file system query could not be executed.
+   */
+  protected static void setGeoRocketHome() throws IOException {
+    // get GEOROCKET_HOME
+    String geoRocketHomeStr = System.getenv("GEOROCKET_HOME");
+    if (geoRocketHomeStr == null) {
+      log.info("Environment variable GEOROCKET_HOME not set. Using current "
+          + "working directory.");
+      geoRocketHomeStr = new File(".").getAbsolutePath();
+    }
+    geoRocketHome = new File(geoRocketHomeStr).getCanonicalFile();
+
+    log.info("Using GeoRocket home " + geoRocketHome);
+  }
+  
+  protected static File getGeoRocketHome(){
+    return geoRocketHome;
+  }
+  
+  /**
+   * Start up georocket. 
+   * @param vertx the vertx instance to use.
+   * @param handler will be called with the result e.g., the AsyncResult for the Verticle deployment.
+   */
+  public static void boot(Vertx vertx, Handler<AsyncResult<String>> handler){
+    try {
+      setGeoRocketHome();
+    } catch (IOException e) {
+      log.error("Invalid GeoRocket home: " + getGeoRocketHome());
+      handler.handle(Future.failedFuture("Invalid GeoRocket home: " + getGeoRocketHome()));
+      return;
+    }
+    JsonObject conf = createConfiguration();
     
     // deploy main verticle
-    Vertx vertx = Vertx.vertx();
     DeploymentOptions options = new DeploymentOptions().setConfig(conf);
     vertx.deployVerticle(GeoRocket.class.getName(), options, ar -> {
+      if (ar.failed()) {
+        log.error("Could not deploy GeoRocket");
+        ar.cause().printStackTrace();
+        System.exit(1);
+        return;
+      }
+    });
+  }
+  
+  /**
+   * Runs the server
+   * @param args the command line arguments
+   */
+  public static void main(String[] args) {
+    Vertx vertx = Vertx.vertx();
+  
+    boot(vertx, ar -> {
       if (ar.failed()) {
         log.error("Could not deploy GeoRocket");
         ar.cause().printStackTrace();
