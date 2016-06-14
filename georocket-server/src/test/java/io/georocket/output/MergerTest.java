@@ -20,7 +20,7 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 import rx.Observable;
 
 /**
- * Test {@link Merger}
+ * Test {@link XMLMerger}
  * @author Michel Kraemer
  */
 @RunWith(VertxUnitRunner.class)
@@ -57,7 +57,7 @@ public class MergerTest {
   
   private void doMerge(TestContext context, Observable<Buffer> chunks,
       Observable<ChunkMeta> metas, String xmlContents) {
-    Merger m = new Merger();
+    AsynchMerger m = new XMLMerger();
     BufferWriteStream bws = new BufferWriteStream();
     Async async = context.async();
     metas

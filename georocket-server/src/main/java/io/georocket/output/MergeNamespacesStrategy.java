@@ -21,7 +21,7 @@ import io.vertx.core.Handler;
  * Merge namespaces of XML root elements
  * @author Michel Kraemer
  */
-public class MergeNamespacesStrategy extends AbstractMergeStrategy {
+public class MergeNamespacesStrategy extends AbstractXMLMergeStrategy {
   /**
    * The namespaces of the current XML root elements
    */

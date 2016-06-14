@@ -15,7 +15,7 @@ import io.vertx.core.streams.WriteStream;
  * Abstract base class for XML merge strategies
  * @author Michel Kraemer
  */
-public abstract class AbstractMergeStrategy implements MergeStrategy {
+public abstract class AbstractXMLMergeStrategy implements XMLMergeStrategy {
   /**
    * The default XML header written by the merger
    */

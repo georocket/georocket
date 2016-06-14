@@ -9,7 +9,7 @@ import io.vertx.core.Handler;
  * Merge chunks whose root XML elements are all equal
  * @author Michel Kraemer
  */
-public class AllSameStrategy extends AbstractMergeStrategy {
+public class AllSameStrategy extends AbstractXMLMergeStrategy {
   @Override
   public void canMerge(ChunkMeta meta, Handler<AsyncResult<Boolean>> handler) {
     if (getParents() == null || getParents().equals(meta.getParents())) {
