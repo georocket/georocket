@@ -196,6 +196,22 @@ public class ImportCommand extends AbstractGeoRocketCommand {
       handler.handle(exitCode);
     });
   }
+
+  /**
+   * Getter for tags
+   * @return tags
+   */
+  public List<String> getTags() {
+    return tags;
+  }
+
+  /**
+   * Getter for layer
+   * @return layer
+   */
+  public String getLayer() {
+    return layer;
+  }
   
   /**
    * Import files using a HTTP client and finally call a handler
@@ -212,20 +228,8 @@ public class ImportCommand extends AbstractGeoRocketCommand {
     }
     
     String path = files.poll();
-    
-    // open file
-    FileSystem fs = vertx.fileSystem();
-    OpenOptions openOptions = new OpenOptions().setCreate(false).setWrite(false);
-    fs.openObservable(path, openOptions)
-      // print file name
-      .map(f -> {
-        System.out.print("Importing " + Paths.get(path).getFileName() + " ... ");
-        return f;
-      })
-      // get file size
-      .flatMap(f -> fs.propsObservable(path).map(props -> Pair.of(f, props.size())))
-      // import file
-      .flatMap(f -> importFile((AsyncFile)f.getLeft().getDelegate(), f.getRight(), client))
+
+    prepareFile(path, client, vertx)
       .map(v -> {
         System.out.println("done");
         return v;
@@ -239,7 +243,31 @@ public class ImportCommand extends AbstractGeoRocketCommand {
         handler.handle(1);
       });
   }
-  
+
+  /**
+   * Prepare file for import
+   * @param path path to file to import
+   * @param client the GeoRocket client
+   * @param vertx the Vert.x instance
+   * @return an observable that will emit when the file has been uploaded
+   */
+  protected Observable<Void> prepareFile(String path, GeoRocketClient client, Vertx vertx) {
+
+    // open file
+    FileSystem fs = vertx.fileSystem();
+    OpenOptions openOptions = new OpenOptions().setCreate(false).setWrite(false);
+    return fs.openObservable(path, openOptions)
+      // print file name
+      .map(f -> {
+        System.out.print("Importing " + Paths.get(path).getFileName() + " ... ");
+        return f;
+      })
+      // get file size
+      .flatMap(f -> fs.propsObservable(path).map(props -> Pair.of(f, props.size())))
+      // import file
+      .flatMap(f -> importFile((AsyncFile)f.getLeft().getDelegate(), f.getRight(), client));
+  }
+
   /**
    * Upload a file to GeoRocket
    * @param f the file to upload (will be closed at the end)
