@@ -190,6 +190,9 @@ public class StoreClient {
     
     if (size.isPresent() && size.get() != null) {
       request.putHeader("Content-Length", size.get().toString());
+    } else {
+      // content length is not set, therefore chunked encoding must be set
+      request.setChunked(true);
     }
     
     request.handler(response -> {
