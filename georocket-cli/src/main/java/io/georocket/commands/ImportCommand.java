@@ -45,8 +45,8 @@ import rx.Observable;
  */
 public class ImportCommand extends AbstractGeoRocketCommand {
   private List<String> patterns;
-  private List<String> tags;
-  private String layer;
+  protected List<String> tags;
+  protected String layer;
   
   /**
    * Set the patterns of the files to import
@@ -197,22 +197,6 @@ public class ImportCommand extends AbstractGeoRocketCommand {
     });
   }
 
-  /**
-   * Getter for tags
-   * @return tags
-   */
-  public List<String> getTags() {
-    return tags;
-  }
-
-  /**
-   * Getter for layer
-   * @return layer
-   */
-  public String getLayer() {
-    return layer;
-  }
-  
   /**
    * Import files using a HTTP client and finally call a handler
    * @param files the files to import
