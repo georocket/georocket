@@ -347,27 +347,18 @@ public class GeoRocket extends AbstractVerticle {
   private ObservableFuture<HttpServer> deployHttpServer() {
     int port = config().getInteger(ConfigConstants.PORT, ConfigConstants.DEFAULT_PORT);
     
-    Router router = setRouter();
-    HttpServerOptions serverOptions = setHttpServerOptions();
+    Router router = Router.router(vertx);
+    router.get("/store/*").handler(this::onGet);
+    router.post("/store/*").handler(this::onPost);
+    router.delete("/store/*").handler(this::onDelete);
+    
+    HttpServerOptions serverOptions = new HttpServerOptions()
+        .setCompressionSupported(true);
     HttpServer server = vertx.createHttpServer(serverOptions);
     
     ObservableFuture<HttpServer> observable = RxHelper.observableFuture();
     server.requestHandler(router::accept).listen(port, observable.toHandler());
     return observable;
-  }
-
-  protected HttpServerOptions setHttpServerOptions() {
-    HttpServerOptions serverOptions = new HttpServerOptions();
-    serverOptions.setCompressionSupported(true);
-    return serverOptions;
-  }
-
-  protected Router setRouter() {
-    Router router = Router.router(vertx);
-    router.get("/store/*").handler(this::onGet);
-    router.post("/store/*").handler(this::onPost);
-    router.delete("/store/*").handler(this::onDelete);
-    return router;
   }
   
   @Override
@@ -448,13 +439,17 @@ public class GeoRocket extends AbstractVerticle {
       conf.put(ConfigConstants.STORAGE_FILE_PATH, "$GEOROCKET_HOME/storage");
     }
   }
-
-  protected static JsonObject setup() {
+  
+  /**
+   * Runs the server
+   * @param args the command line arguments
+   */
+  public static void main(String[] args) {
     // get GEOROCKET_HOME
     String geoRocketHomeStr = System.getenv("GEOROCKET_HOME");
     if (geoRocketHomeStr == null) {
       log.info("Environment variable GEOROCKET_HOME not set. Using current "
-              + "working directory.");
+          + "working directory.");
       geoRocketHomeStr = new File(".").getAbsolutePath();
     }
     try {
@@ -462,9 +457,11 @@ public class GeoRocket extends AbstractVerticle {
     } catch (IOException e) {
       log.error("Invalid GeoRocket home: " + geoRocketHomeStr);
       System.exit(1);
+      return;
     }
+    
     log.info("Using GeoRocket home " + geoRocketHome);
-
+    
     // load configuration file
     File confDir = new File(geoRocketHome, "conf");
     File confFile = new File(confDir, "georocketd.json");
@@ -477,24 +474,13 @@ public class GeoRocket extends AbstractVerticle {
     } catch (DecodeException e) {
       log.error("Invalid config file", e);
     }
-
+    
     // set default configuration values
     setDefaultConf(conf);
-
+    
     // replace variables in config
     replaceConfVariables(conf);
-
-    return conf;
-  }
-  
-  /**
-   * Runs the server
-   * @param args the command line arguments
-   */
-  public static void main(String[] args) {
-    // setup application
-    JsonObject conf = setup();
-
+    
     // deploy main verticle
     Vertx vertx = Vertx.vertx();
     DeploymentOptions options = new DeploymentOptions().setConfig(conf);
