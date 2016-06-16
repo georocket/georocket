@@ -225,7 +225,8 @@ public class GeoRocket extends AbstractVerticle {
   private void onPost(RoutingContext context) {
     HttpServerRequest request = context.request();
     request.pause();
-    
+
+    String contentType = request.getHeader("Content-Type");
     String layer = getStorePath(context);
     String tagsStr = request.getParam("tags");
     List<String> tags = tagsStr != null ? Splitter.on(',')
@@ -280,7 +281,8 @@ public class GeoRocket extends AbstractVerticle {
         JsonObject msg = new JsonObject()
             .put("action", "import")
             .put("filename", id)
-            .put("layer", layer);
+            .put("layer", layer)
+            .put("contentType", contentType);
         if (tags != null) {
           msg.put("tags", new JsonArray(tags));
         }

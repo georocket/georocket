@@ -285,6 +285,11 @@ public class IndexerVerticle extends AbstractVerticle {
         String fallbackCRSString = body.getString("fallbackCRSString");
         
         log.trace("Indexing " + path);
+
+        String importId = body.getString("importId");
+        String filename = body.getString("filename");
+        Long importTime = body.getLong("importTime");
+
         
         // open chunk and create IndexRequest
         return openChunkToDocument(path, fallbackCRSString)
@@ -294,6 +299,10 @@ public class IndexerVerticle extends AbstractVerticle {
               if (tags != null) {
                 doc.put("tags", tags);
               }
+
+              doc.put("importId", importId);
+              doc.put("filename", filename);
+              doc.put("importTime", importTime);
             })
             .map(doc -> Pair.of(documentToIndexRequest(path, doc), msg))
             .onErrorResumeNext(err -> {

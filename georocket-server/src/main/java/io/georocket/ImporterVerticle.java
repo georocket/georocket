@@ -1,6 +1,12 @@
 package io.georocket;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -28,6 +34,7 @@ import io.vertx.rx.java.RxHelper;
 import io.vertx.rxjava.core.AbstractVerticle;
 import io.vertx.rxjava.core.buffer.Buffer;
 import io.vertx.rxjava.core.eventbus.Message;
+import io.vertx.rxjava.core.file.AsyncFile;
 import io.vertx.rxjava.core.file.FileSystem;
 import io.vertx.rxjava.core.streams.ReadStream;
 import rx.Observable;
@@ -42,7 +49,7 @@ public class ImporterVerticle extends AbstractVerticle {
   private static final int MAX_RETRIES = 5;
   private static final int RETRY_INTERVAL = 1000;
   
-  private Store store;
+  protected Store store;
   private String incoming;
   
   @Override
@@ -61,7 +68,7 @@ public class ImporterVerticle extends AbstractVerticle {
    * Receives a message
    * @param msg the message 
    */
-  private void onMessage(Message<JsonObject> msg) {
+  protected void onMessage(Message<JsonObject> msg) {
     String action = msg.body().getString("action");
     switch (action) {
     case "import":
@@ -79,26 +86,33 @@ public class ImporterVerticle extends AbstractVerticle {
    * Receives a name of a file to import
    * @param msg the event bus message containing the filename
    */
-  private void onImport(Message<JsonObject> msg) {
+  protected void onImport(Message<JsonObject> msg) {
     JsonObject body = msg.body();
-    String filename = incoming + "/" + body.getString("filename");
+    String filename = body.getString("filename");
+    String filePath = incoming + "/" + filename;
     String layer = body.getString("layer", "/");
-    
+    String contentType = body.getString("contentType");
+
     // get tags
     JsonArray tagsArr = body.getJsonArray("tags");
     List<String> tags = tagsArr != null ? tagsArr.stream().flatMap(o -> o != null ?
         Stream.of(o.toString()) : Stream.of()).collect(Collectors.toList()) : null;
     
-    log.info("Importing " + filename + " to layer " + layer);
+    log.info("Importing " + filePath + " to layer " + layer);
+
+    // make this import explicit
+    String importId = UUID.randomUUID().toString();
+    Date timeStamp = Calendar.getInstance().getTime();
     
     FileSystem fs = vertx.fileSystem();
     OpenOptions openOptions = new OpenOptions().setCreate(false).setWrite(false);
-    fs.openObservable(filename, openOptions)
-      .flatMap(f -> importXML(f, layer, tags).finallyDo(() -> {
+
+    fs.openObservable(filePath, openOptions)
+      .flatMap(f -> importFile(contentType, f, importId, filename, timeStamp, layer, tags).finallyDo(() -> {
         // delete file from 'incoming' folder
-        log.info("Deleting " + filename + " from incoming folder");
+        log.info("Deleting " + filePath + " from incoming folder");
         f.closeObservable()
-          .flatMap(v -> fs.deleteObservable(filename))
+          .flatMap(v -> fs.deleteObservable(filePath))
           .subscribe(v -> {}, err -> {
             log.error("Could not delete file from 'incoming' folder", err);
           });
@@ -107,15 +121,43 @@ public class ImporterVerticle extends AbstractVerticle {
         log.error("Failed to import chunk", err);
       });
   }
-  
+
   /**
-   * Imports an XML file from the given input stream into the store
+   * Import a file from the given input stream into the store
+   * @param contentType The file content type
    * @param f the XML file to read
+   * @param importId the id of this import event
+   * @param filename the filename of the readed stream
+   * @param importTimeStamp the timestamp of this import event
    * @param layer the layer where the file should be stored (may be null)
    * @param tags the list of tags to attach to the file (may be null)
    * @return an observable that will emit when the file has been imported
    */
-  private Observable<Void> importXML(ReadStream<Buffer> f, String layer, List<String> tags) {
+  protected Observable<Void> importFile(String contentType, ReadStream<Buffer> f, String importId, String filename,
+                                        Date importTimeStamp, String layer, List<String> tags) {
+    switch (contentType) {
+      case "text/xml":
+        return importXML(f, importId, filename, importTimeStamp, layer, tags);
+      default:
+        log.error(String.format("Received an unexpected Content-Type '%s' during import of file '%s'", contentType, filename));
+    }
+
+    // Will be empty by default.
+    return Observable.<Void>empty();
+  }
+
+  /**
+   * Imports an XML file from the given input stream into the store
+   * @param f the XML file to read
+   * @param importId the id of this import event
+   * @param filename the filename of the readed stream
+   * @param importTimeStamp the timestamp of this import event
+   * @param layer the layer where the file should be stored (may be null)
+   * @param tags the list of tags to attach to the file (may be null)
+   * @return an observable that will emit when the file has been imported
+   */
+  private Observable<Void> importXML(ReadStream<Buffer> f, String importId, String filename, Date importTimeStamp,
+                                     String layer, List<String> tags) {
     AsyncXMLParser xmlParser = new AsyncXMLParser();
     Window window = new Window();
     Splitter splitter = new FirstLevelSplitter(window);
@@ -138,10 +180,9 @@ public class ImporterVerticle extends AbstractVerticle {
           
           // count number of chunks being written
           processing.incrementAndGet();
-          
-          IndexMeta indexMeta = new IndexMeta(tags, crsIndexer.getCRS());
-          Observable<Void> o = addToStore(result.getChunk(), result.getMeta(),
-              layer, indexMeta);
+
+          IndexMeta indexMeta = new IndexMeta(importId, filename, importTimeStamp, tags, crsIndexer.getCRS());
+          Observable<Void> o = addToStore(result.getChunk(), result.getMeta(), layer, indexMeta);
           return o.doOnNext(v -> {
             // resume stream only after all chunks from the current
             // buffer have been stored
@@ -154,7 +195,7 @@ public class ImporterVerticle extends AbstractVerticle {
         .last() // "wait" for last event (i.e. end of file)
         .finallyDo(xmlParser::close);
   }
-  
+
   /**
    * Add a chunk to the store
    * @param chunk the chunk to add
@@ -180,8 +221,7 @@ public class ImporterVerticle extends AbstractVerticle {
    * @return an observable that will emit exactly one item when the
    * operation has finished
    */
-  private Observable<Void> addToStore(String chunk, ChunkMeta meta,
-      String layer, IndexMeta indexMeta) {
+  protected Observable<Void> addToStore(String chunk, ChunkMeta meta, String layer, IndexMeta indexMeta) {
     return Observable.<Void>create(subscriber -> {
       addToStoreNoRetry(chunk, meta, layer, indexMeta).subscribe(subscriber);
     }).retryWhen(RxUtils.makeRetry(MAX_RETRIES, RETRY_INTERVAL, log));
