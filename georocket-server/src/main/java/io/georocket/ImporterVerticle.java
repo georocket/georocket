@@ -136,6 +136,7 @@ public class ImporterVerticle extends AbstractVerticle {
   protected Observable<Void> importFile(String contentType, ReadStream<Buffer> f, String importId, String filename,
                                         Date importTimeStamp, String layer, List<String> tags) {
     switch (contentType) {
+      case "application/xml":
       case "text/xml":
         return importXML(f, importId, filename, importTimeStamp, layer, tags);
       default:

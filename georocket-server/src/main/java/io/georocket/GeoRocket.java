@@ -6,11 +6,16 @@ import static io.georocket.util.ThrowableHelper.throwableToMessage;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.spi.FileTypeDetector;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
 
+import io.georocket.util.TikaFileTypeDetector;
 import org.apache.commons.io.FileUtils;
 import org.bson.types.ObjectId;
 
@@ -62,6 +67,7 @@ public class GeoRocket extends AbstractVerticle {
   protected static File geoRocketHome;
   private Store store;
   private String storagePath;
+  FileTypeDetector typeDetector = new TikaFileTypeDetector();
 
   /**
    * Handles the HTTP GET request for a bunch of chunks
@@ -234,8 +240,8 @@ public class GeoRocket extends AbstractVerticle {
     
     // get temporary filename
     String incoming = storagePath + "/incoming";
-    String id = new ObjectId().toString();
-    String filename = incoming + "/" + id;
+    String filename = new ObjectId().toString();
+    String filePath = incoming + "/" + filename;
     
     log.info("Receiving file ...");
     
@@ -247,7 +253,7 @@ public class GeoRocket extends AbstractVerticle {
       .flatMap(v -> {
         // create temporary file
         ObservableFuture<AsyncFile> openObservable = RxHelper.observableFuture();
-        fs.open(filename, new OpenOptions(), openObservable.toHandler());
+        fs.open(filePath, new OpenOptions(), openObservable.toHandler());
         return openObservable;
       })
       .flatMap(f -> {
@@ -268,31 +274,71 @@ public class GeoRocket extends AbstractVerticle {
         return pumpObservable;
       })
       .subscribe(f -> {
-        // tell caller that we're now importing the file
-        request.response()
-          .setStatusCode(202) // Accepted
-          .setStatusMessage("Accepted file - importing in progress")
-          .end();
-        
         // close file before importing
         f.close();
-        
+
         // run importer
         JsonObject msg = new JsonObject()
             .put("action", "import")
-            .put("filename", id)
-            .put("layer", layer)
-            .put("contentType", contentType);
+            .put("filename", filename)
+            .put("layer", layer);
+
         if (tags != null) {
           msg.put("tags", new JsonArray(tags));
         }
-        vertx.eventBus().send(AddressConstants.IMPORTER, msg);
+
+        Runnable respondAccepted = () -> {
+          request.response()
+              .setStatusCode(202) // Accepted
+              .setStatusMessage("Accepted file - importing in progress")
+              .end();
+        };
+
+        if (contentType == null || contentType.trim().isEmpty() || contentType.equals("application/octet-stream")) {
+          // Fallback: If the client have not send the Content-Type or send a generic one,
+          // then guess it by the file magic number or file content
+          vertx.<String>executeBlocking(blockingHandler -> {
+            try {
+              String mimeType = typeDetector.probeContentType(Paths.get(filePath));
+              blockingHandler.complete(mimeType);
+            } catch (IOException ex) {
+              blockingHandler.fail(ex);
+            }
+          }, h -> {
+            if (h.failed()) {
+              log.error("The client have not send a Content-Type during the import and i could not guess it by " +
+                  "the content. (Will drop the file import)", h.cause());
+
+              request.response()
+                  .setStatusCode(415) // Unsupported Media Type
+                  .setStatusMessage("Unsupported Media Type - Your media type wasn't specified in the request header " +
+                      "and could not be guessed.")
+                  .end();
+            } else {
+              respondAccepted.run();
+
+              // run importer
+              msg.put("contentType", h.result());
+
+              vertx.eventBus().send(AddressConstants.IMPORTER, msg);
+            }
+          });
+        } else {
+          // The client have send a content type
+          // tell caller that we're now importing the file
+          respondAccepted.run();
+
+          msg.put("contentType", contentType);
+
+          vertx.eventBus().send(AddressConstants.IMPORTER, msg);
+        }
+
       }, err -> {
         request.response()
           .setStatusCode(throwableToCode(err))
           .end("Could not import file: " + err.getMessage());
         err.printStackTrace();
-        fs.delete(filename, ar -> {});
+        fs.delete(filePath, ar -> {});
       });
   }
 
