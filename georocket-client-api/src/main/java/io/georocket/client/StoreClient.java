@@ -103,8 +103,8 @@ public class StoreClient {
     if (tags != null && !tags.isEmpty()) {
       path += "?tags=" + String.join(",", tags);
     }
-
-    return urlencode(path);
+    
+    return path;
   }
 
   /**
