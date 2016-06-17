@@ -74,14 +74,14 @@ import rx.functions.Func1;
 public class IndexerVerticle extends AbstractVerticle {
   private static Logger log = LoggerFactory.getLogger(IndexerVerticle.class);
   
-  private static final int MAX_ADD_REQUESTS = 1000;
-  private static final long BUFFER_TIMESPAN = 5000;
-  private static final int MAX_INSERT_REQUESTS = 5;
-  private static final int MAX_RETRIES = 5;
-  private static final int RETRY_INTERVAL = 1000;
-  
-  private static final String INDEX_NAME = "georocket";
-  private static final String TYPE_NAME = "object";
+  protected static final int MAX_ADD_REQUESTS = 1000;
+  protected static final long BUFFER_TIMESPAN = 5000;
+  protected static final int MAX_INSERT_REQUESTS = 5;
+  protected static final int MAX_RETRIES = 5;
+  protected static final int RETRY_INTERVAL = 1000;
+
+  protected static final String INDEX_NAME = "georocket";
+  protected static final String TYPE_NAME = "object";
   
   /**
    * The Elasticsearch node
@@ -91,22 +91,22 @@ public class IndexerVerticle extends AbstractVerticle {
   /**
    * The Elasticsearch client
    */
-  private Client client;
+  protected Client client;
   
   /**
    * The GeoRocket store
    */
-  private Store store;
+  protected Store store;
   
   /**
    * A list of {@link XMLIndexerFactory} objects
    */
-  private ImmutableList<XMLIndexerFactory> xmlIndexerFactories;
+  protected ImmutableList<XMLIndexerFactory> xmlIndexerFactories;
   
   /**
    * Compiles search strings to Elasticsearch documents
    */
-  private DefaultQueryCompiler queryCompiler;
+  protected DefaultQueryCompiler queryCompiler;
   
   /**
    * True if {@link #ensureIndex()} has been called at least once
@@ -152,9 +152,7 @@ public class IndexerVerticle extends AbstractVerticle {
       queryCompiler = new DefaultQueryCompiler(xmlIndexerFactories);
       store = StoreFactory.createStore((Vertx)vertx.getDelegate());
       
-      registerAdd();
-      registerDelete();
-      registerQuery();
+      registerMessageConsumers();
       
       startFuture.complete();
     });
@@ -164,6 +162,15 @@ public class IndexerVerticle extends AbstractVerticle {
   public void stop() {
     client.close();
     node.close();
+  }
+
+  /**
+   * Register all message consumers for this verticle.
+   */
+  protected void registerMessageConsumers() {
+    registerAdd();
+    registerDelete();
+    registerQuery();
   }
   
   /**
@@ -177,7 +184,7 @@ public class IndexerVerticle extends AbstractVerticle {
   /**
    * Register consumer for add messages
    */
-  private void registerAdd() {
+  protected void registerAdd() {
     vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_ADD)
       .toObservable()
       .buffer(BUFFER_TIMESPAN, TimeUnit.MILLISECONDS, MAX_ADD_REQUESTS)
@@ -222,7 +229,7 @@ public class IndexerVerticle extends AbstractVerticle {
   /**
    * Register consumer for delete messages
    */
-  private void registerDelete() {
+  protected void registerDelete() {
     vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_DELETE)
       .toObservable()
       .subscribe(msg -> {
@@ -238,7 +245,7 @@ public class IndexerVerticle extends AbstractVerticle {
   /**
    * Register consumer for queries
    */
-  private void registerQuery() {
+  protected void registerQuery() {
     vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_QUERY)
       .toObservable()
       .subscribe(msg -> {
