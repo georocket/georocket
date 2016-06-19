@@ -172,7 +172,7 @@ public class IndexerVerticle extends AbstractVerticle {
     registerDelete();
     registerQuery();
   }
-  
+
   /**
    * @return a function that can be passed to {@link Observable#retryWhen(Func1)}
    * @see RxUtils#makeRetry(int, int, Logger)
@@ -358,7 +358,7 @@ public class IndexerVerticle extends AbstractVerticle {
       openChunk(path)
         .flatMap(chunk -> {
           // convert chunk to document and close it
-          return chunkToDocument(chunk, fallbackCRSString).finallyDo(chunk::close);
+          return xmlChunkToDocument(chunk, fallbackCRSString).finallyDo(chunk::close);
         })
         .subscribe(subscriber);
     }).retryWhen(makeRetry());
@@ -434,21 +434,52 @@ public class IndexerVerticle extends AbstractVerticle {
     }
     
     // execute bulk request
-    long startDeleting = System.currentTimeMillis();
-    log.info("Deleting " + paths.size() + " chunks from index ...");
+    long startTimeStamp = System.currentTimeMillis();
+    startedDeleting(startTimeStamp, paths.size());
+
     ObservableFuture<BulkResponse> observable = RxHelper.observableFuture();
     client.bulk(br, handlerToListener(observable.toHandler()));
     return observable.flatMap(bres -> {
+      long stopTimeStamp = System.currentTimeMillis();
       if (bres.hasFailures()) {
+        finishedDeleting(startTimeStamp - stopTimeStamp, paths.size(), true, bres.buildFailureMessage());
         return Observable.error(new NoStackTraceThrowable(bres.buildFailureMessage()));
       } else {
-        log.info("Finished deleting " + paths.size() + " chunks from index in " +
-            (System.currentTimeMillis() - startDeleting) + " ms");
+        finishedDeleting(startTimeStamp - stopTimeStamp, paths.size(), false, null);
         return Observable.just(null);
       }
     });
   }
-  
+
+
+  /**
+   * <p>Will be called, before the indexer has started the deleting process.</p>
+   * <p>The deleting process will be called if an index should be removed.</p>
+   *
+   * @param timeStamp The time when the indexer has started
+   * @param chunkCount The number of chunks messages from which the deleting requests were created
+   */
+  protected void startedDeleting(long timeStamp, int chunkCount) {
+    log.info("Deleting " + chunkCount + " chunks from index ...");
+  }
+
+  /**
+   * <p>Will be called, after the indexer has finished the deleting process.</p>
+   * <p>The deleting process will be called if an index should be removed.</p>
+   *
+   * @param duration The deleting duration - time passing from the start until the end
+   * @param chunkCount The number of chunks messages from which the deleting requests were created
+   * @param withError true if an error has occurred
+   * @param errorMessage The error message. (Will be null of withError == false)
+   */
+  protected void finishedDeleting(long duration, int chunkCount, boolean withError, String errorMessage) {
+    if (withError) {
+      log.error("Finished deleting with error: " + errorMessage);
+    } else {
+      log.info("Finished deleting " + chunkCount + " chunks from index in " + duration + " ms");
+    }
+  }
+
   /**
    * Convert a chunk to a Elasticsearch document
    * @param chunk the chunk to convert
@@ -457,8 +488,7 @@ public class IndexerVerticle extends AbstractVerticle {
    * CRS is available as fallback)
    * @return an observable that will emit the document
    */
-  private Observable<Map<String, Object>> chunkToDocument(ChunkReadStream chunk,
-      String fallbackCRSString) {
+  private Observable<Map<String, Object>> xmlChunkToDocument(ChunkReadStream chunk, String fallbackCRSString) {
     AsyncXMLParser xmlParser = new AsyncXMLParser();
     
     List<XMLIndexer> indexers = new ArrayList<>();
@@ -482,7 +512,7 @@ public class IndexerVerticle extends AbstractVerticle {
       })
       .finallyDo(xmlParser::close);
   }
-  
+
   /**
    * Add chunk metadata to a ElasticSearch document
    * @param doc the document
@@ -613,8 +643,9 @@ public class IndexerVerticle extends AbstractVerticle {
    * @return an observable that completes when the operation has finished
    */
   private Observable<Void> insertDocuments(BulkRequest bulkRequest, List<Message<JsonObject>> messages) {
-    log.info("Indexing " + messages.size() + " chunks");
-    long startIndexing = System.currentTimeMillis();
+    long startTimeStamp = System.currentTimeMillis();
+    startedIndexing(startTimeStamp, messages.size());
+
     ObservableFuture<BulkResponse> observable = RxHelper.observableFuture();
     client.bulk(bulkRequest, handlerToListener(observable.toHandler()));
     return observable.<Void>flatMap(bres -> {
@@ -626,14 +657,40 @@ public class IndexerVerticle extends AbstractVerticle {
           msg.reply(null);
         }
       }
+      long stopTimeStamp = System.currentTimeMillis();
       if (bres.hasFailures()) {
-        log.error(bres.buildFailureMessage());
+        finishedIndexing(startTimeStamp - stopTimeStamp, messages.size(), true, bres.buildFailureMessage());
       } else {
-        log.info("Finished indexing " + messages.size() + " chunks in " +
-            (System.currentTimeMillis() - startIndexing) + " ms");
+        finishedIndexing(startTimeStamp - stopTimeStamp, messages.size(), false, null);
       }
       return Observable.empty();
     });
+  }
+
+  /**
+   * Will be called, before the indexer has started the indexing process.
+   *
+   * @param timeStamp The time when the indexer has started
+   * @param chunkCount The number of chunks messages from which the index requests were created
+   */
+  protected void startedIndexing(long timeStamp, int chunkCount) {
+    log.info("Indexing " + chunkCount + " chunks");
+  }
+
+  /**
+   * Will be called, after the indexer has finished the indexing process.
+   *
+   * @param duration The indexing duration - time passing from the start until the end
+   * @param chunkCount The number of chunks messages from which the index requests were created
+   * @param withError true if an error has occurred
+   * @param errorMessage The error message. (Will be null of withError == false)
+   */
+  protected void finishedIndexing(long duration, int chunkCount, boolean withError, String errorMessage) {
+    if (withError) {
+      log.error("Finished indexing with error: " + errorMessage);
+    } else {
+      log.info("Finished indexing " + chunkCount + " chunks in " + duration + " ms");
+    }
   }
   
   /**
