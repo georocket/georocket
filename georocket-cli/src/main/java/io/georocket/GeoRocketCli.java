@@ -33,7 +33,7 @@ import io.vertx.core.json.JsonObject;
  * @author Michel Kraemer
  */
 public class GeoRocketCli extends AbstractGeoRocketCommand {
-  private static File geoRocketCliHome;
+  private File geoRocketCliHome;
   
   private boolean displayVersion;
   private AbstractGeoRocketCommand command;
@@ -128,23 +128,9 @@ public class GeoRocketCli extends AbstractGeoRocketCommand {
    * @throws IOException if a stream could not be read
    */
   public static void main(String[] args) throws IOException {
-    // get GEOROCKET_CLI_HOME
-    String geoRocketCliHomeStr = System.getenv("GEOROCKET_CLI_HOME");
-    if (geoRocketCliHomeStr == null) {
-      System.err.println("Environment variable GEOROCKET_CLI_HOME not set. "
-          + "Using current working directory.");
-      geoRocketCliHomeStr = new File(".").getAbsolutePath();
-    }
-    try {
-      geoRocketCliHome = new File(geoRocketCliHomeStr).getCanonicalFile();
-    } catch (IOException e) {
-      System.err.println("Invalid GeoRocket home: " + geoRocketCliHomeStr);
-      System.exit(1);
-      return;
-    }
-    
     // start CLI
     GeoRocketCli cli = new GeoRocketCli();
+    cli.setup();
     try {
       PrintWriter out = new PrintWriter(new OutputStreamWriter(
           System.out, StandardCharsets.UTF_8));
@@ -155,6 +141,26 @@ public class GeoRocketCli extends AbstractGeoRocketCommand {
       cli.run(args, new StandardInputReader(), out);
     } catch (OptionParserException e) {
       cli.error(e.getMessage());
+      System.exit(1);
+    }
+  }
+
+  /**
+   * Setup GeoRocket CLI
+   */
+  protected void setup() {
+    // get GEOROCKET_CLI_HOME
+    String geoRocketCliHomeStr = System.getenv("GEOROCKET_CLI_HOME");
+    if (geoRocketCliHomeStr == null) {
+      System.err.println("Environment variable GEOROCKET_CLI_HOME not set. "
+          + "Using current working directory.");
+      geoRocketCliHomeStr = new File(".").getAbsolutePath();
+    }
+
+    try {
+      geoRocketCliHome = new File(geoRocketCliHomeStr).getCanonicalFile();
+    } catch (IOException e) {
+      System.err.println("Invalid GeoRocket home: " + geoRocketCliHomeStr);
       System.exit(1);
     }
   }
