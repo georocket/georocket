@@ -44,7 +44,7 @@ import rx.Observable;
  * @author Michel Kraemer
  */
 public class ImportCommand extends AbstractGeoRocketCommand {
-  private List<String> patterns;
+  protected List<String> patterns;
   protected List<String> tags;
   protected String layer;
   
