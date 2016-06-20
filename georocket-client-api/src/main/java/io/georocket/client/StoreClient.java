@@ -12,7 +12,6 @@ import com.google.common.base.Splitter;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
-import io.vertx.core.MultiMap;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientRequest;
@@ -103,7 +102,7 @@ public class StoreClient {
     if (tags != null && !tags.isEmpty()) {
       path += "?tags=" + String.join(",", tags);
     }
-    
+
     return path;
   }
 
@@ -216,7 +215,8 @@ public class StoreClient {
    * imported by the GeoRocket server
    * @return same {@link HttpClientRequest} as given as parameter but with options set
    */
-  protected HttpClientRequest requestOptions(HttpClientRequest request, Optional<Long> size, Handler<AsyncResult<Void>> handler) {
+  protected HttpClientRequest requestOptions(HttpClientRequest request,
+     Optional<Long> size, Handler<AsyncResult<Void>> handler) {
 
     if (size.isPresent() && size.get() != null) {
       request.putHeader("Content-Length", size.get().toString());
