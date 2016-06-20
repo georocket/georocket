@@ -198,7 +198,6 @@ public class StoreClient {
    */
   public WriteStream<Buffer> startImport(String layer, Collection<String> tags,
       Optional<Long> size, Handler<AsyncResult<Void>> handler) {
-
     String path = prepareImport(layer, tags);
     HttpClientRequest request = client.post(path);
 
