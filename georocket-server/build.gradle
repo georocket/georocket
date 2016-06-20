@@ -39,6 +39,7 @@ dependencies {
     compile 'org.mongodb:bson:3.2.1'
     compile 'org.mongodb:mongodb-driver:3.2.1'
     compile 'org.yaml:snakeyaml:1.16'
+    compile 'org.apache.tika:tika-core:1.13'
 
     testCompile 'com.github.tomakehurst:wiremock:1.57'
     testCompile "de.flapdoodle.embed:de.flapdoodle.embed.mongo:1.50.2"

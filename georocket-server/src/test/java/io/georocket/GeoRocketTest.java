@@ -41,14 +41,31 @@ public class GeoRocketTest {
    */
   @Rule
   public TemporaryFolder folder = new TemporaryFolder();
-  
+
   /**
    * Tests if a small CityGML file can be uploaded correctly
    * @param context the test context
    * @throws Exception if an exception occurs
    */
   @Test
-  public void testMiniFile(TestContext context) throws Exception {
+  public void testMiniFileWithContentType(TestContext context) throws Exception {
+    this.testMiniFile(context, "application/xml");
+  }
+
+  /**
+   * <p>Tests if a small CityGML file can be uploaded correctly</p>
+   *
+   * <p>Test the content type guessing fallback</p>
+   *
+   * @param context the test context
+   * @throws Exception if an exception occurs
+   */
+  @Test
+  public void testMiniFileWithoutContentType(TestContext context) throws Exception {
+    this.testMiniFile(context, null);
+  }
+
+  private void testMiniFile(TestContext context, String contentType) throws Exception {
     String testFile = "berlin_alexanderplatz_mini.xml";
     
     Vertx vertx = rule.vertx();
@@ -83,6 +100,9 @@ public class GeoRocketTest {
             });
           });
           request.putHeader("Content-Length", String.valueOf(props.size()));
+          if (contentType != null) {
+            request.putHeader("Content-Type", contentType);
+          }
           Pump.pump(f, request).start();
           f.endHandler(v -> request.end());
         }));
