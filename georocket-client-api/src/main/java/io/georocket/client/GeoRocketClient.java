@@ -25,7 +25,7 @@ public class GeoRocketClient implements Closeable {
   /**
    * HTTP client used to connect to GeoRocket
    */
-  private final HttpClient client;
+  protected final HttpClient client;
   
   /**
    * Create a client connecting to GeoRocket running on
@@ -57,6 +57,16 @@ public class GeoRocketClient implements Closeable {
     this(vertx.createHttpClient(new HttpClientOptions()
         .setDefaultHost(host)
         .setDefaultPort(port)));
+  }
+
+  /**
+   * Create a client connecting to GeoRocket running with
+   * specified options
+   * @param options options for HTTP client
+   * @param vertx a Vert.x instance used to create a HTTP client
+   */
+  public GeoRocketClient(HttpClientOptions options, Vertx vertx) {
+    this(vertx.createHttpClient(options));
   }
   
   /**

@@ -33,7 +33,7 @@ public class StoreClient {
    * Construct a new store client using the given HTTP client
    * @param client the HTTP client
    */
-  StoreClient(HttpClient client) {
+  public StoreClient(HttpClient client) {
     this.client = client;
   }
   
@@ -77,7 +77,35 @@ public class StoreClient {
     
     return layer + urlQuery;
   }
-  
+
+  /**
+   * Prepare an import. Generate an import path for the given layer and tags.
+   * @param layer the layer to import to (may be <code>null</code> if data
+   * should be imported to the root layer)
+   * @param tags a collection of tags to attach to the imported data (may be
+   * <code>null</code> if no tags need to be attached)
+   * @return the import path
+   */
+  protected String prepareImport(String layer, Collection<String> tags) {
+    String path = "/store";
+
+    if (layer != null && !layer.isEmpty()) {
+      if (!layer.endsWith("/")) {
+        layer += "/";
+      }
+      if (!layer.startsWith("/")) {
+        layer = "/" + layer;
+      }
+      path += layer;
+    }
+
+    if (tags != null && !tags.isEmpty()) {
+      path += "?tags=" + String.join(",", tags);
+    }
+
+    return path;
+  }
+
   /**
    * <p>Start importing data to GeoRocket. The method opens a connection to the
    * GeoRocket server and returns a {@link WriteStream} that can be used to
@@ -170,28 +198,17 @@ public class StoreClient {
    */
   public WriteStream<Buffer> startImport(String layer, Collection<String> tags,
       Optional<Long> size, Handler<AsyncResult<Void>> handler) {
-    String path = "/store";
-    
-    if (layer != null && !layer.isEmpty()) {
-      if (!layer.endsWith("/")) {
-        layer += "/";
-      }
-      if (!layer.startsWith("/")) {
-        layer = "/" + layer;
-      }
-      path += layer;
-    }
-    
-    if (tags != null && !tags.isEmpty()) {
-      path += "?tags=" + String.join(",", tags);
-    }
-    
+
+    String path = prepareImport(layer, tags);
     HttpClientRequest request = client.post(path);
-    
+
     if (size.isPresent() && size.get() != null) {
       request.putHeader("Content-Length", size.get().toString());
+    } else {
+      // content length is not set, therefore chunked encoding must be set
+      request.setChunked(true);
     }
-    
+
     request.handler(response -> {
       if (response.statusCode() != 202) {
         handler.handle(Future.failedFuture("GeoRocket did not accept the file "
@@ -200,10 +217,24 @@ public class StoreClient {
         handler.handle(Future.succeededFuture());
       }
     });
-    
+
+    return setRequestOptions(request);
+  }
+
+  /**
+   * Set additional options for HTTP requests. Because some requests
+   * require special options, the option setting is outsourced to this
+   * method.
+   *
+   * @param request request the options are created for
+   * @return same {@link HttpClientRequest} as given as parameter but with options set
+   */
+
+  protected HttpClientRequest setRequestOptions(HttpClientRequest request) {
+    // nothing to set by default. Subclasses may override
     return request;
   }
-  
+
   /**
    * <p>Export the contents of the whole GeoRocket data store. Return a
    * {@link ReadStream} from which merged chunks can be read.</p>
