@@ -129,13 +129,12 @@ public class GeoRocketCli extends AbstractGeoRocketCommand {
    */
   public static void main(String[] args) throws IOException {
 
-    setup();
-
     // start CLI
     GeoRocketCli cli = new GeoRocketCli();
+    cli.setup();
     try {
       PrintWriter out = new PrintWriter(new OutputStreamWriter(
-          System.out, StandardCharsets.UTF_8));
+              System.out, StandardCharsets.UTF_8));
       cli.setEndHandler(exitCode -> {
         out.flush();
         System.exit(exitCode);
@@ -150,7 +149,7 @@ public class GeoRocketCli extends AbstractGeoRocketCommand {
   /**
    * Setup GeoRocket Cli.
    */
-  protected static void setup() {
+  protected void setup() {
     // get GEOROCKET_CLI_HOME
     String geoRocketCliHomeStr = System.getenv("GEOROCKET_CLI_HOME");
     if (geoRocketCliHomeStr == null) {
