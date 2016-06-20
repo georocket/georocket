@@ -201,22 +201,6 @@ public class StoreClient {
 
     String path = prepareImport(layer, tags);
     HttpClientRequest request = client.post(path);
-    return requestOptions(request, size, handler);
-  }
-
-  /**
-   * Set options for HTTP requests. Because some requests require
-   * special options, the option setting is outsourced to this
-   * method.
-   *
-   * @param request request the options are created for
-   * @param size size of the data to be sent in bytes (optional)
-   * @param handler a handler that will be called when the data has been
-   * imported by the GeoRocket server
-   * @return same {@link HttpClientRequest} as given as parameter but with options set
-   */
-  protected HttpClientRequest requestOptions(HttpClientRequest request,
-     Optional<Long> size, Handler<AsyncResult<Void>> handler) {
 
     if (size.isPresent() && size.get() != null) {
       request.putHeader("Content-Length", size.get().toString());
@@ -234,9 +218,23 @@ public class StoreClient {
       }
     });
 
+    return setRequestOptions(request);
+  }
+
+  /**
+   * Set additional options for HTTP requests. Because some requests
+   * require special options, the option setting is outsourced to this
+   * method.
+   *
+   * @param request request the options are created for
+   * @return same {@link HttpClientRequest} as given as parameter but with options set
+   */
+
+  protected HttpClientRequest setRequestOptions(HttpClientRequest request) {
+    // nothing to set by default. Subclasses may override
     return request;
   }
-  
+
   /**
    * <p>Export the contents of the whole GeoRocket data store. Return a
    * {@link ReadStream} from which merged chunks can be read.</p>
