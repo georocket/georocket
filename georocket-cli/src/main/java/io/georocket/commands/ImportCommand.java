@@ -213,7 +213,7 @@ public class ImportCommand extends AbstractGeoRocketCommand {
     
     String path = files.poll();
 
-    prepareFile(path, client, vertx)
+    importFile(path, client, vertx)
       .map(v -> {
         System.out.println("done");
         return v;
@@ -229,13 +229,13 @@ public class ImportCommand extends AbstractGeoRocketCommand {
   }
 
   /**
-   * Prepare file for import
+   * Upload a file to GeoRocket
    * @param path path to file to import
    * @param client the GeoRocket client
    * @param vertx the Vert.x instance
    * @return an observable that will emit when the file has been uploaded
    */
-  protected Observable<Void> prepareFile(String path, GeoRocketClient client, Vertx vertx) {
+  protected Observable<Void> importFile(String path, GeoRocketClient client, Vertx vertx) {
 
     // open file
     FileSystem fs = vertx.fileSystem();
@@ -249,41 +249,32 @@ public class ImportCommand extends AbstractGeoRocketCommand {
       // get file size
       .flatMap(f -> fs.propsObservable(path).map(props -> Pair.of(f, props.size())))
       // import file
-      .flatMap(f -> importFile((AsyncFile)f.getLeft().getDelegate(), f.getRight(), client));
-  }
+      .flatMap(f -> {
 
-  /**
-   * Upload a file to GeoRocket
-   * @param f the file to upload (will be closed at the end)
-   * @param fileSize the file's size
-   * @param client the GeoRocket client to use
-   * @return an observable that will emit when the file has been uploaded
-   */
-  private Observable<Void> importFile(AsyncFile f, long fileSize,
-      GeoRocketClient client) {
-    ObservableFuture<Void> o = RxHelper.observableFuture();
-    Handler<AsyncResult<Void>> handler = o.toHandler();
-    
-    WriteStream<Buffer> out = client.getStore().startImport(layer, tags,
-        Optional.of(fileSize), handler);
-    
-    Pump pump = Pump.pump(f, out);
-    f.endHandler(v -> {
-      f.close();
-      out.end();
+        ObservableFuture<Void> o = RxHelper.observableFuture();
+        Handler<AsyncResult<Void>> handler = o.toHandler();
+        AsyncFile file = (AsyncFile)f.getLeft().getDelegate();
+
+        WriteStream<Buffer> out = client.getStore().startImport(layer, tags,
+                Optional.of(f.getRight()), handler);
+
+        Pump pump = Pump.pump(file, out);
+        file.endHandler(v -> {
+          file.close();
+          out.end();
+        });
+
+        Handler<Throwable> exceptionHandler = t -> {
+          file.endHandler(null);
+          file.close();
+          out.end();
+          handler.handle(Future.failedFuture(t));
+        };
+        file.exceptionHandler(exceptionHandler);
+        out.exceptionHandler(exceptionHandler);
+
+        pump.start();
+        return o;
     });
-    
-    Handler<Throwable> exceptionHandler = t -> {
-      f.endHandler(null);
-      f.close();
-      out.end();
-      handler.handle(Future.failedFuture(t));
-    };
-    f.exceptionHandler(exceptionHandler);
-    out.exceptionHandler(exceptionHandler);
-    
-    pump.start();
-    
-    return o;
   }
 }
