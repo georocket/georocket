@@ -213,6 +213,9 @@ public class ImportCommand extends AbstractGeoRocketCommand {
     
     String path = files.poll();
 
+    // print file name
+    System.out.print("Importing " + Paths.get(path).getFileName() + " ... ");
+
     importFile(path, client, vertx)
       .map(v -> {
         System.out.println("done");
@@ -241,11 +244,6 @@ public class ImportCommand extends AbstractGeoRocketCommand {
     FileSystem fs = vertx.fileSystem();
     OpenOptions openOptions = new OpenOptions().setCreate(false).setWrite(false);
     return fs.openObservable(path, openOptions)
-      // print file name
-      .map(f -> {
-        System.out.print("Importing " + Paths.get(path).getFileName() + " ... ");
-        return f;
-      })
       // get file size
       .flatMap(f -> fs.propsObservable(path).map(props -> Pair.of(f, props.size())))
       // import file
