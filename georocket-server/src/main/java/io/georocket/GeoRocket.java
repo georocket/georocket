@@ -356,6 +356,11 @@ public class GeoRocket extends AbstractVerticle {
     return observable;
   }
 
+  /**
+   * Create a {@link Router} and add routes for <code>/store/</code>
+   * to it. Sub-classes may override if they want to add further routes
+   * @return the created {@link Router}
+   */
   protected Router createRouter() {
     Router router = Router.router(vertx);
     router.get("/store/*").handler(this::onGet);
@@ -364,6 +369,12 @@ public class GeoRocket extends AbstractVerticle {
     return router;
   }
 
+  /**
+   * Create a {@link HttpServerOptions} and set <code>Compression
+   * Support</code> as option. Sub-classes may override if they want to
+   * add further options
+   * @return the created {@link HttpServerOptions}
+   */
   protected HttpServerOptions createHttpServerOptions() {
     HttpServerOptions serverOptions = new HttpServerOptions()
             .setCompressionSupported(true);
