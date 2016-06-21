@@ -343,22 +343,42 @@ public class GeoRocket extends AbstractVerticle {
     vertx.deployVerticle(cls.getName(), options, observable.toHandler());
     return observable;
   }
-  
+
   private ObservableFuture<HttpServer> deployHttpServer() {
     int port = config().getInteger(ConfigConstants.PORT, ConfigConstants.DEFAULT_PORT);
-    
+
+    Router router = createRouter();
+    HttpServerOptions serverOptions = createHttpServerOptions();
+    HttpServer server = vertx.createHttpServer(serverOptions);
+
+    ObservableFuture<HttpServer> observable = RxHelper.observableFuture();
+    server.requestHandler(router::accept).listen(port, observable.toHandler());
+    return observable;
+  }
+
+  /**
+   * Create a {@link Router} and add routes for <code>/store/</code>
+   * to it. Sub-classes may override if they want to add further routes
+   * @return the created {@link Router}
+   */
+  protected Router createRouter() {
     Router router = Router.router(vertx);
     router.get("/store/*").handler(this::onGet);
     router.post("/store/*").handler(this::onPost);
     router.delete("/store/*").handler(this::onDelete);
-    
+    return router;
+  }
+
+  /**
+   * Create a {@link HttpServerOptions} and set <code>Compression
+   * Support</code> as option. Sub-classes may override if they want to
+   * add further options
+   * @return the created {@link HttpServerOptions}
+   */
+  protected HttpServerOptions createHttpServerOptions() {
     HttpServerOptions serverOptions = new HttpServerOptions()
         .setCompressionSupported(true);
-    HttpServer server = vertx.createHttpServer(serverOptions);
-    
-    ObservableFuture<HttpServer> observable = RxHelper.observableFuture();
-    server.requestHandler(router::accept).listen(port, observable.toHandler());
-    return observable;
+    return serverOptions;
   }
   
   @Override
