@@ -33,7 +33,7 @@ import io.vertx.core.json.JsonObject;
  * @author Michel Kraemer
  */
 public class GeoRocketCli extends AbstractGeoRocketCommand {
-  private static File geoRocketCliHome;
+  private File geoRocketCliHome;
   
   private boolean displayVersion;
   private AbstractGeoRocketCommand command;
@@ -128,13 +128,12 @@ public class GeoRocketCli extends AbstractGeoRocketCommand {
    * @throws IOException if a stream could not be read
    */
   public static void main(String[] args) throws IOException {
-
     // start CLI
     GeoRocketCli cli = new GeoRocketCli();
     cli.setup();
     try {
       PrintWriter out = new PrintWriter(new OutputStreamWriter(
-              System.out, StandardCharsets.UTF_8));
+          System.out, StandardCharsets.UTF_8));
       cli.setEndHandler(exitCode -> {
         out.flush();
         System.exit(exitCode);
@@ -147,16 +146,17 @@ public class GeoRocketCli extends AbstractGeoRocketCommand {
   }
 
   /**
-   * Setup GeoRocket Cli.
+   * Setup GeoRocket CLI
    */
   protected void setup() {
     // get GEOROCKET_CLI_HOME
     String geoRocketCliHomeStr = System.getenv("GEOROCKET_CLI_HOME");
     if (geoRocketCliHomeStr == null) {
       System.err.println("Environment variable GEOROCKET_CLI_HOME not set. "
-              + "Using current working directory.");
+          + "Using current working directory.");
       geoRocketCliHomeStr = new File(".").getAbsolutePath();
     }
+
     try {
       geoRocketCliHome = new File(geoRocketCliHomeStr).getCanonicalFile();
     } catch (IOException e) {

@@ -198,7 +198,6 @@ public class StoreClient {
    */
   public WriteStream<Buffer> startImport(String layer, Collection<String> tags,
       Optional<Long> size, Handler<AsyncResult<Void>> handler) {
-
     String path = prepareImport(layer, tags);
     HttpClientRequest request = client.post(path);
 
@@ -218,20 +217,17 @@ public class StoreClient {
       }
     });
 
-    return setRequestOptions(request);
+    return configureRequest(request);
   }
 
   /**
-   * Set additional options for HTTP requests. Because some requests
-   * require special options, the option setting is outsourced to this
-   * method.
-   *
-   * @param request request the options are created for
-   * @return same {@link HttpClientRequest} as given as parameter but with options set
+   * Configure an HTTP request. The default implementation of this method does
+   * nothing. Sub-classes may override if they want to configure a request
+   * before it is sent.
+   * @param request request the request to configure
+   * @return same {@link HttpClientRequest} as given but with options set
    */
-
-  protected HttpClientRequest setRequestOptions(HttpClientRequest request) {
-    // nothing to set by default. Subclasses may override
+  protected HttpClientRequest configureRequest(HttpClientRequest request) {
     return request;
   }
 

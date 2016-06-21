@@ -210,19 +210,18 @@ public class ImportCommand extends AbstractGeoRocketCommand {
       handler.handle(0);
       return;
     }
-    
+
+    // get the first file to import
     String path = files.poll();
 
     // print file name
     System.out.print("Importing " + Paths.get(path).getFileName() + " ... ");
 
+    // import file
     importFile(path, client, vertx)
-      .map(v -> {
-        System.out.println("done");
-        return v;
-      })
-      // handle response
       .subscribe(v -> {
+        System.out.println("done");
+        // import next file in the queue
         doImport(files, client, vertx, handler);
       }, err -> {
         System.out.println("error");
@@ -239,7 +238,6 @@ public class ImportCommand extends AbstractGeoRocketCommand {
    * @return an observable that will emit when the file has been uploaded
    */
   protected Observable<Void> importFile(String path, GeoRocketClient client, Vertx vertx) {
-
     // open file
     FileSystem fs = vertx.fileSystem();
     OpenOptions openOptions = new OpenOptions().setCreate(false).setWrite(false);
@@ -248,13 +246,12 @@ public class ImportCommand extends AbstractGeoRocketCommand {
       .flatMap(f -> fs.propsObservable(path).map(props -> Pair.of(f, props.size())))
       // import file
       .flatMap(f -> {
-
         ObservableFuture<Void> o = RxHelper.observableFuture();
         Handler<AsyncResult<Void>> handler = o.toHandler();
         AsyncFile file = (AsyncFile)f.getLeft().getDelegate();
 
         WriteStream<Buffer> out = client.getStore().startImport(layer, tags,
-                Optional.of(f.getRight()), handler);
+            Optional.of(f.getRight()), handler);
 
         Pump pump = Pump.pump(file, out);
         file.endHandler(v -> {
