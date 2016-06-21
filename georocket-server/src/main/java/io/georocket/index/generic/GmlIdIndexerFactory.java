@@ -9,7 +9,6 @@ import com.google.common.collect.ImmutableMap;
 
 import io.georocket.index.IndexerFactory;
 /**
- * Create instances of {@link GmlIdIndexer}
  * @author Michel Kraemer
  */
 public abstract class GmlIdIndexerFactory implements IndexerFactory {

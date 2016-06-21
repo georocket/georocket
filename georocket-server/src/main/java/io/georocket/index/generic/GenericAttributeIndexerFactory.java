@@ -10,7 +10,6 @@ import com.google.common.collect.ImmutableMap;
 
 import io.georocket.index.IndexerFactory;
 /**
- * Create instances of {@link GenericAttributeIndexer}
  * @author Michel Kraemer
  */
 public abstract class GenericAttributeIndexerFactory implements IndexerFactory {

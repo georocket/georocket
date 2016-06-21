@@ -14,7 +14,6 @@ import com.google.common.collect.ImmutableMap;
 
 import io.georocket.index.IndexerFactory;
 /**
- * Create instances of {@link BoundingBoxIndexer}
  * @author Michel Kraemer
  */
 public abstract class BoundingBoxIndexerFactory implements IndexerFactory {
