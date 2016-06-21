@@ -1,4 +1,4 @@
-package io.georocket.index.xml;
+package io.georocket.index.generic;
 
 import java.util.Map;
 
