@@ -12,21 +12,17 @@ import org.elasticsearch.index.query.QueryBuilders;
 import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableMap;
 
+import io.georocket.index.IndexerFactory;
 /**
  * Create instances of {@link BoundingBoxIndexer}
  * @author Michel Kraemer
  */
-public class BoundingBoxIndexerFactory implements XMLIndexerFactory {
+public abstract class BoundingBoxIndexerFactory implements IndexerFactory {
   private static final String FLOAT_REGEX = "[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?";
   private static final String COMMA_REGEX = "\\s*,\\s*";
   private static final String BBOX_REGEX = FLOAT_REGEX + COMMA_REGEX + FLOAT_REGEX +
       COMMA_REGEX + FLOAT_REGEX + COMMA_REGEX + FLOAT_REGEX;
   private static final Pattern BBOX_PATTERN = Pattern.compile(BBOX_REGEX);
-  
-  @Override
-  public XMLIndexer createIndexer() {
-    return new BoundingBoxIndexer();
-  }
 
   @Override
   public Map<String, Object> getMapping() {
