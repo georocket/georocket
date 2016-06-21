@@ -343,20 +343,20 @@ public class GeoRocket extends AbstractVerticle {
     vertx.deployVerticle(cls.getName(), options, observable.toHandler());
     return observable;
   }
-  
+
   private ObservableFuture<HttpServer> deployHttpServer() {
     int port = config().getInteger(ConfigConstants.PORT, ConfigConstants.DEFAULT_PORT);
 
-    Router router = setRoutes();
-    HttpServerOptions serverOptions = setHttpServerOptions();
+    Router router = configureRoutes();
+    HttpServerOptions serverOptions = configureHttpServerOptions();
     HttpServer server = vertx.createHttpServer(serverOptions);
-    
+
     ObservableFuture<HttpServer> observable = RxHelper.observableFuture();
     server.requestHandler(router::accept).listen(port, observable.toHandler());
     return observable;
   }
 
-  protected Router setRoutes() {
+  protected Router configureRoutes() {
     Router router = Router.router(vertx);
     router.get("/store/*").handler(this::onGet);
     router.post("/store/*").handler(this::onPost);
@@ -364,7 +364,7 @@ public class GeoRocket extends AbstractVerticle {
     return router;
   }
 
-  protected HttpServerOptions setHttpServerOptions() {
+  protected HttpServerOptions configureHttpServerOptions() {
     HttpServerOptions serverOptions = new HttpServerOptions()
             .setCompressionSupported(true);
     return serverOptions;
