@@ -1,13 +1,5 @@
 package io.georocket;
 
-import java.util.Calendar;
-import java.util.Date;
-import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
 import io.georocket.constants.AddressConstants;
 import io.georocket.constants.ConfigConstants;
 import io.georocket.index.xml.CRSIndexer;
@@ -34,6 +26,14 @@ import io.vertx.rxjava.core.eventbus.Message;
 import io.vertx.rxjava.core.file.FileSystem;
 import io.vertx.rxjava.core.streams.ReadStream;
 import rx.Observable;
+
+import java.util.Calendar;
+import java.util.Date;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Imports file in the background
@@ -87,7 +87,8 @@ public class ImporterVerticle extends AbstractVerticle {
     String filename = body.getString("filename");
     String filePath = incoming + "/" + filename;
     String layer = body.getString("layer", "/");
-    
+    String contentType = body.getString("contentType");
+
     // get tags
     JsonArray tagsArr = body.getJsonArray("tags");
     List<String> tags = tagsArr != null ? tagsArr.stream().flatMap(o -> o != null ?
@@ -101,8 +102,9 @@ public class ImporterVerticle extends AbstractVerticle {
     
     FileSystem fs = vertx.fileSystem();
     OpenOptions openOptions = new OpenOptions().setCreate(false).setWrite(false);
+
     fs.openObservable(filePath, openOptions)
-      .flatMap(f -> importXML(f, importId, filename, timeStamp, layer, tags).finallyDo(() -> {
+      .flatMap(f -> importFile(contentType, f, importId, filename, timeStamp, layer, tags).finallyDo(() -> {
         // delete file from 'incoming' folder
         log.info("Deleting " + filePath + " from incoming folder");
         f.closeObservable()
@@ -115,10 +117,38 @@ public class ImporterVerticle extends AbstractVerticle {
         log.error("Failed to import chunk", err);
       });
   }
-  
+
+  /**
+   * Import a file from the given input stream into the store
+   * @param contentType The file content type
+   * @param f the XML file to read
+   * @param importId the id of this import event
+   * @param filename the filename of the readed stream
+   * @param importTimeStamp the timestamp of this import event
+   * @param layer the layer where the file should be stored (may be null)
+   * @param tags the list of tags to attach to the file (may be null)
+   * @return an observable that will emit when the file has been imported
+   */
+  protected Observable<Void> importFile(String contentType, ReadStream<Buffer> f, String importId, String filename,
+                                        Date importTimeStamp, String layer, List<String> tags) {
+    switch (contentType) {
+      case "application/xml":
+      case "text/xml":
+        return importXML(f, importId, filename, importTimeStamp, layer, tags);
+      default:
+        log.error(String.format("Received an unexpected Content-Type '%s' during import of file '%s'", contentType, filename));
+    }
+
+    // Will be empty by default.
+    return Observable.<Void>empty();
+  }
+
   /**
    * Imports an XML file from the given input stream into the store
    * @param f the XML file to read
+   * @param importId the id of this import event
+   * @param filename the filename of the readed stream
+   * @param importTimeStamp the timestamp of this import event
    * @param layer the layer where the file should be stored (may be null)
    * @param tags the list of tags to attach to the file (may be null)
    * @return an observable that will emit when the file has been imported
