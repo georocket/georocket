@@ -274,7 +274,7 @@ public class IndexerVerticle extends AbstractVerticle {
           msg.fail(400, "Missing metadata for chunk " + path);
           return Observable.empty();
         }
-        ChunkMeta meta = ChunkMeta.fromJsonObject(metaObj);
+        ChunkMeta meta = getChunkMeta(metaObj);
         
         // get tags
         JsonArray tagsArr = body.getJsonArray("tags");
@@ -315,13 +315,22 @@ public class IndexerVerticle extends AbstractVerticle {
         return Observable.empty();
       });
   }
+
+  /**
+   * Override this method to return own ChunkMeta type.
+   * @param metaObj The meta Object used to create a ChunkMeta object.
+   * @return The ChunkMeta.
+   */
+  protected ChunkMeta getChunkMeta(JsonObject metaObj) {
+    return ChunkMeta.fromJsonObject(metaObj);
+  }
   
   /**
    * Open a chunk
    * @param path the path to the chunk to open
    * @return an observable that emits a {@link ChunkReadStream}
    */
-  private Observable<ChunkReadStream> openChunk(String path) {
+  protected Observable<ChunkReadStream> openChunk(String path) {
     ObservableFuture<ChunkReadStream> observable = RxHelper.observableFuture();
     store.getOne(path, observable.toHandler());
     return observable;
@@ -336,7 +345,7 @@ public class IndexerVerticle extends AbstractVerticle {
    * CRS is available as fallback)
    * @return an observable that emits the document
    */
-  private Observable<Map<String, Object>> openChunkToDocument(String path,
+  protected Observable<Map<String, Object>> openChunkToDocument(String path,
       String fallbackCRSString) {
     return Observable.<Map<String, Object>>create(subscriber -> {
       openChunk(path)
@@ -441,7 +450,7 @@ public class IndexerVerticle extends AbstractVerticle {
    * CRS is available as fallback)
    * @return an observable that will emit the document
    */
-  private Observable<Map<String, Object>> chunkToDocument(ChunkReadStream chunk,
+  protected Observable<Map<String, Object>> chunkToDocument(ChunkReadStream chunk,
       String fallbackCRSString) {
     AsyncXMLParser xmlParser = new AsyncXMLParser();
     
@@ -472,7 +481,7 @@ public class IndexerVerticle extends AbstractVerticle {
    * @param doc the document
    * @param meta the metadata to add to the document
    */
-  private void addMeta(Map<String, Object> doc, ChunkMeta meta) {
+  protected void addMeta(Map<String, Object> doc, ChunkMeta meta) {
     doc.put("chunkStart", meta.getStart());
     doc.put("chunkEnd", meta.getEnd());
     doc.put("chunkParents", meta.getParents().stream().map(p ->
@@ -485,7 +494,7 @@ public class IndexerVerticle extends AbstractVerticle {
    * @return the metadata
    */
   @SuppressWarnings("unchecked")
-  private ChunkMeta getMeta(Map<String, Object> source) {
+  protected ChunkMeta getMeta(Map<String, Object> source) {
     int start = ((Number)source.get("chunkStart")).intValue();
     int end = ((Number)source.get("chunkEnd")).intValue();
     
@@ -553,7 +562,7 @@ public class IndexerVerticle extends AbstractVerticle {
     // load default mapping
     Yaml yaml = new Yaml();
     Map<String, Object> source;
-    try (InputStream is = this.getClass().getResourceAsStream("index_defaults.yaml")) {
+    try (InputStream is = getYamlInputStream("index_defaults.yaml")) {
       source = (Map<String, Object>)yaml.load(is);
     } catch (IOException e) {
       return Observable.error(e);
@@ -571,6 +580,16 @@ public class IndexerVerticle extends AbstractVerticle {
     ObservableFuture<CreateIndexResponse> observable = RxHelper.observableFuture();
     client.admin().indices().create(request, handlerToListener(observable.toHandler()));
     return observable.map(r -> null);
+  }
+  
+  /**
+   * Get or create the input stream for the given yaml file. 
+   * Override this method to provide own yaml file for indexing.
+   * @param path The path which points to the yaml file.
+   * @return The yaml file input stream
+   */
+  protected InputStream getYamlInputStream(String path){
+    return this.getClass().getResourceAsStream("index_defaults.yaml");
   }
   
   /**

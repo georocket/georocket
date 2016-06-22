@@ -60,7 +60,7 @@ public abstract class IndexedStore implements Store {
 
   @Override
   public void delete(String search, String path, Handler<AsyncResult<Void>> handler) {
-    new IndexedStoreCursor(vertx, PAGE_SIZE, search, path).start(ar -> {
+    get(search, path, ar -> {
       if (ar.failed()) {
         Throwable cause = ar.cause();
         if (cause instanceof ReplyException) {
