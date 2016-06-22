@@ -1,6 +1,6 @@
 {
   "query": "1,2,3,4 foobar",
-  "queryCompilers": ["io.georocket.index.xml.BoundingBoxIndexerFactory"],
+  "queryCompilers": ["io.georocket.index.xml.XMLBoundingBoxIndexerFactory"],
   "expected": {
     "bool": {
       "should": [{
