@@ -1,4 +1,4 @@
-package io.georocket.index.xml;
+package io.georocket.index.generic;
 
 import java.util.Map;
 
@@ -8,15 +8,11 @@ import org.elasticsearch.index.query.QueryBuilders;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
+import io.georocket.index.IndexerFactory;
 /**
- * Create instances of {@link GenericAttributeIndexer}
  * @author Michel Kraemer
  */
-public class GenericAttributeIndexerFactory implements XMLIndexerFactory {
-  @Override
-  public XMLIndexer createIndexer() {
-    return new GenericAttributeIndexer();
-  }
+public abstract class GenericAttributeIndexerFactory implements IndexerFactory {
 
   @Override
   public Map<String, Object> getMapping() {
