@@ -165,7 +165,7 @@ public class IndexerVerticle extends AbstractVerticle {
   }
 
   /**
-   * Register all message consumers for this verticle.
+   * Register all message consumers for this verticle
    */
   protected void registerMessageConsumers() {
     registerAdd();
@@ -297,19 +297,16 @@ public class IndexerVerticle extends AbstractVerticle {
         String filename = body.getString("filename");
         Long importTime = body.getLong("importTime");
 
-
         // open chunk and create IndexRequest
         return openChunkToDocument(path, fallbackCRSString)
             .doOnNext(doc -> {
-              // add metadata and tags to document
+              doc.put("importId", importId);
+              doc.put("filename", filename);
+              doc.put("importTime", importTime);
               addMeta(doc, meta);
               if (tags != null) {
                 doc.put("tags", tags);
               }
-
-              doc.put("importId", importId);
-              doc.put("filename", filename);
-              doc.put("importTime", importTime);
             })
             .map(doc -> Pair.of(documentToIndexRequest(path, doc), msg))
             .onErrorResumeNext(err -> {
@@ -435,17 +432,18 @@ public class IndexerVerticle extends AbstractVerticle {
     
     // execute bulk request
     long startTimeStamp = System.currentTimeMillis();
-    startedDeleting(startTimeStamp, paths.size());
+    onDeletingStarted(startTimeStamp, paths.size());
 
     ObservableFuture<BulkResponse> observable = RxHelper.observableFuture();
     client.bulk(br, handlerToListener(observable.toHandler()));
     return observable.flatMap(bres -> {
       long stopTimeStamp = System.currentTimeMillis();
       if (bres.hasFailures()) {
-        finishedDeleting(startTimeStamp - stopTimeStamp, paths.size(), true, bres.buildFailureMessage());
-        return Observable.error(new NoStackTraceThrowable(bres.buildFailureMessage()));
+        String failureMessage = bres.buildFailureMessage();
+        onDeletingFinished(startTimeStamp - stopTimeStamp, paths.size(), failureMessage);
+        return Observable.error(new NoStackTraceThrowable(failureMessage));
       } else {
-        finishedDeleting(startTimeStamp - stopTimeStamp, paths.size(), false, null);
+        onDeletingFinished(startTimeStamp - stopTimeStamp, paths.size(), null);
         return Observable.just(null);
       }
     });
@@ -453,30 +451,27 @@ public class IndexerVerticle extends AbstractVerticle {
 
 
   /**
-   * <p>Will be called, before the indexer has started the deleting process.</p>
-   * <p>The deleting process will be called if an index should be removed.</p>
-   *
-   * @param timeStamp The time when the indexer has started
-   * @param chunkCount The number of chunks messages from which the deleting requests were created
+   * Will be called before the indexer starts deleting chunks
+   * @param timeStamp the time when the indexer has started deleting
+   * @param chunkCount the number of chunks to delete
    */
-  protected void startedDeleting(long timeStamp, int chunkCount) {
+  protected void onDeletingStarted(long timeStamp, int chunkCount) {
     log.info("Deleting " + chunkCount + " chunks from index ...");
   }
 
   /**
-   * <p>Will be called, after the indexer has finished the deleting process.</p>
-   * <p>The deleting process will be called if an index should be removed.</p>
-   *
-   * @param duration The deleting duration - time passing from the start until the end
-   * @param chunkCount The number of chunks messages from which the deleting requests were created
-   * @param withError true if an error has occurred
-   * @param errorMessage The error message. (Will be null of withError == false)
+   * Will be called after the indexer has finished deleting chunks
+   * @param duration the time it took to delete the chunks
+   * @param chunkCount the number of deleted chunks
+   * @param errorMessage an error message if the process has failed
+   * or <code>null</code> if everything was successful
    */
-  protected void finishedDeleting(long duration, int chunkCount, boolean withError, String errorMessage) {
-    if (withError) {
-      log.error("Finished deleting with error: " + errorMessage);
+  protected void onDeletingFinished(long duration, int chunkCount, String errorMessage) {
+    if (errorMessage != null) {
+      log.error("Deleting chunks failed: " + errorMessage);
     } else {
-      log.info("Finished deleting " + chunkCount + " chunks from index in " + duration + " ms");
+      log.info("Finished deleting " + chunkCount +
+          " chunks from index in " + duration + " ms");
     }
   }
 
@@ -488,7 +483,8 @@ public class IndexerVerticle extends AbstractVerticle {
    * CRS is available as fallback)
    * @return an observable that will emit the document
    */
-  private Observable<Map<String, Object>> xmlChunkToDocument(ChunkReadStream chunk, String fallbackCRSString) {
+  private Observable<Map<String, Object>> xmlChunkToDocument(ChunkReadStream chunk,
+      String fallbackCRSString) {
     AsyncXMLParser xmlParser = new AsyncXMLParser();
     
     List<XMLIndexer> indexers = new ArrayList<>();
@@ -644,7 +640,7 @@ public class IndexerVerticle extends AbstractVerticle {
    */
   private Observable<Void> insertDocuments(BulkRequest bulkRequest, List<Message<JsonObject>> messages) {
     long startTimeStamp = System.currentTimeMillis();
-    startedIndexing(startTimeStamp, messages.size());
+    onIndexingStarted(startTimeStamp, messages.size());
 
     ObservableFuture<BulkResponse> observable = RxHelper.observableFuture();
     client.bulk(bulkRequest, handlerToListener(observable.toHandler()));
@@ -658,36 +654,31 @@ public class IndexerVerticle extends AbstractVerticle {
         }
       }
       long stopTimeStamp = System.currentTimeMillis();
-      if (bres.hasFailures()) {
-        finishedIndexing(startTimeStamp - stopTimeStamp, messages.size(), true, bres.buildFailureMessage());
-      } else {
-        finishedIndexing(startTimeStamp - stopTimeStamp, messages.size(), false, null);
-      }
+      onIndexingFinished(startTimeStamp - stopTimeStamp, messages.size(),
+          bres.hasFailures() ? bres.buildFailureMessage() : null);
       return Observable.empty();
     });
   }
 
   /**
-   * Will be called, before the indexer has started the indexing process.
-   *
-   * @param timeStamp The time when the indexer has started
-   * @param chunkCount The number of chunks messages from which the index requests were created
+   * Will be called before the indexer starts the indexing process
+   * @param timeStamp the time when the indexer has started the process
+   * @param chunkCount the number of chunks to index
    */
-  protected void startedIndexing(long timeStamp, int chunkCount) {
+  protected void onIndexingStarted(long timeStamp, int chunkCount) {
     log.info("Indexing " + chunkCount + " chunks");
   }
 
   /**
-   * Will be called, after the indexer has finished the indexing process.
-   *
-   * @param duration The indexing duration - time passing from the start until the end
-   * @param chunkCount The number of chunks messages from which the index requests were created
-   * @param withError true if an error has occurred
-   * @param errorMessage The error message. (Will be null of withError == false)
+   * Will be called after the indexer has finished the indexing process
+   * @param duration the time passed during indexing
+   * @param chunkCount the number of chunks indexed
+   * @param errorMessage an error message if the process has failed
+   * or <code>null</code> if everything was successful
    */
-  protected void finishedIndexing(long duration, int chunkCount, boolean withError, String errorMessage) {
-    if (withError) {
-      log.error("Finished indexing with error: " + errorMessage);
+  protected void onIndexingFinished(long duration, int chunkCount, String errorMessage) {
+    if (errorMessage != null) {
+      log.error("Indexing failed: " + errorMessage);
     } else {
       log.info("Finished indexing " + chunkCount + " chunks in " + duration + " ms");
     }

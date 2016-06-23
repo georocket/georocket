@@ -85,7 +85,7 @@ public class ImporterVerticle extends AbstractVerticle {
   protected void onImport(Message<JsonObject> msg) {
     JsonObject body = msg.body();
     String filename = body.getString("filename");
-    String filePath = incoming + "/" + filename;
+    String filepath = incoming + "/" + filename;
     String layer = body.getString("layer", "/");
     
     // get tags
@@ -93,20 +93,20 @@ public class ImporterVerticle extends AbstractVerticle {
     List<String> tags = tagsArr != null ? tagsArr.stream().flatMap(o -> o != null ?
         Stream.of(o.toString()) : Stream.of()).collect(Collectors.toList()) : null;
     
-    log.info("Importing " + filePath + " to layer " + layer);
+    log.info("Importing " + filepath + " to layer " + layer);
 
-    // make this import explicit
+    // generate ID and timestamp for this import
     String importId = UUID.randomUUID().toString();
     Date timeStamp = Calendar.getInstance().getTime();
     
     FileSystem fs = vertx.fileSystem();
     OpenOptions openOptions = new OpenOptions().setCreate(false).setWrite(false);
-    fs.openObservable(filePath, openOptions)
+    fs.openObservable(filepath, openOptions)
       .flatMap(f -> importXML(f, importId, filename, timeStamp, layer, tags).finallyDo(() -> {
         // delete file from 'incoming' folder
-        log.info("Deleting " + filePath + " from incoming folder");
+        log.info("Deleting " + filepath + " from incoming folder");
         f.closeObservable()
-          .flatMap(v -> fs.deleteObservable(filePath))
+          .flatMap(v -> fs.deleteObservable(filepath))
           .subscribe(v -> {}, err -> {
             log.error("Could not delete file from 'incoming' folder", err);
           });
@@ -119,12 +119,15 @@ public class ImporterVerticle extends AbstractVerticle {
   /**
    * Imports an XML file from the given input stream into the store
    * @param f the XML file to read
+   * @param importId a unique identifier for this import process
+   * @param filename the name of the file currently being imported
+   * @param importTimeStamp denotes when the import process has started
    * @param layer the layer where the file should be stored (may be null)
    * @param tags the list of tags to attach to the file (may be null)
    * @return an observable that will emit when the file has been imported
    */
-  private Observable<Void> importXML(ReadStream<Buffer> f, String importId, String filename, Date importTimeStamp,
-                                     String layer, List<String> tags) {
+  private Observable<Void> importXML(ReadStream<Buffer> f, String importId,
+      String filename, Date importTimeStamp, String layer, List<String> tags) {
     AsyncXMLParser xmlParser = new AsyncXMLParser();
     Window window = new Window();
     Splitter splitter = new FirstLevelSplitter(window);
@@ -148,8 +151,10 @@ public class ImporterVerticle extends AbstractVerticle {
           // count number of chunks being written
           processing.incrementAndGet();
 
-          IndexMeta indexMeta = new IndexMeta(importId, filename, importTimeStamp, tags, crsIndexer.getCRS());
-          Observable<Void> o = addToStore(result.getChunk(), result.getMeta(), layer, indexMeta);
+          IndexMeta indexMeta = new IndexMeta(importId, filename,
+              importTimeStamp, tags, crsIndexer.getCRS());
+          Observable<Void> o = addToStore(result.getChunk(), result.getMeta(),
+              layer, indexMeta);
           return o.doOnNext(v -> {
             // resume stream only after all chunks from the current
             // buffer have been stored
@@ -188,7 +193,8 @@ public class ImporterVerticle extends AbstractVerticle {
    * @return an observable that will emit exactly one item when the
    * operation has finished
    */
-  protected Observable<Void> addToStore(String chunk, ChunkMeta meta, String layer, IndexMeta indexMeta) {
+  protected Observable<Void> addToStore(String chunk, ChunkMeta meta,
+      String layer, IndexMeta indexMeta) {
     return Observable.<Void>create(subscriber -> {
       addToStoreNoRetry(chunk, meta, layer, indexMeta).subscribe(subscriber);
     }).retryWhen(RxUtils.makeRetry(MAX_RETRIES, RETRY_INTERVAL, log));
