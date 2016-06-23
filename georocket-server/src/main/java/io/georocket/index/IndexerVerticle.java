@@ -4,6 +4,8 @@ import static io.georocket.util.ThrowableHelper.throwableToCode;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -26,7 +28,9 @@ import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.Requests;
+import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.node.Node;
 import org.elasticsearch.node.NodeBuilder;
@@ -117,37 +121,17 @@ public class IndexerVerticle extends AbstractVerticle {
   public void start(Future<Void> startFuture) {
     log.info("Launching indexer ...");
     
-    String home = vertx.getOrCreateContext().config().getString(
-        ConfigConstants.STORAGE_FILE_PATH);
-    String root = home + "/index";
-    
-    // start embedded ElasticSearch instance
-    Settings settings = Settings.builder()
-        .put("node.name", "georocket-node")
-        .put("path.home", root)
-        .put("path.data", root + "/data")
-        .put("http.enabled", true) // TODO enable HTTP for debugging purpose only!
-        .build();
-    
     // load xml indexer factories now and not lazily to avoid concurrent
     // modifications to the service loader's internal cache
     xmlIndexerFactories = ImmutableList.copyOf(ServiceLoader.load(XMLIndexerFactory.class));
-    
-    vertx.<Node>executeBlocking(f -> {
-      f.complete(NodeBuilder.nodeBuilder()
-          .settings(settings)
-          .clusterName("georocket-cluster")
-          .data(true)
-          .local(true)
-          .node());
-    }, ar -> {
+
+    vertx.<Client>executeBlocking(this::createElasticsearchClient, ar -> {
       if (ar.failed()) {
         startFuture.fail(ar.cause());
         return;
       }
       
-      node = ar.result();
-      client = node.client();
+      client = ar.result();
       
       queryCompiler = new DefaultQueryCompiler(xmlIndexerFactories);
       store = StoreFactory.createStore((Vertx)vertx.getDelegate());
@@ -161,7 +145,62 @@ public class IndexerVerticle extends AbstractVerticle {
   @Override
   public void stop() {
     client.close();
-    node.close();
+    if(node != null){
+      node.close();
+    }
+  }
+  
+  private void createElasticsearchClient(io.vertx.rxjava.core.Future<Client> f){
+    
+    boolean embedded = vertx.getOrCreateContext().config().getBoolean(ConfigConstants.INDEX_ELASTICSEARCH_EMBEDDED, true);
+    
+    if(embedded){
+      // create local node
+      String home = vertx.getOrCreateContext().config().getString(
+      ConfigConstants.STORAGE_FILE_PATH);
+      String root = home + "/index";
+      
+      // start embedded ElasticSearch instance
+      Settings settings = Settings.builder()
+          .put("node.name", "georocket-node")
+          .put("path.home", root)
+          .put("path.data", root + "/data")
+          .put("http.enabled", true) // TODO enable HTTP for debugging purpose only!
+          .build();
+      
+      node = NodeBuilder.nodeBuilder()
+            .settings(settings)
+            .clusterName("georocket-cluster")
+            .data(true)
+            .local(true)
+            .node();
+        
+      f.complete(node.client());      
+    }
+    else {
+      // use remote cluster
+      String host = vertx.getOrCreateContext().config().getString(ConfigConstants.INDEX_ELASTICSEARCH_HOST, "localhost");
+      int port = vertx.getOrCreateContext().config().getInteger(ConfigConstants.INDEX_ELASTICSEARCH_PORT, 9300);
+      // see https://www.elastic.co/guide/en/elasticsearch/client/java-api/2.3/transport-client.html
+      boolean sniff = vertx.getOrCreateContext().config().getBoolean(ConfigConstants.INDEX_ELASTICSEARCH_ENABLE_SNIFF, false);
+      // "Note that you have to set the cluster name if you use one different than "elasticsearch":"
+      // see https://www.elastic.co/guide/en/elasticsearch/client/java-api/current/transport-client.html
+      String clustername = vertx.getOrCreateContext().config()
+          .getString(ConfigConstants.INDEX_ELASTICSEARCH_CLUSTERNAME, "elasticsearch");
+
+      Settings settings = Settings.builder()
+          .put("cluster.name", clustername)
+          .put("client.transport.sniff", sniff)
+          .build();
+
+      try {
+        f.complete(TransportClient.builder().settings(settings).build()
+        .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(host), port)));
+      } catch (UnknownHostException e) {
+        f.fail(e.toString());
+      }
+    }
+    
   }
 
   /**
