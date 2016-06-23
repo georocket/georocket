@@ -74,14 +74,14 @@ import rx.functions.Func1;
 public class IndexerVerticle extends AbstractVerticle {
   private static Logger log = LoggerFactory.getLogger(IndexerVerticle.class);
   
-  private static final int MAX_ADD_REQUESTS = 1000;
-  private static final long BUFFER_TIMESPAN = 5000;
-  private static final int MAX_INSERT_REQUESTS = 5;
-  private static final int MAX_RETRIES = 5;
-  private static final int RETRY_INTERVAL = 1000;
-  
-  private static final String INDEX_NAME = "georocket";
-  private static final String TYPE_NAME = "object";
+  protected static final int MAX_ADD_REQUESTS = 1000;
+  protected static final long BUFFER_TIMESPAN = 5000;
+  protected static final int MAX_INSERT_REQUESTS = 5;
+  protected static final int MAX_RETRIES = 5;
+  protected static final int RETRY_INTERVAL = 1000;
+
+  protected static final String INDEX_NAME = "georocket";
+  protected static final String TYPE_NAME = "object";
   
   /**
    * The Elasticsearch node
@@ -91,22 +91,22 @@ public class IndexerVerticle extends AbstractVerticle {
   /**
    * The Elasticsearch client
    */
-  private Client client;
+  protected Client client;
   
   /**
    * The GeoRocket store
    */
-  private Store store;
+  protected Store store;
   
   /**
    * A list of {@link XMLIndexerFactory} objects
    */
-  private ImmutableList<XMLIndexerFactory> xmlIndexerFactories;
+  protected ImmutableList<XMLIndexerFactory> xmlIndexerFactories;
   
   /**
    * Compiles search strings to Elasticsearch documents
    */
-  private DefaultQueryCompiler queryCompiler;
+  protected DefaultQueryCompiler queryCompiler;
   
   /**
    * True if {@link #ensureIndex()} has been called at least once
@@ -152,9 +152,7 @@ public class IndexerVerticle extends AbstractVerticle {
       queryCompiler = new DefaultQueryCompiler(xmlIndexerFactories);
       store = StoreFactory.createStore((Vertx)vertx.getDelegate());
       
-      registerAdd();
-      registerDelete();
-      registerQuery();
+      registerMessageConsumers();
       
       startFuture.complete();
     });
@@ -165,7 +163,16 @@ public class IndexerVerticle extends AbstractVerticle {
     client.close();
     node.close();
   }
-  
+
+  /**
+   * Register all message consumers for this verticle
+   */
+  protected void registerMessageConsumers() {
+    registerAdd();
+    registerDelete();
+    registerQuery();
+  }
+
   /**
    * @return a function that can be passed to {@link Observable#retryWhen(Func1)}
    * @see RxUtils#makeRetry(int, int, Logger)
@@ -177,7 +184,7 @@ public class IndexerVerticle extends AbstractVerticle {
   /**
    * Register consumer for add messages
    */
-  private void registerAdd() {
+  protected void registerAdd() {
     vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_ADD)
       .toObservable()
       .buffer(BUFFER_TIMESPAN, TimeUnit.MILLISECONDS, MAX_ADD_REQUESTS)
@@ -222,7 +229,7 @@ public class IndexerVerticle extends AbstractVerticle {
   /**
    * Register consumer for delete messages
    */
-  private void registerDelete() {
+  protected void registerDelete() {
     vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_DELETE)
       .toObservable()
       .subscribe(msg -> {
@@ -238,7 +245,7 @@ public class IndexerVerticle extends AbstractVerticle {
   /**
    * Register consumer for queries
    */
-  private void registerQuery() {
+  protected void registerQuery() {
     vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_QUERY)
       .toObservable()
       .subscribe(msg -> {
@@ -285,11 +292,17 @@ public class IndexerVerticle extends AbstractVerticle {
         String fallbackCRSString = body.getString("fallbackCRSString");
         
         log.trace("Indexing " + path);
-        
+
+        String importId = body.getString("importId");
+        String filename = body.getString("filename");
+        Long importTime = body.getLong("importTime");
+
         // open chunk and create IndexRequest
         return openChunkToDocument(path, fallbackCRSString)
             .doOnNext(doc -> {
-              // add metadata and tags to document
+              doc.put("importId", importId);
+              doc.put("filename", filename);
+              doc.put("importTime", importTime);
               addMeta(doc, meta);
               if (tags != null) {
                 doc.put("tags", tags);
@@ -342,7 +355,7 @@ public class IndexerVerticle extends AbstractVerticle {
       openChunk(path)
         .flatMap(chunk -> {
           // convert chunk to document and close it
-          return chunkToDocument(chunk, fallbackCRSString).finallyDo(chunk::close);
+          return xmlChunkToDocument(chunk, fallbackCRSString).finallyDo(chunk::close);
         })
         .subscribe(subscriber);
     }).retryWhen(makeRetry());
@@ -418,21 +431,50 @@ public class IndexerVerticle extends AbstractVerticle {
     }
     
     // execute bulk request
-    long startDeleting = System.currentTimeMillis();
-    log.info("Deleting " + paths.size() + " chunks from index ...");
+    long startTimeStamp = System.currentTimeMillis();
+    onDeletingStarted(startTimeStamp, paths.size());
+
     ObservableFuture<BulkResponse> observable = RxHelper.observableFuture();
     client.bulk(br, handlerToListener(observable.toHandler()));
     return observable.flatMap(bres -> {
+      long stopTimeStamp = System.currentTimeMillis();
       if (bres.hasFailures()) {
-        return Observable.error(new NoStackTraceThrowable(bres.buildFailureMessage()));
+        String failureMessage = bres.buildFailureMessage();
+        onDeletingFinished(startTimeStamp - stopTimeStamp, paths.size(), failureMessage);
+        return Observable.error(new NoStackTraceThrowable(failureMessage));
       } else {
-        log.info("Finished deleting " + paths.size() + " chunks from index in " +
-            (System.currentTimeMillis() - startDeleting) + " ms");
+        onDeletingFinished(startTimeStamp - stopTimeStamp, paths.size(), null);
         return Observable.just(null);
       }
     });
   }
-  
+
+
+  /**
+   * Will be called before the indexer starts deleting chunks
+   * @param timeStamp the time when the indexer has started deleting
+   * @param chunkCount the number of chunks to delete
+   */
+  protected void onDeletingStarted(long timeStamp, int chunkCount) {
+    log.info("Deleting " + chunkCount + " chunks from index ...");
+  }
+
+  /**
+   * Will be called after the indexer has finished deleting chunks
+   * @param duration the time it took to delete the chunks
+   * @param chunkCount the number of deleted chunks
+   * @param errorMessage an error message if the process has failed
+   * or <code>null</code> if everything was successful
+   */
+  protected void onDeletingFinished(long duration, int chunkCount, String errorMessage) {
+    if (errorMessage != null) {
+      log.error("Deleting chunks failed: " + errorMessage);
+    } else {
+      log.info("Finished deleting " + chunkCount +
+          " chunks from index in " + duration + " ms");
+    }
+  }
+
   /**
    * Convert a chunk to a Elasticsearch document
    * @param chunk the chunk to convert
@@ -441,7 +483,7 @@ public class IndexerVerticle extends AbstractVerticle {
    * CRS is available as fallback)
    * @return an observable that will emit the document
    */
-  private Observable<Map<String, Object>> chunkToDocument(ChunkReadStream chunk,
+  private Observable<Map<String, Object>> xmlChunkToDocument(ChunkReadStream chunk,
       String fallbackCRSString) {
     AsyncXMLParser xmlParser = new AsyncXMLParser();
     
@@ -597,8 +639,9 @@ public class IndexerVerticle extends AbstractVerticle {
    * @return an observable that completes when the operation has finished
    */
   private Observable<Void> insertDocuments(BulkRequest bulkRequest, List<Message<JsonObject>> messages) {
-    log.info("Indexing " + messages.size() + " chunks");
-    long startIndexing = System.currentTimeMillis();
+    long startTimeStamp = System.currentTimeMillis();
+    onIndexingStarted(startTimeStamp, messages.size());
+
     ObservableFuture<BulkResponse> observable = RxHelper.observableFuture();
     client.bulk(bulkRequest, handlerToListener(observable.toHandler()));
     return observable.<Void>flatMap(bres -> {
@@ -610,16 +653,37 @@ public class IndexerVerticle extends AbstractVerticle {
           msg.reply(null);
         }
       }
-      if (bres.hasFailures()) {
-        log.error(bres.buildFailureMessage());
-      } else {
-        log.info("Finished indexing " + messages.size() + " chunks in " +
-            (System.currentTimeMillis() - startIndexing) + " ms");
-      }
+      long stopTimeStamp = System.currentTimeMillis();
+      onIndexingFinished(startTimeStamp - stopTimeStamp, messages.size(),
+          bres.hasFailures() ? bres.buildFailureMessage() : null);
       return Observable.empty();
     });
   }
-  
+
+  /**
+   * Will be called before the indexer starts the indexing process
+   * @param timeStamp the time when the indexer has started the process
+   * @param chunkCount the number of chunks to index
+   */
+  protected void onIndexingStarted(long timeStamp, int chunkCount) {
+    log.info("Indexing " + chunkCount + " chunks");
+  }
+
+  /**
+   * Will be called after the indexer has finished the indexing process
+   * @param duration the time passed during indexing
+   * @param chunkCount the number of chunks indexed
+   * @param errorMessage an error message if the process has failed
+   * or <code>null</code> if everything was successful
+   */
+  protected void onIndexingFinished(long duration, int chunkCount, String errorMessage) {
+    if (errorMessage != null) {
+      log.error("Indexing failed: " + errorMessage);
+    } else {
+      log.info("Finished indexing " + chunkCount + " chunks in " + duration + " ms");
+    }
+  }
+
   /**
    * Convenience method to convert a Vert.x {@link Handler} to an ElasticSearch
    * {@link ActionListener}
