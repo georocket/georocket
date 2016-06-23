@@ -13,7 +13,9 @@ import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableMap;
 
 import io.georocket.index.IndexerFactory;
+
 /**
+ * Base class for factories creating indexers that manage bounding boxes
  * @author Michel Kraemer
  */
 public abstract class BoundingBoxIndexerFactory implements IndexerFactory {

@@ -7,10 +7,8 @@ import io.georocket.index.generic.BoundingBoxIndexerFactory;
  * @author Michel Kraemer
  */
 public class XMLBoundingBoxIndexerFactory extends BoundingBoxIndexerFactory implements XMLIndexerFactory {
-  
   @Override
   public XMLIndexer createIndexer() {
     return new BoundingBoxIndexer();
   }
-  
 }

@@ -9,11 +9,13 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
 import io.georocket.index.IndexerFactory;
+
 /**
+ * Base class for factories creating indexers that manage arbitrary generic
+ * string attributes (i.e. key-value pairs)
  * @author Michel Kraemer
  */
 public abstract class GenericAttributeIndexerFactory implements IndexerFactory {
-
   @Override
   public Map<String, Object> getMapping() {
     // dynamic mapping: do not analyze generic attributes
