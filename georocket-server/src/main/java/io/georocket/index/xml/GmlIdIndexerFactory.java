@@ -1,4 +1,4 @@
-package io.georocket.index.generic;
+package io.georocket.index.xml;
 
 import java.util.Map;
 
@@ -7,12 +7,16 @@ import org.elasticsearch.index.query.QueryBuilders;
 
 import com.google.common.collect.ImmutableMap;
 
-import io.georocket.index.IndexerFactory;
 /**
+ * Create instances of {@link GmlIdIndexer}
  * @author Michel Kraemer
  */
-public abstract class GmlIdIndexerFactory implements IndexerFactory {
-
+public class GmlIdIndexerFactory implements XMLIndexerFactory {
+  @Override
+  public XMLIndexer createIndexer() {
+    return new GmlIdIndexer();
+  }
+  
   @Override
   public Map<String, Object> getMapping() {
     return ImmutableMap.of("properties", ImmutableMap.of("gmlIds", ImmutableMap.of(
