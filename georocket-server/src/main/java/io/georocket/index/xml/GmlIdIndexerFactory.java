@@ -16,7 +16,7 @@ public class GmlIdIndexerFactory implements XMLIndexerFactory {
   public XMLIndexer createIndexer() {
     return new GmlIdIndexer();
   }
-
+  
   @Override
   public Map<String, Object> getMapping() {
     return ImmutableMap.of("properties", ImmutableMap.of("gmlIds", ImmutableMap.of(

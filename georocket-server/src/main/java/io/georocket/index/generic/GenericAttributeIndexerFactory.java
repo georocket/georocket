@@ -1,4 +1,4 @@
-package io.georocket.index.xml;
+package io.georocket.index.generic;
 
 import java.util.Map;
 
@@ -8,16 +8,14 @@ import org.elasticsearch.index.query.QueryBuilders;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
+import io.georocket.index.IndexerFactory;
+
 /**
- * Create instances of {@link GenericAttributeIndexer}
+ * Base class for factories creating indexers that manage arbitrary generic
+ * string attributes (i.e. key-value pairs)
  * @author Michel Kraemer
  */
-public class GenericAttributeIndexerFactory implements XMLIndexerFactory {
-  @Override
-  public XMLIndexer createIndexer() {
-    return new GenericAttributeIndexer();
-  }
-
+public abstract class GenericAttributeIndexerFactory implements IndexerFactory {
   @Override
   public Map<String, Object> getMapping() {
     // dynamic mapping: do not analyze generic attributes
