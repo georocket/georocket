@@ -6,16 +6,16 @@ import static io.georocket.util.ThrowableHelper.throwableToMessage;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.spi.FileTypeDetector;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.BiConsumer;
-import java.util.stream.Collectors;
+import java.util.function.Consumer;
 
-import io.georocket.util.TikaFileTypeDetector;
+import javax.xml.ws.http.HTTPException;
+
 import org.apache.commons.io.FileUtils;
 import org.bson.types.ObjectId;
 
@@ -30,6 +30,7 @@ import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.Store;
 import io.georocket.storage.StoreCursor;
 import io.georocket.storage.StoreFactory;
+import io.georocket.util.TikaFileTypeDetector;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.DeploymentOptions;
@@ -56,6 +57,7 @@ import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
+import rx.Observable;
 
 /**
  * GeoRocket - A high-performance database for geospatial files
@@ -67,7 +69,7 @@ public class GeoRocket extends AbstractVerticle {
   protected static File geoRocketHome;
   private Store store;
   private String storagePath;
-  FileTypeDetector typeDetector = new TikaFileTypeDetector();
+  private final FileTypeDetector typeDetector = new TikaFileTypeDetector();
 
   /**
    * Handles the HTTP GET request for a bunch of chunks
@@ -241,7 +243,7 @@ public class GeoRocket extends AbstractVerticle {
     // get temporary filename
     String incoming = storagePath + "/incoming";
     String filename = new ObjectId().toString();
-    String filePath = incoming + "/" + filename;
+    String filepath = incoming + "/" + filename;
     
     log.info("Receiving file ...");
     
@@ -253,12 +255,13 @@ public class GeoRocket extends AbstractVerticle {
       .flatMap(v -> {
         // create temporary file
         ObservableFuture<AsyncFile> openObservable = RxHelper.observableFuture();
-        fs.open(filePath, new OpenOptions(), openObservable.toHandler());
+        fs.open(filepath, new OpenOptions(), openObservable.toHandler());
         return openObservable;
       })
       .flatMap(f -> {
-        ObservableFuture<AsyncFile> pumpObservable = RxHelper.observableFuture();
-        Handler<AsyncResult<AsyncFile>> pumpHandler = pumpObservable.toHandler();
+        // write request body into temporary file
+        ObservableFuture<Void> pumpObservable = RxHelper.observableFuture();
+        Handler<AsyncResult<Void>> pumpHandler = pumpObservable.toHandler();
         Pump.pump(request, f).start();
         Handler<Throwable> errHandler = (Throwable t) -> {
           request.endHandler(null);
@@ -268,78 +271,81 @@ public class GeoRocket extends AbstractVerticle {
         f.exceptionHandler(errHandler);
         request.exceptionHandler(errHandler);
         request.endHandler(v -> {
-          pumpHandler.handle(Future.succeededFuture(f));
+          f.close();
+          pumpHandler.handle(Future.succeededFuture());
         });
         request.resume();
         return pumpObservable;
       })
-      .subscribe(f -> {
-        // close file before importing
-        f.close();
-
+      .flatMap(v -> {
+        // detect content type of file to import
+        if (contentType == null || contentType.trim().isEmpty() ||
+            contentType.equals("application/octet-stream")) {
+          // fallback: if the client has not sent a Content-Type or if it's
+          // a generic one, then try to guess it
+          return detectContentType(filepath);
+        }
+        return Observable.just(contentType);
+      })
+      .subscribe(detectedContentType -> {
         // run importer
         JsonObject msg = new JsonObject()
             .put("action", "import")
             .put("filename", filename)
-            .put("layer", layer);
+            .put("layer", layer)
+            .put("contentType", detectedContentType);
 
         if (tags != null) {
           msg.put("tags", new JsonArray(tags));
         }
 
-        Runnable respondAccepted = () -> {
-          request.response()
-              .setStatusCode(202) // Accepted
-              .setStatusMessage("Accepted file - importing in progress")
-              .end();
-        };
+        request.response()
+          .setStatusCode(202) // Accepted
+          .setStatusMessage("Accepted file - importing in progress")
+          .end();
 
-        if (contentType == null || contentType.trim().isEmpty() || contentType.equals("application/octet-stream")) {
-          // Fallback: If the client have not send the Content-Type or send a generic one,
-          // then guess it by the file magic number or file content
-          vertx.<String>executeBlocking(blockingHandler -> {
-            try {
-              String mimeType = typeDetector.probeContentType(Paths.get(filePath));
-              blockingHandler.complete(mimeType);
-            } catch (IOException ex) {
-              blockingHandler.fail(ex);
-            }
-          }, h -> {
-            if (h.failed()) {
-              log.error("The client have not send a Content-Type during the import and i could not guess it by " +
-                  "the content. (Will drop the file import)", h.cause());
-
-              request.response()
-                  .setStatusCode(415) // Unsupported Media Type
-                  .setStatusMessage("Unsupported Media Type - Your media type wasn't specified in the request header " +
-                      "and could not be guessed.")
-                  .end();
-            } else {
-              respondAccepted.run();
-
-              // run importer
-              msg.put("contentType", h.result());
-
-              vertx.eventBus().send(AddressConstants.IMPORTER, msg);
-            }
-          });
-        } else {
-          // The client have send a content type
-          // tell caller that we're now importing the file
-          respondAccepted.run();
-
-          msg.put("contentType", contentType);
-
-          vertx.eventBus().send(AddressConstants.IMPORTER, msg);
-        }
-
+        // run importer
+        vertx.eventBus().send(AddressConstants.IMPORTER, msg);
       }, err -> {
         request.response()
           .setStatusCode(throwableToCode(err))
           .end("Could not import file: " + err.getMessage());
         err.printStackTrace();
-        fs.delete(filePath, ar -> {});
+        fs.delete(filepath, ar -> {});
       });
+  }
+  
+  /**
+   * Try to detect the content type of a file
+   * @param filepath the absolute path to the file to analyse
+   * @return an observable emitting either the detected content type or an error
+   * if the content type could not be detected or the file could not be read
+   */
+  private Observable<String> detectContentType(String filepath) {
+    ObservableFuture<String> result = RxHelper.observableFuture();
+    Handler<AsyncResult<String>> resultHandler = result.toHandler();
+    
+    vertx.<String>executeBlocking(f -> {
+      try {
+        String mimeType = typeDetector.probeContentType(Paths.get(filepath));
+        f.complete(mimeType);
+      } catch (IOException e) {
+        f.fail(e);
+      }
+    }, ar -> {
+      if (ar.failed()) {
+        resultHandler.handle(Future.failedFuture(ar.cause()));
+      } else {
+        String ct = ar.result();
+        if (ct != null) {
+          resultHandler.handle(Future.succeededFuture(ar.result()));
+        } else {
+          resultHandler.handle(Future.failedFuture(new HTTPException(215)));
+        }
+      }
+    });
+    
+    return result;
   }
 
   /**
