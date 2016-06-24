@@ -1,5 +1,13 @@
 package io.georocket;
 
+import java.util.Calendar;
+import java.util.Date;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 import io.georocket.constants.AddressConstants;
 import io.georocket.constants.ConfigConstants;
 import io.georocket.index.xml.CRSIndexer;
@@ -14,6 +22,7 @@ import io.georocket.util.RxUtils;
 import io.georocket.util.Window;
 import io.vertx.core.Vertx;
 import io.vertx.core.file.OpenOptions;
+import io.vertx.core.impl.NoStackTraceThrowable;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -26,14 +35,6 @@ import io.vertx.rxjava.core.eventbus.Message;
 import io.vertx.rxjava.core.file.FileSystem;
 import io.vertx.rxjava.core.streams.ReadStream;
 import rx.Observable;
-
-import java.util.Calendar;
-import java.util.Date;
-import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Imports file in the background
@@ -118,28 +119,28 @@ public class ImporterVerticle extends AbstractVerticle {
   }
 
   /**
-   * Import a file from the given input stream into the store
-   * @param contentType The file content type
-   * @param f the XML file to read
-   * @param importId the id of this import event
-   * @param filename the filename of the readed stream
-   * @param importTimeStamp the timestamp of this import event
+   * Import a file from the given read stream into the store. Inspect the file's
+   * content type and forward to the correct import method.
+   * @param contentType the file's content type
+   * @param f the file to import
+   * @param importId a unique identifier for this import process
+   * @param filename the name of the file currently being imported
+   * @param importTimeStamp denotes when the import process has started
    * @param layer the layer where the file should be stored (may be null)
    * @param tags the list of tags to attach to the file (may be null)
    * @return an observable that will emit when the file has been imported
    */
-  protected Observable<Void> importFile(String contentType, ReadStream<Buffer> f, String importId, String filename,
-                                        Date importTimeStamp, String layer, List<String> tags) {
+  protected Observable<Void> importFile(String contentType, ReadStream<Buffer> f,
+      String importId, String filename, Date importTimeStamp, String layer, List<String> tags) {
     switch (contentType) {
       case "application/xml":
       case "text/xml":
         return importXML(f, importId, filename, importTimeStamp, layer, tags);
       default:
-        log.error(String.format("Received an unexpected Content-Type '%s' during import of file '%s'", contentType, filename));
+        return Observable.error(new NoStackTraceThrowable(String.format(
+            "Received an unexpected content type '%s' while trying to import"
+            + "file '%s'", contentType, filename)));
     }
-
-    // Will be empty by default.
-    return Observable.<Void>empty();
   }
 
   /**

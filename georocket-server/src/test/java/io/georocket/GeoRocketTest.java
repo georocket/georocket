@@ -54,9 +54,7 @@ public class GeoRocketTest {
 
   /**
    * <p>Tests if a small CityGML file can be uploaded correctly</p>
-   *
    * <p>Test the content type guessing fallback</p>
-   *
    * @param context the test context
    * @throws Exception if an exception occurs
    */
