@@ -33,7 +33,10 @@ import io.vertx.core.json.JsonObject;
  * @author Michel Kraemer
  */
 public class GeoRocketCli extends AbstractGeoRocketCommand {
-  private File geoRocketCliHome;
+  /**
+   * GeoRocket CLI`s home directory
+   */
+  protected File geoRocketCliHome;
   
   private boolean displayVersion;
   private AbstractGeoRocketCommand command;
