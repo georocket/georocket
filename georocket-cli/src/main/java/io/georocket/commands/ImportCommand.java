@@ -173,8 +173,9 @@ public class ImportCommand extends AbstractGeoRocketCommand {
         fs.setDir(new File(root));
         fs.setIncludes(glob);
         DirectoryScanner ds = fs.getDirectoryScanner(project);
-        Arrays.asList(ds.getIncludedFiles())
-          .forEach(path -> queue.add(Paths.get(root, path).toString()));
+        Arrays.asList(ds.getIncludedFiles()).stream()
+          .map(path -> Paths.get(root, path).toString())
+          .forEach(queue::add);
       }
     }
     
