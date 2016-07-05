@@ -1,13 +1,12 @@
 package io.georocket.commands;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.Queue;
@@ -15,6 +14,9 @@ import java.util.Queue;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.tools.ant.DirectoryScanner;
+import org.apache.tools.ant.Project;
+import org.apache.tools.ant.types.FileSet;
 
 import com.google.common.base.Splitter;
 
@@ -166,9 +168,14 @@ public class ImportCommand extends AbstractGeoRocketCommand {
         // add all files matching the pattern
         String root = String.join("/", roots);
         String glob = String.join("/", globs);
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(Paths.get(root), glob)) {
-          stream.forEach(path -> queue.add(path.toString()));
-        }
+        Project project = new Project();
+        FileSet fs = new FileSet();
+        fs.setDir(new File(root));
+        fs.setIncludes(glob);
+        DirectoryScanner ds = fs.getDirectoryScanner(project);
+        Arrays.asList(ds.getIncludedFiles()).stream()
+          .map(path -> Paths.get(root, path).toString())
+          .forEach(queue::add);
       }
     }
     
