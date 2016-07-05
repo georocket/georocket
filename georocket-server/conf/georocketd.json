@@ -13,5 +13,6 @@
   "georocket.storage.mongodb.host": "localhost",
   "georocket.storage.mongodb.port": 27017,
   "georocket.storage.mongodb.database": "georocket",
-  "georocket.index.elasticsearch.embedded": true
+  "georocket.index.elasticsearch.embedded": true,
+  "georocket.index.elasticsearch.settings.http.enabled": false
 }

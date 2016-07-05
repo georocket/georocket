@@ -24,10 +24,9 @@ public final class ConfigConstants {
   public static final String STORAGE_S3_PATH_STYLE_ACCESS = "georocket.storage.s3.pathStyleAccess";
   
   public static final String INDEX_ELASTICSEARCH_EMBEDDED = "georocket.index.elasticsearch.embedded";
-  public static final String INDEX_ELASTICSEARCH_CLUSTERNAME = "georocket.index.elasticsearch.clustername";
   public static final String INDEX_ELASTICSEARCH_HOST = "georocket.index.elasticsearch.host";
   public static final String INDEX_ELASTICSEARCH_PORT = "georocket.index.elasticsearch.port";
-  public static final String INDEX_ELASTICSEARCH_ENABLE_SNIFF = "georocket.index.elasticsearch.enablesniff";
+  public static final String INDEX_ELASTICSEARCH_SETTINGS_PREFIX = "georocket.index.elasticsearch.settings.";
   
   public static final int DEFAULT_PORT = 63020;
   

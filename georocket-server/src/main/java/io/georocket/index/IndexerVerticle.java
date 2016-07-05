@@ -125,7 +125,8 @@ public class IndexerVerticle extends AbstractVerticle {
     // modifications to the service loader's internal cache
     xmlIndexerFactories = ImmutableList.copyOf(ServiceLoader.load(XMLIndexerFactory.class));
 
-    vertx.<Client>executeBlocking(this::createElasticsearchClient, ar -> {
+    Vertx delegate = (Vertx)vertx.getDelegate();
+    delegate.<Client>executeBlocking(this::createElasticsearchClient, ar -> {
       if (ar.failed()) {
         startFuture.fail(ar.cause());
         return;
@@ -134,7 +135,7 @@ public class IndexerVerticle extends AbstractVerticle {
       client = ar.result();
       
       queryCompiler = new DefaultQueryCompiler(xmlIndexerFactories);
-      store = StoreFactory.createStore((Vertx)vertx.getDelegate());
+      store = StoreFactory.createStore(delegate);
       
       registerMessageConsumers();
       
@@ -150,57 +151,76 @@ public class IndexerVerticle extends AbstractVerticle {
     }
   }
   
-  private void createElasticsearchClient(io.vertx.rxjava.core.Future<Client> f){
+  /**
+   * Create an Elasticsearch client. Either start an embedded Elasticsearch
+   * instance or connect to an existing one - depending on the configuration.
+   * This method is blocking.
+   * @param f a future that will be called when the client has been created
+   */
+  private void createElasticsearchClient(Future<Client> f) {
+    JsonObject config = vertx.getOrCreateContext().config();
+    boolean embedded = config.getBoolean(ConfigConstants.INDEX_ELASTICSEARCH_EMBEDDED, true);
     
-    boolean embedded = vertx.getOrCreateContext().config().getBoolean(ConfigConstants.INDEX_ELASTICSEARCH_EMBEDDED, true);
-    
-    if(embedded){
+    if (embedded) {
       // create local node
-      String home = vertx.getOrCreateContext().config().getString(
-      ConfigConstants.STORAGE_FILE_PATH);
+      String home = config.getString(ConfigConstants.STORAGE_FILE_PATH);
       String root = home + "/index";
       
       // start embedded ElasticSearch instance
-      Settings settings = Settings.builder()
+      Settings.Builder settingsBuilder = Settings.builder()
           .put("node.name", "georocket-node")
           .put("path.home", root)
-          .put("path.data", root + "/data")
-          .put("http.enabled", true) // TODO enable HTTP for debugging purpose only!
-          .build();
+          .put("path.data", root + "/data");
+      addElasticsearchSettings(settingsBuilder);
+      Settings settings = settingsBuilder.build();
       
       node = NodeBuilder.nodeBuilder()
-            .settings(settings)
-            .clusterName("georocket-cluster")
-            .data(true)
-            .local(true)
-            .node();
-        
-      f.complete(node.client());      
-    }
-    else {
+          .settings(settings)
+          .clusterName("georocket-cluster")
+          .data(true)
+          .local(true)
+          .node();
+      
+      f.complete(node.client());
+    } else {
       // use remote cluster
-      String host = vertx.getOrCreateContext().config().getString(ConfigConstants.INDEX_ELASTICSEARCH_HOST, "localhost");
-      int port = vertx.getOrCreateContext().config().getInteger(ConfigConstants.INDEX_ELASTICSEARCH_PORT, 9300);
-      // see https://www.elastic.co/guide/en/elasticsearch/client/java-api/2.3/transport-client.html
-      boolean sniff = vertx.getOrCreateContext().config().getBoolean(ConfigConstants.INDEX_ELASTICSEARCH_ENABLE_SNIFF, false);
-      // "Note that you have to set the cluster name if you use one different than "elasticsearch":"
-      // see https://www.elastic.co/guide/en/elasticsearch/client/java-api/current/transport-client.html
-      String clustername = vertx.getOrCreateContext().config()
-          .getString(ConfigConstants.INDEX_ELASTICSEARCH_CLUSTERNAME, "elasticsearch");
-
-      Settings settings = Settings.builder()
-          .put("cluster.name", clustername)
-          .put("client.transport.sniff", sniff)
+      String host = config.getString(ConfigConstants.INDEX_ELASTICSEARCH_HOST, "localhost");
+      int port = config.getInteger(ConfigConstants.INDEX_ELASTICSEARCH_PORT, 9300);
+      
+      Settings.Builder settingsBuilder = Settings.builder();
+      addElasticsearchSettings(settingsBuilder);
+      Settings settings = settingsBuilder.build();
+      
+      TransportClient transportClient = TransportClient.builder()
+          .settings(settings)
           .build();
-
+      
       try {
-        f.complete(TransportClient.builder().settings(settings).build()
-        .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(host), port)));
+        InetAddress inetAddress = InetAddress.getByName(host);
+        InetSocketTransportAddress transportAddress =
+            new InetSocketTransportAddress(inetAddress, port);
+        f.complete(transportClient.addTransportAddress(transportAddress));
       } catch (UnknownHostException e) {
-        f.fail(e.toString());
+        f.fail(e);
       }
     }
-    
+  }
+  
+  /**
+   * Add all configuration items starting with
+   * {@value ConfigConstants#INDEX_ELASTICSEARCH_SETTINGS_PREFIX}
+   * to the given Elasticsearch settings builder
+   * @param settingsBuilder the builder
+   */
+  private void addElasticsearchSettings(Settings.Builder settingsBuilder) {
+    JsonObject config = vertx.getOrCreateContext().config();
+    config.forEach(e -> {
+      if (e.getKey().startsWith(ConfigConstants.INDEX_ELASTICSEARCH_SETTINGS_PREFIX)) {
+        String key = e.getKey().substring(
+            ConfigConstants.INDEX_ELASTICSEARCH_SETTINGS_PREFIX.length());
+        settingsBuilder.put(key, e.getValue());
+      }
+    });
   }
 
   /**
