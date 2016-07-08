@@ -456,6 +456,8 @@ You can configure GeoRocket server by editing the file `conf/georocketd.json` in
   `io.georocket.storage.hdfs.HDFSStore` +
   `io.georocket.storage.mongodb.MongoDBStore` +
   `io.georocket.storage.s3.S3Store`
+| *georocket.index.elasticsearch.embedded*
+| The Elasticsearch cluster to use, either embedded or remote. See <<indexer-elasticsearch, Elasticsearch>>.
 |===
 
 [[config-backend-file]]
@@ -541,4 +543,48 @@ You can configure GeoRocket server by editing the file `conf/georocketd.json` in
 | *georocket.storage.s3.pathStyleAccess* +
   _(required)_
 | `true` if path-style access to the S3 bucket is used or `false` if a sub-domain is used
+|===
+
+[[indexer-elasticsearch]]
+==== Elasticsearch
+
+GeoRocket uses embedded Elasticsearch by default but it is also possible to use an existing Elasticsearch cluster.
+
+The remote cluster is accessed through the https://www.elastic.co/guide/en/elasticsearch/client/java-api/current/transport-client.html[TransportClient].
+
+To use a remote cluster set the following entry to `false`:
+
+  georocket.index.elasticsearch.embedded
+
+The host and port can be configured by:
+
+  georocket.index.elasticsearch.host and georocket.index.elasticsearch.port
+
+All other settings are added by a combination of the defined prefix _(georocket.index.elasticsearch.settings.)_ and the specific Elasticsearch settings parameter key.
+
+For example, to indicate your cluster's name _(cluster.name)_ add
+
+  georocket.index.elasticsearch.settings.cluster.name: "your_cluster_name"
+
+with the name entry to the configuration.
+
+===== Configuration
+
+[cols="2,2"]
+|===
+| *georocket.index.elasticsearch.embedded* +
+  _(default: true)_
+| If `true` then GeoRocket uses embedded Elasticsearch. `false`, if TransportClient should be used
+| *georocket.index.elasticsearch.host* +
+  _(default: "localhost")_
+| Elasticsearch host address
+| *georocket.index.elasticsearch.port* +
+  _(default: 9300)_
+| Elasticsearch cluster TCP port
+| *georocket.index.elasticsearch.settings.cluster.name* +
+  _(default: "elasticsearch")_
+| The name of the cluster to connect to
+| *georocket.index.elasticsearch.settings.client.transport.sniff* +
+  _(default: false)_
+| TransportClient setting, allowing the client to dynamically add new hosts and remove old ones
 |===
