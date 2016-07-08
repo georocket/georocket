@@ -289,7 +289,7 @@ public class StoreClient {
         handler.handle(Future.succeededFuture(response));
       }
     });
-    request.end();
+    configureRequest(request).end();
   }
   
   /**
@@ -346,6 +346,6 @@ public class StoreClient {
         });
       }
     });
-    request.end();
+    configureRequest(request).end();
   }
 }
