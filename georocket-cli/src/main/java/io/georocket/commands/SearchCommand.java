@@ -16,8 +16,8 @@ import io.vertx.core.Handler;
  * @author Michel Kraemer
  */
 public class SearchCommand extends AbstractQueryCommand {
-  private String query;
-  private String layer;
+  protected String query;
+  protected String layer;
   
   /**
    * Set the query parts
