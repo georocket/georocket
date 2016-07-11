@@ -713,7 +713,7 @@ public class IndexerVerticle extends AbstractVerticle {
         }
       }
       long stopTimeStamp = System.currentTimeMillis();
-      onIndexingFinished(startTimeStamp - stopTimeStamp, messages.size(),
+      onIndexingFinished(stopTimeStamp - startTimeStamp, messages.size(),
           bres.hasFailures() ? bres.buildFailureMessage() : null);
       return Observable.empty();
     });
