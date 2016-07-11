@@ -122,7 +122,6 @@ public class MongoDBStore extends IndexedStore {
         cr = getGridFS().getDB().getStats();
         if (!cr.containsField("dataSize")) {
           f.fail("GridFS storage statistics do not contain a field named 'dataSize'");
-          return;
         } else {
           f.complete(cr.getLong("dataSize"));
         }
