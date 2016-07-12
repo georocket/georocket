@@ -14,7 +14,7 @@ import io.vertx.core.Handler;
  * @author Michel Kraemer
  */
 public class ExportCommand extends AbstractQueryCommand {
-  private String layer;
+  protected String layer;
   
   /**
    * Set the absolute path to the layer to export
