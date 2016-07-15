@@ -507,7 +507,7 @@ public class GeoRocket extends AbstractVerticle {
    * Recursively replace configuration variables in an object
    * @param obj the object
    */
-  protected static void replaceConfVariables(JsonObject obj) {
+  private static void replaceConfVariables(JsonObject obj) {
     Set<String> keys = new HashSet<>(obj.getMap().keySet());
     for (String key : keys) {
       Object value = obj.getValue(key);
@@ -527,7 +527,7 @@ public class GeoRocket extends AbstractVerticle {
    * Set default configuration values
    * @param conf the current configuration
    */
-  protected static void setDefaultConf(JsonObject conf) {
+  private static void setDefaultConf(JsonObject conf) {
     conf.put(ConfigConstants.HOME, "$GEOROCKET_HOME");
     if (!conf.containsKey(ConfigConstants.STORAGE_FILE_PATH)) {
       conf.put(ConfigConstants.STORAGE_FILE_PATH, "$GEOROCKET_HOME/storage");
@@ -535,70 +535,29 @@ public class GeoRocket extends AbstractVerticle {
   }
 
   /**
-   * Load the GeoRocket home path out of the system environment
-   * @return the GeoRocket home path
+   * Load the GeoRocket configuration
+   * @return the configuration
+   *
+   * @throws IOException If the georocket home is invalid or the file could not be accessed
+   * @throws DecodeException If the configuration could not be decoded from json
    */
-  protected static String loadGeoRocketHomeStr() {
+  protected static JsonObject loadGeoRocketConfiguration() throws IOException, DecodeException {
     String geoRocketHomeStr = System.getenv("GEOROCKET_HOME");
     if (geoRocketHomeStr == null) {
       log.info("Environment variable GEOROCKET_HOME not set. Using current "
           + "working directory.");
       geoRocketHomeStr = new File(".").getAbsolutePath();
     }
-    return geoRocketHomeStr;
-  }
 
-  /**
-   * Get the GeoRocket home as {@link File}
-   * @param geoRocketHomeStr the path to the GeoRocket home
-   * @return the GeoRocket home file
-   * @throws IOException if geoRocketHomeStr does not point at an existing file.
-   */
-  protected static File toRocketHomeFile(String geoRocketHomeStr) throws IOException {
-    return new File(geoRocketHomeStr).getCanonicalFile();
-  }
-
-  /**
-   * Load the GeoRocket configuration and return it.
-   * Will return an empty configuration if something went wrong.
-   * @param geoRocketHome the GeoRocket home path
-   * @return the configuration
-   *
-   * @throws IOException If the configuration file could not be found
-   * @throws DecodeException If failed to decode the JSON configuration
-   */
-  protected static JsonObject loadConfiguration(File geoRocketHome) throws IOException, DecodeException {
-    File confDir = new File(geoRocketHome, "conf");
-    File confFile = new File(confDir, "georocketd.json");
-
-    String confFileStr = FileUtils.readFileToString(confFile, "UTF-8");
-
-    return new JsonObject(confFileStr);
-  }
-
-  /**
-   * Get and load the GeoRocket configuration
-   * @return the configuration
-   *
-   * @throws IOException If the georocket home is invalid
-   */
-  protected static JsonObject configureGeoRocket() throws IOException {
-    // get GEOROCKET_HOME
-    String geoRocketHomeStr = loadGeoRocketHomeStr();
-
-    geoRocketHome = toRocketHomeFile(geoRocketHomeStr);
+    geoRocketHome = new File(geoRocketHomeStr).getCanonicalFile();
 
     log.info("Using GeoRocket home " + geoRocketHome);
 
     // load configuration file
-    JsonObject conf = new JsonObject();
-    try {
-      conf = loadConfiguration(geoRocketHome);
-    } catch (IOException ex) {
-      log.error(ex.getMessage(), ex);
-    } catch (DecodeException ex) {
-      log.error("Failed to decode the GeoRocket (JSON) configuration", ex);
-    }
+    File confDir = new File(geoRocketHome, "conf");
+    File confFile = new File(confDir, "georocketd.json");
+    String confFileStr = FileUtils.readFileToString(confFile, "UTF-8");
+    JsonObject conf = new JsonObject(confFileStr);
 
     // set default configuration values
     setDefaultConf(conf);
@@ -618,10 +577,13 @@ public class GeoRocket extends AbstractVerticle {
     DeploymentOptions options = new DeploymentOptions();
 
     try {
-      JsonObject conf = configureGeoRocket();
+      JsonObject conf = loadGeoRocketConfiguration();
       options.setConfig(conf);
     } catch (IOException ex) {
       log.fatal("Invalid georocket home", ex);
+      System.exit(1);
+    } catch (DecodeException ex) {
+      log.fatal("Failed to decode the GeoRocket (JSON) configuration", ex);
       System.exit(1);
     }
 
