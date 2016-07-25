@@ -103,9 +103,9 @@ public class IndexerVerticle extends AbstractVerticle {
   protected Store store;
   
   /**
-   * A list of {@link XMLIndexerFactory} objects
+   * A list of {@link IndexerFactory} objects
    */
-  protected ImmutableList<XMLIndexerFactory> xmlIndexerFactories;
+  protected List<? extends IndexerFactory> indexerFactories;
   
   /**
    * Compiles search strings to Elasticsearch documents
@@ -121,9 +121,7 @@ public class IndexerVerticle extends AbstractVerticle {
   public void start(Future<Void> startFuture) {
     log.info("Launching indexer ...");
     
-    // load xml indexer factories now and not lazily to avoid concurrent
-    // modifications to the service loader's internal cache
-    xmlIndexerFactories = ImmutableList.copyOf(ServiceLoader.load(XMLIndexerFactory.class));
+    indexerFactories = createIndexerFactories();
 
     Vertx delegate = (Vertx)vertx.getDelegate();
     delegate.<Client>executeBlocking(this::createElasticsearchClient, ar -> {
@@ -134,7 +132,7 @@ public class IndexerVerticle extends AbstractVerticle {
       
       client = ar.result();
       
-      queryCompiler = new DefaultQueryCompiler(xmlIndexerFactories);
+      queryCompiler = new DefaultQueryCompiler(indexerFactories);
       store = StoreFactory.createStore(delegate);
       
       registerMessageConsumers();
@@ -151,6 +149,16 @@ public class IndexerVerticle extends AbstractVerticle {
     }
   }
   
+  /**
+   * Create a list of indexer factories
+   * @return the list
+   */
+  protected List<? extends IndexerFactory> createIndexerFactories() {
+    // load and copy all indexer factories now and not lazily to avoid
+    // concurrent modifications to the service loader's internal cache
+    return ImmutableList.copyOf(ServiceLoader.load(XMLIndexerFactory.class));
+  }
+
   /**
    * Create an Elasticsearch client. Either start an embedded Elasticsearch
    * instance or connect to an existing one - depending on the configuration.
@@ -236,7 +244,7 @@ public class IndexerVerticle extends AbstractVerticle {
    * @return a function that can be passed to {@link Observable#retryWhen(Func1)}
    * @see RxUtils#makeRetry(int, int, Logger)
    */
-  private Func1<Observable<? extends Throwable>, Observable<Long>> makeRetry() {
+  protected Func1<Observable<? extends Throwable>, Observable<Long>> makeRetry() {
     return RxUtils.makeRetry(MAX_RETRIES, RETRY_INTERVAL, log);
   }
   
@@ -408,7 +416,7 @@ public class IndexerVerticle extends AbstractVerticle {
    * CRS is available as fallback)
    * @return an observable that emits the document
    */
-  private Observable<Map<String, Object>> openChunkToDocument(String path,
+  protected Observable<Map<String, Object>> openChunkToDocument(String path,
       String fallbackCRSString) {
     return Observable.<Map<String, Object>>create(subscriber -> {
       openChunk(path)
@@ -547,8 +555,8 @@ public class IndexerVerticle extends AbstractVerticle {
     AsyncXMLParser xmlParser = new AsyncXMLParser();
     
     List<XMLIndexer> indexers = new ArrayList<>();
-    xmlIndexerFactories.forEach(factory -> {
-      XMLIndexer i = factory.createIndexer();
+    indexerFactories.forEach(factory -> {
+      XMLIndexer i = (XMLIndexer)factory.createIndexer();
       if (fallbackCRSString != null && i instanceof CRSAware) {
         ((CRSAware)i).setFallbackCRSString(fallbackCRSString);
       }
@@ -663,8 +671,8 @@ public class IndexerVerticle extends AbstractVerticle {
     // remove unnecessary node
     source.remove("variables");
     
-    // merge all properties from XML indexers
-    xmlIndexerFactories.forEach(factory ->
+    // merge all properties from indexers
+    indexerFactories.forEach(factory ->
         MapUtils.deepMerge(source, factory.getMapping()));
     
     CreateIndexRequest request = Requests.createIndexRequest(INDEX_NAME)
