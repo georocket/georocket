@@ -103,9 +103,9 @@ public class IndexerVerticle extends AbstractVerticle {
   protected Store store;
   
   /**
-   * A list of {@link XMLIndexerFactory} objects
+   * A list of {@link IndexerFactory} objects
    */
-  protected ImmutableList<? extends IndexerFactory> indexerFactories;
+  protected List<? extends IndexerFactory> indexerFactories;
   
   /**
    * Compiles search strings to Elasticsearch documents
@@ -121,9 +121,7 @@ public class IndexerVerticle extends AbstractVerticle {
   public void start(Future<Void> startFuture) {
     log.info("Launching indexer ...");
     
-    // load xml indexer factories now and not lazily to avoid concurrent
-    // modifications to the service loader's internal cache
-    indexerFactories = getFactories();
+    indexerFactories = createIndexerFactories();
 
     Vertx delegate = (Vertx)vertx.getDelegate();
     delegate.<Client>executeBlocking(this::createElasticsearchClient, ar -> {
@@ -152,10 +150,12 @@ public class IndexerVerticle extends AbstractVerticle {
   }
   
   /**
-   * Override this method to create own IndexerFactories list.
-   * @return The list of indexer factories
+   * Create a list of indexer factories
+   * @return the list
    */
-  protected ImmutableList<? extends IndexerFactory> getFactories(){
+  protected List<? extends IndexerFactory> createIndexerFactories() {
+    // load and copy all indexer factories now and not lazily to avoid
+    // concurrent modifications to the service loader's internal cache
     return ImmutableList.copyOf(ServiceLoader.load(XMLIndexerFactory.class));
   }
 
@@ -556,7 +556,7 @@ public class IndexerVerticle extends AbstractVerticle {
     
     List<XMLIndexer> indexers = new ArrayList<>();
     indexerFactories.forEach(factory -> {
-      XMLIndexer i = (XMLIndexer) factory.createIndexer();
+      XMLIndexer i = (XMLIndexer)factory.createIndexer();
       if (fallbackCRSString != null && i instanceof CRSAware) {
         ((CRSAware)i).setFallbackCRSString(fallbackCRSString);
       }
@@ -671,7 +671,7 @@ public class IndexerVerticle extends AbstractVerticle {
     // remove unnecessary node
     source.remove("variables");
     
-    // merge all properties from XML indexers
+    // merge all properties from indexers
     indexerFactories.forEach(factory ->
         MapUtils.deepMerge(source, factory.getMapping()));
     
