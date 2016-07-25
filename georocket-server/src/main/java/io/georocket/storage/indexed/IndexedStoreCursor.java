@@ -1,5 +1,6 @@
 package io.georocket.storage.indexed;
 
+import java.lang.reflect.Constructor;
 import io.georocket.constants.AddressConstants;
 import io.georocket.storage.ChunkMeta;
 import io.georocket.storage.StoreCursor;
@@ -115,7 +116,19 @@ public class IndexedStoreCursor implements StoreCursor {
     for (int i = 0; i < count; ++i) {
       JsonObject hit = hits.getJsonObject(i);
       ids[i] = hit.getString("id");
-      metas[i] = ChunkMeta.fromJsonObject(hit);
+      
+      String metaType = hit.getString("$type");
+      if(metaType != null) {
+        try {
+          Constructor<ChunkMeta> constrc = (Constructor<ChunkMeta>) Class.forName(metaType).getConstructor(JsonObject.class);
+          metas[i] = constrc.newInstance(hit);
+        } catch (Exception e) {
+          e.printStackTrace();
+        }
+      }
+      else {
+        metas[i] = new ChunkMeta(hit);
+      }
     }
   }
 

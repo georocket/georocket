@@ -1,6 +1,7 @@
 package io.georocket.storage;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import io.georocket.util.XMLStartElement;
@@ -30,6 +31,55 @@ public class ChunkMeta {
     this.parents = parents;
     this.start = start;
     this.end = end;
+  }
+  
+  /**
+   * Chunk Meta from JsonObject
+   * @param object The JsonObject containing the values for the ChunkMeta Object.
+   */
+  public ChunkMeta(JsonObject object){
+    JsonArray parentsArr = object.getJsonArray("parents");
+    parents = parentsArr.stream().map(e ->
+        XMLStartElement.fromJsonObject((JsonObject)e)).collect(Collectors.toList());
+    start = object.getInteger("start");
+    end = object.getInteger("end");
+  }
+  
+  /**
+   * Chunk Meta from Map.
+   * Used to convert Elasticsearch hit to ChunkMeta
+   * @param source The Elasticsearch document
+   */
+  @SuppressWarnings("unchecked")
+  public ChunkMeta(Map<String, Object> source){
+    start = ((Number)source.get("chunkStart")).intValue();
+    end = ((Number)source.get("chunkEnd")).intValue();
+    
+    List<Map<String, Object>> parentsList = (List<Map<String, Object>>)source.get("chunkParents");
+    parents = parentsList.stream().map(p -> {
+      String prefix = (String)p.get("prefix");
+      String localName = (String)p.get("localName");
+      String[] namespacePrefixes = safeListToArray((List<String>)p.get("namespacePrefixes"));
+      String[] namespaceUris = safeListToArray((List<String>)p.get("namespaceUris"));
+      String[] attributePrefixes = safeListToArray((List<String>)p.get("attributePrefixes"));
+      String[] attributeLocalNames = safeListToArray((List<String>)p.get("attributeLocalNames"));
+      String[] attributeValues = safeListToArray((List<String>)p.get("attributeValues"));
+      return new XMLStartElement(prefix, localName, namespacePrefixes, namespaceUris,
+          attributePrefixes, attributeLocalNames, attributeValues);
+    }).collect(Collectors.toList());
+  }
+  
+  /**
+   * Convert a list to an array. If the list is null the return value
+   * will also be null.
+   * @param list the list to convert
+   * @return the array or null if <code>list</code> is null
+   */
+  private String[] safeListToArray(List<String> list) {
+    if (list == null) {
+      return null;
+    }
+    return list.toArray(new String[list.size()]);
   }
   
   /**
@@ -103,7 +153,8 @@ public class ChunkMeta {
     return new JsonObject()
         .put("parents", ps)
         .put("start", start)
-        .put("end", end);
+        .put("end", end)
+        .put("$type", ChunkMeta.class.getName());
   }
   
   /**
@@ -112,9 +163,18 @@ public class ChunkMeta {
    * @return the {@link ChunkMeta} object
    */
   public static ChunkMeta fromJsonObject(JsonObject obj) {
-    JsonArray parentsArr = obj.getJsonArray("parents");
-    List<XMLStartElement> pl = parentsArr.stream().map(e ->
-        XMLStartElement.fromJsonObject((JsonObject)e)).collect(Collectors.toList());
-    return new ChunkMeta(pl, obj.getInteger("start"), obj.getInteger("end"));
+    return new ChunkMeta(obj);
+  }
+  
+  /**
+   * Add own meta data to the given document
+   * @param doc The document to add the meta to
+   */
+  public void addMeta(Map<String, Object> doc) {
+    doc.put("chunkStart", start);
+    doc.put("chunkEnd", end);
+    doc.put("chunkParents", parents.stream().map(p ->
+        p.toJsonObject().getMap()).collect(Collectors.toList()));
+    doc.put("$type", this.getClass().getName());
   }
 }
