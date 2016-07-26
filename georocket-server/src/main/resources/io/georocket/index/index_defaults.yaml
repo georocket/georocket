@@ -35,4 +35,3 @@ _source:
   - chunkStart
   - chunkEnd
   - chunkParents
-  - $type

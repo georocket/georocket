@@ -47,7 +47,6 @@ import io.georocket.index.xml.XMLIndexer;
 import io.georocket.index.xml.XMLIndexerFactory;
 import io.georocket.query.DefaultQueryCompiler;
 import io.georocket.storage.ChunkMeta;
-import io.georocket.storage.ChunkMetaFactory;
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.Store;
 import io.georocket.storage.StoreFactory;
@@ -342,14 +341,7 @@ public class IndexerVerticle extends AbstractVerticle {
           return Observable.empty();
         }
 
-        ChunkMeta meta;
-        try {
-          meta = ChunkMetaFactory.createChunkMetaFromJson(body.getString("$type"), metaObj);
-        } catch (Exception e) {
-          log.error("Could not create ChunkMeta from meta object.", e);
-          msg.fail(400, "Could not create ChunkMeta from meta object.");
-          return Observable.empty();
-        }
+        ChunkMeta meta = createChunkMetaObj(metaObj);
         
         // get tags
         JsonArray tagsArr = body.getJsonArray("tags");
@@ -371,7 +363,6 @@ public class IndexerVerticle extends AbstractVerticle {
               doc.put("importId", importId);
               doc.put("filename", filename);
               doc.put("importTime", importTime);
-              doc.put("$type", meta.getClass().getName());
               addMeta(doc, meta);
               if (tags != null) {
                 doc.put("tags", tags);
@@ -396,6 +387,17 @@ public class IndexerVerticle extends AbstractVerticle {
         }
         return Observable.empty();
       });
+  }
+
+  /**
+   * Create ChunkMeta Object. Override this method to provide own ChunkMeta
+   * type.
+   * 
+   * @param metaObj The chunk meta content used to initialize the ChunkMeta
+   * @return The created Chunk Meta
+   */
+  protected ChunkMeta createChunkMetaObj(JsonObject metaObj) {
+    return new ChunkMeta(metaObj);
   }
   
   /**
@@ -453,8 +455,7 @@ public class IndexerVerticle extends AbstractVerticle {
       for (SearchHit hit : hits) {
         ChunkMeta meta = getMeta(hit.getSource());
         JsonObject obj = meta.toJsonObject()
-            .put("id", hit.getId())
-            .put("$type", meta.getClass().getName());
+            .put("id", hit.getId());
         resultHits.add(obj);
       }
       
