@@ -44,6 +44,7 @@ public abstract class IndexedStore implements Store {
         JsonObject indexMsg = new JsonObject()
             .put("path", ar.result())
             .put("meta", chunkMeta.toJsonObject())
+            .put("$type", chunkMeta.getClass().getName())
             .put("importId", indexMeta.getImportId())
             .put("filename", indexMeta.getFromFile())
             .put("importTime", indexMeta.getImportTimeStamp().getTime());

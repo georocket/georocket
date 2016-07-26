@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 
+import org.apache.commons.io.FilenameUtils;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.rules.TemporaryFolder;
@@ -39,7 +40,7 @@ public class FileStoreTest extends StorageTest {
    */
   @Before
   public void setUp() {
-    fileStoreRoot = tempFolder.getRoot().getAbsolutePath();
+    fileStoreRoot = FilenameUtils.separatorsToUnix(tempFolder.getRoot().getAbsolutePath());
     fileDestination = PathUtils.join(fileStoreRoot, "file");
   }
 

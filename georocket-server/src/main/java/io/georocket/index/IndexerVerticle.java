@@ -4,7 +4,6 @@ import static io.georocket.util.ThrowableHelper.throwableToCode;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Constructor;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
@@ -48,12 +47,14 @@ import io.georocket.index.xml.XMLIndexer;
 import io.georocket.index.xml.XMLIndexerFactory;
 import io.georocket.query.DefaultQueryCompiler;
 import io.georocket.storage.ChunkMeta;
+import io.georocket.storage.ChunkMetaFactory;
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.Store;
 import io.georocket.storage.StoreFactory;
 import io.georocket.util.AsyncXMLParser;
 import io.georocket.util.MapUtils;
 import io.georocket.util.RxUtils;
+import io.georocket.util.XMLStartElement;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -340,21 +341,14 @@ public class IndexerVerticle extends AbstractVerticle {
           msg.fail(400, "Missing metadata for chunk " + path);
           return Observable.empty();
         }
-        
+
         ChunkMeta meta;
-        String metaType = metaObj.getString("$type");
-        if(metaType != null){
-          try {
-            Constructor<ChunkMeta> constrc = (Constructor<ChunkMeta>) Class.forName(metaType).getConstructor(JsonObject.class);
-            meta = constrc.newInstance(metaObj);
-          } catch (Exception e) {
-            msg.fail(throwableToCode(e), e.getMessage());
-            log.fatal(e.getMessage(), e);
-            return Observable.empty();
-          }
-        }
-        else {
-          meta = new ChunkMeta(metaObj);
+        try {
+          meta = ChunkMetaFactory.createChunkMetaFromJson(body.getString("$type"), metaObj);
+        } catch (Exception e) {
+          log.error("Could not create ChunkMeta from meta object.", e);
+          msg.fail(400, "Could not create ChunkMeta from meta object.");
+          return Observable.empty();
         }
         
         // get tags
@@ -377,6 +371,7 @@ public class IndexerVerticle extends AbstractVerticle {
               doc.put("importId", importId);
               doc.put("filename", filename);
               doc.put("importTime", importTime);
+              doc.put("$type", meta.getClass().getName());
               addMeta(doc, meta);
               if (tags != null) {
                 doc.put("tags", tags);
@@ -458,7 +453,8 @@ public class IndexerVerticle extends AbstractVerticle {
       for (SearchHit hit : hits) {
         ChunkMeta meta = getMeta(hit.getSource());
         JsonObject obj = meta.toJsonObject()
-            .put("id", hit.getId());
+            .put("id", hit.getId())
+            .put("$type", meta.getClass().getName());
         resultHits.add(obj);
       }
       
@@ -588,8 +584,11 @@ public class IndexerVerticle extends AbstractVerticle {
    * @param doc the document
    * @param meta the metadata to add to the document
    */
-  private void addMeta(Map<String, Object> doc, ChunkMeta meta) {
-    meta.addMeta(doc);
+  protected void addMeta(Map<String, Object> doc, ChunkMeta meta) {
+    doc.put("chunkStart", meta.getStart());
+    doc.put("chunkEnd", meta.getEnd());
+    doc.put("chunkParents", meta.getParents().stream().map(p ->
+        p.toJsonObject().getMap()).collect(Collectors.toList()));
   }
   
   /**
@@ -598,22 +597,37 @@ public class IndexerVerticle extends AbstractVerticle {
    * @return the metadata
    */
   @SuppressWarnings("unchecked")
-  private ChunkMeta getMeta(Map<String, Object> source) {
-    ChunkMeta meta = null;
-    String metaType = (String) source.get("$type");
-    if(metaType != null){
-      try {
-        Constructor<ChunkMeta> constrc = (Constructor<ChunkMeta>) Class.forName(metaType).getConstructor(Map.class);
-        meta = constrc.newInstance(source);
-      
-      } catch (Exception e) {
-        log.info(e.getMessage(), throwableToCode(e));
-      }
+  protected ChunkMeta getMeta(Map<String, Object> source) {
+    int start = ((Number)source.get("chunkStart")).intValue();
+    int end = ((Number)source.get("chunkEnd")).intValue();
+    
+    List<Map<String, Object>> parentsList = (List<Map<String, Object>>)source.get("chunkParents");
+    List<XMLStartElement> parents = parentsList.stream().map(p -> {
+      String prefix = (String)p.get("prefix");
+      String localName = (String)p.get("localName");
+      String[] namespacePrefixes = safeListToArray((List<String>)p.get("namespacePrefixes"));
+      String[] namespaceUris = safeListToArray((List<String>)p.get("namespaceUris"));
+      String[] attributePrefixes = safeListToArray((List<String>)p.get("attributePrefixes"));
+      String[] attributeLocalNames = safeListToArray((List<String>)p.get("attributeLocalNames"));
+      String[] attributeValues = safeListToArray((List<String>)p.get("attributeValues"));
+      return new XMLStartElement(prefix, localName, namespacePrefixes, namespaceUris,
+          attributePrefixes, attributeLocalNames, attributeValues);
+    }).collect(Collectors.toList());
+    
+    return new ChunkMeta(parents, start, end);
+  }
+  
+  /**
+   * Convert a list to an array. If the list is null the return value
+   * will also be null.
+   * @param list the list to convert
+   * @return the array or null if <code>list</code> is null
+   */
+  private String[] safeListToArray(List<String> list) {
+    if (list == null) {
+      return null;
     }
-    else {
-      meta = new ChunkMeta(source);
-    }
-    return meta;
+    return list.toArray(new String[list.size()]);
   }
 
   /**
