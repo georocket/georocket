@@ -77,7 +77,7 @@ public class ChunkMeta {
     if (getClass() != obj.getClass()) {
       return false;
     }
-    ChunkMeta other = (ChunkMeta) obj;
+    ChunkMeta other = (ChunkMeta)obj;
     if (end != other.end) {
       return false;
     }

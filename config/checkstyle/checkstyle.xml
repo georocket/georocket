@@ -11,10 +11,18 @@
 
     <module name="TreeWalker">
         <module name="AvoidStarImport" />
+        <module name="NoWhitespaceAfter">
+            <property name="tokens" value="INC, DEC, UNARY_MINUS, UNARY_PLUS, BNOT, LNOT, DOT, TYPECAST, ARRAY_DECLARATOR, INDEX_OP" />
+        </module>
+        <module name="NoWhitespaceBefore" />
         <module name="LeftCurly" />
+        <module name="ParenPad" />
         <module name="RightCurly" />
         <module name="WhitespaceAfter">
             <property name="tokens" value="COMMA, SEMI" />
+        </module>
+        <module name="WhitespaceAround">
+            <property name="allowEmptyLambdas" value="true" />
         </module>
     </module>
 </module>

@@ -144,7 +144,7 @@ public class IndexerVerticle extends AbstractVerticle {
   @Override
   public void stop() {
     client.close();
-    if(node != null){
+    if (node != null) {
       node.close();
     }
   }

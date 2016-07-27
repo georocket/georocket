@@ -69,7 +69,7 @@ public abstract class IndexedStore implements Store {
         Throwable cause = ar.cause();
         if (cause instanceof ReplyException) {
           // Cast to get access to the failure code
-          ReplyException ex = (ReplyException) cause;
+          ReplyException ex = (ReplyException)cause;
 
           if (ex.failureCode() == 404) {
             handler.handle(Future.succeededFuture());

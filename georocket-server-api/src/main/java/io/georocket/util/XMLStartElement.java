@@ -243,7 +243,7 @@ public class XMLStartElement {
     if (getClass() != obj.getClass()) {
       return false;
     }
-    XMLStartElement other = (XMLStartElement) obj;
+    XMLStartElement other = (XMLStartElement)obj;
     if (!Arrays.equals(attributeLocalNames, other.attributeLocalNames)) {
       return false;
     }
