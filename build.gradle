@@ -6,6 +6,10 @@ subprojects {
     version = '1.0.0-SNAPSHOT'
     group = 'io.georocket'
 
+    ext {
+        checkstyleConfigDir = new File(rootProject.projectDir, 'config/checkstyle')
+    }
+
     plugins.withType(JavaPlugin) {
         sourceCompatibility = '1.8'
         targetCompatibility = '1.8'
@@ -15,6 +19,13 @@ subprojects {
                 properties['org.eclipse.jdt.core.formatter.indentation.size'] = '2'
                 properties['org.eclipse.jdt.core.formatter.tabulation.size'] = '2'
                 properties['org.eclipse.jdt.core.formatter.tabulation.char'] = 'space'
+            }
+        }
+
+        plugins.withType(CheckstylePlugin) {
+            checkstyle {
+                configFile new File(checkstyleConfigDir, 'checkstyle.xml')
+                configProperties.checkstyleConfigDir = checkstyleConfigDir
             }
         }
 
