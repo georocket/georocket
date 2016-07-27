@@ -11,11 +11,9 @@ import io.georocket.util.XMLStreamEvent;
 
 /**
  * Index for CityGML generic attributes
- * @author Michel
+ * @author Michel Kraemer
  */
 public class GenericAttributeIndexer implements XMLIndexer {
-  private static final String NS_GEN = "http://www.opengis.net/citygml/generics/2.0";
-  
   /**
    * The key of the currently parsed generic attribute
    */
@@ -33,8 +31,7 @@ public class GenericAttributeIndexer implements XMLIndexer {
   
   @Override
   public void onEvent(XMLStreamEvent event) {
-    if ((event.getEvent() == XMLEvent.START_ELEMENT || event.getEvent() == XMLEvent.END_ELEMENT) &&
-        event.getXMLReader().getNamespaceURI().equals(NS_GEN)) {
+    if ((event.getEvent() == XMLEvent.START_ELEMENT || event.getEvent() == XMLEvent.END_ELEMENT)) {
       String ln = event.getXMLReader().getLocalName();
       if (ln.equals("stringAttribute") || ln.equals("intAttribute") || ln.equals("doubleAttribute") ||
           ln.equals("dateAttribute") || ln.equals("uriAttribute") || ln.equals("measureAttribute")) {
