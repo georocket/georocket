@@ -62,7 +62,7 @@ public class MongoDBStoreTest extends StorageTest {
   }
 
   private static String MONGODB_DBNAME = "testdb";
-  private InetSocketAddress serverAddress = new InetSocketAddress("localhost", 5005);
+  private ServerAddress serverAddress = new ServerAddress("localhost", 5005);
 
   /**
    * Set up test dependencies.
@@ -89,7 +89,7 @@ public class MongoDBStoreTest extends StorageTest {
   private void configureVertx(Vertx vertx) {
     JsonObject config = vertx.getOrCreateContext().config();
 
-    config.put(ConfigConstants.STORAGE_MONGODB_HOST, serverAddress.getHostName());
+    config.put(ConfigConstants.STORAGE_MONGODB_HOST, serverAddress.getHost());
     config.put(ConfigConstants.STORAGE_MONGODB_PORT, serverAddress.getPort());
     config.put(ConfigConstants.STORAGE_MONGODB_DATABASE, MONGODB_DBNAME);
   }
@@ -105,7 +105,7 @@ public class MongoDBStoreTest extends StorageTest {
       Handler<AsyncResult<String>> handler) {
     String filename = PathUtils.join(path, ID);
     vertx.<String>executeBlocking(f -> {
-      try (MongoClient client = new MongoClient(new ServerAddress(serverAddress))) {
+      try (MongoClient client = new MongoClient(serverAddress)) {
         DB db = client.getDB(MONGODB_DBNAME);
         GridFS gridFS = new GridFS(db);
         GridFSInputFile file = gridFS.createFile(filename);
@@ -126,7 +126,7 @@ public class MongoDBStoreTest extends StorageTest {
   protected void validateAfterStoreAdd(TestContext context, Vertx vertx,
       String path, Handler<AsyncResult<Void>> handler) {
     vertx.executeBlocking(f -> {
-      MongoClient client = new MongoClient(new ServerAddress(serverAddress));
+      MongoClient client = new MongoClient(serverAddress);
       DB db = client.getDB(MONGODB_DBNAME);
       GridFS gridFS = new GridFS(db);
 
@@ -157,7 +157,7 @@ public class MongoDBStoreTest extends StorageTest {
   protected void validateAfterStoreDelete(TestContext context, Vertx vertx,
       String path, Handler<AsyncResult<Void>> handler) {
     vertx.executeBlocking(f -> {
-      MongoClient client = new MongoClient(new ServerAddress(serverAddress));
+      MongoClient client = new MongoClient(serverAddress);
       DB db = client.getDB(MONGODB_DBNAME);
       GridFS gridFS = new GridFS(db);
 
