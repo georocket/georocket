@@ -11,6 +11,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 
+import io.georocket.NetUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -36,7 +37,7 @@ public class S3StoreTest extends StorageTest {
   private static String  S3_ACCESS_KEY        = "640ab2bae07bedc4c163f679a746f7ab7fb5d1fa";
   private static String  S3_SECRET_KEY        = "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3";
   private static String  S3_HOST              = "localhost";
-  private static int     S3_PORT              = 8080;
+  private static int     S3_PORT              = NetUtils.findPort();
   private static String  S3_BUCKET            = "testbucket";
   private static boolean S3_PATH_STYLE_ACCESS = true;
 
