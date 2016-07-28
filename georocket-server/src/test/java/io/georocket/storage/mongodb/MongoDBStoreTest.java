@@ -15,6 +15,7 @@ import de.flapdoodle.embed.mongo.config.MongodConfigBuilder;
 import de.flapdoodle.embed.mongo.config.Net;
 import de.flapdoodle.embed.mongo.distribution.Version;
 import de.flapdoodle.embed.process.runtime.Network;
+import io.georocket.NetUtils;
 import org.apache.commons.io.Charsets;
 import org.apache.commons.io.IOUtils;
 import org.junit.After;
@@ -62,7 +63,7 @@ public class MongoDBStoreTest extends StorageTest {
   }
 
   private static String MONGODB_DBNAME = "testdb";
-  private InetSocketAddress serverAddress = new InetSocketAddress("localhost", 5005);
+  private InetSocketAddress serverAddress = new InetSocketAddress("localhost", NetUtils.findPort());
 
   /**
    * Set up test dependencies.
