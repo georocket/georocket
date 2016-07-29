@@ -69,7 +69,7 @@ Please wait a couple of seconds until you see the following message:
 
   GeoRocket launched successfully.
 
-The has launched and now waits for incoming HTTP requests on port `63020` (default).
+The server has launched and now waits for incoming HTTP requests on port `63020` (default).
 
 Next open another command prompt and change to the directory where you installed GeoRocket CLI. Run `georocket-cli` to access the server through a convenient command-line application.
 
@@ -434,7 +434,7 @@ This example matches all chunks that are not within the bounding box `13.378,52.
 
 == Server configuration
 
-You can configure GeoRocket server by editing the file `conf/georocketd.json` in the application directory. The file must be a valid JSON file containing a single object. The following sections describe possible configuration keys and values.
+You can configure GeoRocket Server by editing the file `conf/georocketd.json` in the application directory. The file must be a valid JSON file containing a single object. The following sections describe possible configuration keys and values.
 
 === HTTP interface
 
