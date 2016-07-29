@@ -21,6 +21,14 @@ repositories {
 dependencies {
     compile project(':georocket-server-api')
 
+    compile group: 'org.slf4j', name: 'jul-to-slf4j', version: '1.7.21'
+    compile group: 'org.slf4j', name: 'log4j-over-slf4j', version: '1.7.21'
+    compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.21'
+
+    compile group: 'ch.qos.logback', name: 'logback-classic', version: '1.1.7'
+    compile group: 'ch.qos.logback', name: 'logback-core', version: '1.1.7'
+
+
     compile "io.vertx:vertx-rx-java:$vertxVersion"
     compile "io.vertx:vertx-web:$vertxVersion"
 
