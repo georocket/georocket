@@ -349,7 +349,7 @@ public class IndexerVerticle extends AbstractVerticle {
           return Observable.empty();
         }
 
-        ChunkMeta meta = createChunkMetaObj(metaObj);
+        ChunkMeta meta = createChunkMeta(metaObj);
         
         // get tags
         JsonArray tagsArr = body.getJsonArray("tags");
@@ -398,14 +398,13 @@ public class IndexerVerticle extends AbstractVerticle {
   }
 
   /**
-   * Create ChunkMeta Object. Override this method to provide own ChunkMeta
-   * type.
-   * 
-   * @param metaObj The chunk meta content used to initialize the ChunkMeta
-   * @return The created Chunk Meta
+   * Create a {@link ChunkMeta} object. Sub-classes may override this
+   * method to provide their own {@link ChunkMeta} type.
+   * @param hit the chunk meta content used to initialize the object
+   * @return the created object
    */
-  protected ChunkMeta createChunkMetaObj(JsonObject metaObj) {
-    return new ChunkMeta(metaObj);
+  protected ChunkMeta createChunkMeta(JsonObject hit) {
+    return new ChunkMeta(hit);
   }
   
   /**

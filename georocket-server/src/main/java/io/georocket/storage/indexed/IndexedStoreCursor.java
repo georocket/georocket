@@ -14,7 +14,7 @@ import io.vertx.core.json.JsonObject;
  * Implementation of {@link StoreCursor} for indexed chunk stores
  * @author Michel Kraemer
  */
-public abstract class IndexedStoreCursor<T extends ChunkMeta> implements StoreCursor {
+public class IndexedStoreCursor implements StoreCursor {
   /**
    * The Vert.x instance
    */
@@ -63,7 +63,7 @@ public abstract class IndexedStoreCursor<T extends ChunkMeta> implements StoreCu
   /**
    * Chunk metadata retrieved in the last batch
    */
-  private T[] metas;
+  private ChunkMeta[] metas;
   
   /**
    * Create a cursor
@@ -111,11 +111,11 @@ public abstract class IndexedStoreCursor<T extends ChunkMeta> implements StoreCu
     JsonArray hits = body.getJsonArray("hits");
     int count = hits.size();
     ids = new String[count];
-    metas = createChunkMetaArray(count);
+    metas = new ChunkMeta[count];
     for (int i = 0; i < count; ++i) {
       JsonObject hit = hits.getJsonObject(i);
       ids[i] = hit.getString("id");
-      metas[i] = createChunkMetaObj(hit);
+      metas[i] = createChunkMeta(hit);
     }
   }
 
@@ -159,19 +159,12 @@ public abstract class IndexedStoreCursor<T extends ChunkMeta> implements StoreCu
   }
   
   /**
-   * Override this method to provide own ChunkMeta array.
-   * 
-   * @param length The length of the array, number of ChunkMeta entries.
-   * @return The created ChunkMeta array.
+   * Create a {@link ChunkMeta} object. Sub-classes may override this
+   * method to provide their own {@link ChunkMeta} type.
+   * @param hit the chunk meta content used to initialize the object
+   * @return the created object
    */
-  abstract protected T[] createChunkMetaArray(int length);
-  
-  /**
-   * Create ChunkMeta Object. Override this method to provide own ChunkMeta
-   * type.
-   * 
-   * @param hit The chunk meta content used to initialize the ChunkMeta
-   * @return The created Chunk Meta
-   */
-  abstract protected T createChunkMetaObj(JsonObject hit);
+  protected ChunkMeta createChunkMeta(JsonObject hit) {
+    return new ChunkMeta(hit);
+  }
 }
