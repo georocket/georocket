@@ -9,9 +9,9 @@
         </encoder>
     </appender>
 
-    <logger name="io.georocket" level="TRACE"/>
+    <logger name="io.georocket" level="DEBUG"/>
 
-    <root level="debug">
+    <root level="DEBUG">
         <appender-ref ref="STDOUT"/>
     </root>
 </configuration>
