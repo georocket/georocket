@@ -348,7 +348,8 @@ public class IndexerVerticle extends AbstractVerticle {
           msg.fail(400, "Missing metadata for chunk " + path);
           return Observable.empty();
         }
-        ChunkMeta meta = ChunkMeta.fromJsonObject(metaObj);
+
+        ChunkMeta meta = createChunkMetaObj(metaObj);
         
         // get tags
         JsonArray tagsArr = body.getJsonArray("tags");
@@ -394,6 +395,17 @@ public class IndexerVerticle extends AbstractVerticle {
         }
         return Observable.empty();
       });
+  }
+
+  /**
+   * Create ChunkMeta Object. Override this method to provide own ChunkMeta
+   * type.
+   * 
+   * @param metaObj The chunk meta content used to initialize the ChunkMeta
+   * @return The created Chunk Meta
+   */
+  protected ChunkMeta createChunkMetaObj(JsonObject metaObj) {
+    return new ChunkMeta(metaObj);
   }
   
   /**
@@ -581,7 +593,7 @@ public class IndexerVerticle extends AbstractVerticle {
    * @param doc the document
    * @param meta the metadata to add to the document
    */
-  private void addMeta(Map<String, Object> doc, ChunkMeta meta) {
+  protected void addMeta(Map<String, Object> doc, ChunkMeta meta) {
     doc.put("chunkStart", meta.getStart());
     doc.put("chunkEnd", meta.getEnd());
     doc.put("chunkParents", meta.getParents().stream().map(p ->
@@ -594,7 +606,7 @@ public class IndexerVerticle extends AbstractVerticle {
    * @return the metadata
    */
   @SuppressWarnings("unchecked")
-  private ChunkMeta getMeta(Map<String, Object> source) {
+  protected ChunkMeta getMeta(Map<String, Object> source) {
     int start = ((Number)source.get("chunkStart")).intValue();
     int end = ((Number)source.get("chunkEnd")).intValue();
     

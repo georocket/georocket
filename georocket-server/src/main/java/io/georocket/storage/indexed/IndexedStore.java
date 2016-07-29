@@ -64,7 +64,7 @@ public abstract class IndexedStore implements Store {
 
   @Override
   public void delete(String search, String path, Handler<AsyncResult<Void>> handler) {
-    new IndexedStoreCursor(vertx, PAGE_SIZE, search, path).start(ar -> {
+    new ChunkMetaIndexedStoreCursor(vertx, PAGE_SIZE, search, path).start(ar -> {
       if (ar.failed()) {
         Throwable cause = ar.cause();
         if (cause instanceof ReplyException) {
@@ -87,7 +87,7 @@ public abstract class IndexedStore implements Store {
 
   @Override
   public void get(String search, String path, Handler<AsyncResult<StoreCursor>> handler) {
-    new IndexedStoreCursor(vertx, PAGE_SIZE, search, path).start(handler);
+    new ChunkMetaIndexedStoreCursor(vertx, PAGE_SIZE, search, path).start(handler);
   }
   
   /**

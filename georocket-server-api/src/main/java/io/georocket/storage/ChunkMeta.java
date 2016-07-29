@@ -33,6 +33,17 @@ public class ChunkMeta {
   }
   
   /**
+   * Chunk Meta from JsonObject
+   * @param object The JsonObject containing the values for the ChunkMeta Object.
+   */
+  public ChunkMeta(JsonObject object) {
+    this(object.getJsonArray("parents").stream().map(e ->
+        XMLStartElement.fromJsonObject((JsonObject)e)).collect(Collectors.toList()),
+        object.getInteger("start"),
+        object.getInteger("end"));
+  }
+  
+  /**
    * @return the chunk's parents (i.e. the XML start elements the
    * chunk is wrapped in)
    */
@@ -112,9 +123,6 @@ public class ChunkMeta {
    * @return the {@link ChunkMeta} object
    */
   public static ChunkMeta fromJsonObject(JsonObject obj) {
-    JsonArray parentsArr = obj.getJsonArray("parents");
-    List<XMLStartElement> pl = parentsArr.stream().map(e ->
-        XMLStartElement.fromJsonObject((JsonObject)e)).collect(Collectors.toList());
-    return new ChunkMeta(pl, obj.getInteger("start"), obj.getInteger("end"));
+    return new ChunkMeta(obj);
   }
 }

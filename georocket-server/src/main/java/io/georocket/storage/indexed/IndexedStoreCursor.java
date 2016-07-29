@@ -14,7 +14,7 @@ import io.vertx.core.json.JsonObject;
  * Implementation of {@link StoreCursor} for indexed chunk stores
  * @author Michel Kraemer
  */
-public class IndexedStoreCursor implements StoreCursor {
+public abstract class IndexedStoreCursor<T extends ChunkMeta> implements StoreCursor {
   /**
    * The Vert.x instance
    */
@@ -63,7 +63,7 @@ public class IndexedStoreCursor implements StoreCursor {
   /**
    * Chunk metadata retrieved in the last batch
    */
-  private ChunkMeta[] metas;
+  private T[] metas;
   
   /**
    * Create a cursor
@@ -111,11 +111,11 @@ public class IndexedStoreCursor implements StoreCursor {
     JsonArray hits = body.getJsonArray("hits");
     int count = hits.size();
     ids = new String[count];
-    metas = new ChunkMeta[count];
+    metas = createChunkMetaArray(count);
     for (int i = 0; i < count; ++i) {
       JsonObject hit = hits.getJsonObject(i);
       ids[i] = hit.getString("id");
-      metas[i] = ChunkMeta.fromJsonObject(hit);
+      metas[i] = createChunkMetaObj(hit);
     }
   }
 
@@ -157,4 +157,21 @@ public class IndexedStoreCursor implements StoreCursor {
     }
     return ids[pos];
   }
+  
+  /**
+   * Override this method to provide own ChunkMeta array.
+   * 
+   * @param length The length of the array, number of ChunkMeta entries.
+   * @return The created ChunkMeta array.
+   */
+  abstract protected T[] createChunkMetaArray(int length);
+  
+  /**
+   * Create ChunkMeta Object. Override this method to provide own ChunkMeta
+   * type.
+   * 
+   * @param hit The chunk meta content used to initialize the ChunkMeta
+   * @return The created Chunk Meta
+   */
+  abstract protected T createChunkMetaObj(JsonObject hit);
 }
