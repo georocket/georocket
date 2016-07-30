@@ -19,7 +19,6 @@ import org.bson.types.ObjectId;
 import io.georocket.constants.ConfigConstants;
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.indexed.IndexedStore;
-import io.georocket.storage.mongodb.MongoDBChunkReadStream;
 import io.georocket.util.PathUtils;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -88,7 +87,8 @@ public class HDFSStore extends IndexedStore {
         handler.handle(Future.failedFuture(ar.cause()));
       } else {
         Pair<Long, InputStream> p = ar.result();
-        handler.handle(Future.succeededFuture(new MongoDBChunkReadStream(p.getValue(), p.getKey(), vertx)));
+        handler.handle(Future.succeededFuture(
+            new InputStreamChunkReadStream(p.getValue(), p.getKey(), vertx)));
       }
     });
   }

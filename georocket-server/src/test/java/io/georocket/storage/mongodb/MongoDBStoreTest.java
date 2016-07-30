@@ -16,19 +16,10 @@ import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
 import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
-import com.mongodb.ServerAddress;
 import com.mongodb.gridfs.GridFS;
 import com.mongodb.gridfs.GridFSDBFile;
 import com.mongodb.gridfs.GridFSInputFile;
 
-import de.flapdoodle.embed.mongo.MongodExecutable;
-import de.flapdoodle.embed.mongo.MongodProcess;
-import de.flapdoodle.embed.mongo.MongodStarter;
-import de.flapdoodle.embed.mongo.config.MongodConfigBuilder;
-import de.flapdoodle.embed.mongo.config.Net;
-import de.flapdoodle.embed.mongo.distribution.Version;
-import de.flapdoodle.embed.process.runtime.Network;
-import io.georocket.NetUtils;
 import io.georocket.constants.ConfigConstants;
 import io.georocket.storage.StorageTest;
 import io.georocket.storage.Store;
@@ -47,11 +38,8 @@ import io.vertx.ext.unit.junit.RunTestOnContext;
  */
 public class MongoDBStoreTest extends StorageTest {
   private static long MAX_WORKER_EXECUTION_TIME = 30 * 60 * 1000;
-
-  private static final MongodStarter starter = MongodStarter.getDefaultInstance();
-
-  private MongodExecutable mongodExe;
-  private MongodProcess mongod;
+  
+  private MongoDBTestConnector mongoConnector;
 
   /**
    * Default constructor
@@ -61,20 +49,13 @@ public class MongoDBStoreTest extends StorageTest {
         .setMaxWorkerExecuteTime(MAX_WORKER_EXECUTION_TIME));
   }
 
-  private static String MONGODB_DBNAME = "testdb";
-  private ServerAddress serverAddress = new ServerAddress("localhost", NetUtils.findPort());
-
   /**
    * Set up test dependencies.
-   * @throws Exception if the embedded MongoDB instance could not be started
+   * @throws IOException if the MongoDB instance could not be started
    */
   @Before
-  public void setUp() throws Exception {
-    mongodExe = starter.prepare(new MongodConfigBuilder()
-        .version(Version.Main.PRODUCTION)
-        .net(new Net(serverAddress.getPort(), Network.localhostIsIPv6()))
-        .build());
-    mongod = mongodExe.start();
+  public void setUp() throws IOException {
+    mongoConnector = new MongoDBTestConnector();
   }
 
   /**
@@ -82,16 +63,18 @@ public class MongoDBStoreTest extends StorageTest {
    */
   @After
   public void tearDown() {
-    mongod.stop();
-    mongodExe.stop();
+    mongoConnector.stop();
   }
 
   private void configureVertx(Vertx vertx) {
     JsonObject config = vertx.getOrCreateContext().config();
 
-    config.put(ConfigConstants.STORAGE_MONGODB_HOST, serverAddress.getHost());
-    config.put(ConfigConstants.STORAGE_MONGODB_PORT, serverAddress.getPort());
-    config.put(ConfigConstants.STORAGE_MONGODB_DATABASE, MONGODB_DBNAME);
+    config.put(ConfigConstants.STORAGE_MONGODB_HOST,
+        mongoConnector.serverAddress.getHost());
+    config.put(ConfigConstants.STORAGE_MONGODB_PORT,
+        mongoConnector.serverAddress.getPort());
+    config.put(ConfigConstants.STORAGE_MONGODB_DATABASE,
+        MongoDBTestConnector.MONGODB_DBNAME);
   }
 
   @Override
@@ -105,8 +88,8 @@ public class MongoDBStoreTest extends StorageTest {
       Handler<AsyncResult<String>> handler) {
     String filename = PathUtils.join(path, ID);
     vertx.<String>executeBlocking(f -> {
-      try (MongoClient client = new MongoClient(serverAddress)) {
-        DB db = client.getDB(MONGODB_DBNAME);
+      try (MongoClient client = new MongoClient(mongoConnector.serverAddress)) {
+        DB db = client.getDB(MongoDBTestConnector.MONGODB_DBNAME);
         GridFS gridFS = new GridFS(db);
         GridFSInputFile file = gridFS.createFile(filename);
         try (
@@ -126,8 +109,8 @@ public class MongoDBStoreTest extends StorageTest {
   protected void validateAfterStoreAdd(TestContext context, Vertx vertx,
       String path, Handler<AsyncResult<Void>> handler) {
     vertx.executeBlocking(f -> {
-      MongoClient client = new MongoClient(serverAddress);
-      DB db = client.getDB(MONGODB_DBNAME);
+      MongoClient client = new MongoClient(mongoConnector.serverAddress);
+      DB db = client.getDB(MongoDBTestConnector.MONGODB_DBNAME);
       GridFS gridFS = new GridFS(db);
 
       DBObject query = new BasicDBObject();
@@ -157,8 +140,8 @@ public class MongoDBStoreTest extends StorageTest {
   protected void validateAfterStoreDelete(TestContext context, Vertx vertx,
       String path, Handler<AsyncResult<Void>> handler) {
     vertx.executeBlocking(f -> {
-      MongoClient client = new MongoClient(serverAddress);
-      DB db = client.getDB(MONGODB_DBNAME);
+      MongoClient client = new MongoClient(mongoConnector.serverAddress);
+      DB db = client.getDB(MongoDBTestConnector.MONGODB_DBNAME);
       GridFS gridFS = new GridFS(db);
 
       DBObject query = new BasicDBObject();

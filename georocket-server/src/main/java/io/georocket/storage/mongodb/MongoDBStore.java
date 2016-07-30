@@ -1,20 +1,21 @@
 package io.georocket.storage.mongodb;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.Queue;
+import java.util.concurrent.atomic.AtomicLong;
 
+import org.bson.Document;
 import org.bson.types.ObjectId;
 
-import com.mongodb.CommandResult;
-import com.mongodb.DB;
-import com.mongodb.MongoClient;
-import com.mongodb.gridfs.GridFS;
-import com.mongodb.gridfs.GridFSDBFile;
-import com.mongodb.gridfs.GridFSInputFile;
+import com.mongodb.async.client.MongoClient;
+import com.mongodb.async.client.MongoClients;
+import com.mongodb.async.client.MongoDatabase;
+import com.mongodb.async.client.gridfs.AsyncInputStream;
+import com.mongodb.async.client.gridfs.GridFSBucket;
+import com.mongodb.async.client.gridfs.GridFSBuckets;
+import com.mongodb.async.client.gridfs.GridFSDownloadStream;
+import com.mongodb.async.client.gridfs.GridFSFindIterable;
+import com.mongodb.async.client.gridfs.helpers.AsyncStreamHelper;
 
 import io.georocket.constants.ConfigConstants;
 import io.georocket.storage.ChunkReadStream;
@@ -25,20 +26,23 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 /**
  * Stores chunks in MongoDB
  * @author Michel Kraemer
  */
 public class MongoDBStore extends IndexedStore {
+  private static Logger log = LoggerFactory.getLogger(MongoDBStore.class);
+  
   private final Vertx vertx;
-  private final String host;
-  private final int port;
+  private final String connectionString;
   private final String databaseName;
 
   private MongoClient mongoClient;
-  private DB database;
-  private GridFS gridfs;
+  private MongoDatabase database;
+  private GridFSBucket gridfs;
 
   /**
    * Constructs a new store
@@ -49,89 +53,85 @@ public class MongoDBStore extends IndexedStore {
     this.vertx = vertx;
 
     JsonObject config = vertx.getOrCreateContext().config();
-    host = config.getString(ConfigConstants.STORAGE_MONGODB_HOST);
-    port = config.getInteger(ConfigConstants.STORAGE_MONGODB_PORT, 27017);
+    String cs = config.getString(ConfigConstants.STORAGE_MONGODB_CONNECTION_STRING);
+    if (cs == null) {
+      String host = config.getString(ConfigConstants.STORAGE_MONGODB_HOST);
+      int port = config.getInteger(ConfigConstants.STORAGE_MONGODB_PORT, 27017);
+      if (host != null && !host.isEmpty()) {
+        log.warn("Deprecation warning: 'georocket.storage.mongodb.host' and "
+            + "'georocket.storage.mongodb.port' are deprecated. Use "
+            + "georocket.storage.mongodb.connectionString' instead.");
+      }
+      cs = "mongodb://" + host + ":" + port;
+    }
+    connectionString = cs;
     databaseName = config.getString(ConfigConstants.STORAGE_MONGODB_DATABASE);
   }
 
   /**
    * Get or create the MongoDB client
-   * Note: this method must be synchronized because we're accessing the
-   * {@link #mongoClient} field and we're calling this method from a worker thread.
    * @return the MongoDB client
    */
-  private synchronized MongoClient getMongoClient() {
+  private MongoClient getMongoClient() {
     if (mongoClient == null) {
-      mongoClient = new MongoClient(host, port);
+      mongoClient = MongoClients.create(connectionString);
     }
     return mongoClient;
   }
 
   /**
    * Get or create the MongoDB database
-   * Note: this method must be synchronized because we're accessing the
-   * {@link #database} field and we're calling this method from a worker thread.
    * @return the MongoDB client
    */
-  private synchronized DB getDB() {
+  private MongoDatabase getDB() {
     if (database == null) {
-      // TODO getDB is deprecated. Use new GridFS API as soon as it's available
-      database = getMongoClient().getDB(databaseName);
+      database = getMongoClient().getDatabase(databaseName);
     }
     return database;
   }
 
   /**
    * Get or create the MongoDB GridFS instance
-   * Note: this method must be synchronized because we're accessing the
-   * {@link #gridfs} field and we're calling this method from a worker thread.
    * @return the MongoDB client
    */
-  private synchronized GridFS getGridFS() {
+  private GridFSBucket getGridFS() {
     if (gridfs == null) {
-      gridfs = new GridFS(getDB());
+      gridfs = GridFSBuckets.create(getDB());
     }
     return gridfs;
   }
-
+  
   @Override
   public void getOne(String path, Handler<AsyncResult<ChunkReadStream>> handler) {
-    vertx.<GridFSDBFile>executeBlocking(f -> {
-      GridFSDBFile file;
-      synchronized (MongoDBStore.this) {
-        file = getGridFS().findOne(PathUtils.normalize(path));
-      }
-      f.complete(file);
-    }, ar -> {
-      if (ar.failed()) {
-        handler.handle(Future.failedFuture(ar.cause()));
-      } else {
-        GridFSDBFile file = ar.result();
-        long size = file.getLength();
-        InputStream is = file.getInputStream();
-        handler.handle(Future.succeededFuture(new MongoDBChunkReadStream(is, size, vertx)));
-      }
+    GridFSDownloadStream downloadStream =
+        getGridFS().openDownloadStream(PathUtils.normalize(path));
+    downloadStream.getGridFSFile((file, t) -> {
+      vertx.runOnContext(v -> {
+        if (t != null) {
+          handler.handle(Future.failedFuture(t));
+        } else {
+          long length = file.getLength();
+          int chunkSize = file.getChunkSize();
+          handler.handle(Future.succeededFuture(new MongoDBChunkReadStream(
+              downloadStream, length, chunkSize, vertx)));
+        }
+      });
     });
   }
 
   @Override
   public void getSize(Handler<AsyncResult<Long>> handler) {
-    vertx.<Long>executeBlocking(f -> {
-      CommandResult cr;
-      synchronized (MongoDBStore.this) {
-        cr = getGridFS().getDB().getStats();
-        if (!cr.containsField("dataSize")) {
-          f.fail("GridFS storage statistics do not contain a field named 'dataSize'");
+    AtomicLong total = new AtomicLong();
+    getGridFS().find().forEach(file -> {
+      total.getAndAdd(file.getLength());
+    }, (v, t) -> {
+      vertx.runOnContext(v2 -> {
+        if (t != null) {
+          handler.handle(Future.failedFuture(t));
         } else {
-          f.complete(cr.getLong("dataSize"));
+          handler.handle(Future.succeededFuture(total.get()));
         }
-      }
-    }, ar -> {
-      if (ar.failed()) {
-        handler.handle(Future.failedFuture(ar.cause()));
-      } else {
-        handler.handle(Future.succeededFuture(ar.result()));
-      }
+      });
     });
   }
 
@@ -144,21 +144,18 @@ public class MongoDBStore extends IndexedStore {
     // generate new file name
     String id = new ObjectId().toString();
     String filename = PathUtils.join(path, id);
-
-    vertx.executeBlocking(f -> {
-      GridFSInputFile file;
-      synchronized (MongoDBStore.this) {
-        file = getGridFS().createFile(filename);
-      }
-      try (OutputStream os = file.getOutputStream();
-          OutputStreamWriter writer = new OutputStreamWriter(os, StandardCharsets.UTF_8)) {
-        writer.write(chunk);
-      } catch (IOException e) {
-        f.fail(e);
-        return;
-      }
-      f.complete(filename);
-    }, handler);
+    
+    byte[] bytes = chunk.getBytes(StandardCharsets.UTF_8);
+    AsyncInputStream is = AsyncStreamHelper.toAsyncInputStream(bytes);
+    getGridFS().uploadFromStream(filename, is, (oid, t) -> {
+      vertx.runOnContext(v -> {
+        if (t != null) {
+          handler.handle(Future.failedFuture(t));
+        } else {
+          handler.handle(Future.succeededFuture(filename));
+        }
+      });
+    });
   }
 
   @Override
@@ -169,20 +166,26 @@ public class MongoDBStore extends IndexedStore {
     }
 
     String path = PathUtils.normalize(paths.poll());
-    vertx.executeBlocking(f -> {
-      synchronized (MongoDBStore.this) {
-        GridFS gridFS = getGridFS();
-
-        if (!gridFS.find(path).isEmpty()) {
-          gridFS.remove(path);
-        }
-      }
-      f.complete();
-    }, ar -> {
-      if (ar.failed()) {
-        handler.handle(Future.failedFuture(ar.cause()));
+    GridFSBucket gridFS = getGridFS();
+    GridFSFindIterable i = gridFS.find(new Document("filename", path));
+    i.first((file, t) -> {
+      if (t != null) {
+        vertx.runOnContext(v -> handler.handle(Future.failedFuture(t)));
       } else {
-        doDeleteChunks(paths, handler);
+        if (file == null) {
+          // file does not exist
+          vertx.runOnContext(v -> doDeleteChunks(paths, handler));
+          return;
+        }
+        gridFS.delete(file.getObjectId(), (r, t2) -> {
+          vertx.runOnContext(v -> {
+            if (t2 != null) {
+              handler.handle(Future.failedFuture(t2));
+            } else {
+              doDeleteChunks(paths, handler);
+            }
+          });
+        });
       }
     });
   }

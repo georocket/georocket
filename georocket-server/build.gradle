@@ -32,7 +32,6 @@ dependencies {
     compile group: 'ch.qos.logback', name: 'logback-classic', version: '1.1.7'
     compile group: 'ch.qos.logback', name: 'logback-core', version: '1.1.7'
 
-
     compile "io.vertx:vertx-rx-java:$vertxVersion"
     compile "io.vertx:vertx-web:$vertxVersion"
 
@@ -49,15 +48,16 @@ dependencies {
     compile 'org.geotools:gt-epsg-extension:14.0'
     compile 'org.geotools:gt-epsg-hsql:14.0'
     compile 'org.geotools:gt-referencing:14.0'
-    compile 'org.mongodb:bson:3.2.1'
-    compile 'org.mongodb:mongodb-driver:3.2.1'
+    compile 'org.mongodb:bson:3.3.0'
+    compile 'org.mongodb:mongodb-driver-async:3.3.0'
     compile 'org.yaml:snakeyaml:1.16'
     compile 'org.apache.tika:tika-core:1.13'
 
+    testCompile 'de.flapdoodle.embed:de.flapdoodle.embed.mongo:1.50.2'
     testCompile 'com.github.tomakehurst:wiremock:1.57'
-    testCompile "de.flapdoodle.embed:de.flapdoodle.embed.mongo:1.50.2"
     testCompile "io.vertx:vertx-unit:$vertxVersion"
     testCompile 'junit:junit:4.12'
+    testCompile 'org.mongodb:mongodb-driver:3.3.0'
 
     antlr 'org.antlr:antlr4:4.5.1'
 }

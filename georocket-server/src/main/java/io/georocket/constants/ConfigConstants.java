@@ -13,8 +13,11 @@ public final class ConfigConstants {
   public static final String STORAGE_FILE_PATH = "georocket.storage.file.path";
   public static final String STORAGE_HDFS_DEFAULT_FS = "georocket.storage.hdfs.defaultFS";
   public static final String STORAGE_HDFS_PATH = "georocket.storage.hdfs.path";
+  @Deprecated // use STORAGE_MONGODB_CONNECTION_STRING instead
   public static final String STORAGE_MONGODB_HOST = "georocket.storage.mongodb.host";
+  @Deprecated // use STORAGE_MONGODB_CONNECTION_STRING instead
   public static final String STORAGE_MONGODB_PORT = "georocket.storage.mongodb.port";
+  public static final String STORAGE_MONGODB_CONNECTION_STRING = "georocket.storage.mongodb.connectionString";
   public static final String STORAGE_MONGODB_DATABASE = "georocket.storage.mongodb.database";
   public static final String STORAGE_S3_ACCESS_KEY = "georocket.storage.s3.accessKey";
   public static final String STORAGE_S3_SECRET_KEY = "georocket.storage.s3.secretKey";
