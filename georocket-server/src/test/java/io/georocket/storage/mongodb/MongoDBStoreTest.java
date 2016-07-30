@@ -78,9 +78,8 @@ public class MongoDBStoreTest extends StorageTest {
   private void configureVertx(Vertx vertx) {
     JsonObject config = vertx.getOrCreateContext().config();
 
-    config.put(ConfigConstants.STORAGE_MONGODB_HOST,
-        mongoConnector.serverAddress.getHost());
-    config.put(ConfigConstants.STORAGE_MONGODB_PORT,
+    config.put(ConfigConstants.STORAGE_MONGODB_CONNECTION_STRING,
+        "mongodb://" + mongoConnector.serverAddress.getHost() + ":" +
         mongoConnector.serverAddress.getPort());
     config.put(ConfigConstants.STORAGE_MONGODB_DATABASE,
         MongoDBTestConnector.MONGODB_DBNAME);
