@@ -6,7 +6,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 
 import com.google.common.collect.Iterables;
 import com.mongodb.MongoClient;
@@ -35,7 +36,7 @@ import io.vertx.ext.unit.junit.RunTestOnContext;
 public class MongoDBStoreTest extends StorageTest {
   private static long MAX_WORKER_EXECUTION_TIME = 30 * 60 * 1000;
   
-  private MongoDBTestConnector mongoConnector;
+  private static MongoDBTestConnector mongoConnector;
 
   /**
    * Default constructor
@@ -49,17 +50,29 @@ public class MongoDBStoreTest extends StorageTest {
    * Set up test dependencies.
    * @throws IOException if the MongoDB instance could not be started
    */
-  @Before
-  public void setUp() throws IOException {
+  @BeforeClass
+  public static void setUpClass() throws IOException {
     mongoConnector = new MongoDBTestConnector();
   }
 
   /**
    * Uninitialize tests
    */
+  @AfterClass
+  public static void tearDownClass() {
+    mongoConnector.stop();
+    mongoConnector = null;
+  }
+  
+  /**
+   * Uninitialize tests
+   */
   @After
   public void tearDown() {
-    mongoConnector.stop();
+    try (MongoClient client = new MongoClient(mongoConnector.serverAddress)) {
+      MongoDatabase db = client.getDatabase(MongoDBTestConnector.MONGODB_DBNAME);
+      db.drop();
+    }
   }
 
   private void configureVertx(Vertx vertx) {
