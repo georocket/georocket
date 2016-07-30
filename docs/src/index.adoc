@@ -504,12 +504,10 @@ You can configure GeoRocket Server by editing the file `conf/georocketd.json` in
 
 [cols="2,2"]
 |===
-| *georocket.storage.mongodb.host* +
+| *georocket.storage.mongodb.connectionString* +
   _(required)_
-| The host MongoDB is running on
-| *georocket.storage.mongodb.port* +
-  _(required)_
-| The port MongoDB is listening on
+| The connection string URI used to connect to MongoDB. For example:
+`mongodb://localhost:27017`
 | *georocket.storage.mongodb.database* +
   _(required)_
 | The database where the chunks should be stored
