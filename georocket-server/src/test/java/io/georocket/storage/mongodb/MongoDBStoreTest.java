@@ -1,24 +1,20 @@
 package io.georocket.storage.mongodb;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 
-import org.apache.commons.io.Charsets;
-import org.apache.commons.io.IOUtils;
 import org.junit.After;
 import org.junit.Before;
 
-import com.mongodb.BasicDBObject;
-import com.mongodb.DB;
-import com.mongodb.DBObject;
+import com.google.common.collect.Iterables;
 import com.mongodb.MongoClient;
-import com.mongodb.gridfs.GridFS;
-import com.mongodb.gridfs.GridFSDBFile;
-import com.mongodb.gridfs.GridFSInputFile;
+import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.gridfs.GridFSBucket;
+import com.mongodb.client.gridfs.GridFSBuckets;
+import com.mongodb.client.gridfs.GridFSFindIterable;
+import com.mongodb.client.gridfs.model.GridFSFile;
 
 import io.georocket.constants.ConfigConstants;
 import io.georocket.storage.StorageTest;
@@ -89,18 +85,11 @@ public class MongoDBStoreTest extends StorageTest {
     String filename = PathUtils.join(path, ID);
     vertx.<String>executeBlocking(f -> {
       try (MongoClient client = new MongoClient(mongoConnector.serverAddress)) {
-        DB db = client.getDB(MongoDBTestConnector.MONGODB_DBNAME);
-        GridFS gridFS = new GridFS(db);
-        GridFSInputFile file = gridFS.createFile(filename);
-        try (
-          OutputStream os = file.getOutputStream();
-          OutputStreamWriter writer = new OutputStreamWriter(os, StandardCharsets.UTF_8)
-        ) {
-          writer.write(CHUNK_CONTENT);
-          f.complete(filename);
-        }
-      } catch (IOException ex) {
-        f.fail(ex);
+        MongoDatabase db = client.getDatabase(MongoDBTestConnector.MONGODB_DBNAME);
+        GridFSBucket gridFS = GridFSBuckets.create(db);
+        byte[] contents = CHUNK_CONTENT.getBytes(StandardCharsets.UTF_8);
+        gridFS.uploadFromStream(filename, new ByteArrayInputStream(contents));
+        f.complete(filename);
       }
     }, handler);
   }
@@ -109,29 +98,18 @@ public class MongoDBStoreTest extends StorageTest {
   protected void validateAfterStoreAdd(TestContext context, Vertx vertx,
       String path, Handler<AsyncResult<Void>> handler) {
     vertx.executeBlocking(f -> {
-      MongoClient client = new MongoClient(mongoConnector.serverAddress);
-      DB db = client.getDB(MongoDBTestConnector.MONGODB_DBNAME);
-      GridFS gridFS = new GridFS(db);
-
-      DBObject query = new BasicDBObject();
-
-      List<GridFSDBFile> files = gridFS.find(query);
-      context.assertFalse(files.isEmpty());
-
-      GridFSDBFile file = files.get(0);
-      InputStream is = file.getInputStream();
-
-      String content = null;
-      try {
-        content = IOUtils.toString(is, Charsets.UTF_8);
-      } catch (IOException ex) {
-        context.fail("Could not read GridDSDBFile: " + ex.getMessage());
+      try (MongoClient client = new MongoClient(mongoConnector.serverAddress)) {
+        MongoDatabase db = client.getDatabase(MongoDBTestConnector.MONGODB_DBNAME);
+        GridFSBucket gridFS = GridFSBuckets.create(db);
+  
+        GridFSFindIterable files = gridFS.find();
+  
+        GridFSFile file = files.first();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        gridFS.downloadToStream(file.getFilename(), baos);
+        String contents = new String(baos.toByteArray(), StandardCharsets.UTF_8);
+        context.assertEquals(CHUNK_CONTENT, contents);
       }
-
-      context.assertEquals(CHUNK_CONTENT, content);
-
-      client.close();
-
       f.complete();
     }, handler);
   }
@@ -140,17 +118,13 @@ public class MongoDBStoreTest extends StorageTest {
   protected void validateAfterStoreDelete(TestContext context, Vertx vertx,
       String path, Handler<AsyncResult<Void>> handler) {
     vertx.executeBlocking(f -> {
-      MongoClient client = new MongoClient(mongoConnector.serverAddress);
-      DB db = client.getDB(MongoDBTestConnector.MONGODB_DBNAME);
-      GridFS gridFS = new GridFS(db);
-
-      DBObject query = new BasicDBObject();
-
-      List<GridFSDBFile> files = gridFS.find(query);
-      context.assertTrue(files.isEmpty());
-
-      client.close();
-
+      try (MongoClient client = new MongoClient(mongoConnector.serverAddress)) {
+        MongoDatabase db = client.getDatabase(MongoDBTestConnector.MONGODB_DBNAME);
+        GridFSBucket gridFS = GridFSBuckets.create(db);
+  
+        GridFSFindIterable files = gridFS.find();
+        context.assertTrue(Iterables.isEmpty(files));
+      }
       f.complete();
     }, handler);
   }
