@@ -1,6 +1,6 @@
 package io.georocket.query;
 
-import org.elasticsearch.index.query.QueryBuilder;
+import io.vertx.core.json.JsonObject;
 
 /**
  * Compiles search strings to Elasticsearch documents
@@ -44,9 +44,11 @@ public interface QueryCompiler {
   MatchPriority getQueryPriority(String search);
   
   /**
-   * Create an Elasticsearch query for the given search string
+   * <p>Create an Elasticsearch query for the given search string.</p>
+   * <p>Heads up: implementors may use the helper methods from
+   * {@link ElasticsearchQueryHelper} to build the query.</p>
    * @param search the search string
    * @return the query (may be null)
    */
-  QueryBuilder compileQuery(String search);
+  JsonObject compileQuery(String search);
 }

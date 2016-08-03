@@ -1,5 +1,13 @@
 package io.georocket.query;
 
+import static io.georocket.query.ElasticsearchQueryHelper.boolAddMust;
+import static io.georocket.query.ElasticsearchQueryHelper.boolAddMustNot;
+import static io.georocket.query.ElasticsearchQueryHelper.boolAddShould;
+import static io.georocket.query.ElasticsearchQueryHelper.boolQuery;
+import static io.georocket.query.ElasticsearchQueryHelper.matchAllQuery;
+import static io.georocket.query.ElasticsearchQueryHelper.prefixQuery;
+import static io.georocket.query.ElasticsearchQueryHelper.termQuery;
+
 import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.Collections;
@@ -9,10 +17,6 @@ import java.util.ServiceLoader;
 import org.antlr.v4.runtime.ANTLRInputStream;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
-import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.QueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.index.query.TermQueryBuilder;
 
 import com.google.common.collect.ImmutableList;
 
@@ -26,6 +30,7 @@ import io.georocket.query.parser.QueryParser.OrContext;
 import io.georocket.query.parser.QueryParser.QueryContext;
 import io.georocket.query.parser.QueryParser.StringContext;
 import io.georocket.util.PathUtils;
+import io.vertx.core.json.JsonObject;
 
 /**
  * Default implementation of {@link QueryCompiler}
@@ -65,24 +70,29 @@ public class DefaultQueryCompiler implements QueryCompiler {
    * whole data store should be searched)
    * @return the compiled query
    */
-  public QueryBuilder compileQuery(String search, String path) {
-    QueryBuilder qb = compileQuery(search);
+  public JsonObject compileQuery(String search, String path) {
+    JsonObject qb = compileQuery(search);
     if (path != null && !path.equals("/")) {
       String prefix = PathUtils.addTrailingSlash(path);
-      return QueryBuilders.boolQuery()
-          .should(qb)
-          .must(QueryBuilders.boolQuery()
-              .should(QueryBuilders.termQuery("_id", path))
-              .should(QueryBuilders.prefixQuery("_id", prefix)));
+      
+      JsonObject qi = boolQuery();
+      boolAddShould(qi, termQuery("_id", path));
+      boolAddShould(qi, prefixQuery("_id", prefix));
+      
+      JsonObject qr = boolQuery();
+      boolAddShould(qr, qb);
+      boolAddMust(qr, qi);
+      
+      return qr;
     }
     return qb;
   }
   
   @Override
-  public QueryBuilder compileQuery(String search) {
+  public JsonObject compileQuery(String search) {
     if (search == null || search.isEmpty()) {
       // match everything by default
-      return QueryBuilders.matchAllQuery();
+      return matchAllQuery();
     }
     
     // parse query
@@ -96,7 +106,7 @@ public class DefaultQueryCompiler implements QueryCompiler {
     ParseTreeWalker.DEFAULT.walk(listener, ctx);
     
     if (listener.result.isEmpty()) {
-      return QueryBuilders.matchAllQuery();
+      return matchAllQuery();
     }
     return listener.result.pop();
   }
@@ -112,12 +122,12 @@ public class DefaultQueryCompiler implements QueryCompiler {
    * @param str a string part of a query
    * @return a QueryBuilder
    */
-  private QueryBuilder makeStringQuery(String str) {
+  private JsonObject makeStringQuery(String str) {
     // general query
-    TermQueryBuilder tagsQuery = QueryBuilders.termQuery("tags", str);
+    JsonObject tagsQuery = termQuery("tags", str);
     
     // pass on string part to other query compilers
-    BoolQueryBuilder bqb = null;
+    JsonObject bqb = null;
     for (QueryCompiler f : queryCompilers) {
       MatchPriority mp = f.getQueryPriority(str);
       if (mp == null) {
@@ -126,17 +136,17 @@ public class DefaultQueryCompiler implements QueryCompiler {
       
       // combine queries
       if (bqb == null && mp != MatchPriority.NONE) {
-        bqb = QueryBuilders.boolQuery();
-        bqb.should(tagsQuery);
+        bqb = boolQuery();
+        boolAddShould(bqb, tagsQuery);
       }
       switch (mp) {
       case ONLY:
         return f.compileQuery(str);
       case SHOULD:
-        bqb.should(f.compileQuery(str));
+        boolAddShould(bqb, f.compileQuery(str));
         break;
       case MUST:
-        bqb.must(f.compileQuery(str));
+        boolAddMust(bqb, f.compileQuery(str));
         break;
       case NONE:
         break;
@@ -168,7 +178,7 @@ public class DefaultQueryCompiler implements QueryCompiler {
     /**
      * A stack holding the result QueryBuilder
      */
-    Deque<QueryBuilder> result = new ArrayDeque<>();
+    Deque<JsonObject> result = new ArrayDeque<>();
     
     QueryCompilerListener() {
       // at root level all terms a combined by logical OR
@@ -180,7 +190,7 @@ public class DefaultQueryCompiler implements QueryCompiler {
      * @param l the logical operation
      */
     private void enterLogical(Logical l) {
-      BoolQueryBuilder bqb = QueryBuilders.boolQuery();
+      JsonObject bqb = boolQuery();
       combine(bqb);
       result.push(bqb);
       currentLogical.push(l);
@@ -228,7 +238,7 @@ public class DefaultQueryCompiler implements QueryCompiler {
     
     @Override
     public void enterString(StringContext ctx) {
-      QueryBuilder stringQuery = makeStringQuery(ctx.getText());
+      JsonObject stringQuery = makeStringQuery(ctx.getText());
       if (!combine(stringQuery)) {
         result.push(stringQuery);
       }
@@ -240,44 +250,43 @@ public class DefaultQueryCompiler implements QueryCompiler {
      * @return true if the QueryBuilder was combined or false if the stack
      * was empty
      */
-    private boolean combine(QueryBuilder other) {
-      QueryBuilder b = result.peek();
+    private boolean combine(JsonObject other) {
+      JsonObject b = result.peek();
       if (b == null) {
         return false;
       }
       
-      if (b instanceof BoolQueryBuilder) {
+      if (b.containsKey("bool")) {
         // combine into existing boolean query
-        BoolQueryBuilder bqb = (BoolQueryBuilder)b;
         Logical l = currentLogical.peek();
         switch (l) {
         case OR:
-          bqb.should(other);
+          boolAddShould(b, other);
           break;
         case AND:
-          bqb.must(other);
+          boolAddMust(b, other);
           break;
         case NOT:
-          bqb.mustNot(other);
+          boolAddMustNot(b, other);
           break;
         }
       } else {
         // create a new boolean query and replace top of the stack
         result.pop();
-        BoolQueryBuilder bqb = QueryBuilders.boolQuery();
+        JsonObject bqb = boolQuery();
         Logical l = currentLogical.peek();
         switch (l) {
         case OR:
-          bqb.should(b);
-          bqb.should(other);
+          boolAddShould(bqb, b);
+          boolAddShould(bqb, other);
           break;
         case AND:
-          bqb.must(b);
-          bqb.must(other);
+          boolAddMust(bqb, b);
+          boolAddMust(bqb, other);
           break;
         case NOT:
-          bqb.mustNot(b);
-          bqb.mustNot(other);
+          boolAddMustNot(bqb, b);
+          boolAddMustNot(bqb, other);
           break;
         }
         result.push(bqb);

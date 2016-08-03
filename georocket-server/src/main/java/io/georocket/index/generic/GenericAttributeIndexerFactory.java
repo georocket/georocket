@@ -2,13 +2,12 @@ package io.georocket.index.generic;
 
 import java.util.Map;
 
-import org.elasticsearch.index.query.QueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
-
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
 import io.georocket.index.IndexerFactory;
+import io.georocket.query.ElasticsearchQueryHelper;
+import io.vertx.core.json.JsonObject;
 
 /**
  * Base class for factories creating indexers that manage arbitrary generic
@@ -44,8 +43,8 @@ public abstract class GenericAttributeIndexerFactory implements IndexerFactory {
   }
 
   @Override
-  public QueryBuilder compileQuery(String search) {
+  public JsonObject compileQuery(String search) {
     // match values of all fields regardless of their name
-    return QueryBuilders.multiMatchQuery(search, "genAttrs.*");
+    return ElasticsearchQueryHelper.multiMatchQuery(search, "genAttrs.*");
   }
 }

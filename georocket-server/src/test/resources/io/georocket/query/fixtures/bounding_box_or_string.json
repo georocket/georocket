@@ -14,8 +14,7 @@
               ]
             },
             "relation": "intersects"
-          },
-          "_name": null
+          }
         }
       }, {
         "term": {
