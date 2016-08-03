@@ -383,7 +383,7 @@ public class GeoRocket extends AbstractVerticle {
       if (ar.failed()) {
         Throwable t = ar.cause();
         log.error("Could not delete chunks", t);
-        response.setStatusCode(throwableToCode(t)).end(t.getMessage());
+        response.setStatusCode(throwableToCode(t)).end(throwableToMessage(t, ""));
       } else {
         response.setStatusCode(204).end();
       }
