@@ -5,12 +5,16 @@ import java.util.Map;
 
 import javax.xml.ws.http.HTTPException;
 
+import io.georocket.util.RxUtils;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.http.HttpClientOptions;
+import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
 import io.vertx.rxjava.core.Vertx;
@@ -24,6 +28,8 @@ import rx.Observable;
  * @author Michel Kraemer
  */
 public class ElasticsearchClient implements Closeable {
+  private static Logger log = LoggerFactory.getLogger(ElasticsearchClient.class);
+  
   /**
    * The index to query against
    */
@@ -88,8 +94,7 @@ public class ElasticsearchClient implements Closeable {
       body.append("{\"index\":" + subject.encode() + "}\n" + source + "\n");
     }
     
-    HttpClientRequest req = client.post(uri);
-    return performRequest(req, body.toString());
+    return performRequestRetry(HttpMethod.POST, uri, body.toString());
   }
   
   /**
@@ -112,8 +117,7 @@ public class ElasticsearchClient implements Closeable {
     // sort by doc (fastest way to scroll)
     source.put("sort", new JsonArray().add("_doc"));
     
-    HttpClientRequest req = client.get(uri);
-    return performRequest(req, source.encode());
+    return performRequestRetry(HttpMethod.GET, uri, source.encode());
   }
   
   /**
@@ -130,8 +134,7 @@ public class ElasticsearchClient implements Closeable {
     source.put("scroll", timeout);
     source.put("scroll_id", scrollId);
     
-    HttpClientRequest req = client.get(uri);
-    return performRequest(req, source.encode());
+    return performRequestRetry(HttpMethod.GET, uri, source.encode());
   }
   
   /**
@@ -153,8 +156,7 @@ public class ElasticsearchClient implements Closeable {
       body.append("{\"delete\":" + subject.encode() + "}\n");
     }
     
-    HttpClientRequest req = client.post(uri);
-    return performRequest(req, body.toString());
+    return performRequestRetry(HttpMethod.POST, uri, body.toString());
   }
   
   /**
@@ -164,8 +166,7 @@ public class ElasticsearchClient implements Closeable {
    */
   public Observable<Boolean> indexExists() {
     String uri = "/" + index;
-    HttpClientRequest req = client.head(uri);
-    return performRequest(req, null)
+    return performRequestRetry(HttpMethod.HEAD, uri, null)
         .map(o -> true)
         .onErrorResumeNext(t -> {
           if (t instanceof HTTPException && ((HTTPException)t).getStatusCode() == 404) {
@@ -188,17 +189,40 @@ public class ElasticsearchClient implements Closeable {
         .put("mappings", new JsonObject()
             .put(type, mappings));
     
-    HttpClientRequest req = client.put(uri);
-    return performRequest(req, source.encode())
-        .map(res -> {
-          return res.getBoolean("acknowledged", true);
-        });
+    return performRequestRetry(HttpMethod.PUT, uri, source.encode()).map(res -> {
+      return res.getBoolean("acknowledged", true);
+    });
+  }
+
+  /**
+   * Perform an HTTP request and if it fails retry it a couple of times
+   * @param method the HTTP method
+   * @param uri the request URI
+   * @param body the body to send in the request (may be null)
+   * @return an observable emitting the parsed response body (may be null if no
+   * body was received)
+   */
+  private Observable<JsonObject> performRequestRetry(HttpMethod method,
+      String uri, String body) {
+    return Observable.<JsonObject>create(subscriber -> {
+      HttpClientRequest req = client.request(method, uri);
+      performRequest(req, body).subscribe(subscriber);
+    }).retryWhen(errors -> {
+      Observable<Throwable> o = errors.flatMap(error -> {
+        if (error instanceof HTTPException) {
+          // immediately forward HTTP errors, don't retry
+          return Observable.error(error);
+        }
+        return Observable.just(error);
+      });
+      return RxUtils.makeRetry(5, 1000, log).call(o);
+    });
   }
   
   /**
    * Perform an HTTP request
    * @param req the request to perform
-   * @param body the body to send in the request
+   * @param body the body to send in the request (may be null)
    * @return an observable emitting the parsed response body (may be null if no
    * body was received)
    */
