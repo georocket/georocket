@@ -1,6 +1,5 @@
 package io.georocket.index;
 
-import java.io.Closeable;
 import java.util.Map;
 
 import javax.xml.ws.http.HTTPException;
@@ -27,7 +26,7 @@ import rx.Observable;
  * An Elasticsearch client using the HTTP API
  * @author Michel Kraemer
  */
-public class ElasticsearchClient implements Closeable {
+public class ElasticsearchClient {
   private static Logger log = LoggerFactory.getLogger(ElasticsearchClient.class);
   
   /**
@@ -69,7 +68,6 @@ public class ElasticsearchClient implements Closeable {
   /**
    * Close the client and release all resources
    */
-  @Override
   public void close() {
     client.close();
   }
@@ -192,6 +190,16 @@ public class ElasticsearchClient implements Closeable {
     return performRequestRetry(HttpMethod.PUT, uri, source.encode()).map(res -> {
       return res.getBoolean("acknowledged", true);
     });
+  }
+  
+  /**
+   * Check if Elasticsearch is running and if it answers to a simple request
+   * @return <code>true</code> if Elasticsearch is running, <code>false</code>
+   * otherwise
+   */
+  public Observable<Boolean> isRunning() {
+    HttpClientRequest req = client.head("/");
+    return performRequest(req, null).map(v -> true).onErrorReturn(t -> false);
   }
 
   /**

@@ -29,7 +29,8 @@ public final class ConfigConstants {
   public static final String INDEX_ELASTICSEARCH_EMBEDDED = "georocket.index.elasticsearch.embedded";
   public static final String INDEX_ELASTICSEARCH_HOST = "georocket.index.elasticsearch.host";
   public static final String INDEX_ELASTICSEARCH_PORT = "georocket.index.elasticsearch.port";
-  public static final String INDEX_ELASTICSEARCH_SETTINGS_PREFIX = "georocket.index.elasticsearch.settings.";
+  public static final String INDEX_ELASTICSEARCH_DOWNLOAD_URL = "georocket.index.elasticsearch.downloadUrl";
+  public static final String INDEX_ELASTICSEARCH_INSTALL_PATH = "georocket.index.elasticsearch.installPath";
   
   public static final int DEFAULT_PORT = 63020;
   

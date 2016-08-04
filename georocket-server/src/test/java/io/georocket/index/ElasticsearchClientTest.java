@@ -3,6 +3,7 @@ package io.georocket.index;
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalToJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.head;
+import static com.github.tomakehurst.wiremock.client.WireMock.headRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.put;
@@ -181,6 +182,39 @@ public class ElasticsearchClientTest {
               "{\"index\":{\"_id\":\"B\"}}\n" + 
               "{\"name\":\"Max\"}\n")));
       context.assertEquals(0, res.size());
+      async.complete();
+    }, context::fail);
+  }
+  
+  /**
+   * Check if {@link ElasticsearchClient#isRunning()} returns false
+   * if it is not running
+   * @param context the test context
+   */
+  @Test
+  public void isRunningFalse(TestContext context) {
+    Async async = context.async();
+    client.isRunning().subscribe(r -> {
+      context.assertFalse(r);
+      async.complete();
+    }, context::fail);
+  }
+  
+  /**
+   * Check if {@link ElasticsearchClient#isRunning()} returns true
+   * if it is running
+   * @param context the test context
+   */
+  @Test
+  public void isRunning(TestContext context) {
+    stubFor(head(urlEqualTo("/"))
+        .willReturn(aResponse()
+            .withStatus(200)));
+    
+    Async async = context.async();
+    client.isRunning().subscribe(r -> {
+      context.assertTrue(r);
+      verify(headRequestedFor(urlEqualTo("/")));
       async.complete();
     }, context::fail);
   }

@@ -4,8 +4,6 @@ import static io.georocket.util.ThrowableHelper.throwableToCode;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -15,12 +13,14 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.elasticsearch.client.Client;
-import org.elasticsearch.client.transport.TransportClient;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.transport.InetSocketTransportAddress;
-import org.elasticsearch.node.Node;
-import org.elasticsearch.node.NodeBuilder;
+import org.apache.commons.exec.CommandLine;
+import org.apache.commons.exec.DefaultExecuteResultHandler;
+import org.apache.commons.exec.DefaultExecutor;
+import org.apache.commons.exec.ExecuteException;
+import org.apache.commons.exec.Executor;
+import org.apache.commons.exec.ShutdownHookProcessDestroyer;
+import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang.SystemUtils;
 import org.jooq.lambda.tuple.Tuple;
 import org.yaml.snakeyaml.Yaml;
 
@@ -39,7 +39,9 @@ import io.georocket.util.AsyncXMLParser;
 import io.georocket.util.MapUtils;
 import io.georocket.util.RxUtils;
 import io.georocket.util.XMLStartElement;
+import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
+import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.impl.NoStackTraceThrowable;
 import io.vertx.core.json.JsonArray;
@@ -61,6 +63,10 @@ import rx.functions.Func1;
 public class IndexerVerticle extends AbstractVerticle {
   private static Logger log = LoggerFactory.getLogger(IndexerVerticle.class);
   
+  protected static final String ELASTICSEARCH_DOWNLOAD_URL =
+      "http://download.elastic.co/elasticsearch/release/org/elasticsearch/"
+      + "distribution/zip/elasticsearch/2.3.5/elasticsearch-2.3.5.zip";
+  
   protected static final int MAX_ADD_REQUESTS = 1000;
   protected static final long BUFFER_TIMESPAN = 5000;
   protected static final int MAX_INSERT_REQUESTS = 5;
@@ -69,11 +75,6 @@ public class IndexerVerticle extends AbstractVerticle {
 
   protected static final String INDEX_NAME = "georocket";
   protected static final String TYPE_NAME = "object";
-  
-  /**
-   * The Elasticsearch node
-   */
-  private Node node;
   
   /**
    * The Elasticsearch client
@@ -106,34 +107,24 @@ public class IndexerVerticle extends AbstractVerticle {
     
     indexerFactories = createIndexerFactories();
 
-    Vertx delegate = (Vertx)vertx.getDelegate();
-    delegate.<Client>executeBlocking(this::createElasticsearchClient, ar -> {
-      if (ar.failed()) {
-        startFuture.fail(ar.cause());
-        return;
-      }
-      
-      // create HTTP client communicating with Elasticsearch
-      // TODO move to createElasticsearchClient
-      JsonObject config = vertx.getOrCreateContext().config();
-      String host = config.getString(ConfigConstants.INDEX_ELASTICSEARCH_HOST, "localhost");
-      int port = config.getInteger(ConfigConstants.INDEX_ELASTICSEARCH_PORT, 9200);
-      client = new ElasticsearchClient(host, port, INDEX_NAME, TYPE_NAME, vertx);
-      
-      queryCompiler = new DefaultQueryCompiler(indexerFactories);
-      store = StoreFactory.createStore(delegate);
-      
-      registerMessageConsumers();
-      
-      startFuture.complete();
-    });
+    createElasticsearchClient()
+      .subscribe(esclient -> {
+        client = esclient;
+        
+        queryCompiler = new DefaultQueryCompiler(indexerFactories);
+        store = StoreFactory.createStore((Vertx)vertx.getDelegate());
+        
+        registerMessageConsumers();
+        
+        startFuture.complete();
+      }, err -> {
+        startFuture.fail(err);
+      });
   }
   
   @Override
   public void stop() {
-    if (node != null) {
-      node.close();
-    }
+    client.close();
   }
   
   /**
@@ -147,77 +138,145 @@ public class IndexerVerticle extends AbstractVerticle {
   }
 
   /**
-   * Create an Elasticsearch client. Either start an embedded Elasticsearch
-   * instance or connect to an existing one - depending on the configuration.
-   * This method is blocking.
-   * @param f a future that will be called when the client has been created
+   * Create an Elasticsearch client. Either start an Elasticsearch instance or
+   * connect to an external one - depending on the configuration.
+   * @return an observable emitting the Elasticsearch client
    */
-  private void createElasticsearchClient(Future<Client> f) {
+  private Observable<ElasticsearchClient> createElasticsearchClient() {
     JsonObject config = vertx.getOrCreateContext().config();
     boolean embedded = config.getBoolean(ConfigConstants.INDEX_ELASTICSEARCH_EMBEDDED, true);
+    String host = config.getString(ConfigConstants.INDEX_ELASTICSEARCH_HOST, "localhost");
+    int port = config.getInteger(ConfigConstants.INDEX_ELASTICSEARCH_PORT, 9200);
     
-    if (embedded) {
-      // create local node
-      String home = config.getString(ConfigConstants.STORAGE_FILE_PATH);
-      String root = home + "/index";
-      
-      // start embedded ElasticSearch instance
-      Settings.Builder settingsBuilder = Settings.builder()
-          .put("node.name", "georocket-node")
-          .put("path.home", root)
-          .put("path.data", root + "/data");
-      addElasticsearchSettings(settingsBuilder);
-      Settings settings = settingsBuilder.build();
-      
-      node = NodeBuilder.nodeBuilder()
-          .settings(settings)
-          .clusterName("georocket-cluster")
-          .data(true)
-          .local(true)
-          .node();
-      
-      f.complete(node.client());
-    } else {
-      // use remote cluster
-      String host = config.getString(ConfigConstants.INDEX_ELASTICSEARCH_HOST, "localhost");
-      int port = config.getInteger(ConfigConstants.INDEX_ELASTICSEARCH_PORT, 9300);
-      
-      Settings.Builder settingsBuilder = Settings.builder();
-      addElasticsearchSettings(settingsBuilder);
-      Settings settings = settingsBuilder.build();
-      
-      TransportClient transportClient = TransportClient.builder()
-          .settings(settings)
-          .build();
-      
-      try {
-        InetAddress inetAddress = InetAddress.getByName(host);
-        InetSocketTransportAddress transportAddress =
-            new InetSocketTransportAddress(inetAddress, port);
-        f.complete(transportClient.addTransportAddress(transportAddress));
-      } catch (UnknownHostException e) {
-        f.fail(e);
-      }
+    String home = config.getString(ConfigConstants.HOME);
+    
+    String elasticsearchDownloadUrl = config.getString(
+        ConfigConstants.INDEX_ELASTICSEARCH_DOWNLOAD_URL, ELASTICSEARCH_DOWNLOAD_URL);
+    String elasticsearchInstallPath = config.getString(
+        ConfigConstants.INDEX_ELASTICSEARCH_INSTALL_PATH, home + "/elasticsearch");
+    
+    ElasticsearchClient client = new ElasticsearchClient(host, port, INDEX_NAME,
+        TYPE_NAME, vertx);
+    
+    if (!embedded) {
+      // just return the client
+      return Observable.just(client);
     }
+    
+    return client.isRunning().flatMap(running -> {
+      if (running) {
+        // we don't have to start Elasticsearch again
+        return Observable.just(client);
+      }
+      
+      // install Elasticsearch, start it and then create the client
+      ElasticsearchInstaller installer = new ElasticsearchInstaller(vertx);
+      return installer.download(elasticsearchDownloadUrl, elasticsearchInstallPath)
+        .flatMap(path -> runElasticsearch(host, port, path))
+        .flatMap(v -> waitUntilElasticsearchRunning(client))
+        .map(v -> client);
+    });
   }
   
   /**
-   * Add all configuration items starting with
-   * {@value ConfigConstants#INDEX_ELASTICSEARCH_SETTINGS_PREFIX}
-   * to the given Elasticsearch settings builder
-   * @param settingsBuilder the builder
+   * Run Elasticsearch
+   * @param host the host Elasticsearch should bind to
+   * @param port the port Elasticsearch should listen on
+   * @param elasticsearchInstallPath the path where Elasticsearch is installed
+   * @return an observable that emits exactly one item when Elasticsearch has started
    */
-  private void addElasticsearchSettings(Settings.Builder settingsBuilder) {
+  private Observable<Void> runElasticsearch(String host, int port,
+      String elasticsearchInstallPath) {
     JsonObject config = vertx.getOrCreateContext().config();
-    config.forEach(e -> {
-      if (e.getKey().startsWith(ConfigConstants.INDEX_ELASTICSEARCH_SETTINGS_PREFIX)) {
-        String key = e.getKey().substring(
-            ConfigConstants.INDEX_ELASTICSEARCH_SETTINGS_PREFIX.length());
-        settingsBuilder.put(key, e.getValue());
+    String storage = config.getString(ConfigConstants.STORAGE_FILE_PATH);
+    String root = storage + "/index";
+    
+    ObservableFuture<Void> observable = RxHelper.observableFuture();
+    Handler<AsyncResult<Void>> handler = observable.toHandler();
+    
+    ((Vertx)vertx.getDelegate()).<Void>executeBlocking(f -> {
+      log.info("Starting Elasticsearch ...");
+      
+      // get Elasticsearch executable
+      String executable = FilenameUtils.separatorsToSystem(
+          elasticsearchInstallPath);
+      executable = FilenameUtils.concat(executable, "bin");
+      if (SystemUtils.IS_OS_WINDOWS) {
+        executable = FilenameUtils.concat(executable, "elasticsearch.bat");
+      } else {
+        executable = FilenameUtils.concat(executable, "elasticsearch");
       }
-    });
+      
+      // start Elasticsearch
+      CommandLine cmdl = new CommandLine(executable);
+      cmdl.addArgument("--cluster.name");
+      cmdl.addArgument("georocket-cluster");
+      cmdl.addArgument("--node.name");
+      cmdl.addArgument("georocket-node");
+      cmdl.addArgument("--network.host");
+      cmdl.addArgument(host);
+      cmdl.addArgument("--http.port");
+      cmdl.addArgument(String.valueOf(port));
+      cmdl.addArgument("--path.home");
+      cmdl.addArgument(elasticsearchInstallPath);
+      cmdl.addArgument("--path.data");
+      cmdl.addArgument(root + "/data");
+      
+      Executor executor = new DefaultExecutor();
+      executor.setProcessDestroyer(new ShutdownHookProcessDestroyer());
+      
+      try {
+        executor.execute(cmdl, new DefaultExecuteResultHandler() {
+          @Override
+          public void onProcessComplete(final int exitValue) {
+            log.info("Elasticsearch quit with exit code: " + exitValue);
+          }
+          
+          @Override
+          public void onProcessFailed(final ExecuteException e) {
+            log.error("Elasticsearch execution failed", e);
+          }
+        });
+        f.complete();
+      } catch (IOException e) {
+        f.fail(e);
+      }
+    }, handler);
+    
+    return observable;
   }
-
+  
+  /**
+   * Wait 60 seconds or until Elasticsearch is up and running, whatever
+   * comes first
+   * @param client the client to use to check if Elasticsearch is running
+   * @return an observable that emits exactly one item when Elasticsearch
+   * is running
+   */
+  private Observable<Void> waitUntilElasticsearchRunning(
+      ElasticsearchClient client) {
+    final Throwable repeat = new NoStackTraceThrowable("");
+    return Observable.<Boolean>create(subscriber -> {
+      client.isRunning().subscribe(subscriber);
+    }).flatMap(running -> {
+      if (!running) {
+        return Observable.error(repeat);
+      }
+      return Observable.just(running);
+    }).retryWhen(errors -> {
+      Observable<Throwable> o = errors.flatMap(t -> {
+        if (t == repeat) {
+          // Elasticsearch is still not up, retry
+          return Observable.just(t);
+        }
+        // forward error
+        return Observable.error(t);
+      });
+      // retry for 60 seconds
+      return RxUtils.makeRetry(60, 1000, null).call(o);
+    }).map(r -> null);
+  }
+  
   /**
    * Register all message consumers for this verticle
    */
