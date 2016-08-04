@@ -44,7 +44,7 @@ the following content.
 ```json
 {
   "georocket.storage.class": "io.georocket.storage.mongodb.MongoDBStore",
-  "georocket.storage.mongodb.host": "some-mongo",
+  "georocket.storage.mongodb.connectionString": "mongodb://example.com",
   "georocket.storage.mongodb.database": "georocket"
 }
 ```
