@@ -227,7 +227,7 @@ public class ElasticsearchInstaller {
     Handler<AsyncResult<String>> handler = observable.toHandler();
     
     // extract archive asynchronously
-    ((io.vertx.core.Vertx)vertx.getDelegate()).executeBlocking(f -> {
+    vertx.executeBlocking(f -> {
       File archiveFile = new File(archivePath);
       File destFile = new File(destPath);
       destFile.mkdirs();

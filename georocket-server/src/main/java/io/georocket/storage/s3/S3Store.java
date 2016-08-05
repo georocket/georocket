@@ -213,14 +213,7 @@ public class S3Store extends IndexedStore {
       } while (result.isTruncated());
 
       f.complete(size);
-    }, h -> {
-      if (h.failed()) {
-        log.error("Could not calculate the used size of Amazon S3 bucket", h.cause());
-        handler.handle(Future.failedFuture(h.cause()));
-      } else {
-        handler.handle(Future.succeededFuture(h.result()));
-      }
-    });
+    }, handler);
   }
 
   @Override

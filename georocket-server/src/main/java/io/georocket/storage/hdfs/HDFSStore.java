@@ -105,13 +105,7 @@ public class HDFSStore extends IndexedStore {
       } catch (IOException e) {
         f.fail(e);
       }
-    }, ar -> {
-      if (ar.failed()) {
-        handler.handle(Future.failedFuture(ar.cause()));
-      } else {
-        handler.handle(Future.succeededFuture(ar.result()));
-      }
-    });
+    }, handler);
   }
 
   /**
@@ -171,12 +165,6 @@ public class HDFSStore extends IndexedStore {
         return;
       }
       f.complete();
-    }, ar -> {
-      if (ar.failed()) {
-        handler.handle(Future.failedFuture(ar.cause()));
-      } else {
-        doDeleteChunks(paths, handler);
-      }
-    });
+    }, handler);
   }
 }
