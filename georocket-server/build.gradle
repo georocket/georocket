@@ -1,8 +1,15 @@
+plugins {
+    id "de.undercouch.download" version "3.1.1"
+}
+
 apply plugin: 'java'
 apply plugin: 'antlr'
 apply plugin: 'application'
 apply plugin: 'maven'
 apply plugin: 'checkstyle'
+apply plugin: 'de.undercouch.download'
+
+import de.undercouch.gradle.tasks.download.Download
 
 mainClassName = 'io.georocket.GeoRocket'
 
@@ -64,6 +71,14 @@ dependencies {
     antlr 'org.antlr:antlr4:4.5.1'
 }
 
+ext {
+    elasticsearchUrl = new File(sourceSets.main.resources.srcDirs.first(),
+        "elasticsearch_download_url.txt").text
+    elasticsearchArchiveName = new File(new URL(elasticsearchUrl).path).name
+    elasticsearchVersion = new File(new URL(elasticsearchUrl).path).parentFile.name
+    elasticsearchInstallDir = new File(projectDir, "elasticsearch/" + elasticsearchVersion)
+}
+
 // customize start scripts
 startScripts {
     // customize application name
@@ -96,10 +111,48 @@ distributions {
                 }
                 includeEmptyDirs = false
             }
+
+            // include Elasticsearch
+            from(elasticsearchInstallDir.parent) {
+                into 'elasticsearch'
+            }
         }
     }
 }
 
+/**
+ * Download Elasticsearch to the build directory
+ */
+task downloadElasticsearch << {
+    // if the destination file does not exist yet, download Elasticsearch
+    // to a temporary file and then rename it
+    def destFile = new File(buildDir, elasticsearchArchiveName)
+    if (!destFile.exists()) {
+        def tempFile = new File(buildDir, "${elasticsearchArchiveName}.part")
+        download {
+            src elasticsearchUrl
+            dest tempFile
+            overwrite true
+        }
+        tempFile.renameTo(destFile)
+    }
+}
+
+/**
+ * Extract Elasticsearch to the project directory
+ */
+task extractElasticsearch(dependsOn: downloadElasticsearch, type: Copy) {
+    from zipTree(new File(buildDir, elasticsearchArchiveName))
+    into elasticsearchInstallDir
+    includeEmptyDirs = false
+    eachFile { f ->
+        f.path = f.path.replaceFirst(/.+?\//, '')
+    }
+}
+
+processResources.dependsOn(extractElasticsearch)
+
+eclipseClasspath.dependsOn(extractElasticsearch)
 eclipseClasspath.dependsOn(generateGrammarSource)
 
 // Fix command-length issue in windows startscript

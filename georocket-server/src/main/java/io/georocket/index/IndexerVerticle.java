@@ -2,8 +2,11 @@ package io.georocket.index;
 
 import static io.georocket.util.ThrowableHelper.throwableToCode;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -20,6 +23,7 @@ import org.apache.commons.exec.ExecuteException;
 import org.apache.commons.exec.Executor;
 import org.apache.commons.exec.ShutdownHookProcessDestroyer;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.SystemUtils;
 import org.jooq.lambda.tuple.Tuple;
 import org.yaml.snakeyaml.Yaml;
@@ -62,10 +66,6 @@ import rx.functions.Func1;
  */
 public class IndexerVerticle extends AbstractVerticle {
   private static Logger log = LoggerFactory.getLogger(IndexerVerticle.class);
-  
-  protected static final String ELASTICSEARCH_DOWNLOAD_URL =
-      "http://download.elastic.co/elasticsearch/release/org/elasticsearch/"
-      + "distribution/zip/elasticsearch/2.3.5/elasticsearch-2.3.5.zip";
   
   protected static final int MAX_ADD_REQUESTS = 1000;
   protected static final long BUFFER_TIMESPAN = 5000;
@@ -150,10 +150,27 @@ public class IndexerVerticle extends AbstractVerticle {
     
     String home = config.getString(ConfigConstants.HOME);
     
+    String defaultElasticsearchDownloadUrl;
+    try {
+      defaultElasticsearchDownloadUrl = IOUtils.toString(getClass().getResource(
+          "/elasticsearch_download_url.txt"));
+    } catch (IOException e) {
+      return Observable.error(e);
+    }
+    
+    String defaultElasticsearchVersion;
+    try {
+      defaultElasticsearchVersion = new File(new URL(defaultElasticsearchDownloadUrl)
+          .getPath()).getParentFile().getName();
+    } catch (MalformedURLException e) {
+      return Observable.error(e);
+    }
+    
     String elasticsearchDownloadUrl = config.getString(
-        ConfigConstants.INDEX_ELASTICSEARCH_DOWNLOAD_URL, ELASTICSEARCH_DOWNLOAD_URL);
+        ConfigConstants.INDEX_ELASTICSEARCH_DOWNLOAD_URL, defaultElasticsearchDownloadUrl);
     String elasticsearchInstallPath = config.getString(
-        ConfigConstants.INDEX_ELASTICSEARCH_INSTALL_PATH, home + "/elasticsearch");
+        ConfigConstants.INDEX_ELASTICSEARCH_INSTALL_PATH,
+        home + "/elasticsearch/" + defaultElasticsearchVersion);
     
     ElasticsearchClient client = new ElasticsearchClient(host, port, INDEX_NAME,
         TYPE_NAME, vertx);
