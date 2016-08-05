@@ -20,7 +20,6 @@ import io.georocket.storage.StoreFactory;
 import io.georocket.util.AsyncXMLParser;
 import io.georocket.util.RxUtils;
 import io.georocket.util.Window;
-import io.vertx.core.Vertx;
 import io.vertx.core.file.OpenOptions;
 import io.vertx.core.impl.NoStackTraceThrowable;
 import io.vertx.core.json.JsonArray;
@@ -53,9 +52,8 @@ public class ImporterVerticle extends AbstractVerticle {
   public void start() {
     log.info("Launching importer ...");
     
-    store = StoreFactory.createStore((Vertx)vertx.getDelegate());
-    String storagePath = vertx.getOrCreateContext().config().getString(
-        ConfigConstants.STORAGE_FILE_PATH);
+    store = StoreFactory.createStore(getVertx());
+    String storagePath = config().getString(ConfigConstants.STORAGE_FILE_PATH);
     incoming = storagePath + "/incoming";
     
     vertx.eventBus().consumer(AddressConstants.IMPORTER, this::onMessage);

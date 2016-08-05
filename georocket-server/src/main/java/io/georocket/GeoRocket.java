@@ -461,8 +461,7 @@ public class GeoRocket extends AbstractVerticle {
     log.info("Launching GeoRocket ...");
 
     store = StoreFactory.createStore(vertx);
-    storagePath = vertx.getOrCreateContext().config().getString(
-        ConfigConstants.STORAGE_FILE_PATH);
+    storagePath = config().getString(ConfigConstants.STORAGE_FILE_PATH);
 
     deployIndexer()
       .flatMap(v -> deployImporter())

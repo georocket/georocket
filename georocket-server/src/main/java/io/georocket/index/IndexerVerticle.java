@@ -113,7 +113,7 @@ public class IndexerVerticle extends AbstractVerticle {
         runner = es.getValue();
         
         queryCompiler = new DefaultQueryCompiler(indexerFactories);
-        store = StoreFactory.createStore((Vertx)vertx.getDelegate());
+        store = StoreFactory.createStore(getVertx());
         
         registerMessageConsumers();
         
@@ -147,12 +147,11 @@ public class IndexerVerticle extends AbstractVerticle {
    * @return an observable emitting an Elasticsearch client and runner
    */
   private Observable<Pair<ElasticsearchClient, ElasticsearchRunner>> createElasticsearchClient() {
-    JsonObject config = vertx.getOrCreateContext().config();
-    boolean embedded = config.getBoolean(ConfigConstants.INDEX_ELASTICSEARCH_EMBEDDED, true);
-    String host = config.getString(ConfigConstants.INDEX_ELASTICSEARCH_HOST, "localhost");
-    int port = config.getInteger(ConfigConstants.INDEX_ELASTICSEARCH_PORT, 9200);
+    boolean embedded = config().getBoolean(ConfigConstants.INDEX_ELASTICSEARCH_EMBEDDED, true);
+    String host = config().getString(ConfigConstants.INDEX_ELASTICSEARCH_HOST, "localhost");
+    int port = config().getInteger(ConfigConstants.INDEX_ELASTICSEARCH_PORT, 9200);
     
-    String home = config.getString(ConfigConstants.HOME);
+    String home = config().getString(ConfigConstants.HOME);
     
     String defaultElasticsearchDownloadUrl;
     try {
@@ -170,9 +169,9 @@ public class IndexerVerticle extends AbstractVerticle {
       return Observable.error(e);
     }
     
-    String elasticsearchDownloadUrl = config.getString(
+    String elasticsearchDownloadUrl = config().getString(
         ConfigConstants.INDEX_ELASTICSEARCH_DOWNLOAD_URL, defaultElasticsearchDownloadUrl);
-    String elasticsearchInstallPath = config.getString(
+    String elasticsearchInstallPath = config().getString(
         ConfigConstants.INDEX_ELASTICSEARCH_INSTALL_PATH,
         home + "/elasticsearch/" + defaultElasticsearchVersion);
     
