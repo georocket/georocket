@@ -1,18 +1,19 @@
 package io.georocket.index.generic;
 
+import static io.georocket.query.ElasticsearchQueryHelper.geoShapeQuery;
+import static io.georocket.query.ElasticsearchQueryHelper.shape;
+
 import java.util.Iterator;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.elasticsearch.common.geo.builders.ShapeBuilder;
-import org.elasticsearch.index.query.QueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
-
 import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableMap;
 
 import io.georocket.index.IndexerFactory;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 
 /**
  * Base class for factories creating indexers that manage bounding boxes
@@ -46,14 +47,16 @@ public abstract class BoundingBoxIndexerFactory implements IndexerFactory {
   }
 
   @Override
-  public QueryBuilder compileQuery(String search) {
+  public JsonObject compileQuery(String search) {
     Iterable<String> coords = Splitter.on(',').trimResults().split(search);
     Iterator<String> coordsIter = coords.iterator();
     double minX = Double.parseDouble(coordsIter.next());
     double minY = Double.parseDouble(coordsIter.next());
     double maxX = Double.parseDouble(coordsIter.next());
     double maxY = Double.parseDouble(coordsIter.next());
-    return QueryBuilders.geoIntersectionQuery("bbox", ShapeBuilder.newEnvelope()
-        .bottomRight(maxX, minY).topLeft(minX, maxY));
+    JsonArray coordinates = new JsonArray();
+    coordinates.add(new JsonArray().add(minX).add(maxY));
+    coordinates.add(new JsonArray().add(maxX).add(minY));
+    return geoShapeQuery("bbox", shape("envelope", coordinates), "intersects");
   }
 }

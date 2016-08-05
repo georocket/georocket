@@ -2,10 +2,10 @@ package io.georocket.index.xml;
 
 import java.util.Map;
 
-import org.elasticsearch.index.query.QueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
-
 import com.google.common.collect.ImmutableMap;
+
+import io.georocket.query.ElasticsearchQueryHelper;
+import io.vertx.core.json.JsonObject;
 
 /**
  * Create instances of {@link GmlIdIndexer}
@@ -31,7 +31,7 @@ public class GmlIdIndexerFactory implements XMLIndexerFactory {
   }
 
   @Override
-  public QueryBuilder compileQuery(String search) {
-    return QueryBuilders.termQuery("gmlIds", search);
+  public JsonObject compileQuery(String search) {
+    return ElasticsearchQueryHelper.termQuery("gmlIds", search);
   }
 }

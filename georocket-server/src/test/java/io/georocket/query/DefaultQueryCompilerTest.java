@@ -41,7 +41,7 @@ public class DefaultQueryCompilerTest {
     }
     
     QueryCompiler compiler = new DefaultQueryCompiler(queryCompilers);
-    JsonObject compiledQuery = new JsonObject(compiler.compileQuery(query).toString());
+    JsonObject compiledQuery = compiler.compileQuery(query);
     if (!expected.equals(compiledQuery)) {
       System.out.println(Json.encodePrettily(compiledQuery));
     }
