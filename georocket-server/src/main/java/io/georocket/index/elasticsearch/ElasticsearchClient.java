@@ -2,8 +2,7 @@ package io.georocket.index.elasticsearch;
 
 import java.util.Map;
 
-import javax.xml.ws.http.HTTPException;
-
+import io.georocket.util.HttpException;
 import io.georocket.util.RxUtils;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -174,7 +173,7 @@ public class ElasticsearchClient {
     return performRequestRetry(HttpMethod.HEAD, uri, null)
         .map(o -> true)
         .onErrorResumeNext(t -> {
-          if (t instanceof HTTPException && ((HTTPException)t).getStatusCode() == 404) {
+          if (t instanceof HttpException && ((HttpException)t).getStatusCode() == 404) {
             return Observable.just(false);
           }
           return Observable.error(t);
@@ -225,7 +224,7 @@ public class ElasticsearchClient {
       performRequest(req, body).subscribe(subscriber);
     }).retryWhen(errors -> {
       Observable<Throwable> o = errors.flatMap(error -> {
-        if (error instanceof HTTPException) {
+        if (error instanceof HttpException) {
           // immediately forward HTTP errors, don't retry
           return Observable.error(error);
         }
@@ -266,7 +265,7 @@ public class ElasticsearchClient {
           }
         });
       } else {
-        handler.handle(Future.failedFuture(new HTTPException(code)));
+        handler.handle(Future.failedFuture(new HttpException(code)));
       }
     });
     

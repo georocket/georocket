@@ -9,13 +9,12 @@ import java.util.Enumeration;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-import javax.xml.ws.http.HTTPException;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.SystemUtils;
 
+import io.georocket.util.HttpException;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -160,7 +159,8 @@ public class ElasticsearchInstaller {
     
     req.handler(res -> {
       if (res.statusCode() != 200) {
-        handler.handle(Future.failedFuture(new HTTPException(res.statusCode())));
+        handler.handle(Future.failedFuture(new HttpException(res.statusCode(),
+            res.statusMessage())));
         return;
       }
       

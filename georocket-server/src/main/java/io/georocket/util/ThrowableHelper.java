@@ -27,6 +27,8 @@ public final class ThrowableHelper {
       return 400;
     } else if (t instanceof FileNotFoundException) {
       return 404;
+    } else if (t instanceof HttpException) {
+      return ((HttpException)t).getStatusCode();
     } else if (t instanceof HTTPException) {
       return ((HTTPException)t).getStatusCode();
     }

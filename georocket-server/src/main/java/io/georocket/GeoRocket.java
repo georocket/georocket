@@ -13,8 +13,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.BiConsumer;
 
-import javax.xml.ws.http.HTTPException;
-
 import org.apache.commons.io.FileUtils;
 import org.bson.types.ObjectId;
 
@@ -29,6 +27,7 @@ import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.Store;
 import io.georocket.storage.StoreCursor;
 import io.georocket.storage.StoreFactory;
+import io.georocket.util.HttpException;
 import io.georocket.util.TikaFileTypeDetector;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
@@ -339,7 +338,7 @@ public class GeoRocket extends AbstractVerticle {
         if (ct != null) {
           resultHandler.handle(Future.succeededFuture(ar.result()));
         } else {
-          resultHandler.handle(Future.failedFuture(new HTTPException(215)));
+          resultHandler.handle(Future.failedFuture(new HttpException(215)));
         }
       }
     });
