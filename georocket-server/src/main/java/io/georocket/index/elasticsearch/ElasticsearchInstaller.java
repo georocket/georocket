@@ -102,7 +102,7 @@ public class ElasticsearchInstaller {
     return downloadArchive(downloadUrl)
         .flatMap(archivePath -> {
           return extractArchive(archivePath, destPath, strip)
-              .finallyDo(() -> {
+              .doAfterTerminate(() -> {
                 FileSystem fs = vertx.fileSystem();
                 fs.deleteBlocking(archivePath);
               });
@@ -133,7 +133,7 @@ public class ElasticsearchInstaller {
     return fs.openObservable(archivePath, openOptions)
         .flatMap(file -> {
           return doDownload(downloadUrl, file)
-            .finallyDo(() -> {
+            .doAfterTerminate(() -> {
               file.flush();
               file.close();
             })

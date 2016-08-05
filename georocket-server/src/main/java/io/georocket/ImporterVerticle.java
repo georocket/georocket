@@ -102,7 +102,8 @@ public class ImporterVerticle extends AbstractVerticle {
     FileSystem fs = vertx.fileSystem();
     OpenOptions openOptions = new OpenOptions().setCreate(false).setWrite(false);
     fs.openObservable(filepath, openOptions)
-      .flatMap(f -> importFile(contentType, f, importId, filename, timeStamp, layer, tags).finallyDo(() -> {
+      .flatMap(f -> importFile(contentType, f, importId, filename, timeStamp, layer, tags)
+      .doAfterTerminate(() -> {
         // delete file from 'incoming' folder
         log.info("Deleting " + filepath + " from incoming folder");
         f.closeObservable()
@@ -190,7 +191,7 @@ public class ImporterVerticle extends AbstractVerticle {
           });
         })
         .last() // "wait" for last event (i.e. end of file)
-        .finallyDo(xmlParser::close);
+        .doAfterTerminate(xmlParser::close);
   }
   
   /**

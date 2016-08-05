@@ -40,7 +40,6 @@ import io.georocket.util.MapUtils;
 import io.georocket.util.RxUtils;
 import io.georocket.util.XMLStartElement;
 import io.vertx.core.Future;
-import io.vertx.core.Vertx;
 import io.vertx.core.impl.NoStackTraceThrowable;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -402,7 +401,8 @@ public class IndexerVerticle extends AbstractVerticle {
       openChunk(path)
         .flatMap(chunk -> {
           // convert chunk to document and close it
-          return xmlChunkToDocument(chunk, fallbackCRSString).finallyDo(chunk::close);
+          return xmlChunkToDocument(chunk, fallbackCRSString)
+              .doAfterTerminate(chunk::close);
         })
         .subscribe(subscriber);
     }).retryWhen(makeRetry(), RxHelper.scheduler(getVertx()));
@@ -540,7 +540,7 @@ public class IndexerVerticle extends AbstractVerticle {
         indexers.forEach(i -> doc.putAll(i.getResult()));
         return doc;
       })
-      .finallyDo(xmlParser::close);
+      .doAfterTerminate(xmlParser::close);
   }
   
   /**
