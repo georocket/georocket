@@ -222,7 +222,8 @@ public class IndexerVerticle extends AbstractVerticle {
   protected void registerAdd() {
     vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_ADD)
       .toObservable()
-      .buffer(BUFFER_TIMESPAN, TimeUnit.MILLISECONDS, MAX_ADD_REQUESTS)
+      .buffer(BUFFER_TIMESPAN, TimeUnit.MILLISECONDS, MAX_ADD_REQUESTS,
+          RxHelper.scheduler(getVertx()))
       .onBackpressureBuffer() // unlimited buffer
       .subscribe(new Subscriber<List<Message<JsonObject>>>() {
         private void doRequest() {
