@@ -57,6 +57,7 @@ import io.vertx.rx.java.RxHelper;
 import io.vertx.rxjava.core.AbstractVerticle;
 import io.vertx.rxjava.core.eventbus.Message;
 import rx.Observable;
+import rx.Scheduler;
 import rx.Subscriber;
 import rx.functions.Func1;
 
@@ -272,6 +273,7 @@ public class IndexerVerticle extends AbstractVerticle {
    */
   private Observable<Void> waitUntilElasticsearchRunning(
       ElasticsearchClient client) {
+    Scheduler scheduler = RxHelper.scheduler(getVertx());
     final Throwable repeat = new NoStackTraceThrowable("");
     return Observable.<Boolean>create(subscriber -> {
       client.isRunning().subscribe(subscriber);
@@ -290,8 +292,8 @@ public class IndexerVerticle extends AbstractVerticle {
         return Observable.error(t);
       });
       // retry for 60 seconds
-      return RxUtils.makeRetry(60, 1000, null).call(o);
-    }).map(r -> null);
+      return RxUtils.makeRetry(60, 1000, scheduler, log).call(o);
+    }, scheduler).map(r -> null);
   }
   
   /**
@@ -305,10 +307,11 @@ public class IndexerVerticle extends AbstractVerticle {
 
   /**
    * @return a function that can be passed to {@link Observable#retryWhen(Func1)}
-   * @see RxUtils#makeRetry(int, int, Logger)
+   * @see RxUtils#makeRetry(int, int, Scheduler, Logger)
    */
   protected Func1<Observable<? extends Throwable>, Observable<Long>> makeRetry() {
-    return RxUtils.makeRetry(MAX_RETRIES, RETRY_INTERVAL, log);
+    Scheduler scheduler = RxHelper.scheduler(getVertx());
+    return RxUtils.makeRetry(MAX_RETRIES, RETRY_INTERVAL, scheduler, log);
   }
   
   /**
@@ -499,7 +502,7 @@ public class IndexerVerticle extends AbstractVerticle {
           return xmlChunkToDocument(chunk, fallbackCRSString).finallyDo(chunk::close);
         })
         .subscribe(subscriber);
-    }).retryWhen(makeRetry());
+    }).retryWhen(makeRetry(), RxHelper.scheduler(getVertx()));
   }
   
   /**

@@ -224,6 +224,7 @@ public class ImporterVerticle extends AbstractVerticle {
       String layer, IndexMeta indexMeta) {
     return Observable.<Void>create(subscriber -> {
       addToStoreNoRetry(chunk, meta, layer, indexMeta).subscribe(subscriber);
-    }).retryWhen(RxUtils.makeRetry(MAX_RETRIES, RETRY_INTERVAL, log));
+    }).retryWhen(RxUtils.makeRetry(MAX_RETRIES, RETRY_INTERVAL,
+        RxHelper.scheduler(getVertx()), log));
   }
 }
