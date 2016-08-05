@@ -456,8 +456,6 @@ You can configure GeoRocket Server by editing the file `conf/georocketd.json` in
   `io.georocket.storage.hdfs.HDFSStore` +
   `io.georocket.storage.mongodb.MongoDBStore` +
   `io.georocket.storage.s3.S3Store`
-| *georocket.index.elasticsearch.embedded*
-| The Elasticsearch cluster to use, either embedded or remote. See <<indexer-elasticsearch, Elasticsearch>>.
 |===
 
 [[config-backend-file]]
@@ -546,29 +544,17 @@ You can configure GeoRocket Server by editing the file `conf/georocketd.json` in
 [[indexer-elasticsearch]]
 === Elasticsearch
 
-GeoRocket uses an embedded Elasticsearch instance by default but it is also
-possible to use an existing Elasticsearch cluster.
+The GeoRocket distribution contains a version of Elasticsearch that will
+automatically be started together with GeoRocket. You can disable this
+behaviour and use a remote Elasticsearch instance instead.
 
-To use a remote cluster set the following configuration item.
-
-```json
-"georocket.index.elasticsearch.embedded": false
-```
-
-The host and port can be configured as follows.
+Set the following configuration items to disable the provided Elasticsearch
+instance and to configure the host and port of the remote one:
 
 ```json
+"georocket.index.elasticsearch.embedded": false,
 "georocket.index.elasticsearch.host": "127.0.0.1",
 "georocket.index.elasticsearch.port": 9300
-```
-
-Settings specific to Elasticsearch can be defined using a combination of the
-prefix `georocket.index.elasticsearch.settings.` and the respective
-Elasticsearch settings key. For example, to indicate your cluster's name
-`cluster.name` use the following.
-
-```json
-"georocket.index.elasticsearch.settings.cluster.name": "your_cluster_name"
 ```
 
 ==== Configuration
@@ -577,12 +563,12 @@ Elasticsearch settings key. For example, to indicate your cluster's name
 |===
 | *georocket.index.elasticsearch.embedded* +
   _(default: true)_
-| `true` if GeoRocket should launch an embedded Elasticsearch instance. `false`
-if it should connect to an existing cluster.
+| `true` if GeoRocket should launch the provided Elasticsearch instance. `false`
+if it should connect to an existing instance.
 | *georocket.index.elasticsearch.host* +
   _(default: "localhost")_
-| Elasticsearch host address (unless embedded)
+| Elasticsearch host address
 | *georocket.index.elasticsearch.port* +
   _(default: 9300)_
-| Elasticsearch TCP port (unless embedded)
+| Elasticsearch TCP port
 |===
