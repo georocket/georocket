@@ -1,4 +1,4 @@
-package io.georocket.index;
+package io.georocket.index.elasticsearch;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalToJson;
@@ -24,6 +24,7 @@ import org.junit.runner.RunWith;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 
 import io.georocket.NetUtils;
+import io.georocket.index.elasticsearch.ElasticsearchClient;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;

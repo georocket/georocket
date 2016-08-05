@@ -1,4 +1,4 @@
-package io.georocket.index;
+package io.georocket.index.elasticsearch;
 
 import java.util.Map;
 
