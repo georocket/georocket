@@ -7,7 +7,8 @@ RUN cd /tmp/georocket && \
     ./gradlew :georocket-server:installDist && \
     cp -r /tmp/georocket/georocket-server/build/install/georocket-server /usr/local/ && \
     sed -i -e 's/\("georocket\.storage\.file\.path"\).*/\1: "\/data\/georocket\/storage",/g' /usr/local/georocket-server/conf/georocketd.json && \
-    rm -rf /tmp/georocket /root/.gradle
+    rm -rf /tmp/georocket /root/.gradle && \
+    sed -i '2iES_JAVA_OPTS="-Des.insecure.allow.root=true"' /usr/local/georocket-server/elasticsearch/*/bin/elasticsearch
 
 VOLUME /data/georocket/storage
 EXPOSE 63020
