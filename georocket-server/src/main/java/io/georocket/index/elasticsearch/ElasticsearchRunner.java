@@ -84,7 +84,6 @@ public class ElasticsearchRunner {
       cmdl.addArgument(host);
       cmdl.addArgument("--http.port");
       cmdl.addArgument(String.valueOf(port));
-      System.err.println("POERR: " + port);
       cmdl.addArgument("--path.home");
       cmdl.addArgument(elasticsearchInstallPath);
       cmdl.addArgument("--path.data");
