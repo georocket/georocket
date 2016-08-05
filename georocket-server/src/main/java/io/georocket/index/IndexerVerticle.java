@@ -126,6 +126,9 @@ public class IndexerVerticle extends AbstractVerticle {
   @Override
   public void stop() {
     client.close();
+    if (runner != null) {
+      runner.stop();
+    }
   }
   
   /**

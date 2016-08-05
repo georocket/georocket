@@ -6,6 +6,7 @@ import org.apache.commons.exec.CommandLine;
 import org.apache.commons.exec.DefaultExecuteResultHandler;
 import org.apache.commons.exec.DefaultExecutor;
 import org.apache.commons.exec.ExecuteException;
+import org.apache.commons.exec.ExecuteWatchdog;
 import org.apache.commons.exec.Executor;
 import org.apache.commons.exec.ShutdownHookProcessDestroyer;
 import org.apache.commons.io.FilenameUtils;
@@ -34,6 +35,7 @@ public class ElasticsearchRunner {
   
   private final Vertx vertx;
   private Executor executor;
+  private boolean stopped;
   
   /**
    * Create the Elasticsearch runner
@@ -90,6 +92,7 @@ public class ElasticsearchRunner {
       
       executor = new DefaultExecutor();
       executor.setProcessDestroyer(new ShutdownHookProcessDestroyer());
+      executor.setWatchdog(new ExecuteWatchdog(ExecuteWatchdog.INFINITE_TIMEOUT));
       
       try {
         executor.execute(cmdl, new DefaultExecuteResultHandler() {
@@ -100,7 +103,9 @@ public class ElasticsearchRunner {
           
           @Override
           public void onProcessFailed(final ExecuteException e) {
-            log.error("Elasticsearch execution failed", e);
+            if (!stopped) {
+              log.error("Elasticsearch execution failed", e);
+            }
           }
         });
         f.complete();
@@ -142,5 +147,15 @@ public class ElasticsearchRunner {
       // retry for 60 seconds
       return RxUtils.makeRetry(60, 1000, scheduler, null).call(o);
     }, scheduler).map(r -> null);
+  }
+  
+  /**
+   * Stop a running Elasticsearch instance
+   */
+  public void stop() {
+    if (executor != null && !stopped) {
+      stopped = true;
+      executor.getWatchdog().destroyProcess();
+    }
   }
 }
