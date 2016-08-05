@@ -570,11 +570,11 @@ public class IndexerVerticle extends AbstractVerticle {
         String error = client.bulkResponseGetErrorMessage(bres);
         log.error("One or more chunks could not be deleted");
         log.error(error);
-        onDeletingFinished(startTimeStamp - stopTimeStamp, paths.size(), error);
+        onDeletingFinished(stopTimeStamp - startTimeStamp, paths.size(), error);
         return Observable.error(new NoStackTraceThrowable(
             "One or more chunks could not be deleted"));
       } else {
-        onDeletingFinished(startTimeStamp - stopTimeStamp, paths.size(), null);
+        onDeletingFinished(stopTimeStamp - startTimeStamp, paths.size(), null);
         return Observable.just(null);
       }
     });
