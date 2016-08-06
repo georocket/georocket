@@ -1,7 +1,22 @@
 language: java
-sudo: false
+
+sudo: required
+
+services:
+  - docker
+
 jdk:
   - oraclejdk8
+
+script:
+  - ./gradlew check installDist
+  - cp docker/Dockerfile georocket-server/build/install/Dockerfile
+  - docker build -t georocket/georocket georocket-server/build/install
+  - export TAG=`if [ "$TRAVIS_BRANCH" == "master" ]; then echo "latest"; else echo $TRAVIS_BRANCH ; fi`
+  - docker tag georocket/georocket georocket/georocket:$TAG
+  - docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+  - docker push georocket/georocket
+
 cache:
   directories:
-  - $HOME/.gradle
+    - $HOME/.gradle
