@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -155,7 +156,7 @@ public class IndexerVerticle extends AbstractVerticle {
     String defaultElasticsearchDownloadUrl;
     try {
       defaultElasticsearchDownloadUrl = IOUtils.toString(getClass().getResource(
-          "/elasticsearch_download_url.txt"));
+          "/elasticsearch_download_url.txt"), StandardCharsets.UTF_8);
     } catch (IOException e) {
       return Observable.error(e);
     }

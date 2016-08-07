@@ -37,19 +37,19 @@ dependencies {
     compile "io.vertx:vertx-rx-java:$vertxVersion"
     compile "io.vertx:vertx-web:$vertxVersion"
 
-    compile 'com.amazonaws:aws-java-sdk-s3:1.11.2'
+    compile 'com.amazonaws:aws-java-sdk-s3:1.11.22'
     compile 'com.fasterxml:aalto-xml:0.9.11'
-    compile 'com.google.guava:guava:18.0'
-    compile 'com.vividsolutions:jts:1.12'
-    compile 'commons-io:commons-io:2.4'
-    compile 'net.java.dev.jna:jna:4.2.0'
+    compile 'com.google.guava:guava:19.0'
+    compile 'com.vividsolutions:jts:1.13'
+    compile 'commons-io:commons-io:2.5'
+    compile 'net.java.dev.jna:jna:4.2.2'
     compile 'org.apache.commons:commons-exec:1.3'
     compile 'org.apache.commons:commons-lang3:3.4'
-    compile('org.apache.hadoop:hadoop-common:2.7.1') {
+    compile('org.apache.hadoop:hadoop-common:2.7.2') {
         // exclude netty because we want to use the version Vert.x depends on
         exclude group: 'io.netty'
     }
-    compile('org.apache.hadoop:hadoop-hdfs:2.7.1') {
+    compile('org.apache.hadoop:hadoop-hdfs:2.7.2') {
         // exclude netty because we want to use the version Vert.x depends on
         exclude group: 'io.netty'
     }
@@ -57,7 +57,7 @@ dependencies {
     compile 'org.jooq:jool:0.9.11'
     compile 'org.mongodb:bson:3.3.0'
     compile 'org.mongodb:mongodb-driver-async:3.3.0'
-    compile 'org.yaml:snakeyaml:1.16'
+    compile 'org.yaml:snakeyaml:1.17'
 
     compile('org.geotools:gt-epsg-extension:14.0') {
         // exclude invalid dependency
@@ -74,13 +74,13 @@ dependencies {
     // replace invalid jai_core dependency by a valid one
     compile 'javax.media.jai:com.springsource.javax.media.jai.core:1.1.3'
 
-    testCompile 'de.flapdoodle.embed:de.flapdoodle.embed.mongo:1.50.2'
+    testCompile 'de.flapdoodle.embed:de.flapdoodle.embed.mongo:1.50.5'
     testCompile 'com.github.tomakehurst:wiremock:1.57'
     testCompile "io.vertx:vertx-unit:$vertxVersion"
     testCompile 'junit:junit:4.12'
     testCompile 'org.mongodb:mongodb-driver:3.3.0'
 
-    antlr 'org.antlr:antlr4:4.5.1'
+    antlr 'org.antlr:antlr4:4.5.3'
 }
 
 ext {

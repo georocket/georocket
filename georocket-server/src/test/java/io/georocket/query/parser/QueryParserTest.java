@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.Deque;
 
@@ -101,7 +102,7 @@ public class QueryParserTest {
     URL u = this.getClass().getResource("fixtures/" + fixture + ".json");
     String fixtureStr;
     try {
-      fixtureStr = IOUtils.toString(u);
+      fixtureStr = IOUtils.toString(u, StandardCharsets.UTF_8);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }

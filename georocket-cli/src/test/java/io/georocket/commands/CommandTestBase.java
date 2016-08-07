@@ -1,15 +1,14 @@
 package io.georocket.commands;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.configureFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
+import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options;
 
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.net.ServerSocket;
 
-import org.apache.commons.io.IOUtils;
 import org.junit.Before;
 import org.junit.Rule;
 
@@ -29,8 +28,6 @@ import io.vertx.ext.unit.junit.RunTestOnContext;
  * @param <T> the type of the command under test
  */
 public abstract class CommandTestBase<T extends AbstractGeoRocketCommand> {
-  private final int PORT = findPort();
-
   /**
    * Run the test on a Vert.x test context
    */
@@ -41,7 +38,7 @@ public abstract class CommandTestBase<T extends AbstractGeoRocketCommand> {
    * Run a mock HTTP server
    */
   @Rule
-  public WireMockRule wireMockRule = new WireMockRule(PORT);
+  public WireMockRule wireMockRule = new WireMockRule(options().dynamicPort());
   
   /**
    * The command under test
@@ -64,10 +61,12 @@ public abstract class CommandTestBase<T extends AbstractGeoRocketCommand> {
    */
   @Before
   public void setUp() throws Exception {
+    configureFor("localhost", wireMockRule.port());
+    
     cmd = createCommand();
     JsonObject config = new JsonObject()
         .put(ConfigConstants.HOST, "localhost")
-        .put(ConfigConstants.PORT, PORT);
+        .put(ConfigConstants.PORT, wireMockRule.port());
     cmd.setConfig(config);
     cmd.setVertx(rule.vertx());
     
@@ -85,22 +84,6 @@ public abstract class CommandTestBase<T extends AbstractGeoRocketCommand> {
       verify(getRequestedFor(urlEqualTo(url)));
     } catch (VerificationException e) {
       context.fail(e);
-    }
-  }
-
-  /**
-   * Find a free socket port.
-   * @return the number of the free port
-   */
-  private static int findPort() {
-    ServerSocket socket = null;
-    try {
-      socket = new ServerSocket(0);
-      return socket.getLocalPort();
-    } catch (IOException e) {
-      throw new RuntimeException("Could not find a free port for the test");
-    } finally {
-      IOUtils.closeQuietly(socket);
     }
   }
 }
