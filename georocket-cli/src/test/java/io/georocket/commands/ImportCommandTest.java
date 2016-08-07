@@ -9,6 +9,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 
 import java.io.File;
+import java.nio.charset.StandardCharsets;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.Before;
@@ -50,7 +51,7 @@ public class ImportCommandTest extends CommandTestBase<ImportCommand> {
   public void setUp() throws Exception {
     super.setUp();
     testFile = folder.newFile("test");
-    FileUtils.write(testFile, XML);
+    FileUtils.write(testFile, XML, StandardCharsets.UTF_8);
   }
   
   @Override

@@ -19,9 +19,9 @@ dependencies {
     compile "io.vertx:vertx-core:$vertxVersion"
     compile "io.vertx:vertx-rx-java:$vertxVersion"
     
-    compile 'commons-io:commons-io:2.4'
+    compile 'commons-io:commons-io:2.5'
     compile 'de.undercouch:underline:1.0.0'
-    compile 'net.time4j:time4j-core:4.7'
+    compile 'net.time4j:time4j-core:4.17'
     compile 'org.apache.ant:ant:1.9.7'
     compile 'org.apache.commons:commons-lang3:3.4'
 
