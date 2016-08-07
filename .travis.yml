@@ -9,14 +9,13 @@ jdk:
   - oraclejdk8
 
 script:
-  - ./gradlew check installDist
-  - cp docker/Dockerfile georocket-server/build/install/Dockerfile
-  - docker build -t georocket/georocket georocket-server/build/install
-
-after_script:
-  - test $TRAVIS_PULL_REQUEST == "false" && test $TRAVIS_BRANCH == "master"
-  - docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
-  - docker push georocket/georocket
+  - ./gradlew check installDist &&
+    cp docker/Dockerfile georocket-server/build/install/Dockerfile &&
+    docker build -t georocket/georocket georocket-server/build/install &&
+    if ([ "$TRAVIS_BRANCH" == "master" ] || [ ! -z "$TRAVIS_TAG" ]) && [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
+    docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD" &&
+    docker push georocket/georocket;
+    fi
 
 cache:
   directories:
