@@ -11,14 +11,12 @@ jdk:
 script:
   - ./gradlew check installDist
   - cp docker/Dockerfile georocket-server/build/install/Dockerfile
+  - docker build -t georocket/georocket georocket-server/build/install
+
+after_script:
+  - test $TRAVIS_PULL_REQUEST == "false" && test $TRAVIS_BRANCH == "master"
   - docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
-  - if [ "$TRAVIS_BRANCH" == "master" ]; then
-    docker build -t georocket/georocket georocket-server/build/install;
-    docker push georocket/georocket;
-    else
-    docker build -t georocket/georocket:$TRAVIS_BRANCH georocket-server/build/install;
-    docker push georocket/georocket:$TRAVIS_BRANCH;
-    fi
+  - docker push georocket/georocket
 
 cache:
   directories:
