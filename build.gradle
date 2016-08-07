@@ -1,3 +1,7 @@
+plugins {
+    id "org.standardout.versioneye" version "1.4.0"
+}
+
 subprojects {
     apply plugin: 'eclipse'
     apply plugin: 'idea'
@@ -118,6 +122,10 @@ subprojects {
     ext {
         vertxVersion = '3.3.2'
     }
+}
+
+versioneye {
+    includeSubProjects = true
 }
 
 task wrapper(type: Wrapper) {
