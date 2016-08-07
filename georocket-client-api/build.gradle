@@ -16,7 +16,7 @@ dependencies {
     
     compile 'com.google.guava:guava:18.0'
     
-    testCompile 'com.github.tomakehurst:wiremock:1.57'
+    testCompile 'com.github.tomakehurst:wiremock:2.1.9'
     testCompile "io.vertx:vertx-unit:$vertxVersion"
     testCompile 'junit:junit:4.12'
 }
