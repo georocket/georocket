@@ -1,0 +1,23 @@
+version: '2'
+
+services:
+  integration-tester:
+    build: .
+    links:
+      - georocket_mongo
+      - georocket_standalone
+      - mongo
+  georocket_conf_mongo:
+    build:
+      context: .
+      dockerfile: Dockerfile.mongo
+  georocket_standalone:
+    image: georocket/georocket
+  georocket_mongo:
+    image: georocket/georocket
+    volumes_from:
+      - georocket_conf_mongo
+    links:
+      - mongo
+  mongo:
+    image: mongo
