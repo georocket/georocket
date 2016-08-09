@@ -196,7 +196,8 @@ public class MongoDBChunkReadStreamTest {
       
       // open the test file
       GridFSDownloadStream is = gridfs.openDownloadStream(filename);
-      MongoDBChunkReadStream rs = new MongoDBChunkReadStream(is, size, chunkSize, vertx);
+      MongoDBChunkReadStream rs = new MongoDBChunkReadStream(is, size, chunkSize,
+          vertx.getOrCreateContext());
       
       // read from the test file
       rs.exceptionHandler(context::fail);
