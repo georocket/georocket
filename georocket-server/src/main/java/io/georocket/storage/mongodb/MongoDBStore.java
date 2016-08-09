@@ -22,6 +22,7 @@ import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.indexed.IndexedStore;
 import io.georocket.util.PathUtils;
 import io.vertx.core.AsyncResult;
+import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
@@ -36,7 +37,7 @@ import io.vertx.core.logging.LoggerFactory;
 public class MongoDBStore extends IndexedStore {
   private static Logger log = LoggerFactory.getLogger(MongoDBStore.class);
   
-  private final Vertx vertx;
+  private final Context context;
   private final String connectionString;
   private final String databaseName;
 
@@ -50,7 +51,7 @@ public class MongoDBStore extends IndexedStore {
    */
   public MongoDBStore(Vertx vertx) {
     super(vertx);
-    this.vertx = vertx;
+    this.context = vertx.getOrCreateContext();
 
     JsonObject config = vertx.getOrCreateContext().config();
     String cs = config.getString(ConfigConstants.STORAGE_MONGODB_CONNECTION_STRING);
@@ -106,14 +107,14 @@ public class MongoDBStore extends IndexedStore {
     GridFSDownloadStream downloadStream =
         getGridFS().openDownloadStream(PathUtils.normalize(path));
     downloadStream.getGridFSFile((file, t) -> {
-      vertx.runOnContext(v -> {
+      context.runOnContext(v -> {
         if (t != null) {
           handler.handle(Future.failedFuture(t));
         } else {
           long length = file.getLength();
           int chunkSize = file.getChunkSize();
           handler.handle(Future.succeededFuture(new MongoDBChunkReadStream(
-              downloadStream, length, chunkSize, vertx)));
+              downloadStream, length, chunkSize, context)));
         }
       });
     });
@@ -125,7 +126,7 @@ public class MongoDBStore extends IndexedStore {
     getGridFS().find().forEach(file -> {
       total.getAndAdd(file.getLength());
     }, (v, t) -> {
-      vertx.runOnContext(v2 -> {
+      context.runOnContext(v2 -> {
         if (t != null) {
           handler.handle(Future.failedFuture(t));
         } else {
@@ -148,7 +149,7 @@ public class MongoDBStore extends IndexedStore {
     byte[] bytes = chunk.getBytes(StandardCharsets.UTF_8);
     AsyncInputStream is = AsyncStreamHelper.toAsyncInputStream(bytes);
     getGridFS().uploadFromStream(filename, is, (oid, t) -> {
-      vertx.runOnContext(v -> {
+      context.runOnContext(v -> {
         if (t != null) {
           handler.handle(Future.failedFuture(t));
         } else {
@@ -170,15 +171,15 @@ public class MongoDBStore extends IndexedStore {
     GridFSFindIterable i = gridFS.find(new Document("filename", path));
     i.first((file, t) -> {
       if (t != null) {
-        vertx.runOnContext(v -> handler.handle(Future.failedFuture(t)));
+        context.runOnContext(v -> handler.handle(Future.failedFuture(t)));
       } else {
         if (file == null) {
           // file does not exist
-          vertx.runOnContext(v -> doDeleteChunks(paths, handler));
+          context.runOnContext(v -> doDeleteChunks(paths, handler));
           return;
         }
         gridFS.delete(file.getObjectId(), (r, t2) -> {
-          vertx.runOnContext(v -> {
+          context.runOnContext(v -> {
             if (t2 != null) {
               handler.handle(Future.failedFuture(t2));
             } else {

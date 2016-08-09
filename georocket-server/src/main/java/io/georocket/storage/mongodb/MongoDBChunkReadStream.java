@@ -6,9 +6,9 @@ import com.mongodb.async.client.gridfs.AsyncInputStream;
 
 import io.georocket.storage.ChunkReadStream;
 import io.vertx.core.AsyncResult;
+import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -39,9 +39,9 @@ public class MongoDBChunkReadStream implements ChunkReadStream {
   private final int readBufferSize;
   
   /**
-   * The current Vert.x instance
+   * The current Vert.x context
    */
-  private final Vertx vertx;
+  private final Context context;
   
   /**
    * True if the stream is closed
@@ -83,14 +83,14 @@ public class MongoDBChunkReadStream implements ChunkReadStream {
    * @param readBufferSize the size of the buffer used to read
    * from the input stream. This value should match the MongoDB GridFS
    * chunk size. If it doesn't unexpected read errors might occur.
-   * @param vertx the Vert.x instance
+   * @param context the Vert.x context
    */
   public MongoDBChunkReadStream(AsyncInputStream is, long size,
-      int readBufferSize, Vertx vertx) {
+      int readBufferSize, Context context) {
     this.is = is;
     this.size = size;
     this.readBufferSize = readBufferSize;
-    this.vertx = vertx;
+    this.context = context;
   }
   
   /**
@@ -134,11 +134,11 @@ public class MongoDBChunkReadStream implements ChunkReadStream {
       Handler<AsyncResult<Buffer>> handler) {
     is.read(buff, (bytesRead, t) -> {
       if (t != null) {
-        vertx.runOnContext(v -> handler.handle(Future.failedFuture(t)));
+        context.runOnContext(v -> handler.handle(Future.failedFuture(t)));
       } else {
         if (bytesRead == -1 || !buff.hasRemaining()) {
           // end of file or end of buffer
-          vertx.runOnContext(v -> {
+          context.runOnContext(v -> {
             buff.flip();
             writeBuff.setBytes(0, buff);
             handler.handle(Future.succeededFuture(writeBuff));
@@ -242,7 +242,7 @@ public class MongoDBChunkReadStream implements ChunkReadStream {
         res.complete(r);
       }
       if (handler != null) {
-        vertx.runOnContext(v -> handler.handle(res));
+        context.runOnContext(v -> handler.handle(res));
       }
     });
   }
