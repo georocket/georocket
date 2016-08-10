@@ -203,6 +203,46 @@ CAUTION: This is a dangerous operation. It will remove everything that is stored
 
 GeoRocket Server provides an (REST-like) HTTP interface that you can use to interact with the data store as well as to embed GeoRocket in your application. By default GeoRocket listens to incoming connections on port 63020.
 
+=== GET information
+
+Get information about GeoRocket (application name, version, etc.).
+
+===== Resource URL
+
+  /
+
+===== Parameters
+
+None
+
+===== Status codes
+
+[cols="1,2"]
+|===
+| *200*
+| The operation was successful
+|===
+
+===== Example request
+
+----
+GET / HTTP/1.1
+----
+
+==== Example response
+
+----
+HTTP/1.1 200 OK
+Content-Type: application/json
+Content-Length: 100
+
+{
+  "name" : "GeoRocket",
+  "version" : "1.0.0-SNAPSHOT",
+  "tagline" : "It's not rocket science!"
+}
+----
+
 === GET file
 
 Search the data store for chunks that match a given <<query-language, query>>. Merge the chunks found and return the result as a file.
