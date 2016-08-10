@@ -8,6 +8,8 @@ import java.util.Set;
 import org.apache.commons.io.FileUtils;
 
 import io.georocket.constants.ConfigConstants;
+import io.georocket.http.Endpoint;
+import io.georocket.http.GeneralEndpoint;
 import io.georocket.http.StoreEndpoint;
 import io.georocket.index.IndexerVerticle;
 import io.vertx.core.AbstractVerticle;
@@ -76,6 +78,26 @@ public class GeoRocket extends AbstractVerticle {
     server.requestHandler(router::accept).listen(port, observable.toHandler());
     return observable;
   }
+  
+  /**
+   * Creates the HTTP endpoint handling requests related to the data store.
+   * Returns {@link StoreEndpoint} by default. Subclasses may override if
+   * they want to return another implementation.
+   * @return the endpoint
+   */
+  protected Endpoint createStoreEndpoint() {
+    return new StoreEndpoint(vertx);
+  }
+  
+  /**
+   * Creates the HTTP endpoint handling general requests
+   * Returns {@link GeneralEndpoint} by default. Subclasses may override if
+   * they want to return another implementation.
+   * @return the endpoint
+   */
+  protected Endpoint createGeneralEndpoint() {
+    return new GeneralEndpoint(vertx);
+  }
 
   /**
    * Create a {@link Router} and add routes for <code>/store/</code>
@@ -85,8 +107,11 @@ public class GeoRocket extends AbstractVerticle {
   protected Router createRouter() {
     Router router = Router.router(vertx);
     
-    StoreEndpoint storeEndpoint = new StoreEndpoint(vertx);
+    Endpoint storeEndpoint = createStoreEndpoint();
     router.mountSubRouter("/store", storeEndpoint.createRouter());
+    
+    Endpoint generalEndpoint = createGeneralEndpoint();
+    router.mountSubRouter("/", generalEndpoint.createRouter());
     
     return router;
   }
