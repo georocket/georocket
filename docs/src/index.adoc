@@ -71,20 +71,20 @@ Please wait a couple of seconds until you see the following message:
 
 The server has launched and now waits for incoming HTTP requests on port `63020` (default).
 
-Next open another command prompt and change to the directory where you installed GeoRocket CLI. Run `georocket-cli` to access the server through a convenient command-line application.
+Next open another command prompt and change to the directory where you installed GeoRocket CLI. Run `georocket` to access the server through a convenient command-line application.
 
   cd georocket-cli-1.0.0-alpha.1/bin
-  ./georocket-cli
+  ./georocket
 
 You can now import your first geospatial file. Suppose your file is called `/home/user/my_file.gml`. Issue the following command to import it to GeoRocket.
 
-  ./georocket-cli import /home/user/my_file.gml
+  ./georocket import /home/user/my_file.gml
 
 GeoRocket CLI will now send the file to the server. Depending on the size of the dataset this will take a couple of seconds up to a few minutes (for very large datasets).
 
 Finally, export the contents of the whole store to a file using the `export` command.
 
-  ./georocket-cli export / > my_new_file.gml
+  ./georocket export / > my_new_file.gml
 
 TIP: You can also search for individual features (chunks) and export only a part of the previously imported file. Refer to the <<search-command>> section.
 
@@ -96,7 +96,7 @@ GeoRocket comes with a handy command-line interface (CLI) letting you interact w
 
 [NOTE]
 ====
-In the following sections it is assumed that you have the `georocket-cli` executable in your path. If you have not done so already, you may add it to your path with the following command (Linux):
+In the following sections it is assumed that you have the `georocket` executable in your path. If you have not done so already, you may add it to your path with the following command (Linux):
 
   export PATH=/path/to/georocket-cli-1.0.0-alpha.1/bin:$PATH
 
@@ -111,52 +111,52 @@ Display help for the command-line interface and exit.
 
 Examples:
 
-  georocket-cli
+  georocket
 
 or
 
-  georocket-cli --help
+  georocket --help
 
 or
 
-  georocket-cli help
+  georocket help
 
 The help command also gives information on specific CLI commands. Just provide the name of the command you would like to have help for. For example, the following command displays help for the <<import-command>>:
 
-  georocket-cli help import
+  georocket help import
 
 [[import-command]]
 === Import command
 
 Import one or more files into GeoRocket. Specify the name of the file to import as follows.
 
-  georocket-cli import myfile.xml
+  georocket import myfile.xml
 
 You can also import the file to a certain layer. The layer will automatically be created for you. The following command imports the file `myfile.xml` to the layer `CityModel`.
 
-  georocket-cli import --layer CityModel myfile.xml
+  georocket import --layer CityModel myfile.xml
 
 Use slashes to import to sub-layers.
 
-  georocket-cli import --layer CityModel/LOD1/Center myfile.xml
+  georocket import --layer CityModel/LOD1/Center myfile.xml
 
 You may attach tags to imported files. Tags are human-readable labels that you can use to search for files or chunks stored in GeoRocket. Use a comma to separate multiple tags.
 
-  georocket-cli import --tags city,district,lod1 myfile.xml
+  georocket import --tags city,district,lod1 myfile.xml
 
 === Export command
 
 Export a layer stored in GeoRocket. Provide the name of the layer you want to export.
 
-  georocket-cli export CityModel/LOD1
+  georocket export CityModel/LOD1
 
 By default the export command writes to standard out (your console). Redirect output to a file as follows.
 
-  georocket-cli export CityModel/LOD1 > lod1.xml
+  georocket export CityModel/LOD1 > lod1.xml
 
 You may also export the whole data store. Just provide the root layer `/` to the export command.
 
-  georocket-cli export /
+  georocket export /
 
 WARNING: Exporting the whole data store may take a while depending on how much data you have stored in GeoRocket.
 
@@ -165,15 +165,15 @@ WARNING: Exporting the whole data store may take a while depending on how much d
 
 Search the GeoRocket data store and export individual geospatial features (chunks). Provide a <<query-language, query>> to the search command as follows.
 
-  georocket-cli search myquery
+  georocket search myquery
 
 You can also search individual layers.
 
-  georocket-cli search --layer CityModel myquery
+  georocket search --layer CityModel myquery
 
 By default the search command writes to standard out (your console). Redirect output to a file as follows.
 
-  georocket-cli search myquery > results.xml
+  georocket search myquery > results.xml
 
 Use a space character to separate multiple query terms. Search results will be combined by logical OR.
 
@@ -183,19 +183,19 @@ See the <<query-language>> section for a full description of all possible terms 
 
 Remove geospatial features (chunks) or whole layers from the GeoRocket data store. Provide a <<query-language, query>> to the delete command to select the features to delete.
 
-  georocket-cli delete myquery
+  georocket delete myquery
 
 You can also restrict the delete command to a certain layer.
 
-  georocket-cli delete --layer CityModel myquery
+  georocket delete --layer CityModel myquery
 
 Delete a whole layer (including all its chunks and sub-layers) as follows.
 
-  georocket-cli delete --layer CityModel/LOD1
+  georocket delete --layer CityModel/LOD1
 
 You may even delete the whole data store by specifying the root layer `/`.
 
-  georocket-cli delete --layer /
+  georocket delete --layer /
 
 CAUTION: This is a dangerous operation. It will remove everything that is stored in your GeoRocket instance. There is no safety net--no confirmation prompt and no recycle bin.
 
