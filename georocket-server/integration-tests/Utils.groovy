@@ -63,13 +63,10 @@ class Utils {
                 c.connectTimeout = 1
                 c.readTimeout = 1
                 c.requestMethod = 'HEAD'
-
-                // TODO enable this as soon as GeoRocket supports HEAD on /
-                // if (c.responseCode >= 200 && c.responseCode < 400) {
-                //     return true
-                // }
-                c.responseCode // do the actual request now
-                return true
+                // c.responseCode will do the actual request
+                if (c.responseCode >= 200 && c.responseCode < 400) {
+                    return true
+                }
             } catch (IOException exception) {
                 // connection was not successful. fall through.
             }
