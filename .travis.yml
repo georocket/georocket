@@ -8,17 +8,6 @@ services:
 jdk:
   - oraclejdk8
 
-before_install:
-  - |
-    if [ ! -e /usr/local/bin/docker-compose ]; then
-      # get latest docker compose released tag
-      docker_compose_version="$(git ls-remote https://github.com/docker/compose | grep "refs/tag" | grep -oP "[0-9]+\.[0-9]+\.[0-9]+" | tail -n1)"
-      # install docker-compose
-      sudo sh -c "curl -L https://github.com/docker/compose/releases/download/$docker_compose_version/docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose"
-      sudo chmod +x /usr/local/bin/docker-compose
-      docker-compose --version
-    fi
-
 script:
   - ./gradlew check installDist &&
     cp docker/Dockerfile georocket-server/build/install/Dockerfile &&
