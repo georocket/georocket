@@ -11,6 +11,7 @@
   "georocket.storage.s3.bucket": "georocket",
   "georocket.storage.s3.pathStyleAccess": true,
   "georocket.storage.s3.forceSignatureV2": false,
+  "georocket.storage.s3.requestExpirySeconds": 600,
   "georocket.storage.mongodb.connectionString": "mongodb://localhost:27017",
   "georocket.storage.mongodb.database": "georocket",
   "georocket.index.elasticsearch.embedded": true,

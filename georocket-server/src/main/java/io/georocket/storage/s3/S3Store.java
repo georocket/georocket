@@ -1,6 +1,7 @@
 package io.georocket.storage.s3;
 
 import java.net.URL;
+import java.util.Date;
 import java.util.Queue;
 
 import org.bson.types.ObjectId;
@@ -48,6 +49,7 @@ public class S3Store extends IndexedStore {
   private final String bucket;
   private final boolean pathStyleAccess;
   private final boolean forceSignatureV2;
+  private final int requestExpirySeconds;
   private final HttpClient client;
 
   /**
@@ -66,6 +68,7 @@ public class S3Store extends IndexedStore {
     bucket = config.getString(ConfigConstants.STORAGE_S3_BUCKET);
     pathStyleAccess = config.getBoolean(ConfigConstants.STORAGE_S3_PATH_STYLE_ACCESS, true);
     forceSignatureV2 = config.getBoolean(ConfigConstants.STORAGE_S3_FORCE_SIGNATURE_V2, false);
+    requestExpirySeconds = config.getInteger(ConfigConstants.STORAGE_S3_REQUEST_EXPIRY_SECONDS, 600);
 
     HttpClientOptions options = new HttpClientOptions();
     options.setDefaultHost(host);
@@ -111,7 +114,8 @@ public class S3Store extends IndexedStore {
    * @return the presigned URL
    */
   private synchronized URL generatePresignedUrl(String key, HttpMethod method) {
-    return getS3Client().generatePresignedUrl(bucket, key, null, method);
+    Date expiry = new Date(System.currentTimeMillis() + 1000 * requestExpirySeconds);
+    return getS3Client().generatePresignedUrl(bucket, key, expiry, method);
   }
 
   @Override
