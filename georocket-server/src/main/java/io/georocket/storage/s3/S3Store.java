@@ -5,6 +5,8 @@ import java.util.Queue;
 
 import org.bson.types.ObjectId;
 
+import com.amazonaws.ClientConfiguration;
+import com.amazonaws.ClientConfigurationFactory;
 import com.amazonaws.HttpMethod;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.services.s3.AmazonS3Client;
@@ -45,6 +47,7 @@ public class S3Store extends IndexedStore {
   private final int port;
   private final String bucket;
   private final boolean pathStyleAccess;
+  private final boolean forceSignatureV2;
   private final HttpClient client;
 
   /**
@@ -62,6 +65,7 @@ public class S3Store extends IndexedStore {
     port = config.getInteger(ConfigConstants.STORAGE_S3_PORT, 80);
     bucket = config.getString(ConfigConstants.STORAGE_S3_BUCKET);
     pathStyleAccess = config.getBoolean(ConfigConstants.STORAGE_S3_PATH_STYLE_ACCESS, true);
+    forceSignatureV2 = config.getBoolean(ConfigConstants.STORAGE_S3_FORCE_SIGNATURE_V2, false);
 
     HttpClientOptions options = new HttpClientOptions();
     options.setDefaultHost(host);
@@ -78,8 +82,18 @@ public class S3Store extends IndexedStore {
   private synchronized AmazonS3Client getS3Client() {
     if (s3Client == null) {
       BasicAWSCredentials credentials = new BasicAWSCredentials(accessKey, secretKey);
-      s3Client = new AmazonS3Client(credentials);
+      
+      if (forceSignatureV2) {
+        ClientConfigurationFactory configFactory = new ClientConfigurationFactory();
+        ClientConfiguration config = configFactory.getConfig();
+        config.setSignerOverride("S3SignerType");
+        s3Client = new AmazonS3Client(credentials, config);
+      } else {
+        s3Client = new AmazonS3Client(credentials);
+      }
+      
       s3Client.setEndpoint("http://" + host + ":" + port);
+      
       S3ClientOptions options = S3ClientOptions.builder()
           .setPathStyleAccess(pathStyleAccess)
           .build();
