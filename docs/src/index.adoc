@@ -579,6 +579,12 @@ You can configure GeoRocket Server by editing the file `conf/georocketd.json` in
 | *georocket.storage.s3.pathStyleAccess* +
   _(required)_
 | `true` if path-style access to the S3 bucket is used or `false` if a sub-domain is used
+| *georocket.storage.s3.forceSignatureV2* +
+  _(default: false)_
+| `true` if S3 requests should be signed using the old Signature V2 algorithm instead of newer versions
+| *georocket.storage.s3.requestExpirySeconds* +
+  _(default: 600)_
+| The number of seconds a pre-signed S3 request should stay valid
 |===
 
 [[indexer-elasticsearch]]
