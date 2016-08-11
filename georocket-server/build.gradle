@@ -185,6 +185,8 @@ eclipseClasspath.dependsOn(extractElasticsearch)
 eclipseClasspath.dependsOn(generateGrammarSource)
 eclipseClasspath.dependsOn(generateSources)
 
+ideaModule.dependsOn(generateSources)
+
 clean.dependsOn(cleanGeneratedSources)
 
 // include generated sources
