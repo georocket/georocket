@@ -1,0 +1,9 @@
+[default]
+access_key = accessKey1
+host_base = s3.amazonaws.com
+host_bucket = %(bucket)s.s3.amazonaws.com
+proxy_host = s3
+proxy_port = 8000
+secret_key = verySecretKey1
+signature_v2 = False
+use_https = False

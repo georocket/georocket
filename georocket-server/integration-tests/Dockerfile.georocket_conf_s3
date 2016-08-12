@@ -1,0 +1,5 @@
+FROM debian
+
+ADD conf/georocketd.s3.json /usr/local/georocket-server/conf/georocketd.json
+
+VOLUME ["/usr/local/georocket-server/conf/"]

@@ -1,12 +1,19 @@
 integration-tester:
   build: .
   links:
-    - georocket_mongo
     - georocket_standalone
+    - georocket_mongo
+    - georocket_s3
     - mongo
+    - s3
+
 georocket_conf_mongo:
   build: .
-  dockerfile: Dockerfile.mongo
+  dockerfile: Dockerfile.georocket_conf_mongo
+georocket_conf_s3:
+  build: .
+  dockerfile: Dockerfile.georocket_conf_s3
+
 georocket_standalone:
   image: georocket/georocket
 georocket_mongo:
@@ -15,5 +22,15 @@ georocket_mongo:
     - georocket_conf_mongo
   links:
     - mongo
+georocket_s3:
+  image: georocket/georocket
+  volumes_from:
+    - georocket_conf_s3
+  links:
+    - s3
+
 mongo:
   image: mongo
+s3:
+  build: .
+  dockerfile: Dockerfile.s3
