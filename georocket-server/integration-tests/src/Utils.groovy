@@ -15,37 +15,48 @@ class Utils {
      * as a string, false if the output should be forwarded to stdout
      * @return the command's output or an empty string
      */
-    static String run(String command, File workingDirectory = null, captureOutput = false) {
-        println("RUN  $command")
+    static String run(String command, File workingDirectory = null,
+            boolean captureOutput = false, int retries = 0) {
+        while (true) {
+            println("RUN  $command")
 
-        CommandLine cmdLine = CommandLine.parse(command)
-        Executor executor = new DefaultExecutor()
+            CommandLine cmdLine = CommandLine.parse(command)
+            Executor executor = new DefaultExecutor()
 
-        if (workingDirectory != null) {
-            executor.workingDirectory = workingDirectory
+            if (workingDirectory != null) {
+                executor.workingDirectory = workingDirectory
+            }
+
+            ByteArrayOutputStream baos = null
+            if (captureOutput) {
+                baos = new ByteArrayOutputStream()
+                PumpStreamHandler psh = new PumpStreamHandler(baos)
+                executor.setStreamHandler(psh)
+            }
+
+            // do not check exit code for us, we check it ourselves
+            executor.setExitValues(null)
+
+            int exitValue = executor.execute(cmdLine)
+            if (exitValue != 0) {
+                if (retries > 0) {
+                    println("WARN Command '${command}' failed with exit code $exitValue")
+                    println("WARN Retrying")
+                    retries--
+                    Thread.sleep(1000)
+                    continue
+                } else {
+                    println("FAIL Command '${command}' failed with exit code $exitValue")
+                    System.exit(exitValue)
+                }
+            }
+
+            if (captureOutput) {
+                return baos.toString()
+            }
+
+            return ""
         }
-
-        ByteArrayOutputStream baos = null
-        if (captureOutput) {
-            baos = new ByteArrayOutputStream()
-            PumpStreamHandler psh = new PumpStreamHandler(baos)
-            executor.setStreamHandler(psh)
-        }
-
-        // do not check exit code for us, we check it ourselves
-        executor.setExitValues(null)
-
-        int exitValue = executor.execute(cmdLine)
-        if (exitValue != 0) {
-            println("FAIL Command '${command}' failed with exit code $exitValue")
-            System.exit(exitValue)
-        }
-
-        if (captureOutput) {
-            return baos.toString()
-        }
-
-        return ""
     }
 
     /**

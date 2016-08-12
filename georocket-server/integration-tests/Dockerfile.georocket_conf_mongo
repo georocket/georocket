@@ -1,5 +1,0 @@
-FROM debian
-
-ADD conf/georocketd.mongo.json /usr/local/georocket-server/conf/georocketd.json
-
-VOLUME ["/usr/local/georocket-server/conf/"]
