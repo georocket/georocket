@@ -1,0 +1,5 @@
+{
+  "georocket.storage.class": "io.georocket.storage.hdfs.HDFSStore",
+  "georocket.storage.hdfs.defaultFS": "hdfs://hdfs:9000",
+  "georocket.storage.hdfs.path": "/georocket/"
+}

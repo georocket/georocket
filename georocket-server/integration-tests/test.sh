@@ -34,7 +34,7 @@ cleanup () {
   docker-compose -p ci rm -f
 }
 trap 'cleanup ; printf "${RED}Tests Failed For Unexpected Reasons${NC}\n"' HUP INT QUIT PIPE TERM
-docker-compose -p ci build && docker-compose -p ci up -d
+docker-compose -p ci build && docker-compose -p ci up -d --force-recreate
 if [ $? -ne 0 ] ; then
   printf "${RED}Docker Compose Failed${NC}\n"
   exit -1

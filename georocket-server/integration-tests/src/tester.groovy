@@ -105,3 +105,16 @@ if (objects.length != expectedNode.children().size()) {
     System.exit(1)
 }
 println "OK   Success."
+
+println "TEST GeoRocket with HDFS back-end ..."
+waitHttp("http://hdfs:50070", "GET")
+run("/usr/local/hadoop/bin/hdfs dfsadmin -safemode get", null, false, 20)
+run("/usr/local/hadoop/bin/hdfs dfsadmin -safemode wait")
+runTest("georocket_hdfs")
+hdfsfiles = run("/usr/local/hadoop/bin/hdfs dfs -ls /georocket/store/", null, true).split('\n')
+if (hdfsfiles.length - 1 != expectedNode.children().size()) {
+    println("FAIL Expected ${expectedNode.children().size()} files in "
+        + "HDFS. Got ${hdfsfiles.length - 1}.")
+    System.exit(1)
+}
+println "OK   Success."

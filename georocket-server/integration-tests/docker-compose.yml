@@ -4,8 +4,10 @@ integration-tester:
     - georocket_standalone
     - georocket_mongo
     - georocket_s3
+    - georocket_hdfs
     - mongo
     - s3
+    - hdfs
 
 # GeoRocket instances
 georocket_standalone:
@@ -25,6 +27,13 @@ georocket_s3:
   links:
     - s3
 
+georocket_hdfs:
+  image: georocket/georocket
+  volumes:
+    - ./conf/georocket_hdfs:/usr/local/georocket-server/conf
+  links:
+    - hdfs
+
 # Back-ends
 mongo:
   image: mongo
@@ -35,3 +44,6 @@ s3:
   # If we don't add the domain name to the config file the server will
   # fail with an authentication error.
   command: bash -c "sed -i s/\\\"localregion\\\".*$$/\\\\0,\\\\n\\\\t\\\"specifiedregion\\\":\ [\\\"s3\\\"]/ /usr/src/app/config.json && npm start"
+
+hdfs:
+  image: sequenceiq/hadoop-docker:2.7.1
