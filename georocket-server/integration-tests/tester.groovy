@@ -19,7 +19,7 @@ def testExport(String georocketHost) {
     if (exportedContents.trim().equalsIgnoreCase("Not Found") ||
             exportedContents.trim().equalsIgnoreCase("404") ||
             exportedContents.trim().equalsIgnoreCase("503")) {
-        println("ERR  Got 0 chunks.")
+        println("WARN Got 0 chunks.")
         return false
     }
 
@@ -28,7 +28,7 @@ def testExport(String georocketHost) {
 
     // compare number of children
     if (exportedNode.children().size() < expectedNode.children().size()) {
-        println("ERR  Expected ${expectedNode.children().size()} chunks. Got "
+        println("WARN Expected ${expectedNode.children().size()} chunks. Got "
             + "${exportedNode.children().size()}.")
         return false
     } else if (exportedNode.children().size() > expectedNode.children().size()) {
@@ -90,6 +90,18 @@ def chunkCountInMongo = run('mongo mongo/georocket --quiet '
 if (chunkCountInMongo != String.valueOf(expectedNode.children().size())) {
     println("FAIL Expected ${expectedNode.children().size()} chunks in "
         + "MongoDB. Got ${chunkCountInMongo}.")
+    System.exit(1)
+}
+println "OK   Success."
+
+println "TEST GeoRocket with S3 back-end ..."
+waitHttp("http://s3:8000", "GET", 403)
+run("s3cmd mb s3://georocket")
+runTest("georocket_s3")
+objects = run("s3cmd ls s3://georocket/store/", null, true).split('\n')
+if (objects.length != expectedNode.children().size()) {
+    println("FAIL Expected ${expectedNode.children().size()} objects in "
+        + "S3. Got ${objects.length}.")
     System.exit(1)
 }
 println "OK   Success."

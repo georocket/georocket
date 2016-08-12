@@ -54,17 +54,21 @@ class Utils {
      * code 1.
      * @param url the URL the HTTP server listens to
      */
-    static boolean waitHttp(String url) {
+    static boolean waitHttp(String url, String method = 'HEAD',
+            Integer expectedStatusCode = null) {
         println "WAIT $url"
 
         for (int i = 0; i < 60; ++i) {
             try {
                 def c = new URL(url).openConnection()
-                c.connectTimeout = 1
-                c.readTimeout = 1
-                c.requestMethod = 'HEAD'
+                c.connectTimeout = 1000
+                c.readTimeout = 1000
+                c.requestMethod = method
                 // c.responseCode will do the actual request
-                if (c.responseCode >= 200 && c.responseCode < 400) {
+                int code = c.responseCode
+                if (expectedStatusCode != null && code == expectedStatusCode) {
+                    return true
+                } else if (c.responseCode >= 200 && c.responseCode < 400) {
                     return true
                 }
             } catch (IOException exception) {
