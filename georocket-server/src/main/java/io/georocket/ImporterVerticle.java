@@ -18,6 +18,7 @@ import io.georocket.storage.IndexMeta;
 import io.georocket.storage.Store;
 import io.georocket.storage.StoreFactory;
 import io.georocket.util.AsyncXMLParser;
+import io.georocket.util.ContentType;
 import io.georocket.util.RxUtils;
 import io.georocket.util.Window;
 import io.vertx.core.file.OpenOptions;
@@ -172,14 +173,19 @@ public class ImporterVerticle extends AbstractVerticle {
   protected Observable<Integer> importFile(String contentType, ReadStream<Buffer> f,
       String importId, String filename, Date importTimeStamp, String layer,
       List<String> tags) {
-    switch (contentType) {
-      case "application/xml":
-      case "text/xml":
+
+    try {
+      ContentType type = ContentType.parse(contentType);
+
+      if (type.belongsToContentType("application/xml", "text/xml")) {
         return importXML(f, importId, filename, importTimeStamp, layer, tags);
-      default:
+      } else {
         return Observable.error(new NoStackTraceThrowable(String.format(
-            "Received an unexpected content type '%s' while trying to import"
-            + "file '%s'", contentType, filename)));
+                "Received an unexpected content type '%s' while trying to import"
+                        + "file '%s'", contentType, filename)));
+      }
+    } catch (IllegalArgumentException ex) {
+      return Observable.error(ex);
     }
   }
 
