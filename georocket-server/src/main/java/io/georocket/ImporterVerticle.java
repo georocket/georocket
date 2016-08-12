@@ -193,7 +193,6 @@ public class ImporterVerticle extends AbstractVerticle {
     Window window = new Window();
     Splitter splitter = new FirstLevelSplitter(window);
     AtomicInteger processing = new AtomicInteger(0);
-    AtomicInteger countChunks = new AtomicInteger(0);
     CRSIndexer crsIndexer = new CRSIndexer();
     return f.toObservable()
         .map(buf -> (io.vertx.core.buffer.Buffer)buf.getDelegate())
@@ -226,9 +225,8 @@ public class ImporterVerticle extends AbstractVerticle {
             }
           });
         })
-        .last() // "wait" for last event (i.e. end of file)
-        .doAfterTerminate(xmlParser::close)
-            .map(v -> countChunks.get());
+        .count() // "wait" for last event (i.e. end of file)
+        .doAfterTerminate(xmlParser::close);
   }
   
   /**
