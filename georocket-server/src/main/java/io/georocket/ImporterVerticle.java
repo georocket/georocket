@@ -113,27 +113,29 @@ public class ImporterVerticle extends AbstractVerticle {
           });
       }))
       .subscribe(chunkCount -> {
-       onImportingFinished(importId, filepath, layer, chunkCount, System.currentTimeMillis() - timeStamp.getTime(), null);
+       onImportingFinished(importId, filepath, layer, chunkCount,
+           System.currentTimeMillis() - timeStamp.getTime(), null);
       }, err -> {
-        onImportingFinished(importId, filepath, layer, null, System.currentTimeMillis() - timeStamp.getTime(), err);
+        onImportingFinished(importId, filepath, layer, null,
+            System.currentTimeMillis() - timeStamp.getTime(), err);
       });
   }
 
   /**
-   * Will be called before the importer starts importing chunks.
-   *
+   * Will be called before the importer starts importing chunks
    * @param importId the id for this import
    * @param filepath the filepath of the file containing the chunks
    * @param layer the layer where to import the chunks
    * @param startTimeStamp the time when the importer has started importing
    */
-  protected void onImportingStarted(String importId, String filepath, String layer, long startTimeStamp) {
-    log.info(String.format("Importing [%s] '%s' to layer '%s' started at '%d'", importId, filepath, layer, startTimeStamp));
+  protected void onImportingStarted(String importId, String filepath,
+      String layer, long startTimeStamp) {
+    log.info(String.format("Importing [%s] '%s' to layer '%s' started at '%d'",
+        importId, filepath, layer, startTimeStamp));
   }
 
   /**
-   * <p>Will be called after the importer has finished importing chunks.</p>
-   *
+   * Will be called after the importer has finished importing chunks
    * @param importId the id for this import
    * @param filepath the filepath of the file containing the chunks
    * @param layer the layer where to import the chunks
@@ -141,14 +143,16 @@ public class ImporterVerticle extends AbstractVerticle {
    * @param duration the time it took to import the chunks
    * @param error an error if the process has failed
    */
-  protected void onImportingFinished(String importId, String filepath, String layer, Integer chunkCount, long duration,
-                                     Throwable error) {
+  protected void onImportingFinished(String importId, String filepath,
+      String layer, Integer chunkCount, long duration, Throwable error) {
     if (error == null) {
-      log.info(String.format("Finished importing [%s] %d chunks '%s' to layer '%s' after %d ms", importId, chunkCount,
-              filepath, layer, duration));
+      log.info(String.format("Finished importing [%s] %d chunks '%s' "
+          + "to layer '%s' after %d ms", importId, chunkCount, filepath,
+          layer, duration));
     } else {
-      log.error(String.format("Failed to import [%s] '%s' to layer '%s' after %d ms", importId, filepath, layer,
-              duration), error);
+      log.error(String.format("Failed to import [%s] '%s' "
+          + "to layer '%s' after %d ms", importId, filepath,
+          layer, duration), error);
     }
   }
 
@@ -162,10 +166,12 @@ public class ImporterVerticle extends AbstractVerticle {
    * @param importTimeStamp denotes when the import process has started
    * @param layer the layer where the file should be stored (may be null)
    * @param tags the list of tags to attach to the file (may be null)
-   * @return an observable that will emit with the number if chunks imported when the file has been imported
+   * @return an observable that will emit with the number if chunks imported
+   * when the file has been imported
    */
   protected Observable<Integer> importFile(String contentType, ReadStream<Buffer> f,
-      String importId, String filename, Date importTimeStamp, String layer, List<String> tags) {
+      String importId, String filename, Date importTimeStamp, String layer,
+      List<String> tags) {
     switch (contentType) {
       case "application/xml":
       case "text/xml":
