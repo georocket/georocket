@@ -1,3 +1,0 @@
-FROM scality/s3server
-
-RUN sed -i s/\"localregion\".*$/\\0,\\n\\t\"specifiedregion\":\ [\"s3\"]/ /usr/src/app/config.json

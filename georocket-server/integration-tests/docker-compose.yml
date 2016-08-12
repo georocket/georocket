@@ -7,30 +7,31 @@ integration-tester:
     - mongo
     - s3
 
-georocket_conf_mongo:
-  build: .
-  dockerfile: Dockerfile.georocket_conf_mongo
-georocket_conf_s3:
-  build: .
-  dockerfile: Dockerfile.georocket_conf_s3
-
+# GeoRocket instances
 georocket_standalone:
   image: georocket/georocket
+
 georocket_mongo:
   image: georocket/georocket
-  volumes_from:
-    - georocket_conf_mongo
+  volumes:
+    - ./conf/georocket_mongo:/usr/local/georocket-server/conf
   links:
     - mongo
+
 georocket_s3:
   image: georocket/georocket
-  volumes_from:
-    - georocket_conf_s3
+  volumes:
+    - ./conf/georocket_s3:/usr/local/georocket-server/conf
   links:
     - s3
 
+# Back-ends
 mongo:
   image: mongo
+
 s3:
-  build: .
-  dockerfile: Dockerfile.s3
+  image: scality/s3server
+  # Allow s3 server to be accessed through the "s3" domain name.
+  # If we don't add the domain name to the config file the server will
+  # fail with an authentication error.
+  command: bash -c "sed -i s/\\\"localregion\\\".*$$/\\\\0,\\\\n\\\\t\\\"specifiedregion\\\":\ [\\\"s3\\\"]/ /usr/src/app/config.json && npm start"
