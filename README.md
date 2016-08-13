@@ -1,4 +1,4 @@
-# GeoRocket [![Build Status](https://travis-ci.org/georocket/georocket.svg?branch=master)](https://travis-ci.org/georocket/georocket)
+# GeoRocket [![Apache License, Version 2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0) [![Build Status](https://travis-ci.org/georocket/georocket.svg?branch=master)](https://travis-ci.org/georocket/georocket) [![VersionEye](https://img.shields.io/versioneye/d/ruby/rails.svg?maxAge=2592000)](https://www.versioneye.com/user/projects/57a79642c95322000fb8fdce)
 
 *GeoRocket is a high-performance data store for geospatial files.* It is schema
 agnostic and format preserving. This means it supports a wide range of
