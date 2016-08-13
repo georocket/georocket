@@ -11,6 +11,10 @@ asciidoctor {
     sourceDir 'src'
 }
 
+asciidoctorj {
+    version = '1.5.4.1'
+}
+
 liveReload {
     docRoot asciidoctor.outputDir.canonicalPath
 }

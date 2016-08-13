@@ -1,6 +1,7 @@
 package io.georocket.storage.s3;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.configureFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.delete;
 import static com.github.tomakehurst.wiremock.client.WireMock.deleteRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
@@ -8,10 +9,11 @@ import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.put;
 import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
+import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options;
 
-import io.georocket.NetUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -37,7 +39,6 @@ public class S3StoreTest extends StorageTest {
   private static String  S3_ACCESS_KEY        = "640ab2bae07bedc4c163f679a746f7ab7fb5d1fa";
   private static String  S3_SECRET_KEY        = "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3";
   private static String  S3_HOST              = "localhost";
-  private static int     S3_PORT              = NetUtils.findPort();
   private static String  S3_BUCKET            = "testbucket";
   private static boolean S3_PATH_STYLE_ACCESS = true;
 
@@ -60,7 +61,7 @@ public class S3StoreTest extends StorageTest {
    * The http mock test rule
    */
   @Rule
-  public WireMockRule wireMockRule = new WireMockRule(S3_PORT);
+  public WireMockRule wireMockRule = new WireMockRule(options().dynamicPort());
 
   private static String pathWithLeadingSlash(String... paths) {
     return "/" + PathUtils.join(paths);
@@ -72,11 +73,12 @@ public class S3StoreTest extends StorageTest {
   @Before
   public void setUp() {
     wireMockRule.start();
+    configureFor("localhost", wireMockRule.port());
 
     // Mock http request for getOne
     wireMockRule.stubFor(
         // Request
-        get(urlPathMatching(pathWithLeadingSlash(S3_BUCKET, ID, "*")))
+        get(urlPathEqualTo(pathWithLeadingSlash(S3_BUCKET, ID)))
             .willReturn(aResponse()
                 .withStatus(Http.Codes.OK)
 
@@ -91,7 +93,7 @@ public class S3StoreTest extends StorageTest {
 
     // Mock http request for add without tempFolder
     wireMockRule.stubFor(
-        put(urlPathMatching(pathWithLeadingSlash(S3_BUCKET, "*")))
+        put(urlPathMatching(pathWithLeadingSlash(S3_BUCKET, ".*")))
             .withHeader(Http.CONTENT_LENGTH, equalTo(String.valueOf(CHUNK_CONTENT.length())))
 
             .withRequestBody(equalTo(CHUNK_CONTENT))
@@ -102,7 +104,7 @@ public class S3StoreTest extends StorageTest {
     );
 
     wireMockRule.stubFor(
-        put(urlPathMatching(pathWithLeadingSlash(S3_BUCKET, TEST_FOLDER, "*")))
+        put(urlPathMatching(pathWithLeadingSlash(S3_BUCKET, TEST_FOLDER, ".*")))
             .withHeader(Http.CONTENT_LENGTH, equalTo(String.valueOf(CHUNK_CONTENT.length())))
 
             .withRequestBody(equalTo(CHUNK_CONTENT))
@@ -155,7 +157,7 @@ public class S3StoreTest extends StorageTest {
 
     // Mock http request for delete without tempFolder
     wireMockRule.stubFor(
-        delete(urlPathMatching(pathWithLeadingSlash(S3_BUCKET, ID, "*")))
+        delete(urlPathEqualTo(pathWithLeadingSlash(S3_BUCKET, ID)))
 
         .willReturn(aResponse()
             .withStatus(Http.Codes.NO_CONTENT)
@@ -164,7 +166,7 @@ public class S3StoreTest extends StorageTest {
 
     // Mock http request for delete with tempFolder
     wireMockRule.stubFor(
-        delete(urlPathMatching(pathWithLeadingSlash(S3_BUCKET, TEST_FOLDER, ID, "*")))
+        delete(urlPathEqualTo(pathWithLeadingSlash(S3_BUCKET, TEST_FOLDER, ID)))
 
         .willReturn(aResponse()
             .withStatus(Http.Codes.NO_CONTENT)
@@ -186,7 +188,7 @@ public class S3StoreTest extends StorageTest {
     config.put(ConfigConstants.STORAGE_S3_ACCESS_KEY,        S3_ACCESS_KEY);
     config.put(ConfigConstants.STORAGE_S3_SECRET_KEY,        S3_SECRET_KEY);
     config.put(ConfigConstants.STORAGE_S3_HOST,              S3_HOST);
-    config.put(ConfigConstants.STORAGE_S3_PORT,              S3_PORT);
+    config.put(ConfigConstants.STORAGE_S3_PORT,              wireMockRule.port());
     config.put(ConfigConstants.STORAGE_S3_BUCKET,            S3_BUCKET);
     config.put(ConfigConstants.STORAGE_S3_PATH_STYLE_ACCESS, S3_PATH_STYLE_ACCESS);
   }
@@ -206,14 +208,14 @@ public class S3StoreTest extends StorageTest {
   @Override
   protected void validateAfterStoreAdd(TestContext context, Vertx vertx,
       String path, Handler<AsyncResult<Void>> handler) {
-    verify(putRequestedFor(urlPathMatching(pathWithLeadingSlash(S3_BUCKET, path, "*"))));
+    verify(putRequestedFor(urlPathMatching(pathWithLeadingSlash(S3_BUCKET, path, ".*"))));
     handler.handle(Future.succeededFuture());
   }
 
   @Override
   protected void validateAfterStoreDelete(TestContext context, Vertx vertx,
       String path, Handler<AsyncResult<Void>> handler) {
-    verify(deleteRequestedFor(urlPathMatching(pathWithLeadingSlash(S3_BUCKET, path, "*"))));
+    verify(deleteRequestedFor(urlPathEqualTo(pathWithLeadingSlash(S3_BUCKET, path))));
     handler.handle(Future.succeededFuture());
   }
 }

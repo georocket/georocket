@@ -1,11 +1,13 @@
 package io.georocket.index.elasticsearch;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.configureFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
+import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options;
 
 import java.io.File;
 import java.io.IOException;
@@ -13,6 +15,7 @@ import java.net.URL;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.SystemUtils;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -21,8 +24,6 @@ import org.junit.runner.RunWith;
 import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 
-import io.georocket.NetUtils;
-import io.georocket.index.elasticsearch.ElasticsearchInstaller;
 import io.vertx.core.Vertx;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -35,9 +36,7 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
  */
 @RunWith(VertxUnitRunner.class)
 public class ElasticsearchInstallerTest {
-  private final int PORT = NetUtils.findPort();
   private final String ZIP_NAME = "elasticsearch-dummy.zip";
-  private final String DOWNLOAD_URL = "http://localhost:" + PORT + "/" + ZIP_NAME;
   
   /**
    * Run the test on a Vert.x test context
@@ -55,7 +54,21 @@ public class ElasticsearchInstallerTest {
    * Run a mock HTTP server
    */
   @Rule
-  public WireMockRule wireMockRule = new WireMockRule(PORT);
+  public WireMockRule wireMockRule = new WireMockRule(options().dynamicPort());
+  
+  /**
+   * The URL pointing to the elasticsearch dummy zip file
+   */
+  private String downloadUrl;
+  
+  /**
+   * Set up the unit tests
+   */
+  @Before
+  public void setUp() {
+    configureFor("localhost", wireMockRule.port());
+    downloadUrl = "http://localhost:" + wireMockRule.port() + "/" + ZIP_NAME;
+  }
   
   /**
    * Test if Elasticsearch is downloaded correctly
@@ -76,7 +89,7 @@ public class ElasticsearchInstallerTest {
     File dest = folder.newFolder();
     dest.delete();
     new ElasticsearchInstaller(new io.vertx.rxjava.core.Vertx(vertx))
-      .download(DOWNLOAD_URL, dest.getAbsolutePath())
+      .download(downloadUrl, dest.getAbsolutePath())
       .subscribe(path -> {
         verify(getRequestedFor(urlEqualTo("/" + ZIP_NAME)));
         context.assertEquals(dest.getAbsolutePath(), path);
@@ -105,7 +118,7 @@ public class ElasticsearchInstallerTest {
     File dest = folder.newFolder();
     dest.delete();
     new ElasticsearchInstaller(new io.vertx.rxjava.core.Vertx(vertx))
-      .download(DOWNLOAD_URL, dest.getAbsolutePath())
+      .download(downloadUrl, dest.getAbsolutePath())
       .subscribe(path -> context.fail("Download is expected to fail"),
           err -> {
             verify(getRequestedFor(urlEqualTo("/" + ZIP_NAME)));
@@ -130,7 +143,7 @@ public class ElasticsearchInstallerTest {
     File dest = folder.newFolder();
     dest.delete();
     new ElasticsearchInstaller(new io.vertx.rxjava.core.Vertx(vertx))
-      .download(DOWNLOAD_URL, dest.getAbsolutePath())
+      .download(downloadUrl, dest.getAbsolutePath())
       .subscribe(path -> context.fail("Download is expected to fail"),
           err -> {
             verify(getRequestedFor(urlEqualTo("/" + ZIP_NAME)));
@@ -156,7 +169,7 @@ public class ElasticsearchInstallerTest {
     File dest = folder.newFolder();
     dest.delete();
     new ElasticsearchInstaller(new io.vertx.rxjava.core.Vertx(vertx))
-      .download(DOWNLOAD_URL, dest.getAbsolutePath())
+      .download(downloadUrl, dest.getAbsolutePath())
       .subscribe(path -> context.fail("Download is expected to fail"),
           err -> {
             verify(getRequestedFor(urlEqualTo("/" + ZIP_NAME)));

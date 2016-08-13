@@ -38,20 +38,25 @@ dependencies {
     compile "io.vertx:vertx-web:$vertxVersion"
 
     compile 'com.amazonaws:aws-java-sdk-s3:1.11.25'
-    compile 'com.fasterxml:aalto-xml:0.9.11'
+    compile 'com.fasterxml:aalto-xml:1.0.0'
     compile 'com.google.guava:guava:19.0'
     compile 'com.vividsolutions:jts:1.13'
     compile 'commons-io:commons-io:2.5'
+    compile 'javax.servlet:javax.servlet-api:3.1.0'
     compile 'net.java.dev.jna:jna:4.2.2'
     compile 'org.apache.commons:commons-exec:1.3'
     compile 'org.apache.commons:commons-lang3:3.4'
     compile('org.apache.hadoop:hadoop-common:2.7.2') {
         // exclude netty because we want to use the version Vert.x depends on
         exclude group: 'io.netty'
+        // exclude servlet-api v2, we add an explicit dependency to v3 instead
+        exclude group: 'javax.servlet', module: 'servlet-api'
     }
     compile('org.apache.hadoop:hadoop-hdfs:2.7.2') {
         // exclude netty because we want to use the version Vert.x depends on
         exclude group: 'io.netty'
+        // exclude servlet-api v2, we add an explicit dependency to v3 instead
+        exclude group: 'javax.servlet', module: 'servlet-api'
     }
     compile 'org.apache.tika:tika-core:1.13'
     compile 'org.jooq:jool:0.9.11'
@@ -75,7 +80,7 @@ dependencies {
     compile 'javax.media.jai:com.springsource.javax.media.jai.core:1.1.3'
 
     testCompile 'de.flapdoodle.embed:de.flapdoodle.embed.mongo:1.50.5'
-    testCompile 'com.github.tomakehurst:wiremock:1.57'
+    testCompile 'com.github.tomakehurst:wiremock:2.1.9'
     testCompile "io.vertx:vertx-unit:$vertxVersion"
     testCompile 'junit:junit:4.12'
     testCompile 'org.mongodb:mongodb-driver:3.3.0'

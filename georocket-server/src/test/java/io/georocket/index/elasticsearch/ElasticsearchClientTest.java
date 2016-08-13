@@ -1,6 +1,7 @@
 package io.georocket.index.elasticsearch;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.configureFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalToJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.head;
 import static com.github.tomakehurst.wiremock.client.WireMock.headRequestedFor;
@@ -11,6 +12,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
+import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -23,8 +25,6 @@ import org.junit.runner.RunWith;
 
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 
-import io.georocket.NetUtils;
-import io.georocket.index.elasticsearch.ElasticsearchClient;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
@@ -39,7 +39,6 @@ import io.vertx.rxjava.core.Vertx;
  */
 @RunWith(VertxUnitRunner.class)
 public class ElasticsearchClientTest {
-  private final int PORT = NetUtils.findPort();
   private static final String INDEX = "myindex";
   private static final String TYPE = "mytype";
   
@@ -77,15 +76,16 @@ public class ElasticsearchClientTest {
    * Run a mock HTTP server
    */
   @Rule
-  public WireMockRule wireMockRule = new WireMockRule(PORT);
+  public WireMockRule wireMockRule = new WireMockRule(options().dynamicPort());
   
   /**
    * Create the Elasticsearch client
    */
   @Before
   public void setUp() {
-    client = new ElasticsearchClient("localhost", PORT, INDEX, TYPE,
-        new Vertx(rule.vertx()));
+    configureFor("localhost", wireMockRule.port());
+    client = new ElasticsearchClient("localhost", wireMockRule.port(),
+        INDEX, TYPE, new Vertx(rule.vertx()));
   }
   
   /**
