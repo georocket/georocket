@@ -342,7 +342,8 @@ public class StoreEndpoint implements Endpoint {
       .flatMap(v -> {
         // detect content type of file to import
         if (contentType == null || contentType.trim().isEmpty() ||
-            contentType.equals("application/octet-stream")) {
+            contentType.equals("application/octet-stream") ||
+            contentType.equals("application/x-www-form-urlencoded")) {
           // fallback: if the client has not sent a Content-Type or if it's
           // a generic one, then try to guess it
           return detectContentType(filepath);
