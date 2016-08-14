@@ -6,6 +6,8 @@ import java.util.Queue;
 
 import org.bson.types.ObjectId;
 
+import com.google.common.base.Preconditions;
+
 import io.georocket.constants.ConfigConstants;
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.indexed.IndexedStore;
@@ -49,8 +51,12 @@ public class FileStore extends IndexedStore {
    */
   public FileStore(Vertx vertx) {
     super(vertx);
+    
     String storagePath = vertx.getOrCreateContext().config().getString(
         ConfigConstants.STORAGE_FILE_PATH);
+    Preconditions.checkNotNull(storagePath, "Missing configuration item \"" +
+        ConfigConstants.STORAGE_FILE_PATH + "\"");
+    
     this.root = Paths.get(storagePath, "file").toString();
     this.vertx = vertx;
   }

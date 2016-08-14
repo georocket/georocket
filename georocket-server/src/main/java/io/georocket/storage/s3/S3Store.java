@@ -15,6 +15,7 @@ import com.amazonaws.services.s3.S3ClientOptions;
 import com.amazonaws.services.s3.model.ListObjectsV2Request;
 import com.amazonaws.services.s3.model.ListObjectsV2Result;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
+import com.google.common.base.Preconditions;
 
 import io.georocket.constants.ConfigConstants;
 import io.georocket.storage.ChunkReadStream;
@@ -61,11 +62,25 @@ public class S3Store extends IndexedStore {
     this.vertx = vertx;
 
     JsonObject config = vertx.getOrCreateContext().config();
+
     accessKey = config.getString(ConfigConstants.STORAGE_S3_ACCESS_KEY);
+    Preconditions.checkNotNull(accessKey, "Missing configuration item \"" +
+        ConfigConstants.STORAGE_S3_ACCESS_KEY + "\"");
+
     secretKey = config.getString(ConfigConstants.STORAGE_S3_SECRET_KEY);
+    Preconditions.checkNotNull(secretKey, "Missing configuration item \"" +
+        ConfigConstants.STORAGE_S3_SECRET_KEY + "\"");
+
     host = config.getString(ConfigConstants.STORAGE_S3_HOST);
+    Preconditions.checkNotNull(host, "Missing configuration item \"" +
+        ConfigConstants.STORAGE_S3_HOST + "\"");
+
     port = config.getInteger(ConfigConstants.STORAGE_S3_PORT, 80);
+
     bucket = config.getString(ConfigConstants.STORAGE_S3_BUCKET);
+    Preconditions.checkNotNull(bucket, "Missing configuration item \"" +
+        ConfigConstants.STORAGE_S3_BUCKET + "\"");
+
     pathStyleAccess = config.getBoolean(ConfigConstants.STORAGE_S3_PATH_STYLE_ACCESS, true);
     forceSignatureV2 = config.getBoolean(ConfigConstants.STORAGE_S3_FORCE_SIGNATURE_V2, false);
     requestExpirySeconds = config.getInteger(ConfigConstants.STORAGE_S3_REQUEST_EXPIRY_SECONDS, 600);

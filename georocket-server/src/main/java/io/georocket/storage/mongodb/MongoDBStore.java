@@ -7,6 +7,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.bson.Document;
 import org.bson.types.ObjectId;
 
+import com.google.common.base.Preconditions;
 import com.mongodb.async.client.MongoClient;
 import com.mongodb.async.client.MongoClients;
 import com.mongodb.async.client.MongoDatabase;
@@ -47,11 +48,17 @@ public class MongoDBStore extends IndexedStore {
    */
   public MongoDBStore(Vertx vertx) {
     super(vertx);
-    this.context = vertx.getOrCreateContext();
+    context = vertx.getOrCreateContext();
 
-    JsonObject config = vertx.getOrCreateContext().config();
+    JsonObject config = context.config();
+
     connectionString = config.getString(ConfigConstants.STORAGE_MONGODB_CONNECTION_STRING);
+    Preconditions.checkNotNull(connectionString, "Missing configuration item \"" +
+        ConfigConstants.STORAGE_MONGODB_CONNECTION_STRING + "\"");
+
     databaseName = config.getString(ConfigConstants.STORAGE_MONGODB_DATABASE);
+    Preconditions.checkNotNull(connectionString, "Missing configuration item \"" +
+        ConfigConstants.STORAGE_MONGODB_DATABASE + "\"");
   }
 
   /**

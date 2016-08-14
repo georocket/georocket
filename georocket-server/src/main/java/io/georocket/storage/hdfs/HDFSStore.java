@@ -16,6 +16,8 @@ import org.apache.hadoop.fs.FsStatus;
 import org.apache.hadoop.fs.Path;
 import org.bson.types.ObjectId;
 
+import com.google.common.base.Preconditions;
+
 import io.georocket.constants.ConfigConstants;
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.indexed.IndexedStore;
@@ -45,8 +47,15 @@ public class HDFSStore extends IndexedStore {
     this.vertx = vertx;
 
     JsonObject config = vertx.getOrCreateContext().config();
+
     root = config.getString(ConfigConstants.STORAGE_HDFS_PATH);
+    Preconditions.checkNotNull(root, "Missing configuration item \"" +
+        ConfigConstants.STORAGE_HDFS_PATH + "\"");
+
     String defaultFS = config.getString(ConfigConstants.STORAGE_HDFS_DEFAULT_FS);
+    Preconditions.checkNotNull(defaultFS, "Missing configuration item \"" +
+        ConfigConstants.STORAGE_HDFS_DEFAULT_FS + "\"");
+
     configuration = new Configuration();
     configuration.set("fs.defaultFS", defaultFS);
   }

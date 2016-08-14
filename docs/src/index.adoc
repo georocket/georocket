@@ -571,13 +571,13 @@ You can configure GeoRocket Server by editing the file `conf/georocketd.json` in
   _(required)_
 | The host of the S3 endpoint
 | *georocket.storage.s3.port* +
-  _(required)_
+  _(default: 80)_
 | The port of the S3 endpoint
 | *georocket.storage.s3.bucket* +
   _(required)_
 | The S3 bucket where chunks should be stored
 | *georocket.storage.s3.pathStyleAccess* +
-  _(required)_
+  _(default: true)_
 | `true` if path-style access to the S3 bucket is used or `false` if a sub-domain is used
 | *georocket.storage.s3.forceSignatureV2* +
   _(default: false)_
