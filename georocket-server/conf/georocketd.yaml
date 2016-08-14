@@ -1,0 +1,44 @@
+georocket:
+  # The TCP port GeoRocket should listen on
+  port: 63020
+
+  # Back-end configuration
+  storage:
+    # The data store implementation to use. Possible values include:
+    # io.georocket.storage.file.FileStore
+    # io.georocket.storage.hdfs.HDFSStore
+    # io.georocket.storage.mongodb.MongoDBStore
+    # io.georocket.storage.s3.S3Store
+    class: io.georocket.storage.file.FileStore
+
+    # Configuration for the file back-end
+    file:
+      path: $GEOROCKET_HOME/storage
+
+    # Configuration for the HDFS back-end
+    hdfs:
+      defaultFS: hdfs://127.0.0.1:9000
+      path: /georocket/
+
+    # Configuration for the MongoDB back-end
+    mongodb:
+      connectionString: mongodb://localhost:27017
+      database: georocket
+
+    # Configuration for the S3 back-end
+    s3:
+      accessKey: myAccessKey
+      secretKey: mySecretKey
+      host: localhost
+      port: 12345
+      bucket: georocket
+      pathStyleAccess: true
+      forceSignatureV2: false
+      requestExpirySeconds: false
+
+  # Index configuration
+  index:
+    elasticsearch:
+      embedded: true
+      host: localhost
+      port: 9200

@@ -474,7 +474,17 @@ This example matches all chunks that are not within the bounding box `13.378,52.
 
 == Server configuration
 
-You can configure GeoRocket Server by editing the file `conf/georocketd.json` in the application directory. The file must be a valid JSON file containing a single object. The following sections describe possible configuration keys and values.
+You can configure GeoRocket Server by editing the file `conf/georocketd.yaml` in the application directory. The file must be a valid YAML file. The following sections describe possible configuration keys and values.
+
+Keys are specified using the dot notation. You can use the keys in your file as they are specified here or use normal YAML notation instead. For example, the following configuration file
+
+  georocket.storage.class: io.georocket.storage.file.FileStore
+
+is identical to:
+
+  georocket:
+    storage:
+      class: io.georocket.storage.file.FileStore
 
 === HTTP interface
 
@@ -597,11 +607,12 @@ behaviour and use a remote Elasticsearch instance instead.
 Set the following configuration items to disable the provided Elasticsearch
 instance and to configure the host and port of the remote one:
 
-```json
-"georocket.index.elasticsearch.embedded": false,
-"georocket.index.elasticsearch.host": "127.0.0.1",
-"georocket.index.elasticsearch.port": 9300
-```
+  georocket:
+    index:
+      elasticsearch:
+        embedded: false
+        host: 127.0.0.1
+        port: 9200
 
 ==== Configuration
 
@@ -615,6 +626,6 @@ if it should connect to an existing instance.
   _(default: "localhost")_
 | Elasticsearch host address
 | *georocket.index.elasticsearch.port* +
-  _(default: 9300)_
+  _(default: 9200)_
 | Elasticsearch TCP port
 |===

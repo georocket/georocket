@@ -3,15 +3,18 @@ package io.georocket;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.io.FileUtils;
+import org.yaml.snakeyaml.Yaml;
 
 import io.georocket.constants.ConfigConstants;
 import io.georocket.http.Endpoint;
 import io.georocket.http.GeneralEndpoint;
 import io.georocket.http.StoreEndpoint;
 import io.georocket.index.IndexerVerticle;
+import io.georocket.util.JsonUtils;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
@@ -222,9 +225,23 @@ public class GeoRocket extends AbstractVerticle {
 
     // load configuration file
     File confDir = new File(geoRocketHome, "conf");
-    File confFile = new File(confDir, "georocketd.json");
+    File confFile = new File(confDir, "georocketd.yaml");
+    if (!confFile.exists()) {
+      confFile = new File(confDir, "georocketd.yml");
+      if (!confFile.exists()) {
+        confFile = new File(confDir, "georocketd.json");
+      }
+    }
     String confFileStr = FileUtils.readFileToString(confFile, "UTF-8");
-    JsonObject conf = new JsonObject(confFileStr);
+    JsonObject conf;
+    if (confFile.getName().endsWith(".json")) {
+      conf = new JsonObject(confFileStr);
+    } else {
+      Yaml yaml = new Yaml();
+      @SuppressWarnings("unchecked")
+      Map<String, Object> m = yaml.loadAs(confFileStr, Map.class);
+      conf = JsonUtils.flatten(new JsonObject(m));
+    }
 
     // set default configuration values
     setDefaultConf(conf);

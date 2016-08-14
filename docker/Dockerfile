@@ -13,7 +13,7 @@ ADD georocket-server /usr/local/georocket-server
 RUN apk update && \
     apk add bash sed && \
     rm -rf /var/cache/apk/* && \
-    sed -i -e 's/\("georocket\.storage\.file\.path"\).*/\1: "\/data\/georocket\/storage",/g' /usr/local/georocket-server/conf/georocketd.json && \
+    sed -i -e 's/\$GEOROCKET_HOME\/storage/\/data\/georocket\/storage/g' /usr/local/georocket-server/conf/georocketd.yaml && \
     sed -i '2iES_JAVA_OPTS="-Des.insecure.allow.root=true"' /usr/local/georocket-server/elasticsearch/*/bin/elasticsearch
 
 VOLUME /data/georocket/storage
