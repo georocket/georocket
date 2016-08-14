@@ -27,16 +27,12 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 
 /**
  * Stores chunks in MongoDB
  * @author Michel Kraemer
  */
 public class MongoDBStore extends IndexedStore {
-  private static Logger log = LoggerFactory.getLogger(MongoDBStore.class);
-  
   private final Context context;
   private final String connectionString;
   private final String databaseName;
@@ -54,18 +50,7 @@ public class MongoDBStore extends IndexedStore {
     this.context = vertx.getOrCreateContext();
 
     JsonObject config = vertx.getOrCreateContext().config();
-    String cs = config.getString(ConfigConstants.STORAGE_MONGODB_CONNECTION_STRING);
-    if (cs == null) {
-      String host = config.getString(ConfigConstants.STORAGE_MONGODB_HOST);
-      int port = config.getInteger(ConfigConstants.STORAGE_MONGODB_PORT, 27017);
-      if (host != null && !host.isEmpty()) {
-        log.warn("Deprecation warning: 'georocket.storage.mongodb.host' and "
-            + "'georocket.storage.mongodb.port' are deprecated. Use "
-            + "georocket.storage.mongodb.connectionString' instead.");
-      }
-      cs = "mongodb://" + host + ":" + port;
-    }
-    connectionString = cs;
+    connectionString = config.getString(ConfigConstants.STORAGE_MONGODB_CONNECTION_STRING);
     databaseName = config.getString(ConfigConstants.STORAGE_MONGODB_DATABASE);
   }
 
