@@ -1,0 +1,12 @@
+georocket:
+  storage:
+    class: io.georocket.storage.s3.S3Store
+    s3:
+      accessKey: accessKey1
+      secretKey: verySecretKey1
+      host: s3
+      port: 8000
+      bucket: georocket
+      pathStyleAccess: true
+      forceSignatureV2: true
+      requestExpirySeconds: 600

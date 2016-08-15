@@ -1,5 +1,0 @@
-{
-  "georocket.storage.class": "io.georocket.storage.mongodb.MongoDBStore",
-  "georocket.storage.mongodb.connectionString": "mongodb://mongo:27017",
-  "georocket.storage.mongodb.database": "georocket"
-}
