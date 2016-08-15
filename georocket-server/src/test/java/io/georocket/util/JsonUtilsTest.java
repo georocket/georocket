@@ -17,9 +17,9 @@ public class JsonUtilsTest {
   @Test
   public void simple() {
     JsonObject obj = new JsonObject()
-        .put("type","Person")
+        .put("type", "Person")
         .put("person", new JsonObject()
-            .put("firstName","Clifford")
+            .put("firstName", "Clifford")
             .put("lastName", "Thompson")
             .put("age", 40)
             .put("address", new JsonObject()
