@@ -39,8 +39,8 @@ if [ $? -ne 0 ] ; then
   printf "${RED}Docker Compose Failed${NC}\n"
   exit -1
 fi
+docker logs -f ci_integration-tester_1 &
 TEST_EXIT_CODE=`docker wait ci_integration-tester_1`
-docker logs ci_integration-tester_1
 if [ -z ${TEST_EXIT_CODE+x} ] || [ "$TEST_EXIT_CODE" -ne 0 ] ; then
   printf "${RED}Tests Failed${NC} - Exit Code: $TEST_EXIT_CODE\n"
 else
