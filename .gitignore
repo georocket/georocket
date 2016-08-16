@@ -10,6 +10,9 @@ build/
 node_modules/
 src-gen/
 gradle.properties
+# IntelliJ  project structure
 .idea/
 *.iml
-
+/conf
+/elasticsearch
+/storage
