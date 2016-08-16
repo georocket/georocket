@@ -677,8 +677,15 @@ public class IndexerVerticle extends AbstractVerticle {
       }
       
       long stopTimeStamp = System.currentTimeMillis();
-      onIndexingFinished(stopTimeStamp - startTimeStamp, messages.size(),
-          client.bulkResponseGetErrorMessage(bres));
+      Observable.from(messages)
+              .map(Message::body)
+              .map(d -> d.getString("importId"))
+              .toList()
+              .subscribe(importIds -> {
+                onIndexingFinished(stopTimeStamp - startTimeStamp, importIds,
+                  client.bulkResponseGetErrorMessage(bres));
+              });
+
       return Observable.empty();
     });
   }
@@ -695,15 +702,19 @@ public class IndexerVerticle extends AbstractVerticle {
   /**
    * Will be called after the indexer has finished the indexing process
    * @param duration the time passed during indexing
-   * @param chunkCount the number of chunks indexed
+   * @param chunkImportIds the import ids of the chunks which where processed by the
+   *                       indexer. This list may include id's of chunks which indexing
+   *                       failed.
    * @param errorMessage an error message if the process has failed
    * or <code>null</code> if everything was successful
    */
-  protected void onIndexingFinished(long duration, int chunkCount, String errorMessage) {
+  protected void onIndexingFinished(long duration, List<String> chunkImportIds, String
+          errorMessage) {
     if (errorMessage != null) {
       log.error("Indexing failed: " + errorMessage);
     } else {
-      log.info("Finished indexing " + chunkCount + " chunks in " + duration + " ms");
+      log.info("Finished indexing " + chunkImportIds.size() + " chunks in " + duration
+              + " " + "ms");
     }
   }
 }
