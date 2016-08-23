@@ -19,7 +19,7 @@ dependencies {
     testCompile 'ch.qos.logback:logback-classic:1.1.7'
     testCompile 'ch.qos.logback:logback-core:1.1.7'
 
-    testCompile 'com.github.tomakehurst:wiremock:2.1.9'
+    testCompile 'com.github.tomakehurst:wiremock:2.1.11'
     testCompile "io.vertx:vertx-unit:$vertxVersion"
     testCompile 'junit:junit:4.12'
 }
