@@ -19,6 +19,7 @@ import java.util.stream.Stream;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.jooq.lambda.Seq;
 import org.jooq.lambda.tuple.Tuple;
 import org.yaml.snakeyaml.Yaml;
 
@@ -677,14 +678,12 @@ public class IndexerVerticle extends AbstractVerticle {
       }
       
       long stopTimeStamp = System.currentTimeMillis();
-      Observable.from(messages)
-              .map(Message::body)
-              .map(d -> d.getString("importId"))
-              .toList()
-              .subscribe(importIds -> {
-                onIndexingFinished(stopTimeStamp - startTimeStamp, importIds,
-                  client.bulkResponseGetErrorMessage(bres));
-              });
+      List<String> importIds = Seq.seq(messages)
+        .map(Message::body)
+        .map(d -> d.getString("importId"))
+        .toList();
+      onIndexingFinished(stopTimeStamp - startTimeStamp, importIds,
+          client.bulkResponseGetErrorMessage(bres));
 
       return Observable.empty();
     });
@@ -702,19 +701,18 @@ public class IndexerVerticle extends AbstractVerticle {
   /**
    * Will be called after the indexer has finished the indexing process
    * @param duration the time passed during indexing
-   * @param chunkImportIds the import ids of the chunks which where processed by the
-   *                       indexer. This list may include id's of chunks which indexing
-   *                       failed.
+   * @param chunkImportIds the import IDs of the chunks that were processed by
+   * the indexer. This list may include IDs of chunks whose indexing failed.
    * @param errorMessage an error message if the process has failed
    * or <code>null</code> if everything was successful
    */
-  protected void onIndexingFinished(long duration, List<String> chunkImportIds, String
-          errorMessage) {
+  protected void onIndexingFinished(long duration, List<String> chunkImportIds,
+      String errorMessage) {
     if (errorMessage != null) {
       log.error("Indexing failed: " + errorMessage);
     } else {
-      log.info("Finished indexing " + chunkImportIds.size() + " chunks in " + duration
-              + " " + "ms");
+      log.info("Finished indexing " + chunkImportIds.size() + " chunks in " +
+          duration + " " + "ms");
     }
   }
 }
