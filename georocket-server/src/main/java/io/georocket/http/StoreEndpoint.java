@@ -10,6 +10,8 @@ import java.nio.file.spi.FileTypeDetector;
 import java.util.List;
 import java.util.function.BiConsumer;
 
+import org.apache.http.ParseException;
+import org.apache.http.entity.ContentType;
 import org.bson.types.ObjectId;
 
 import com.google.common.base.Splitter;
@@ -296,7 +298,6 @@ public class StoreEndpoint implements Endpoint {
     HttpServerRequest request = context.request();
     request.pause();
 
-    String contentType = request.getHeader("Content-Type");
     String layer = getStorePath(context);
     String tagsStr = request.getParam("tags");
     List<String> tags = tagsStr != null ? Splitter.on(',')
@@ -308,6 +309,7 @@ public class StoreEndpoint implements Endpoint {
     String filepath = incoming + "/" + filename;
     
     log.info("Receiving file ...");
+
     
     // create directory for incoming files
     FileSystem fs = vertx.fileSystem();
@@ -340,15 +342,26 @@ public class StoreEndpoint implements Endpoint {
         return pumpObservable;
       })
       .flatMap(v -> {
+        String contentTypeHeader = request.getHeader("Content-Type");
+        String mimeType = null;
+
+        try {
+          ContentType contentType = ContentType.parse(contentTypeHeader);
+          mimeType = contentType.getMimeType();
+        } catch (ParseException | IllegalArgumentException ex) {
+          // mimeType already null
+        }
+
         // detect content type of file to import
-        if (contentType == null || contentType.trim().isEmpty() ||
-            contentType.equals("application/octet-stream") ||
-            contentType.equals("application/x-www-form-urlencoded")) {
+        if (mimeType == null || mimeType.trim().isEmpty() ||
+                mimeType.equals("application/octet-stream") ||
+                mimeType.equals("application/x-www-form-urlencoded")) {
           // fallback: if the client has not sent a Content-Type or if it's
           // a generic one, then try to guess it
           return detectContentType(filepath);
         }
-        return Observable.just(contentType);
+
+        return Observable.just(mimeType);
       })
       .subscribe(detectedContentType -> {
         // run importer
