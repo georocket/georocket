@@ -177,10 +177,63 @@ public class ImporterVerticle extends AbstractVerticle {
       case "text/xml":
         return importXML(f, importId, filename, importTimeStamp, layer, tags);
       default:
-        return Observable.error(new NoStackTraceThrowable(String.format(
-            "Received an unexpected content type '%s' while trying to import"
-            + "file '%s'", contentType, filename)));
+        if (belongsTo(contentType, "application", "xml") || belongsTo(contentType,
+                "text", "xml")) {
+          return importXML(f, importId, filename, importTimeStamp, layer, tags);
+        } else {
+          return Observable.error(new NoStackTraceThrowable(String.format(
+                  "Received an unexpected content type '%s' while trying to import"
+                          + "file '%s'", contentType, filename)));
+        }
     }
+  }
+
+  /**
+   * <p>Check if the contentType belongs to an another one.</p>
+   * <p>Examples:</p>
+   * <ul>
+   *   <li>belongsTo("application/gml+xml", "application", "xml") == true</li>
+   *   <li>belongsTo("application/exp+xml", "application", "xml") == true</li>
+   *   <li>belongsTo("application/xml", "application", "xml") == true</li>
+   *   <li>belongsTo("application/exp+xml", "text", "xml") == false</li>
+   *   <li>belongsTo("application/exp+xml", "application", "json") == false</li>
+   * </ul>
+   *
+   *
+   * @param contentType The content type
+   * @param type the type part of the content type
+   * @param structuredSyntax the structured syntax of the subtype subtype =
+   *                         example+structuredSyntax
+   *
+   * @return true if the content type belongs to another
+   */
+  private boolean belongsTo(String contentType, String type, String structuredSyntax) {
+    String mediaParts[] = contentType.split("/");
+
+    if (mediaParts.length != 2) {
+      return false;
+    }
+
+    String _type = mediaParts[0];
+    String _subtype = mediaParts[1];
+
+    if (!_type.equals(type)) {
+      return false;
+    }
+
+    if (_subtype.equals(structuredSyntax)) {
+      return true;
+    }
+
+    String subtypeParts[] = _subtype.split("\\+");
+
+    if (subtypeParts.length != 2) {
+      return false;
+    }
+
+    String _structuredSyntax = subtypeParts[1];
+
+    return _structuredSyntax.equals(structuredSyntax);
   }
 
   /**
