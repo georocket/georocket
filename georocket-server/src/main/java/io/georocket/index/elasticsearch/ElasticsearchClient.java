@@ -111,12 +111,30 @@ public class ElasticsearchClient {
    */
   public Observable<JsonObject> beginScroll(JsonObject query, int pageSize,
       String timeout) {
+    return beginScroll(query, null, pageSize, timeout);
+  }
+
+  /**
+   * Perform a search, apply an aggregation, and start scrolling
+   * over the result documents.
+   * @param query the query to send
+   * @param aggregation the aggregation to apply. Can be <code>null</code>
+   * @param pageSize the number of objects to return in one response
+   * @param timeout the time after which the returned scroll id becomes invalid
+   * @return an object containing the search hits and a scroll id that can
+   * be passed to {@link #continueScroll(String, String)} to get more results
+   */
+  public Observable<JsonObject> beginScroll(JsonObject query, JsonObject aggregation,
+      int pageSize, String timeout) {
     String uri = "/" + index + "/" + type + "/_search";
     uri += "?scroll=" + timeout;
     
     JsonObject source = new JsonObject();
     source.put("size", pageSize);
     source.put("query", query);
+    if (aggregation != null) {
+      source.put("aggs", aggregation);
+    }
     
     // sort by doc (fastest way to scroll)
     source.put("sort", new JsonArray().add("_doc"));
