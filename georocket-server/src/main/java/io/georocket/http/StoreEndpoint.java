@@ -309,7 +309,6 @@ public class StoreEndpoint implements Endpoint {
     String filepath = incoming + "/" + filename;
     
     log.info("Receiving file ...");
-
     
     // create directory for incoming files
     FileSystem fs = vertx.fileSystem();
@@ -354,8 +353,8 @@ public class StoreEndpoint implements Endpoint {
 
         // detect content type of file to import
         if (mimeType == null || mimeType.trim().isEmpty() ||
-                mimeType.equals("application/octet-stream") ||
-                mimeType.equals("application/x-www-form-urlencoded")) {
+            mimeType.equals("application/octet-stream") ||
+            mimeType.equals("application/x-www-form-urlencoded")) {
           // fallback: if the client has not sent a Content-Type or if it's
           // a generic one, then try to guess it
           return detectContentType(filepath);
