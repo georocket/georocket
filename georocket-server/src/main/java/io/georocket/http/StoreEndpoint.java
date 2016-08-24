@@ -357,12 +357,10 @@ public class StoreEndpoint implements Endpoint {
             mimeType.equals("application/x-www-form-urlencoded")) {
           // fallback: if the client has not sent a Content-Type or if it's
           // a generic one, then try to guess it
-
-          final String _mimetype = mimeType;
+          log.warn("Mime type '" + mimeType + "' is invalid or generic. "
+              + "Trying to guess the right type.");
           return detectContentType(filepath).doOnNext(guessedType -> {
-            log.warn(String.format("Received the media type '%s' which is not valid: Try " +
-                    "to guess the right media type. The guess was '%s' ", _mimetype,
-                    guessedType));
+            log.warn("Guessed mime type '" + guessedType + "'.");
           });
         }
 
