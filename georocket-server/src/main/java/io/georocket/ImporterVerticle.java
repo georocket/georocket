@@ -221,8 +221,8 @@ public class ImporterVerticle extends AbstractVerticle {
       return false;
     }
 
-    String _structuredSyntax = subtypeParts[1];
-    return _structuredSyntax.equals(otherStructuredSyntax);
+    String structuredSyntax = subtypeParts[1];
+    return structuredSyntax.equals(otherStructuredSyntax);
   }
 
   /**
