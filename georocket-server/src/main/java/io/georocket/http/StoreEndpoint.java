@@ -358,10 +358,12 @@ public class StoreEndpoint implements Endpoint {
           // fallback: if the client has not sent a Content-Type or if it's
           // a generic one, then try to guess it
 
-          log.warn(String.format("Received the media type '%s' which is not valid: Try " +
-                  "to guess the right media type ", mimeType));
-
-          return detectContentType(filepath);
+          final String _mimetype = mimeType;
+          return detectContentType(filepath).doOnNext(guessedType -> {
+            log.warn(String.format("Received the media type '%s' which is not valid: Try " +
+                    "to guess the right media type. The guess was '%s' ", _mimetype,
+                    guessedType));
+          });
         }
 
         return Observable.just(mimeType);
