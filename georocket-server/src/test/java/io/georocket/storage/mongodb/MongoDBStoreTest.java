@@ -24,27 +24,15 @@ import io.georocket.util.PathUtils;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import io.vertx.core.VertxOptions;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.RunTestOnContext;
 
 /**
  * Test {@link MongoDBStore}
  * @author Andrej Sajenko
  */
 public class MongoDBStoreTest extends StorageTest {
-  private static long MAX_WORKER_EXECUTION_TIME = 30 * 60 * 1000;
-  
   private static MongoDBTestConnector mongoConnector;
-
-  /**
-   * Default constructor
-   */
-  public MongoDBStoreTest() {
-    super.rule = new RunTestOnContext(new VertxOptions()
-        .setMaxWorkerExecuteTime(MAX_WORKER_EXECUTION_TIME));
-  }
 
   /**
    * Set up test dependencies.
