@@ -116,13 +116,4 @@ public class ChunkMeta {
         .put("start", start)
         .put("end", end);
   }
-  
-  /**
-   * Converts a {@link JsonObject} to a {@link ChunkMeta} object
-   * @param obj the {@link JsonObject} to convert
-   * @return the {@link ChunkMeta} object
-   */
-  public static ChunkMeta fromJsonObject(JsonObject obj) {
-    return new ChunkMeta(obj);
-  }
 }
