@@ -37,9 +37,9 @@ import io.georocket.storage.ChunkMeta;
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.Store;
 import io.georocket.storage.StoreFactory;
-import io.georocket.util.AsyncXMLParser;
 import io.georocket.util.MapUtils;
 import io.georocket.util.RxUtils;
+import io.georocket.util.XMLParserOperator;
 import io.georocket.util.XMLStartElement;
 import io.vertx.core.Future;
 import io.vertx.core.impl.NoStackTraceThrowable;
@@ -522,8 +522,6 @@ public class IndexerVerticle extends AbstractVerticle {
    */
   private Observable<Map<String, Object>> xmlChunkToDocument(ChunkReadStream chunk,
       String fallbackCRSString) {
-    AsyncXMLParser xmlParser = new AsyncXMLParser();
-    
     List<XMLIndexer> indexers = new ArrayList<>();
     indexerFactories.forEach(factory -> {
       XMLIndexer i = (XMLIndexer)factory.createIndexer();
@@ -534,7 +532,7 @@ public class IndexerVerticle extends AbstractVerticle {
     });
     
     return RxHelper.toObservable(chunk)
-      .flatMap(xmlParser::feed)
+      .lift(new XMLParserOperator())
       .doOnNext(e -> indexers.forEach(i -> i.onEvent(e)))
       .last() // "wait" until the whole chunk has been consumed
       .map(e -> {
@@ -542,8 +540,7 @@ public class IndexerVerticle extends AbstractVerticle {
         Map<String, Object> doc = new HashMap<>();
         indexers.forEach(i -> doc.putAll(i.getResult()));
         return doc;
-      })
-      .doAfterTerminate(xmlParser::close);
+      });
   }
   
   /**

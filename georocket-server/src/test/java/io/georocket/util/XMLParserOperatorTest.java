@@ -18,11 +18,11 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 import rx.Observable;
 
 /**
- * Test {@link AsyncXMLParser}
+ * Test {@link XMLParserOperator}
  * @author Michel Kraemer
  */
 @RunWith(VertxUnitRunner.class)
-public class AsyncXMLParserTest {
+public class XMLParserOperatorTest {
   /**
    * Test input data
    */
@@ -40,7 +40,6 @@ public class AsyncXMLParserTest {
       new XMLStreamEvent(XMLEvent.END_ELEMENT, 62, null)
   );
   
-  private AsyncXMLParser xmlParser;
   private Deque<XMLStreamEvent> expectedEvents;
   
   private static void handler(XMLStreamEvent e, Deque<XMLStreamEvent> expectedEvents, TestContext context) {
@@ -60,7 +59,6 @@ public class AsyncXMLParserTest {
    */
   @Before
   public void setUp(TestContext context) {
-    xmlParser = new AsyncXMLParser();
     expectedEvents = new ArrayDeque<>(EXPECTED_EVENTS);
   }
   
@@ -71,7 +69,8 @@ public class AsyncXMLParserTest {
   @Test
   public void parseSimple(TestContext context) {
     Async async = context.async();
-    xmlParser.feed(Buffer.buffer(XML))
+    Observable.just(Buffer.buffer(XML))
+      .lift(new XMLParserOperator())
       .doOnNext(e -> handler(e, expectedEvents, context))
       .last()
       .subscribe(r -> {
@@ -89,7 +88,7 @@ public class AsyncXMLParserTest {
   public void parseChunks(TestContext context) {
     Async async = context.async();
     Observable.just(Buffer.buffer(XML_CHUNK1), Buffer.buffer(XML_CHUNK2))
-      .flatMap(xmlParser::feed)
+      .lift(new XMLParserOperator())
       .doOnNext(e -> handler(e, expectedEvents, context))
       .last()
       .subscribe(r -> {
@@ -109,7 +108,7 @@ public class AsyncXMLParserTest {
     Observable.just(Buffer.buffer(XML.substring(0, XMLHEADER.length() + 3)),
         Buffer.buffer(XML.substring(XMLHEADER.length() + 3, 64)),
         Buffer.buffer(XML.substring(64)))
-      .flatMap(xmlParser::feed)
+      .lift(new XMLParserOperator())
       .doOnNext(e -> handler(e, expectedEvents, context))
       .last()
       .subscribe(r -> {

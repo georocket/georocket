@@ -17,9 +17,9 @@ import io.georocket.storage.ChunkMeta;
 import io.georocket.storage.IndexMeta;
 import io.georocket.storage.Store;
 import io.georocket.storage.StoreFactory;
-import io.georocket.util.AsyncXMLParser;
 import io.georocket.util.RxUtils;
 import io.georocket.util.Window;
+import io.georocket.util.XMLParserOperator;
 import io.vertx.core.file.OpenOptions;
 import io.vertx.core.impl.NoStackTraceThrowable;
 import io.vertx.core.json.JsonArray;
@@ -237,7 +237,6 @@ public class ImporterVerticle extends AbstractVerticle {
    */
   private Observable<Integer> importXML(ReadStream<Buffer> f, String importId,
       String filename, Date importTimeStamp, String layer, List<String> tags) {
-    AsyncXMLParser xmlParser = new AsyncXMLParser();
     Window window = new Window();
     Splitter splitter = new FirstLevelSplitter(window);
     AtomicInteger processing = new AtomicInteger(0);
@@ -245,7 +244,7 @@ public class ImporterVerticle extends AbstractVerticle {
     return f.toObservable()
         .map(buf -> (io.vertx.core.buffer.Buffer)buf.getDelegate())
         .doOnNext(window::append)
-        .flatMap(xmlParser::feed)
+        .lift(new XMLParserOperator())
         .doOnNext(e -> {
           // save the first CRS found in the file
           if (crsIndexer.getCRS() == null) {
@@ -273,8 +272,7 @@ public class ImporterVerticle extends AbstractVerticle {
             }
           });
         })
-        .count() // "wait" for last event (i.e. end of file)
-        .doAfterTerminate(xmlParser::close);
+        .count();
   }
   
   /**
