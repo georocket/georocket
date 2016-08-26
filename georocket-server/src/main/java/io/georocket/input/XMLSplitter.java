@@ -9,7 +9,7 @@ import java.util.List;
 import javax.xml.stream.XMLStreamReader;
 import javax.xml.stream.events.XMLEvent;
 
-import io.georocket.storage.ChunkMeta;
+import io.georocket.storage.XMLChunkMeta;
 import io.georocket.util.Window;
 import io.georocket.util.XMLStartElement;
 import io.georocket.util.XMLStreamEvent;
@@ -18,7 +18,7 @@ import io.georocket.util.XMLStreamEvent;
  * Abstract base class for splitters that split XML streams
  * @author Michel Kraemer
  */
-public abstract class XMLSplitter implements Splitter<XMLStreamEvent> {
+public abstract class XMLSplitter implements Splitter<XMLStreamEvent, XMLChunkMeta> {
   /**
    * A marked position. See {@link #mark(int)}
    */
@@ -43,8 +43,8 @@ public abstract class XMLSplitter implements Splitter<XMLStreamEvent> {
   }
   
   @Override
-  public Result onEvent(XMLStreamEvent event) {
-    Result chunk = onXMLEvent(event);
+  public Result<XMLChunkMeta> onEvent(XMLStreamEvent event) {
+    Result<XMLChunkMeta> chunk = onXMLEvent(event);
     if (!isMarked()) {
       if (event.getEvent() == XMLEvent.START_ELEMENT) {
         startElements.push(makeXMLStartElement(event.getXMLReader()));
@@ -119,7 +119,7 @@ public abstract class XMLSplitter implements Splitter<XMLStreamEvent> {
    * @param pos the end position
    * @return the {@link Splitter.Result} object
    */
-  protected Result makeResult(int pos) {
+  protected Result<XMLChunkMeta> makeResult(int pos) {
     StringBuilder sb = new StringBuilder();
     sb.append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n");
     
@@ -143,10 +143,11 @@ public abstract class XMLSplitter implements Splitter<XMLStreamEvent> {
     int chunkEnd = chunkStart + bytes.length;
     
     // append the full stack of end elements
-    startElements.iterator().forEachRemaining(e -> sb.append("\n</" + e.getName() + ">"));
+    startElements.iterator().forEachRemaining(e ->
+      sb.append("\n</" + e.getName() + ">"));
     
-    ChunkMeta meta = new ChunkMeta(chunkParents, chunkStart, chunkEnd);
-    return new Result(sb.toString(), meta);
+    XMLChunkMeta meta = new XMLChunkMeta(chunkParents, chunkStart, chunkEnd);
+    return new Result<XMLChunkMeta>(sb.toString(), meta);
   }
   
   /**
@@ -155,5 +156,5 @@ public abstract class XMLSplitter implements Splitter<XMLStreamEvent> {
    * @return a new {@link Splitter.Result} object (containing chunk and
    * metadata) or <code>null</code> if no result was produced
    */
-  protected abstract Result onXMLEvent(XMLStreamEvent event);
+  protected abstract Result<XMLChunkMeta> onXMLEvent(XMLStreamEvent event);
 }

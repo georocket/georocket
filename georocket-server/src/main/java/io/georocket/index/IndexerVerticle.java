@@ -33,7 +33,7 @@ import io.georocket.index.elasticsearch.ElasticsearchRunner;
 import io.georocket.index.xml.XMLIndexer;
 import io.georocket.index.xml.XMLIndexerFactory;
 import io.georocket.query.DefaultQueryCompiler;
-import io.georocket.storage.ChunkMeta;
+import io.georocket.storage.XMLChunkMeta;
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.Store;
 import io.georocket.storage.StoreFactory;
@@ -320,7 +320,7 @@ public class IndexerVerticle extends AbstractVerticle {
           return Observable.empty();
         }
 
-        ChunkMeta meta = createChunkMeta(metaObj);
+        XMLChunkMeta meta = createChunkMeta(metaObj);
         
         // get tags
         JsonArray tagsArr = body.getJsonArray("tags");
@@ -369,13 +369,13 @@ public class IndexerVerticle extends AbstractVerticle {
   }
 
   /**
-   * Create a {@link ChunkMeta} object. Sub-classes may override this
-   * method to provide their own {@link ChunkMeta} type.
+   * Create a {@link XMLChunkMeta} object. Sub-classes may override this
+   * method to provide their own {@link XMLChunkMeta} type.
    * @param hit the chunk meta content used to initialize the object
    * @return the created object
    */
-  protected ChunkMeta createChunkMeta(JsonObject hit) {
-    return new ChunkMeta(hit);
+  protected XMLChunkMeta createChunkMeta(JsonObject hit) {
+    return new XMLChunkMeta(hit);
   }
   
   /**
@@ -443,7 +443,7 @@ public class IndexerVerticle extends AbstractVerticle {
         JsonObject hit = (JsonObject)o;
         String id = hit.getString("_id");
         JsonObject source = hit.getJsonObject("_source");
-        ChunkMeta meta = getMeta(source);
+        XMLChunkMeta meta = getMeta(source);
         JsonObject obj = meta.toJsonObject()
             .put("id", id);
         resultHits.add(obj);
@@ -548,7 +548,7 @@ public class IndexerVerticle extends AbstractVerticle {
    * @param doc the document
    * @param meta the metadata to add to the document
    */
-  protected void addMeta(Map<String, Object> doc, ChunkMeta meta) {
+  protected void addMeta(Map<String, Object> doc, XMLChunkMeta meta) {
     doc.put("chunkStart", meta.getStart());
     doc.put("chunkEnd", meta.getEnd());
     doc.put("chunkParents", meta.getParents().stream().map(p ->
@@ -560,7 +560,7 @@ public class IndexerVerticle extends AbstractVerticle {
    * @param source the document
    * @return the metadata
    */
-  protected ChunkMeta getMeta(JsonObject source) {
+  protected XMLChunkMeta getMeta(JsonObject source) {
     int start = source.getInteger("chunkStart");
     int end = source.getInteger("chunkEnd");
     
@@ -578,7 +578,7 @@ public class IndexerVerticle extends AbstractVerticle {
           attributePrefixes, attributeLocalNames, attributeValues);
     }).collect(Collectors.toList());
     
-    return new ChunkMeta(parents, start, end);
+    return new XMLChunkMeta(parents, start, end);
   }
   
   /**

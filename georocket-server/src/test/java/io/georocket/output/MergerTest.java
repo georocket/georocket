@@ -7,7 +7,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import io.georocket.storage.ChunkMeta;
+import io.georocket.storage.XMLChunkMeta;
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.util.XMLStartElement;
 import io.georocket.util.io.BufferWriteStream;
@@ -56,7 +56,7 @@ public class MergerTest {
   public RunTestOnContext rule = new RunTestOnContext();
   
   private void doMerge(TestContext context, Observable<Buffer> chunks,
-      Observable<ChunkMeta> metas, String xmlContents) {
+      Observable<XMLChunkMeta> metas, String xmlContents) {
     Merger m = new Merger();
     BufferWriteStream bws = new BufferWriteStream();
     Async async = context.async();
@@ -64,7 +64,7 @@ public class MergerTest {
       .flatMap(meta -> m.initObservable(meta).map(v -> meta))
       .toList()
       .flatMap(l -> chunks.map(DelegateChunkReadStream::new)
-          .<ChunkMeta, Pair<ChunkReadStream, ChunkMeta>>zipWith(l, Pair::of))
+          .<XMLChunkMeta, Pair<ChunkReadStream, XMLChunkMeta>>zipWith(l, Pair::of))
       .flatMap(p -> m.mergeObservable(p.getLeft(), p.getRight(), bws))
       .last()
       .subscribe(v -> {
@@ -84,7 +84,7 @@ public class MergerTest {
   public void simple(TestContext context) {
     Buffer chunk1 = Buffer.buffer(XMLHEADER + "<root><test chunk=\"1\"></test></root>");
     Buffer chunk2 = Buffer.buffer(XMLHEADER + "<root><test chunk=\"2\"></test></root>");
-    ChunkMeta cm = new ChunkMeta(Arrays.asList(new XMLStartElement("root")),
+    XMLChunkMeta cm = new XMLChunkMeta(Arrays.asList(new XMLStartElement("root")),
         XMLHEADER.length() + 6, chunk1.length() - 7);
     doMerge(context, Observable.just(chunk1, chunk2), Observable.just(cm, cm),
         "<root><test chunk=\"1\"></test><test chunk=\"2\"></test></root>");
@@ -114,10 +114,10 @@ public class MergerTest {
     String contents2 = "<cityObjectMember><bldg:Building></bldg:Building></cityObjectMember>";
     Buffer chunk2 = Buffer.buffer(XMLHEADER + root2 + contents2 + "</" + root2.getName() + ">");
     
-    ChunkMeta cm1 = new ChunkMeta(Arrays.asList(root1),
+    XMLChunkMeta cm1 = new XMLChunkMeta(Arrays.asList(root1),
         XMLHEADER.length() + root1.toString().length(),
         chunk1.length() - root1.getName().length() - 3);
-    ChunkMeta cm2 = new ChunkMeta(Arrays.asList(root2),
+    XMLChunkMeta cm2 = new XMLChunkMeta(Arrays.asList(root2),
         XMLHEADER.length() + root2.toString().length(),
         chunk2.length() - root2.getName().length() - 3);
     

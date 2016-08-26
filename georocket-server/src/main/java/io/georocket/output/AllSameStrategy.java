@@ -1,6 +1,6 @@
 package io.georocket.output;
 
-import io.georocket.storage.ChunkMeta;
+import io.georocket.storage.XMLChunkMeta;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -11,7 +11,7 @@ import io.vertx.core.Handler;
  */
 public class AllSameStrategy extends AbstractMergeStrategy {
   @Override
-  public void canMerge(ChunkMeta meta, Handler<AsyncResult<Boolean>> handler) {
+  public void canMerge(XMLChunkMeta meta, Handler<AsyncResult<Boolean>> handler) {
     if (getParents() == null || getParents().equals(meta.getParents())) {
       handler.handle(ASYNC_TRUE);
     } else {
@@ -20,7 +20,7 @@ public class AllSameStrategy extends AbstractMergeStrategy {
   }
 
   @Override
-  protected void mergeParents(ChunkMeta meta, Handler<AsyncResult<Void>> handler) {
+  protected void mergeParents(XMLChunkMeta meta, Handler<AsyncResult<Void>> handler) {
     if (getParents() == null) {
       setParents(meta.getParents());
     }

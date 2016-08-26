@@ -5,7 +5,7 @@ import java.util.Arrays;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import io.georocket.storage.ChunkMeta;
+import io.georocket.storage.XMLChunkMeta;
 import io.georocket.util.XMLStartElement;
 import io.georocket.util.io.BufferWriteStream;
 import io.georocket.util.io.DelegateChunkReadStream;
@@ -24,7 +24,7 @@ public class AllSameStrategyTest {
   
   private Buffer chunk1 = Buffer.buffer(XMLHEADER + "<root><test chunk=\"1\"></test></root>");
   private Buffer chunk2 = Buffer.buffer(XMLHEADER + "<root><test chunk=\"2\"></test></root>");
-  private ChunkMeta cm = new ChunkMeta(Arrays.asList(new XMLStartElement("root")),
+  private XMLChunkMeta cm = new XMLChunkMeta(Arrays.asList(new XMLStartElement("root")),
       XMLHEADER.length() + 6, chunk1.length() - 7);
   
   /**
@@ -78,9 +78,9 @@ public class AllSameStrategyTest {
    */
   @Test
   public void canMerge(TestContext context) {
-    ChunkMeta cm2 = new ChunkMeta(Arrays.asList(new XMLStartElement("other")), 10, 20);
-    ChunkMeta cm3 = new ChunkMeta(Arrays.asList(new XMLStartElement("pre", "root")), 10, 20);
-    ChunkMeta cm4 = new ChunkMeta(Arrays.asList(new XMLStartElement(null, "root",
+    XMLChunkMeta cm2 = new XMLChunkMeta(Arrays.asList(new XMLStartElement("other")), 10, 20);
+    XMLChunkMeta cm3 = new XMLChunkMeta(Arrays.asList(new XMLStartElement("pre", "root")), 10, 20);
+    XMLChunkMeta cm4 = new XMLChunkMeta(Arrays.asList(new XMLStartElement(null, "root",
         new String[] { "" }, new String[] { "uri" })), 10, 20);
     
     Async async = context.async();
@@ -111,7 +111,7 @@ public class AllSameStrategyTest {
    */
   @Test
   public void mergeFail(TestContext context) {
-    ChunkMeta cm2 = new ChunkMeta(Arrays.asList(new XMLStartElement("other")), 10, 20);
+    XMLChunkMeta cm2 = new XMLChunkMeta(Arrays.asList(new XMLStartElement("other")), 10, 20);
     
     Async async = context.async();
     MergeStrategy strategy = new AllSameStrategy();

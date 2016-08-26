@@ -19,7 +19,7 @@ import com.google.common.base.Splitter;
 import io.georocket.constants.AddressConstants;
 import io.georocket.constants.ConfigConstants;
 import io.georocket.output.Merger;
-import io.georocket.storage.ChunkMeta;
+import io.georocket.storage.XMLChunkMeta;
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.Store;
 import io.georocket.storage.StoreCursor;
@@ -108,14 +108,15 @@ public class StoreEndpoint implements Endpoint {
    * @param consumer consumes all items
    * @param endHandler will be called when all items have been consumed
    */
-  private void iterateCursor(StoreCursor cursor, BiConsumer<ChunkMeta, Runnable> consumer,
+  private void iterateCursor(StoreCursor cursor, BiConsumer<XMLChunkMeta, Runnable> consumer,
       Handler<AsyncResult<Void>> endHandler) {
     if (cursor.hasNext()) {
       cursor.next(ar -> {
         if (ar.failed()) {
           endHandler.handle(Future.failedFuture(ar.cause()));
         } else {
-          consumer.accept(ar.result(), () -> {
+          // TODO handle chunk meta according to mime type
+          consumer.accept((XMLChunkMeta)ar.result(), () -> {
             iterateCursor(cursor, consumer, endHandler);
           });
         }

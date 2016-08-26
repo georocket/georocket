@@ -73,8 +73,8 @@ abstract public class StorageTest {
   /**
    * Test data: metadata for a chunk
    */
-  protected final static ChunkMeta META =
-      new ChunkMeta(Arrays.asList(new XMLStartElement("root")),
+  protected final static XMLChunkMeta META =
+      new XMLChunkMeta(Arrays.asList(new XMLStartElement("root")),
           XML_HEADER.length() + 7, XML.length() - 8);
 
   /**

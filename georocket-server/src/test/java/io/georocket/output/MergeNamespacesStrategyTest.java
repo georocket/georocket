@@ -5,7 +5,7 @@ import java.util.Arrays;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import io.georocket.storage.ChunkMeta;
+import io.georocket.storage.XMLChunkMeta;
 import io.georocket.util.XMLStartElement;
 import io.georocket.util.io.BufferWriteStream;
 import io.georocket.util.io.DelegateChunkReadStream;
@@ -46,10 +46,10 @@ public class MergeNamespacesStrategyTest {
   private final static String CONTENTS2 = "<elem><ns2:child2></ns2:child2></elem>";
   private final static Buffer CHUNK2 = Buffer.buffer(XMLHEADER + ROOT2 + CONTENTS2 + "</" + ROOT2.getName() + ">");
   
-  private final static ChunkMeta META1 = new ChunkMeta(Arrays.asList(ROOT1),
+  private final static XMLChunkMeta META1 = new XMLChunkMeta(Arrays.asList(ROOT1),
       XMLHEADER.length() + ROOT1.toString().length(),
       CHUNK1.length() - ROOT1.getName().length() - 3);
-  private final static ChunkMeta META2 = new ChunkMeta(Arrays.asList(ROOT2),
+  private final static XMLChunkMeta META2 = new XMLChunkMeta(Arrays.asList(ROOT2),
       XMLHEADER.length() + ROOT2.toString().length(),
       CHUNK2.length() - ROOT2.getName().length() - 3);
   

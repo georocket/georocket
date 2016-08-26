@@ -3,6 +3,7 @@ package io.georocket.storage.indexed;
 import io.georocket.constants.AddressConstants;
 import io.georocket.storage.ChunkMeta;
 import io.georocket.storage.StoreCursor;
+import io.georocket.storage.XMLChunkMeta;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -159,12 +160,12 @@ public class IndexedStoreCursor implements StoreCursor {
   }
   
   /**
-   * Create a {@link ChunkMeta} object. Sub-classes may override this
-   * method to provide their own {@link ChunkMeta} type.
+   * Create a {@link XMLChunkMeta} object. Sub-classes may override this
+   * method to provide their own {@link XMLChunkMeta} type.
    * @param hit the chunk meta content used to initialize the object
    * @return the created object
    */
   protected ChunkMeta createChunkMeta(JsonObject hit) {
-    return new ChunkMeta(hit);
+    return new XMLChunkMeta(hit);
   }
 }

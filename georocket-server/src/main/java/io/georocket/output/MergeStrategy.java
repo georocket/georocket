@@ -2,7 +2,7 @@ package io.georocket.output;
 
 import java.util.List;
 
-import io.georocket.storage.ChunkMeta;
+import io.georocket.storage.XMLChunkMeta;
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.util.XMLStartElement;
 import io.vertx.core.AsyncResult;
@@ -32,21 +32,21 @@ public interface MergeStrategy {
    * @param meta the chunk metadata
    * @param handler will be called with the result of the operation
    */
-  void canMerge(ChunkMeta meta, Handler<AsyncResult<Boolean>> handler);
+  void canMerge(XMLChunkMeta meta, Handler<AsyncResult<Boolean>> handler);
   
   /**
    * Initialize this merge strategy. This method must be called for all chunks that
-   * should be merged. After {@link #merge(ChunkReadStream, ChunkMeta, WriteStream, Handler)}
+   * should be merged. After {@link #merge(ChunkReadStream, XMLChunkMeta, WriteStream, Handler)}
    * has been called this method must not be called any more.
    * @param meta the chunk metadata
    * @param handler will be called when the merger has been initialized with
    * the given chunk
    */
-  void init(ChunkMeta meta, Handler<AsyncResult<Void>> handler);
+  void init(XMLChunkMeta meta, Handler<AsyncResult<Void>> handler);
   
   /**
    * Merge an XML chunk. The given chunk should* have been passed to
-   * {@link #init(ChunkMeta, Handler)} first. If it hasn't the method may or
+   * {@link #init(XMLChunkMeta, Handler)} first. If it hasn't the method may or
    * may not accept it.  If the chunk cannot be merged the method will call
    * the given handler with a failed result.
    * @param chunk the chunk to merge
@@ -54,7 +54,7 @@ public interface MergeStrategy {
    * @param out the stream to write the merged result to
    * @param handler will be called when the chunk has been merged
    */
-  public void merge(ChunkReadStream chunk, ChunkMeta meta, WriteStream<Buffer> out,
+  public void merge(ChunkReadStream chunk, XMLChunkMeta meta, WriteStream<Buffer> out,
       Handler<AsyncResult<Void>> handler);
   
   /**

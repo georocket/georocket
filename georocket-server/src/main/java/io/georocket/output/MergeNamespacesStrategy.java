@@ -11,7 +11,7 @@ import org.apache.commons.lang3.tuple.Pair;
 
 import com.google.common.base.Splitter;
 
-import io.georocket.storage.ChunkMeta;
+import io.georocket.storage.XMLChunkMeta;
 import io.georocket.util.XMLStartElement;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -203,7 +203,7 @@ public class MergeNamespacesStrategy extends AbstractMergeStrategy {
   }
   
   @Override
-  public void canMerge(ChunkMeta meta, Handler<AsyncResult<Boolean>> handler) {
+  public void canMerge(XMLChunkMeta meta, Handler<AsyncResult<Boolean>> handler) {
     if (getParents() == null || canMerge(getParents(), meta.getParents(), !isHeaderWritten())) {
       handler.handle(ASYNC_TRUE);
     } else {
@@ -212,7 +212,7 @@ public class MergeNamespacesStrategy extends AbstractMergeStrategy {
   }
   
   @Override
-  protected void mergeParents(ChunkMeta meta, Handler<AsyncResult<Void>> handler) {
+  protected void mergeParents(XMLChunkMeta meta, Handler<AsyncResult<Void>> handler) {
     if (getParents() == null) {
       // no merge necessary yet, just save the chunk's parents
       setParents(meta.getParents());

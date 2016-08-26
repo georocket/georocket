@@ -2,6 +2,7 @@ package io.georocket.input;
 
 import javax.xml.stream.events.XMLEvent;
 
+import io.georocket.storage.XMLChunkMeta;
 import io.georocket.util.Window;
 import io.georocket.util.XMLStreamEvent;
 
@@ -22,8 +23,8 @@ public class FirstLevelSplitter extends XMLSplitter {
   }
   
   @Override
-  protected Result onXMLEvent(XMLStreamEvent event) {
-    Result result = null;
+  protected Result<XMLChunkMeta> onXMLEvent(XMLStreamEvent event) {
+    Result<XMLChunkMeta> result = null;
     
     // create new chunk if we're just after the end of a first-level element
     if (depth == 1 && isMarked()) {

@@ -1,10 +1,5 @@
 package io.georocket.storage;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
-import io.georocket.util.XMLStartElement;
-import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
 /**
@@ -13,70 +8,50 @@ import io.vertx.core.json.JsonObject;
  * @author Michel Kraemer
  */
 public class ChunkMeta {
-  private final List<XMLStartElement> parents;
-  private final int start;
-  private final int end;
-  
+  protected final int start;
+  protected final int end;
+
   /**
    * Create a new metadata object
-   * @param parents the chunk's parents (i.e. the XML start elements the
-   * chunk is wrapped in)
    * @param start the position in the stored blob where the chunk starts
-   * (typically right after all its parent XML elements)
-   * @param end the position in the stored blob where the chunk ends (typically
-   * right before all its parent XML elements are closed)
+   * @param end the position in the stored blob where the chunk ends
    */
-  public ChunkMeta(List<XMLStartElement> parents, int start, int end) {
-    this.parents = parents;
+  public ChunkMeta(int start, int end) {
     this.start = start;
     this.end = end;
   }
   
   /**
-   * Chunk Meta from JsonObject
-   * @param object The JsonObject containing the values for the ChunkMeta Object.
+   * Create a new metadata object from a JsonObject
+   * @param json the JsonObject
    */
-  public ChunkMeta(JsonObject object) {
-    this(object.getJsonArray("parents").stream().map(e ->
-        XMLStartElement.fromJsonObject((JsonObject)e)).collect(Collectors.toList()),
-        object.getInteger("start"),
-        object.getInteger("end"));
+  public ChunkMeta(JsonObject json) {
+    this(json.getInteger("start"), json.getInteger("end"));
   }
-  
-  /**
-   * @return the chunk's parents (i.e. the XML start elements the
-   * chunk is wrapped in)
-   */
-  public List<XMLStartElement> getParents() {
-    return parents;
-  }
-  
+
   /**
    * @return the position in the stored blob where the chunk starts
-   * (typically right after all its parent XML elements)
    */
   public int getStart() {
     return start;
   }
-  
+
   /**
-   * @return the position in the stored blob where the chunk ends (typically
-   * right before all its parent XML elements are closed)
+   * @return the position in the stored blob where the chunk ends
    */
   public int getEnd() {
     return end;
   }
-
+  
   @Override
   public int hashCode() {
     final int prime = 31;
     int result = 1;
     result = prime * result + end;
     result = prime * result + start;
-    result = prime * result + ((parents == null) ? 0 : parents.hashCode());
     return result;
   }
-
+  
   @Override
   public boolean equals(Object obj) {
     if (this == obj) {
@@ -95,13 +70,6 @@ public class ChunkMeta {
     if (start != other.start) {
       return false;
     }
-    if (parents == null) {
-      if (other.parents != null) {
-        return false;
-      }
-    } else if (!parents.equals(other.parents)) {
-      return false;
-    }
     return true;
   }
   
@@ -109,10 +77,7 @@ public class ChunkMeta {
    * @return this object as a {@link JsonObject}
    */
   public JsonObject toJsonObject() {
-    JsonArray ps = new JsonArray();
-    parents.forEach(p -> ps.add(p.toJsonObject()));
     return new JsonObject()
-        .put("parents", ps)
         .put("start", start)
         .put("end", end);
   }

@@ -2,6 +2,7 @@ package io.georocket.output;
 
 import java.util.List;
 
+import io.georocket.storage.XMLChunkMeta;
 import io.georocket.storage.ChunkMeta;
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.util.XMLStartElement;
@@ -31,7 +32,7 @@ public abstract class AbstractMergeStrategy implements MergeStrategy {
   
   /**
    * True if the header has already been written in
-   * {@link #merge(ChunkReadStream, ChunkMeta, WriteStream, Handler)}
+   * {@link #merge(ChunkReadStream, XMLChunkMeta, WriteStream, Handler)}
    */
   private boolean headerWritten = false;
   
@@ -41,7 +42,7 @@ public abstract class AbstractMergeStrategy implements MergeStrategy {
    * @param meta the chunk metadata containing the parents to merge
    * @param handler will be called when the parents have been merged
    */
-  protected abstract void mergeParents(ChunkMeta meta,
+  protected abstract void mergeParents(XMLChunkMeta meta,
       Handler<AsyncResult<Void>> handler);
   
   /**
@@ -62,7 +63,7 @@ public abstract class AbstractMergeStrategy implements MergeStrategy {
   }
   
   @Override
-  public void init(ChunkMeta meta, Handler<AsyncResult<Void>> handler) {
+  public void init(XMLChunkMeta meta, Handler<AsyncResult<Void>> handler) {
     canMerge(meta, ar -> {
       if (ar.failed()) {
         handler.handle(Future.failedFuture(ar.cause()));
@@ -82,7 +83,7 @@ public abstract class AbstractMergeStrategy implements MergeStrategy {
   }
   
   @Override
-  public void merge(ChunkReadStream chunk, ChunkMeta meta, WriteStream<Buffer> out,
+  public void merge(ChunkReadStream chunk, XMLChunkMeta meta, WriteStream<Buffer> out,
       Handler<AsyncResult<Void>> handler) {
     canMerge(meta, ar -> {
       if (ar.failed()) {
