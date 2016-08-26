@@ -18,7 +18,7 @@ import io.georocket.util.XMLStreamEvent;
  * Abstract base class for splitters that split XML streams
  * @author Michel Kraemer
  */
-public abstract class XMLSplitter implements Splitter {
+public abstract class XMLSplitter implements Splitter<XMLStreamEvent> {
   /**
    * A marked position. See {@link #mark(int)}
    */

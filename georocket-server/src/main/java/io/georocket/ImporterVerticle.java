@@ -12,7 +12,7 @@ import io.georocket.constants.AddressConstants;
 import io.georocket.constants.ConfigConstants;
 import io.georocket.index.xml.CRSIndexer;
 import io.georocket.input.FirstLevelSplitter;
-import io.georocket.input.Splitter;
+import io.georocket.input.XMLSplitter;
 import io.georocket.storage.ChunkMeta;
 import io.georocket.storage.IndexMeta;
 import io.georocket.storage.Store;
@@ -238,7 +238,7 @@ public class ImporterVerticle extends AbstractVerticle {
   private Observable<Integer> importXML(ReadStream<Buffer> f, String importId,
       String filename, Date importTimeStamp, String layer, List<String> tags) {
     Window window = new Window();
-    Splitter splitter = new FirstLevelSplitter(window);
+    XMLSplitter splitter = new FirstLevelSplitter(window);
     AtomicInteger processing = new AtomicInteger(0);
     CRSIndexer crsIndexer = new CRSIndexer();
     return f.toObservable()

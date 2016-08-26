@@ -1,16 +1,17 @@
 package io.georocket.input;
 
 import io.georocket.storage.ChunkMeta;
-import io.georocket.util.XMLStreamEvent;
+import io.georocket.util.StreamEvent;
 import rx.Observable;
 
 /**
- * Splits XML tokens and returns chunks
+ * Splits input tokens and returns chunks
  * @author Michel Kraemer
+ * @param <T> the type of the stream events this splitter can process
  */
-public interface Splitter {
+public interface Splitter<T extends StreamEvent> {
   /**
-   * Result of the {@link Splitter#onEvent(XMLStreamEvent)} method. Holds
+   * Result of the {@link Splitter#onEvent(StreamEvent)} method. Holds
    * a chunk and its metadata.
    */
   public static class Result {
@@ -43,20 +44,20 @@ public interface Splitter {
   }
   
   /**
-   * Will be called on every XML event
-   * @param event the XML event
+   * Will be called on every stream event
+   * @param event the stream event
    * @return a new {@link Result} object (containing chunk and metadata) or
    * <code>null</code> if no result was produced
    */
-  Result onEvent(XMLStreamEvent event);
+  Result onEvent(T event);
   
   /**
-   * Observable version of {@link #onEvent(XMLStreamEvent)}
-   * @param event the XML event
+   * Observable version of {@link #onEvent(StreamEvent)}
+   * @param event the stream event
    * @return an observable that will emit a {@link Result} object (containing
    * a chunk and metadata) or emit nothing if no chunk was produced
    */
-  default Observable<Result> onEventObservable(XMLStreamEvent event) {
+  default Observable<Result> onEventObservable(T event) {
     Result result = onEvent(event);
     if (result == null) {
       return Observable.empty();
