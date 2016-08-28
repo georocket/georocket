@@ -1,4 +1,4 @@
-package io.georocket.input;
+package io.georocket.input.xml;
 
 import javax.xml.stream.events.XMLEvent;
 

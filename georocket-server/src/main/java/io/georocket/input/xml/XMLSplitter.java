@@ -1,4 +1,4 @@
-package io.georocket.input;
+package io.georocket.input.xml;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
@@ -9,6 +9,7 @@ import java.util.List;
 import javax.xml.stream.XMLStreamReader;
 import javax.xml.stream.events.XMLEvent;
 
+import io.georocket.input.Splitter;
 import io.georocket.storage.XMLChunkMeta;
 import io.georocket.util.Window;
 import io.georocket.util.XMLStartElement;
@@ -114,10 +115,10 @@ public abstract class XMLSplitter implements Splitter<XMLStreamEvent, XMLChunkMe
   /**
    * Create a new chunk starting from the marked position and ending on the
    * given position. Reset the mark afterwards and advance the window to the
-   * end position. Return a {@link Splitter.Result} object with the new chunk
-   * and its metadata.
+   * end position. Return a {@link io.georocket.input.Splitter.Result} object
+   * with the new chunk and its metadata.
    * @param pos the end position
-   * @return the {@link Splitter.Result} object
+   * @return the {@link io.georocket.input.Splitter.Result} object
    */
   protected Result<XMLChunkMeta> makeResult(int pos) {
     StringBuilder sb = new StringBuilder();
@@ -153,8 +154,8 @@ public abstract class XMLSplitter implements Splitter<XMLStreamEvent, XMLChunkMe
   /**
    * Will be called on every XML event
    * @param event the XML event
-   * @return a new {@link Splitter.Result} object (containing chunk and
-   * metadata) or <code>null</code> if no result was produced
+   * @return a new {@link io.georocket.input.Splitter.Result} object (containing
+   * chunk and metadata) or <code>null</code> if no result was produced
    */
   protected abstract Result<XMLChunkMeta> onXMLEvent(XMLStreamEvent event);
 }
