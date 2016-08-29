@@ -119,6 +119,7 @@ public class StoreEndpoint implements Endpoint {
       // TODO handle cast to XMLChunkMeta according to mime type
       .cast(XMLChunkMeta.class)
       .flatMap(merger::initObservable)
+      .defaultIfEmpty(null)
       .last();
   }
   
@@ -152,6 +153,7 @@ public class StoreEndpoint implements Endpoint {
             // don't forget to close the chunk!
             crs.close();
           })))
+      .defaultIfEmpty(Pair.of(0L, 0L))
       .reduce((p1, p2) -> Pair.of(p1.getLeft() + p2.getLeft(),
           p1.getRight() + p2.getRight()))
       .flatMap(p -> {
