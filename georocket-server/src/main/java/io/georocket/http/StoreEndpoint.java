@@ -8,8 +8,8 @@ import java.io.IOException;
 import java.nio.file.Paths;
 import java.nio.file.spi.FileTypeDetector;
 import java.util.List;
-import java.util.function.BiConsumer;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.ParseException;
 import org.apache.http.entity.ContentType;
 import org.bson.types.ObjectId;
@@ -19,11 +19,10 @@ import com.google.common.base.Splitter;
 import io.georocket.constants.AddressConstants;
 import io.georocket.constants.ConfigConstants;
 import io.georocket.output.Merger;
-import io.georocket.storage.XMLChunkMeta;
-import io.georocket.storage.ChunkReadStream;
-import io.georocket.storage.Store;
-import io.georocket.storage.StoreCursor;
+import io.georocket.storage.RxStore;
+import io.georocket.storage.RxStoreCursor;
 import io.georocket.storage.StoreFactory;
+import io.georocket.storage.XMLChunkMeta;
 import io.georocket.util.HttpException;
 import io.georocket.util.TikaFileTypeDetector;
 import io.vertx.core.AsyncResult;
@@ -58,7 +57,7 @@ public class StoreEndpoint implements Endpoint {
   private final Vertx vertx;
   private final FileTypeDetector typeDetector = new TikaFileTypeDetector();
   
-  private Store store;
+  private RxStore store;
   private String storagePath;
 
   /**
@@ -67,7 +66,7 @@ public class StoreEndpoint implements Endpoint {
    */
   public StoreEndpoint(Vertx vertx) {
     this.vertx = vertx;
-    store = StoreFactory.createStore(vertx);
+    store = new RxStore(StoreFactory.createStore(vertx));
     storagePath = vertx.getOrCreateContext().config()
         .getString(ConfigConstants.STORAGE_FILE_PATH);
   }
@@ -103,121 +102,75 @@ public class StoreEndpoint implements Endpoint {
   }
   
   /**
-   * Iterate through all items from a {@link StoreCursor}
-   * @param cursor the cursor
-   * @param consumer consumes all items
-   * @param endHandler will be called when all items have been consumed
-   */
-  private void iterateCursor(StoreCursor cursor, BiConsumer<XMLChunkMeta, Runnable> consumer,
-      Handler<AsyncResult<Void>> endHandler) {
-    if (cursor.hasNext()) {
-      cursor.next(ar -> {
-        if (ar.failed()) {
-          endHandler.handle(Future.failedFuture(ar.cause()));
-        } else {
-          // TODO handle chunk meta according to mime type
-          consumer.accept((XMLChunkMeta)ar.result(), () -> {
-            iterateCursor(cursor, consumer, endHandler);
-          });
-        }
-      });
-    } else {
-      endHandler.handle(Future.succeededFuture());
-    }
-  }
-  
-  /**
    * Initialize the given merger. Perform a search using the given search string
    * and pass all chunk metadata retrieved to the merger.
    * @param merger the merger to initialize
    * @param search the search query
    * @param path the path where to perform the search
-   * @param handler will be called when the merger has been initialized with
-   * all results
+   * @return an observable that will emit exactly one item when the merger
+   * has been initialized with all results
    */
-  private void initializeMerger(Merger merger, String search, String path,
-      Handler<AsyncResult<Void>> handler) {
-    store.get(search, path, getar -> {
-      if (getar.failed()) {
-        handler.handle(Future.failedFuture(getar.cause()));
-      } else {
-        iterateCursor(getar.result(), (meta, callback) -> {
-          merger.init(meta, initar -> {
-            if (initar.failed()) {
-              handler.handle(Future.failedFuture(initar.cause()));
-            } else {
-              callback.run();
-            }
-          });
-        }, handler);
-      }
-    });
+  private Observable<Void> initializeMerger(Merger merger, String search,
+      String path) {
+    return store.getObservable(search, path)
+      .map(RxStoreCursor::new)
+      .flatMap(RxStoreCursor::toObservable)
+      .map(Pair::getLeft)
+      // TODO handle cast to XMLChunkMeta according to mime type
+      .cast(XMLChunkMeta.class)
+      .flatMap(merger::initObservable)
+      .last();
   }
   
   /**
-   * Performs a search and merges all retrieved chunks using the given merger
+   * Perform a search and merge all retrieved chunks using the given merger
    * @param merger the merger
    * @param search the search query
    * @param path the path where to perform the search
-   * @param out a write stream to write the merged chunk to
-   * @param handler will be called when all chunks have been merged
+   * @param out a write stream to write the merged chunks to
+   * @return an observable that will emit one item when all chunks have been merged
    */
-  private void doMerge(Merger merger, String search, String path,
-      WriteStream<Buffer> out, Handler<AsyncResult<Void>> handler) {
-    store.get(search, path, getar -> {
-      if (getar.failed()) {
-        handler.handle(Future.failedFuture(getar.cause()));
-      } else {
-        long[] count = new long[] { 0 };
-        long[] notaccepted = new long[] { 0 };
-        StoreCursor cursor = getar.result();
-        iterateCursor(cursor, (meta, callback) -> {
-          ++count[0];
-          store.getOne(cursor.getChunkPath(), openar -> {
-            if (openar.failed()) {
-              handler.handle(Future.failedFuture(openar.cause()));
-            } else {
-              ChunkReadStream crs = openar.result();
-              Handler<AsyncResult<Void>> mergeHandler = mergeAr -> {
-                if (mergeAr.failed()) {
-                  handler.handle(mergeAr);
-                } else {
-                  crs.close();
-                  callback.run();
-                }
-              };
-              try {
-                merger.merge(crs, meta, out, mergeHandler);
-              } catch (IllegalArgumentException e) {
-                // chunk cannot be merged. maybe it's a new one that has
-                // been added after the Merger has been initialized.
-                // just ignore it, but emit a warning later
-                ++notaccepted[0];
-                mergeHandler.handle(null);
-              }
+  private Observable<Void> doMerge(Merger merger, String search, String path,
+      WriteStream<Buffer> out) {
+    return store.getObservable(search, path)
+      .map(RxStoreCursor::new)
+      .flatMap(RxStoreCursor::toObservable)
+      .flatMap(p -> store.getOneObservable(p.getRight())
+        // TODO handle cast to XMLChunkMeta according to mime type
+        .flatMap(crs -> merger.mergeObservable(crs, (XMLChunkMeta)p.getLeft(), out)
+          .map(v -> Pair.of(1L, 0L)) // left: count, right: not_accepted
+          .onErrorResumeNext(t -> {
+            if (t instanceof IllegalStateException) {
+              // Chunk cannot be merged. maybe it's a new one that has
+              // been added after the Merger was initialized. Just
+              // ignore it, but emit a warning later
+              return Observable.just(Pair.of(0L, 1L));
             }
-          });
-        }, ar -> {
-          if (ar.succeeded()) {
-            if (notaccepted[0] > 0) {
-              log.warn("Could not merge " + notaccepted[0] + " chunks "
-                  + "because the merger did not accept them. Most likely "
-                  + "these are new chunks that were added while the "
-                  + "merge was in progress. If this worries you, just "
-                  + "repeat the request.");
-            }
-            if (count[0] > 0) {
-              merger.finishMerge(out);
-              handler.handle(ar);
-            } else {
-              handler.handle(Future.failedFuture(new FileNotFoundException("Not Found")));
-            }
-          } else {
-            handler.handle(ar);
-          }
-        });
-      }
-    });
+            return Observable.error(t);
+          })
+          .doOnTerminate(() -> {
+            // don't forget to close the chunk!
+            crs.close();
+          })))
+      .reduce((p1, p2) -> Pair.of(p1.getLeft() + p2.getLeft(),
+          p1.getRight() + p2.getRight()))
+      .flatMap(p -> {
+        long count = p.getLeft();
+        long notaccepted = p.getRight();
+        if (notaccepted > 0) {
+          log.warn("Could not merge " + notaccepted + " chunks "
+              + "because the merger did not accept them. Most likely "
+              + "these are new chunks that were added while the "
+              + "merge was in progress. If this worries you, just "
+              + "repeat the request.");
+        }
+        if (count > 0) {
+          merger.finishMerge(out);
+          return Observable.just(null);
+        } else {
+          return Observable.error(new FileNotFoundException("Not Found"));
+        }
+      });
   }
   
   /**
@@ -242,20 +195,16 @@ public class StoreEndpoint implements Endpoint {
     // perform two searches: first initialize the merger and then
     // merge all retrieved chunks
     Merger merger = new Merger();
-    ObservableFuture<Void> o = RxHelper.observableFuture();
-    initializeMerger(merger, search, path, o.toHandler());
-    o.flatMap(v -> {
-      ObservableFuture<Void> o2 = RxHelper.observableFuture();
-      doMerge(merger, search, path, response, o2.toHandler());
-      return o2;
-    }).reduce((v1, v2) -> v1).subscribe(v -> {
-      response.end();
-    }, err -> {
-      if (!(err instanceof FileNotFoundException)) {
-        log.error("Could not perform query", err);
-      }
-      response.setStatusCode(throwableToCode(err)).end(throwableToMessage(err, ""));
-    });
+    initializeMerger(merger, search, path)
+      .flatMap(v -> doMerge(merger, search, path, response))
+      .subscribe(v -> {
+        response.end();
+      }, err -> {
+        if (!(err instanceof FileNotFoundException)) {
+          log.error("Could not perform query", err);
+        }
+        response.setStatusCode(throwableToCode(err)).end(throwableToMessage(err, ""));
+      });
   }
   
   /**
@@ -406,14 +355,16 @@ public class StoreEndpoint implements Endpoint {
     HttpServerRequest request = context.request();
     String search = request.getParam("search");
     
-    store.delete(search, path, ar -> {
-      if (ar.failed()) {
-        Throwable t = ar.cause();
-        log.error("Could not delete chunks", t);
-        response.setStatusCode(throwableToCode(t)).end(throwableToMessage(t, ""));
-      } else {
-        response.setStatusCode(204).end();
-      }
-    });
+    store.deleteObservable(search, path)
+      .subscribe(v -> {
+        response
+          .setStatusCode(204)
+          .end();
+      }, err -> {
+        log.error("Could not delete chunks", err);
+        response
+          .setStatusCode(throwableToCode(err))
+          .end(throwableToMessage(err, ""));
+      });
   }
 }
