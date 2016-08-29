@@ -152,7 +152,7 @@ public class StoreEndpoint implements Endpoint {
           .doOnTerminate(() -> {
             // don't forget to close the chunk!
             crs.close();
-          })))
+          })), 1 /* write only one chunk concurrently to the output stream */)
       .defaultIfEmpty(Pair.of(0L, 0L))
       .reduce((p1, p2) -> Pair.of(p1.getLeft() + p2.getLeft(),
           p1.getRight() + p2.getRight()))
