@@ -33,10 +33,10 @@ import io.georocket.index.elasticsearch.ElasticsearchRunner;
 import io.georocket.index.xml.XMLIndexer;
 import io.georocket.index.xml.XMLIndexerFactory;
 import io.georocket.query.DefaultQueryCompiler;
-import io.georocket.storage.XMLChunkMeta;
 import io.georocket.storage.ChunkReadStream;
-import io.georocket.storage.Store;
+import io.georocket.storage.RxStore;
 import io.georocket.storage.StoreFactory;
+import io.georocket.storage.XMLChunkMeta;
 import io.georocket.util.MapUtils;
 import io.georocket.util.RxUtils;
 import io.georocket.util.XMLParserOperator;
@@ -47,7 +47,6 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
 import io.vertx.rxjava.core.AbstractVerticle;
 import io.vertx.rxjava.core.eventbus.Message;
@@ -85,7 +84,7 @@ public class IndexerVerticle extends AbstractVerticle {
   /**
    * The GeoRocket store
    */
-  protected Store store;
+  protected RxStore store;
   
   /**
    * A list of {@link IndexerFactory} objects
@@ -114,7 +113,7 @@ public class IndexerVerticle extends AbstractVerticle {
         runner = es.getValue();
         
         queryCompiler = new DefaultQueryCompiler(indexerFactories);
-        store = StoreFactory.createStore(getVertx());
+        store = new RxStore(StoreFactory.createStore(getVertx()));
         
         registerMessageConsumers();
         
@@ -379,17 +378,6 @@ public class IndexerVerticle extends AbstractVerticle {
   }
   
   /**
-   * Open a chunk
-   * @param path the path to the chunk to open
-   * @return an observable that emits a {@link ChunkReadStream}
-   */
-  private Observable<ChunkReadStream> openChunk(String path) {
-    ObservableFuture<ChunkReadStream> observable = RxHelper.observableFuture();
-    store.getOne(path, observable.toHandler());
-    return observable;
-  }
-  
-  /**
    * Open a chunk and convert to to an Elasticsearch document. Retry
    * operation several times before failing.
    * @param path the path to the chunk to open
@@ -400,15 +388,13 @@ public class IndexerVerticle extends AbstractVerticle {
    */
   protected Observable<Map<String, Object>> openChunkToDocument(String path,
       String fallbackCRSString) {
-    return Observable.<Map<String, Object>>create(subscriber -> {
-      openChunk(path)
+    return Observable.defer(() -> store.getOneObservable(path)
         .flatMap(chunk -> {
           // convert chunk to document and close it
           return xmlChunkToDocument(chunk, fallbackCRSString)
               .doAfterTerminate(chunk::close);
-        })
-        .subscribe(subscriber);
-    }).retryWhen(makeRetry(), RxHelper.scheduler(getVertx()));
+        }))
+      .retryWhen(makeRetry(), RxHelper.scheduler(getVertx()));
   }
   
   /**

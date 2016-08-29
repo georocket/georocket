@@ -15,7 +15,7 @@ import io.georocket.input.xml.FirstLevelSplitter;
 import io.georocket.input.xml.XMLSplitter;
 import io.georocket.storage.ChunkMeta;
 import io.georocket.storage.IndexMeta;
-import io.georocket.storage.Store;
+import io.georocket.storage.RxStore;
 import io.georocket.storage.StoreFactory;
 import io.georocket.util.RxUtils;
 import io.georocket.util.Window;
@@ -26,7 +26,6 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
 import io.vertx.rxjava.core.AbstractVerticle;
 import io.vertx.rxjava.core.buffer.Buffer;
@@ -45,14 +44,14 @@ public class ImporterVerticle extends AbstractVerticle {
   private static final int MAX_RETRIES = 5;
   private static final int RETRY_INTERVAL = 1000;
   
-  protected Store store;
+  protected RxStore store;
   private String incoming;
   
   @Override
   public void start() {
     log.info("Launching importer ...");
     
-    store = StoreFactory.createStore(getVertx());
+    store = new RxStore(StoreFactory.createStore(getVertx()));
     String storagePath = config().getString(ConfigConstants.STORAGE_FILE_PATH);
     incoming = storagePath + "/incoming";
     
@@ -276,22 +275,6 @@ public class ImporterVerticle extends AbstractVerticle {
   }
   
   /**
-   * Add a chunk to the store
-   * @param chunk the chunk to add
-   * @param meta the chunk's metadata
-   * @param layer the layer the chunk should be added to (may be null)
-   * @param indexMeta metadata specifying how the chunk should be indexed
-   * @return an observable that will emit exactly one item when the
-   * operation has finished
-   */
-  private Observable<Void> addToStoreNoRetry(String chunk, ChunkMeta meta,
-      String layer, IndexMeta indexMeta) {
-    ObservableFuture<Void> o = RxHelper.observableFuture();
-    store.add(chunk, meta, layer, indexMeta, o.toHandler());
-    return o;
-  }
-  
-  /**
    * Add a chunk to the store. Retry operation several times before failing.
    * @param chunk the chunk to add
    * @param meta the chunk's metadata
@@ -302,9 +285,8 @@ public class ImporterVerticle extends AbstractVerticle {
    */
   protected Observable<Void> addToStore(String chunk, ChunkMeta meta,
       String layer, IndexMeta indexMeta) {
-    return Observable.<Void>create(subscriber -> {
-      addToStoreNoRetry(chunk, meta, layer, indexMeta).subscribe(subscriber);
-    }).retryWhen(RxUtils.makeRetry(MAX_RETRIES, RETRY_INTERVAL,
-        RxHelper.scheduler(getVertx()), log));
+    return Observable.defer(() -> store.addObservable(chunk, meta, layer, indexMeta))
+        .retryWhen(RxUtils.makeRetry(MAX_RETRIES, RETRY_INTERVAL,
+            RxHelper.scheduler(getVertx()), log));
   }
 }
