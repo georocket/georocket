@@ -1,0 +1,31 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    8.6599,
+                    49.87424
+                ]
+            },
+            "properties": {
+                "name": "Fraunhofer IGD"
+            }
+        },
+        {
+            "type": "Feature",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    8.6576,
+                    49.87445
+                ]
+            },
+            "properties": {
+                "name": "Darmstadtium"
+            }
+        }
+    ]
+}
