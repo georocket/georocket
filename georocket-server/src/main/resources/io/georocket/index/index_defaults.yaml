@@ -34,4 +34,5 @@ _source:
   includes:
   - chunkStart
   - chunkEnd
+  - chunkMimeType
   - chunkParents

@@ -537,6 +537,7 @@ public class IndexerVerticle extends AbstractVerticle {
   protected void addMeta(Map<String, Object> doc, XMLChunkMeta meta) {
     doc.put("chunkStart", meta.getStart());
     doc.put("chunkEnd", meta.getEnd());
+    doc.put("chunkMimeType", meta.getMimeType());
     doc.put("chunkParents", meta.getParents().stream().map(p ->
         p.toJsonObject().getMap()).collect(Collectors.toList()));
   }

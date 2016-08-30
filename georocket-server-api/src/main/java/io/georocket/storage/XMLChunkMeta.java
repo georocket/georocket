@@ -13,6 +13,11 @@ import io.vertx.core.json.JsonObject;
  * @author Michel Kraemer
  */
 public class XMLChunkMeta extends ChunkMeta {
+  /**
+   * The mime type for XML chunks
+   */
+  public static final String MIME_TYPE = "application/xml";
+
   private final List<XMLStartElement> parents;
   
   /**
@@ -25,7 +30,7 @@ public class XMLChunkMeta extends ChunkMeta {
    * right before all its parent XML elements are closed)
    */
   public XMLChunkMeta(List<XMLStartElement> parents, int start, int end) {
-    super(start, end);
+    super(start, end, MIME_TYPE);
     this.parents = parents;
   }
   
