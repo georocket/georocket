@@ -16,6 +16,7 @@ properties:
   # metadata: don't index it
   chunkStart: *integer_no_index
   chunkEnd: *integer_no_index
+  chunkMimeType: *string_no_index
   chunkParents:
     type: object
     properties:
