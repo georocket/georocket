@@ -411,9 +411,12 @@ public class IndexerVerticle extends AbstractVerticle {
     
     Observable<JsonObject> observable;
     if (scrollId == null) {
-      // execute a new search
-      JsonObject query = queryCompiler.compileQuery(search, path);
-      observable = client.beginScroll(query, pageSize, timeout);
+      // Execute a new search. Use a post_filter because we only want to get
+      // a yes/no answer and no scoring (i.e. we only want to get matching
+      // documents and not those that likely match). For the difference between
+      // query and post_filter see the Elasticsearch documentation.
+      JsonObject postFilter = queryCompiler.compileQuery(search, path);
+      observable = client.beginScroll(null, postFilter, pageSize, timeout);
     } else {
       // continue searching
       observable = client.continueScroll(scrollId, timeout);

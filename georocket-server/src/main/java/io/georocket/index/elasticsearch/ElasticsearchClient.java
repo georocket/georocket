@@ -113,25 +113,52 @@ public class ElasticsearchClient {
       String timeout) {
     return beginScroll(query, null, pageSize, timeout);
   }
+  
+  /**
+   * Perform a search and start scrolling over the result documents. You can
+   * either specify a <code>query</code>, a <code>postFilter</code> or both,
+   * but one of them is required.
+   * @param query the query to send (may be <code>null</code>, in this case
+   * <code>postFilter</code> must be set)
+   * @param postFilter a filter to apply (may be <code>null</code>, in this case
+   * <code>query</code> must be set)
+   * @param pageSize the number of objects to return in one response
+   * @param timeout the time after which the returned scroll id becomes invalid
+   * @return an object containing the search hits and a scroll id that can
+   * be passed to {@link #continueScroll(String, String)} to get more results
+   */
+  public Observable<JsonObject> beginScroll(JsonObject query, JsonObject postFilter,
+      int pageSize, String timeout) {
+    return beginScroll(query, postFilter, null, pageSize, timeout);
+  }
 
   /**
-   * Perform a search, apply an aggregation, and start scrolling
-   * over the result documents.
-   * @param query the query to send
+   * Perform a search, apply an aggregation, and start scrolling over the
+   * result documents. You can either specify a <code>query</code>, a
+   * <code>postFilter</code> or both, but one of them is required.
+   * @param query the query to send (may be <code>null</code>, in this case
+   * <code>postFilter</code> must be set)
+   * @param postFilter a filter to apply (may be <code>null</code>, in this case
+   * <code>query</code> must be set)
    * @param aggregation the aggregation to apply. Can be <code>null</code>
    * @param pageSize the number of objects to return in one response
    * @param timeout the time after which the returned scroll id becomes invalid
    * @return an object containing the search hits and a scroll id that can
    * be passed to {@link #continueScroll(String, String)} to get more results
    */
-  public Observable<JsonObject> beginScroll(JsonObject query, JsonObject aggregation,
-      int pageSize, String timeout) {
+  public Observable<JsonObject> beginScroll(JsonObject query, JsonObject postFilter,
+      JsonObject aggregation, int pageSize, String timeout) {
     String uri = "/" + index + "/" + type + "/_search";
     uri += "?scroll=" + timeout;
     
     JsonObject source = new JsonObject();
     source.put("size", pageSize);
-    source.put("query", query);
+    if (query != null) {
+      source.put("query", query);
+    }
+    if (postFilter != null) {
+      source.put("post_filter", postFilter);
+    }
     if (aggregation != null) {
       source.put("aggs", aggregation);
     }
