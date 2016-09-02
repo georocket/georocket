@@ -86,6 +86,22 @@ public class StoreClientImportTest extends StoreClientTestBase {
     }));
     w.end(Buffer.buffer(XML));
   }
+
+  @Test
+  public void importLayerWithSpecialChars(TestContext context) {
+    String url = "/store/he%2Bllo/world/";
+    stubFor(post(urlEqualTo(url))
+            .willReturn(aResponse()
+                    .withStatus(202)));
+
+    Async async = context.async();
+    WriteStream<Buffer> w = client.getStore().startImport("he+llo/world",
+            context.asyncAssertSuccess(v -> {
+              verifyPosted(url, XML, context);
+              async.complete();
+            }));
+    w.end(Buffer.buffer(XML));
+  }
   
   /**
    * Test importing with tags
