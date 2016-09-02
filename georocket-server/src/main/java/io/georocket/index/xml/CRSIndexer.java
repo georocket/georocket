@@ -18,7 +18,7 @@ public class CRSIndexer implements XMLIndexer {
   /**
    * The string of the detected CRS
    */
-  private String crsStr;
+  protected String crsStr;
   
   @Override
   public void onEvent(XMLStreamEvent event) {
