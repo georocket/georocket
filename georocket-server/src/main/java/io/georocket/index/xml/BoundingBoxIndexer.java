@@ -305,17 +305,11 @@ public class BoundingBoxIndexer implements XMLIndexer, CRSAware {
   
   @Override
   public Map<String, Object> getResult() {
-    if (!boundingBoxInitialized) {
-      // the chunk's bounding box is unknown. do not add it to the index
+
+    if (!checkResult()) {
       return ImmutableMap.of();
     }
-    if (!validate()) {
-      boundingBoxInitialized = false;
-      log.warn("Invalid bounding box [" + minX + "," + minY + "," + maxX + "," + maxY + "]. "
-          + "Values outside [-180.0, -90.0, 180.0, 90.0]. Skipping chunk.");
-      return ImmutableMap.of();
-    }
-    //System.out.println(minX + "," + minY + "," + maxX + "," + maxY);
+
     return ImmutableMap.of("bbox", ImmutableMap.of(
         "type", "envelope",
         "coordinates", Arrays.asList(
@@ -323,5 +317,24 @@ public class BoundingBoxIndexer implements XMLIndexer, CRSAware {
             Arrays.asList(maxX, minY)  // lower right
         )
     ));
+  }
+
+  /**
+   * Check if result is valid by validating the bbox parameters
+   * and initialization flags.
+   * @return true if result is valid, else false
+   */
+  protected boolean checkResult() {
+    if (!boundingBoxInitialized) {
+      // the chunk's bounding box is unknown. do not add it to the index
+      return false;
+    }
+    if (!validate()) {
+      boundingBoxInitialized = false;
+      log.warn("Invalid bounding box [" + minX + "," + minY + "," + maxX + "," + maxY + "]. "
+              + "Values outside [-180.0, -90.0, 180.0, 90.0]. Skipping chunk.");
+      return false;
+    }
+    return true;
   }
 }
