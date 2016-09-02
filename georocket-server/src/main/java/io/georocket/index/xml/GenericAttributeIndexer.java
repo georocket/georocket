@@ -27,7 +27,7 @@ public class GenericAttributeIndexer implements XMLIndexer {
   /**
    * Map collecting all attributes parsed
    */
-  private Map<String, Object> result = new HashMap<>();
+  protected Map<String, String> result = new HashMap<>();
   
   @Override
   public void onEvent(XMLStreamEvent event) {
