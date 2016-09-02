@@ -85,10 +85,10 @@ public class BoundingBoxIndexer implements XMLIndexer, CRSAware {
    * The calculated bounding box of this chunk. Only contains valid values
    * if {@link #boundingBoxInitialized} is true
    */
-  private double minX;
-  private double maxX;
-  private double minY;
-  private double maxY;
+  protected double minX;
+  protected double maxX;
+  protected double minY;
+  protected double maxY;
   
   /**
    * Check if x and y are flipped in the given CRS
