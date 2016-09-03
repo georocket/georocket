@@ -115,4 +115,20 @@ public class StoreClientSearchTest extends StoreClientTestBase {
     client.getStore().search("test", "hello/world", context.asyncAssertSuccess(
         assertExport(url, XML, context, context.async())));
   }
+
+  /**
+   * Test a query with a layer, which contains special chars.
+   * @param context the test context
+   */
+  @Test
+  public void layerWithSpecialChars(TestContext context) {
+    String XML = "<test></test>";
+    String url = "/store/he%2Bllo/world/?search=test";
+    stubFor(get(urlEqualTo(url))
+            .willReturn(aResponse()
+                    .withStatus(200)
+                    .withBody(XML)));
+    client.getStore().search("test", "he+llo/world", context.asyncAssertSuccess(
+            assertExport(url, XML, context, context.async())));
+  }
 }
