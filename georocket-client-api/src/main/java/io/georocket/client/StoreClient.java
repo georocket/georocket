@@ -98,7 +98,7 @@ public class StoreClient {
       }
 
       layer = Splitter.on('/').splitToList(layer).stream()
-              .map(this::urlencode).collect(Collectors.joining("/"));
+          .map(this::urlencode).collect(Collectors.joining("/"));
 
       path += layer;
     }

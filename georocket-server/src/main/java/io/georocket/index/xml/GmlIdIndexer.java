@@ -2,6 +2,7 @@ package io.georocket.index.xml;
 
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import javax.xml.stream.events.XMLEvent;
 
@@ -16,7 +17,7 @@ import io.georocket.util.XMLStreamEvent;
 public class GmlIdIndexer implements XMLIndexer {
   private static final String NS_GML = "http://www.opengis.net/gml";
   
-  protected HashSet<String> ids = new HashSet<>();
+  protected Set<String> ids = new HashSet<>();
   
   @Override
   public void onEvent(XMLStreamEvent event) {
