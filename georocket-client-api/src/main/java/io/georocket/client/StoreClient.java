@@ -87,7 +87,7 @@ public class StoreClient {
    * @return the import path
    */
   protected String prepareImport(String layer, Collection<String> tags) {
-    String path = "/store";
+    String path = getEndpoint();
 
     if (layer != null && !layer.isEmpty()) {
       if (!layer.endsWith("/")) {
@@ -281,7 +281,7 @@ public class StoreClient {
   public void search(String query, String layer,
       Handler<AsyncResult<ReadStream<Buffer>>> handler) {
     String queryPath = prepareQuery(query, layer);
-    HttpClientRequest request = client.get("/store" + queryPath);
+    HttpClientRequest request = client.get(getEndpoint() + queryPath);
     request.exceptionHandler(t -> handler.handle(Future.failedFuture(t)));
     request.handler(response -> {
       if (response.statusCode() == 404) {
@@ -337,7 +337,7 @@ public class StoreClient {
           + "provide an empty query and the root layer /.")));
     }
     String queryPath = prepareQuery(query, layer);
-    HttpClientRequest request = client.delete("/store" + queryPath);
+    HttpClientRequest request = client.delete(getEndpoint() + queryPath);
     request.exceptionHandler(t -> {
       handler.handle(Future.failedFuture(t));
     });
@@ -351,5 +351,14 @@ public class StoreClient {
       }
     });
     configureRequest(request).end();
+  }
+
+  /**
+   * Return the HTTP endpoint, the GeoRocket data store path at
+   * server side.
+   * @return the endpoint
+   */
+  protected String getEndpoint() {
+    return "/store";
   }
 }
