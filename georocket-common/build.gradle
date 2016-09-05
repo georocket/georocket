@@ -1,0 +1,13 @@
+apply plugin: 'java'
+apply plugin: 'maven'
+apply plugin: 'checkstyle'
+
+repositories {
+    jcenter()
+}
+
+dependencies {
+    compile "io.vertx:vertx-core:$vertxVersion"
+
+    testCompile 'junit:junit:4.12'
+}
