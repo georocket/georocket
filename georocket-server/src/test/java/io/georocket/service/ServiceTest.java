@@ -1,79 +1,122 @@
 package io.georocket.service;
 
-import io.vertx.servicediscovery.Record;
-import io.vertx.servicediscovery.ServiceDiscovery;
-import io.vertx.core.Vertx;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.RunTestOnContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import io.vertx.ext.unit.Async;
+import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.RunTestOnContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.rxjava.core.Vertx;
+import io.vertx.rxjava.servicediscovery.ServiceDiscovery;
+import io.vertx.servicediscovery.Record;
 
 /**
  * Test the implementation of {@link Service}
- *
  * @author Andrej Sajenko
  */
 @RunWith(VertxUnitRunner.class)
 public class ServiceTest {
-
+  /**
+   * Run the test on a Vert.x test context
+   */
   @Rule
   public RunTestOnContext rule = new RunTestOnContext();
 
+  /**
+   * Test if a service is really published only once
+   * @param context the test context
+   */
   @Test
   public void testPublishOnce(TestContext context) {
-    Vertx vertx = rule.vertx();
+    Vertx vertx = new Vertx(rule.vertx());
     Async async = context.async();
 
-    Service.publishOnce(vertx, "A", "A").doOnError(context::fail).subscribe(v -> {
-      Service.publishOnce(vertx, "A", "A").doOnError(context::fail).subscribe(v1 -> {
-        Service.publishOnce(vertx, "A", "B").doOnError(context::fail).subscribe(v2 -> {
-          ServiceDiscovery discovery = ServiceDiscovery.create(vertx);
-          discovery.getRecords(record -> true, h -> {
-            if (h.failed()) {
-              async.complete();
-              context.fail(h.cause());
-            } else {
-              List<Record> recordList = h.result();
-              List<Record> lA = recordList.stream().filter(r -> r.getName().equals("A"))
-                      .collect(Collectors.toList());
-
-              context.assertEquals(2, lA.size());
-
-              async.complete();
-            }
-          });
-        });
-      });
-    });
+    ServiceDiscovery discovery = ServiceDiscovery.create(vertx);
+    Service.publishOnce("A", "A", discovery, vertx)
+      .flatMap(v -> Service.publishOnce("A", "A", discovery, vertx))
+      .flatMap(v -> Service.publishOnce("A", "B", discovery, vertx))
+      .flatMap(v -> {
+        return discovery.getRecordsObservable(record -> true);
+      })
+      .doOnTerminate(discovery::close)
+      .subscribe(recordList -> {
+        List<Record> lA = recordList.stream()
+            .filter(r -> r.getName().equals("A"))
+            .collect(Collectors.toList());
+        context.assertEquals(2, lA.size());
+        async.complete();
+      }, context::fail);
   }
 
+  /**
+   * Test if a service can be discovered
+   * @param context the test context
+   */
   @Test
   public void testDiscover(TestContext context) {
-    Vertx vertx = rule.vertx();
+    Vertx vertx = new Vertx(rule.vertx());
     Async async = context.async();
 
-    Service.publishOnce(vertx, "A", "a").doOnError(context::fail).subscribe(v -> {
-      Service.publishOnce(vertx, "A", "b").doOnError(context::fail).subscribe(v1 -> {
-        Service.discover(vertx, "A").doOnError(context::fail).count().subscribe(count -> {
-          context.assertEquals(2, count);
-          async.complete();
-        });
-      });
-    });
+    ServiceDiscovery discovery = ServiceDiscovery.create(vertx);
+    Service.publishOnce("A", "a", discovery, vertx)
+      .flatMap(v -> Service.publishOnce("A", "b", discovery, vertx))
+      .flatMap(v -> Service.discover("A", discovery, vertx))
+      .count()
+      .doOnTerminate(discovery::close)
+      .subscribe(count -> {
+        context.assertEquals(2, count);
+        async.complete();
+      }, context::fail);
   }
 
+  /**
+   * Test if a message can be sent and if a consumer receives the message.
+   * This method does not test if the message can be sent to only one
+   * consumer (instead of all, see {@link #testBroadcast(TestContext)}),
+   * because it's not possible to check if a consumer will not receive a
+   * message before the asynchronous test ends.
+   * @param context the test context
+   */
   @Test
   public void testSend(TestContext context) {
-    Vertx vertx = rule.vertx();
+    Vertx vertx = new Vertx(rule.vertx());
+
+    Async a = context.async();
+
+    String data = "special data";
+
+    vertx.eventBus().consumer("a", h -> {
+      context.assertEquals(data, h.body());
+      a.complete();
+    });
+
+    ServiceDiscovery discovery = ServiceDiscovery.create(vertx);
+    Service.publishOnce("A", "a", discovery, vertx)
+      .flatMap(v -> Service.discover("A", discovery, vertx))
+      .doOnTerminate(discovery::close)
+      .subscribe(service -> {
+        service.broadcast(data);
+        service.send(data);
+      }, context::fail);
+  }
+
+  /**
+   * Test if a message can be sent to all consumers
+   * @param context the test context
+   */
+  @Test
+  public void testBroadcast(TestContext context) {
+    Vertx vertx = new Vertx(rule.vertx());
 
     Async aC = context.async();
     Async bC = context.async();
+    Async cC = context.async();
+    Async dC = context.async();
 
     String data = "special data";
 
@@ -82,44 +125,25 @@ public class ServiceTest {
       aC.complete();
     });
     vertx.eventBus().consumer("a", h -> {
-      context.fail("Should not be called on send, only on broadcast");
+      context.assertEquals(data, h.body());
+      bC.complete();
     });
     vertx.eventBus().consumer("b", h -> {
       context.assertEquals(data, h.body());
-      bC.complete();
+      cC.complete();
     });
-
-    Service.publishOnce(vertx, "A", "a").doOnError(context::fail).subscribe(v -> {
-      Service.publishOnce(vertx, "A", "b").doOnError(context::fail).subscribe(v1 -> {
-        Service.discover(vertx, "A").doOnError(context::fail).subscribe(service -> {
-          service.send(data);
-        });
-      });
-    });
-  }
-
-  @Test
-  public void testBroadcast(TestContext context) {
-    Vertx vertx = rule.vertx();
-
-    Async aC = context.async();
-    Async bC = context.async();
-
-    String data = "special data";
-
-    vertx.eventBus().consumer("a", h -> {
+    vertx.eventBus().consumer("b", h -> {
       context.assertEquals(data, h.body());
-      aC.complete();
-    });
-    vertx.eventBus().consumer("a", h -> {
-      context.assertEquals(data, h.body());
-      bC.complete();
+      dC.complete();
     });
 
-    Service.publishOnce(vertx, "A", "a").doOnError(context::fail).subscribe(v -> {
-        Service.discover(vertx, "A").doOnError(context::fail).subscribe(service -> {
-          service.broadcast(data);
-        });
-    });
+    ServiceDiscovery discovery = ServiceDiscovery.create(vertx);
+    Service.publishOnce("A", "a", discovery, vertx)
+      .flatMap(v -> Service.publishOnce("A", "b", discovery, vertx))
+      .flatMap(v -> Service.discover("A", discovery, vertx))
+      .doOnTerminate(discovery::close)
+      .subscribe(service -> {
+        service.broadcast(data);
+      }, context::fail);
   }
 }
