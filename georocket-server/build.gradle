@@ -39,7 +39,7 @@ dependencies {
     compile "io.vertx:vertx-service-discovery:$vertxVersion"
     compile "io.vertx:vertx-web:$vertxVersion"
 
-    compile 'com.amazonaws:aws-java-sdk-s3:1.11.30'
+    compile 'com.amazonaws:aws-java-sdk-s3:1.11.31'
     compile 'com.fasterxml:aalto-xml:1.0.0'
     compile 'com.google.guava:guava:19.0'
     compile 'com.vividsolutions:jts:1.13'
