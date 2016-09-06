@@ -13,7 +13,7 @@ import io.georocket.constants.ConfigConstants;
 import io.georocket.http.Endpoint;
 import io.georocket.http.GeneralEndpoint;
 import io.georocket.http.StoreEndpoint;
-import io.georocket.index.IndexerVerticle;
+import io.georocket.index.XMLIndexerVerticle;
 import io.georocket.util.JsonUtils;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.DeploymentOptions;
@@ -53,12 +53,12 @@ public class GeoRocket extends AbstractVerticle {
   }
 
   /**
-   * Deploy the indexer verticle
+   * Deploy the XML indexer verticle
    * @return a future that will be completed when the verticle was deployed and
    * will carry the verticle's deployment id
    */
-  protected ObservableFuture<String> deployIndexer() {
-    return deployVerticle(IndexerVerticle.class);
+  protected ObservableFuture<String> deployXMLIndexer() {
+    return deployVerticle(XMLIndexerVerticle.class);
   }
 
   /**
@@ -135,7 +135,7 @@ public class GeoRocket extends AbstractVerticle {
   public void start(Future<Void> startFuture) {
     log.info("Launching GeoRocket ...");
 
-    deployIndexer()
+    deployXMLIndexer()
       .flatMap(v -> deployImporter())
       .flatMap(v -> deployHttpServer())
       .subscribe(id -> {

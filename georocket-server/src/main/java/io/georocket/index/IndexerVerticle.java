@@ -12,35 +12,29 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.ServiceLoader;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jooq.lambda.Seq;
 import org.jooq.lambda.tuple.Tuple;
 import org.yaml.snakeyaml.Yaml;
-
-import com.google.common.collect.ImmutableList;
 
 import io.georocket.constants.AddressConstants;
 import io.georocket.constants.ConfigConstants;
 import io.georocket.index.elasticsearch.ElasticsearchClient;
 import io.georocket.index.elasticsearch.ElasticsearchInstaller;
 import io.georocket.index.elasticsearch.ElasticsearchRunner;
-import io.georocket.index.xml.XMLIndexer;
-import io.georocket.index.xml.XMLIndexerFactory;
 import io.georocket.query.DefaultQueryCompiler;
+import io.georocket.storage.ChunkMeta;
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.RxStore;
 import io.georocket.storage.StoreFactory;
-import io.georocket.storage.XMLChunkMeta;
 import io.georocket.util.MapUtils;
 import io.georocket.util.RxUtils;
-import io.georocket.util.XMLParserOperator;
-import io.georocket.util.XMLStartElement;
 import io.vertx.core.Future;
 import io.vertx.core.impl.NoStackTraceThrowable;
 import io.vertx.core.json.JsonArray;
@@ -59,7 +53,7 @@ import rx.functions.Func1;
  * Background indexing of chunks added to the store
  * @author Michel Kraemer
  */
-public class IndexerVerticle extends AbstractVerticle {
+public abstract class IndexerVerticle extends AbstractVerticle {
   private static Logger log = LoggerFactory.getLogger(IndexerVerticle.class);
   
   protected static final int MAX_ADD_REQUESTS = 1000;
@@ -103,8 +97,6 @@ public class IndexerVerticle extends AbstractVerticle {
   
   @Override
   public void start(Future<Void> startFuture) {
-    log.info("Launching indexer ...");
-    
     indexerFactories = createIndexerFactories();
 
     createElasticsearchClient()
@@ -130,16 +122,30 @@ public class IndexerVerticle extends AbstractVerticle {
       runner.stop();
     }
   }
-  
+
   /**
    * Create a list of indexer factories
    * @return the list
    */
-  protected List<? extends IndexerFactory> createIndexerFactories() {
-    // load and copy all indexer factories now and not lazily to avoid
-    // concurrent modifications to the service loader's internal cache
-    return ImmutableList.copyOf(ServiceLoader.load(XMLIndexerFactory.class));
-  }
+  protected abstract List<? extends IndexerFactory> createIndexerFactories();
+
+  /**
+   * Create a {@link ChunkMeta} object from the given JSON object
+   * @param json the JSON object
+   * @return the {@link ChunkMeta} object
+   */
+  protected abstract ChunkMeta makeChunkMeta(JsonObject json);
+
+  /**
+   * Convert a chunk to a Elasticsearch document
+   * @param chunk the chunk to convert
+   * @param fallbackCRSString a string representing the CRS that should be used
+   * to index the chunk if it does not specify a CRS itself (may be null if no
+   * CRS is available as fallback)
+   * @return an observable that will emit the document
+   */
+  protected abstract Observable<Map<String, Object>> chunkToDocument(
+      ChunkReadStream chunk, String fallbackCRSString);
 
   /**
    * Create an Elasticsearch client. Either start an Elasticsearch instance or
@@ -313,14 +319,12 @@ public class IndexerVerticle extends AbstractVerticle {
         }
         
         // get chunk metadata
-        JsonObject metaObj = body.getJsonObject("meta");
-        if (metaObj == null) {
+        JsonObject meta = body.getJsonObject("meta");
+        if (meta == null) {
           msg.fail(400, "Missing metadata for chunk " + path);
           return Observable.empty();
         }
 
-        XMLChunkMeta meta = createChunkMeta(metaObj);
-        
         // get tags
         JsonArray tagsArr = body.getJsonArray("tags");
         List<String> tags = tagsArr != null ? tagsArr.stream().flatMap(o -> o != null ?
@@ -368,16 +372,6 @@ public class IndexerVerticle extends AbstractVerticle {
   }
 
   /**
-   * Create a {@link XMLChunkMeta} object. Sub-classes may override this
-   * method to provide their own {@link XMLChunkMeta} type.
-   * @param hit the chunk meta content used to initialize the object
-   * @return the created object
-   */
-  protected XMLChunkMeta createChunkMeta(JsonObject hit) {
-    return new XMLChunkMeta(hit);
-  }
-  
-  /**
    * Open a chunk and convert to to an Elasticsearch document. Retry
    * operation several times before failing.
    * @param path the path to the chunk to open
@@ -391,7 +385,7 @@ public class IndexerVerticle extends AbstractVerticle {
     return Observable.defer(() -> store.getOneObservable(path)
         .flatMap(chunk -> {
           // convert chunk to document and close it
-          return xmlChunkToDocument(chunk, fallbackCRSString)
+          return chunkToDocument(chunk, fallbackCRSString)
               .doAfterTerminate(chunk::close);
         }))
       .retryWhen(makeRetry(), RxHelper.scheduler(getVertx()));
@@ -432,7 +426,7 @@ public class IndexerVerticle extends AbstractVerticle {
         JsonObject hit = (JsonObject)o;
         String id = hit.getString("_id");
         JsonObject source = hit.getJsonObject("_source");
-        XMLChunkMeta meta = getMeta(source);
+        ChunkMeta meta = getMeta(source);
         JsonObject obj = meta.toJsonObject()
             .put("id", id);
         resultHits.add(obj);
@@ -502,47 +496,25 @@ public class IndexerVerticle extends AbstractVerticle {
   }
 
   /**
-   * Convert a chunk to a Elasticsearch document
-   * @param chunk the chunk to convert
-   * @param fallbackCRSString a string representing the CRS that should be used
-   * to index the chunk if it does not specify a CRS itself (may be null if no
-   * CRS is available as fallback)
-   * @return an observable that will emit the document
-   */
-  private Observable<Map<String, Object>> xmlChunkToDocument(ChunkReadStream chunk,
-      String fallbackCRSString) {
-    List<XMLIndexer> indexers = new ArrayList<>();
-    indexerFactories.forEach(factory -> {
-      XMLIndexer i = (XMLIndexer)factory.createIndexer();
-      if (fallbackCRSString != null && i instanceof CRSAware) {
-        ((CRSAware)i).setFallbackCRSString(fallbackCRSString);
-      }
-      indexers.add(i);
-    });
-    
-    return RxHelper.toObservable(chunk)
-      .lift(new XMLParserOperator())
-      .doOnNext(e -> indexers.forEach(i -> i.onEvent(e)))
-      .last() // "wait" until the whole chunk has been consumed
-      .map(e -> {
-        // create the Elasticsearch document
-        Map<String, Object> doc = new HashMap<>();
-        indexers.forEach(i -> doc.putAll(i.getResult()));
-        return doc;
-      });
-  }
-  
-  /**
-   * Add chunk metadata to a ElasticSearch document
+   * Add chunk metadata (as received via the event bus) to a ElasticSearch
+   * document. Insert all properties from the given JsonObject into the
+   * document but prepend the string "chunk" to all property names and
+   * convert the first character to upper case (or insert an underscore
+   * character if it already is upper case)
    * @param doc the document
    * @param meta the metadata to add to the document
    */
-  protected void addMeta(Map<String, Object> doc, XMLChunkMeta meta) {
-    doc.put("chunkStart", meta.getStart());
-    doc.put("chunkEnd", meta.getEnd());
-    doc.put("chunkMimeType", meta.getMimeType());
-    doc.put("chunkParents", meta.getParents().stream().map(p ->
-        p.toJsonObject().getMap()).collect(Collectors.toList()));
+  protected void addMeta(Map<String, Object> doc, JsonObject meta) {
+    for (String fieldName : meta.fieldNames()) {
+      String newFieldName = fieldName;
+      if (Character.isTitleCase(newFieldName.charAt(0))) {
+        newFieldName = "_" + newFieldName;
+      } else {
+        newFieldName = StringUtils.capitalize(newFieldName);
+      }
+      newFieldName = "chunk" + newFieldName;
+      doc.put(newFieldName, meta.getValue(fieldName));
+    }
   }
   
   /**
@@ -550,44 +522,22 @@ public class IndexerVerticle extends AbstractVerticle {
    * @param source the document
    * @return the metadata
    */
-  protected XMLChunkMeta getMeta(JsonObject source) {
-    int start = source.getInteger("chunkStart");
-    int end = source.getInteger("chunkEnd");
-    
-    JsonArray parentsList = source.getJsonArray("chunkParents");
-    List<XMLStartElement> parents = parentsList.stream().map(o -> {
-      JsonObject p = (JsonObject)o;
-      String prefix = p.getString("prefix");
-      String localName = p.getString("localName");
-      String[] namespacePrefixes = jsonToArray(p.getJsonArray("namespacePrefixes"));
-      String[] namespaceUris = jsonToArray(p.getJsonArray("namespaceUris"));
-      String[] attributePrefixes = jsonToArray(p.getJsonArray("attributePrefixes"));
-      String[] attributeLocalNames = jsonToArray(p.getJsonArray("attributeLocalNames"));
-      String[] attributeValues = jsonToArray(p.getJsonArray("attributeValues"));
-      return new XMLStartElement(prefix, localName, namespacePrefixes, namespaceUris,
-          attributePrefixes, attributeLocalNames, attributeValues);
-    }).collect(Collectors.toList());
-    
-    return new XMLChunkMeta(parents, start, end);
+  protected ChunkMeta getMeta(JsonObject source) {
+    JsonObject filteredSource = new JsonObject();
+    for (String fieldName : source.fieldNames()) {
+      if (fieldName.startsWith("chunk")) {
+        String newFieldName = fieldName.substring(5);
+        if (newFieldName.charAt(0) == '_') {
+          newFieldName = newFieldName.substring(1);
+        } else {
+          newFieldName = StringUtils.uncapitalize(newFieldName);
+        }
+        filteredSource.put(newFieldName, source.getValue(fieldName));
+      }
+    }
+    return makeChunkMeta(filteredSource);
   }
   
-  /**
-   * Convert a JSON array to a String array. If the JSON array is null the
-   * return value will also be null.
-   * @param json the JSON array to convert
-   * @return the array or null if <code>json</code> is null
-   */
-  private String[] jsonToArray(JsonArray json) {
-    if (json == null) {
-      return null;
-    }
-    String[] result = new String[json.size()];
-    for (int i = 0; i < json.size(); ++i) {
-      result[i] = json.getString(i);
-    }
-    return result;
-  }
-
   /**
    * Ensure the Elasticsearch index exists
    * @return an observable that will emit a single item when the index has
