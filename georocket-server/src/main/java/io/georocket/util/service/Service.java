@@ -33,7 +33,8 @@ public interface Service {
         .flatMap(Observable::from)
         .map(record -> {
           String endpoint = record.getLocation().getString(Record.ENDPOINT);
-          Service s = new DefaultService(name, endpoint, vertx);
+          Service s = new DefaultService(name, endpoint,
+              record.getRegistration(), vertx);
           return s;
         });
   }
@@ -136,4 +137,11 @@ public interface Service {
    * @return the service name
    */
   String getName();
+  
+  /**
+   * Unpublish this service
+   * @param discovery the service discovery where this service is registered
+   * @return an observable that emits one item when the operation has finished
+   */
+  Observable<Void> unpublish(ServiceDiscovery discovery);
 }

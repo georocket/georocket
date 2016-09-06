@@ -32,7 +32,7 @@ public class ServiceTest {
    * @param context the test context
    */
   @Test
-  public void testPublishOnce(TestContext context) {
+  public void publishOnce(TestContext context) {
     Vertx vertx = new Vertx(rule.vertx());
     Async async = context.async();
 
@@ -58,7 +58,7 @@ public class ServiceTest {
    * @param context the test context
    */
   @Test
-  public void testDiscover(TestContext context) {
+  public void discover(TestContext context) {
     Vertx vertx = new Vertx(rule.vertx());
     Async async = context.async();
 
@@ -77,13 +77,13 @@ public class ServiceTest {
   /**
    * Test if a message can be sent and if a consumer receives the message.
    * This method does not test if the message can be sent to only one
-   * consumer (instead of all, see {@link #testBroadcast(TestContext)}),
+   * consumer (instead of all, see {@link #broadcast(TestContext)}),
    * because it's not possible to check if a consumer will not receive a
    * message before the asynchronous test ends.
    * @param context the test context
    */
   @Test
-  public void testSend(TestContext context) {
+  public void send(TestContext context) {
     Vertx vertx = new Vertx(rule.vertx());
 
     Async a = context.async();
@@ -110,7 +110,7 @@ public class ServiceTest {
    * @param context the test context
    */
   @Test
-  public void testBroadcast(TestContext context) {
+  public void broadcast(TestContext context) {
     Vertx vertx = new Vertx(rule.vertx());
 
     Async aC = context.async();
@@ -144,6 +144,33 @@ public class ServiceTest {
       .doOnTerminate(discovery::close)
       .subscribe(service -> {
         service.broadcast(data);
+      }, context::fail);
+  }
+  
+  /**
+   * Test if a service can be published an unpublished again
+   * @param context the test context
+   */
+  @Test
+  public void unpublish(TestContext context) {
+    Vertx vertx = new Vertx(rule.vertx());
+    Async async = context.async();
+
+    ServiceDiscovery discovery = ServiceDiscovery.create(vertx);
+    Service.publishOnce("A", "a", discovery, vertx)
+      .flatMap(v -> Service.discover("A", discovery, vertx))
+      .count()
+      .doOnNext(count -> {
+        context.assertEquals(1, count);
+      })
+      .flatMap(v -> Service.discover("A", discovery, vertx))
+      .flatMap(service -> service.unpublish(discovery))
+      .flatMap(v -> Service.discover("A", discovery, vertx))
+      .count()
+      .doOnTerminate(discovery::close)
+      .subscribe(count -> {
+        context.assertEquals(0, count);
+        async.complete();
       }, context::fail);
   }
 }
