@@ -1,4 +1,4 @@
-package io.georocket.service;
+package io.georocket.util.service;
 
 import java.util.List;
 import java.util.stream.Collectors;

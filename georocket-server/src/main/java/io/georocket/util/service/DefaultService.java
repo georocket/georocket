@@ -1,4 +1,4 @@
-package io.georocket.service;
+package io.georocket.util.service;
 
 import io.vertx.rxjava.core.Vertx;
 
