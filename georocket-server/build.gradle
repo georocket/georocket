@@ -66,19 +66,6 @@ dependencies {
     compile 'org.mongodb:bson:3.3.0'
     compile 'org.mongodb:mongodb-driver-async:3.3.0'
     compile 'org.yaml:snakeyaml:1.17'
-
-    compile('org.geotools:gt-epsg-extension:14.0') {
-        // exclude invalid dependency
-        exclude group: 'javax.media', module: 'jai_core'
-    }
-    compile('org.geotools:gt-epsg-hsql:14.0') {
-        // exclude invalid dependency
-        exclude group: 'javax.media', module: 'jai_core'
-    }
-    compile('org.geotools:gt-referencing:14.0') {
-        // exclude invalid dependency
-        exclude group: 'javax.media', module: 'jai_core'
-    }
     // replace invalid jai_core dependency by a valid one
     compile 'javax.media.jai:com.springsource.javax.media.jai.core:1.1.3'
 
