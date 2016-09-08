@@ -5,6 +5,7 @@ import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 
 import org.apache.commons.httpclient.util.DateParseException;
 import org.apache.commons.httpclient.util.DateUtil;
@@ -13,6 +14,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import io.georocket.constants.AddressConstants;
 import io.georocket.output.Merger;
 import io.georocket.util.io.BufferWriteStream;
+import io.georocket.util.service.Service;
 import io.vertx.core.Future;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonObject;
@@ -20,10 +22,19 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.core.streams.WriteStream;
 import io.vertx.rxjava.core.AbstractVerticle;
+import io.vertx.rxjava.servicediscovery.ServiceDiscovery;
 import rx.Observable;
 
 /**
  * Class used to access the store methods over the event bus.
+ * 
+ * The class primarily wraps the store, used by the instance, and makes it
+ * accessible from the event bus.
+ * 
+ * Use the {@link Service} mechanism to discover the message addresses.
+ * 
+ * Because the chosen merger depends on the chunks to merge, the messenger needs
+ * to be extended for every merger available. 
  * 
  * Merger code from {@link io.georocket.http.StoreEndpoint}.
  * 
@@ -33,14 +44,18 @@ import rx.Observable;
 public abstract class StoreMessenger<M extends Merger> extends AbstractVerticle {
 
   private static Logger log = LoggerFactory.getLogger(StoreMessenger.class);
+  
+  private static String extension;
 
   private RxStore store;
 
   @Override
   public void start(Future<Void> future) {
-    // create a unique message address
-    // 
-    
+
+    // the extension that starts with a . and is .MIXED by default.
+    extension = Optional.ofNullable(getStoreServiceAddressExtension())
+        .map(s -> s.startsWith(".") ? s : "." + s).orElse(".MIXED");
+
     registerAdd();
     registerGetOne();
     registerDelete();
@@ -48,13 +63,22 @@ public abstract class StoreMessenger<M extends Merger> extends AbstractVerticle 
     registerGetSize();
 
     publishService();
-    
+
     store = new RxStore(StoreFactory.createStore(getVertx()));
   }
 
+  /**
+   * Publish all the message consumer for the store interface.
+   * The address consists of the {@link AddressConstants} + a specific extension.
+   */
   private void publishService() {
-    // TODO Auto-generated method stub
-    
+    ServiceDiscovery sd = ServiceDiscovery.create(vertx);
+    Service.publishOnce(AddressConstants.STORE_ADD + extension, AddressConstants.STORE_ADD + extension, sd, vertx)
+    .flatMap(v -> Service.publishOnce(AddressConstants.STORE_DELETE + extension, AddressConstants.STORE_DELETE + extension, sd, vertx))
+    .flatMap(v -> Service.publishOnce(AddressConstants.STORE_GET + extension, AddressConstants.STORE_GET + extension, sd, vertx))
+    .flatMap(v -> Service.publishOnce(AddressConstants.STORE_GET_ONE + extension, AddressConstants.STORE_GET_ONE + extension, sd, vertx))
+    .flatMap(v -> Service.publishOnce(AddressConstants.STORE_GET_SIZE + extension, AddressConstants.STORE_GET_SIZE + extension, sd, vertx))
+    .doOnTerminate(sd::close).subscribe();
   }
 
   /**
@@ -62,7 +86,7 @@ public abstract class StoreMessenger<M extends Merger> extends AbstractVerticle 
    * 
    */
   private void registerAdd() {
-    vertx.eventBus().<JsonObject> consumer(AddressConstants.STORE_ADD)
+    vertx.eventBus().<JsonObject> consumer(AddressConstants.STORE_ADD + extension)
     .toObservable()
     .subscribe(msg -> {
       JsonObject body = msg.body();
@@ -102,7 +126,7 @@ public abstract class StoreMessenger<M extends Merger> extends AbstractVerticle 
     String importId = object.getString("importId");
     String fromFile = object.getString("fromFile");
     Date importTimeStamp = DateUtil.parseDate(object.getString("importTimeStamp"));
-    
+
     return new IndexMeta(importId, fromFile, importTimeStamp, tags, fallbackCRSString);
   }
 
@@ -110,7 +134,7 @@ public abstract class StoreMessenger<M extends Merger> extends AbstractVerticle 
    * The message contains parameter to invoke the {@link Store#getOne} method.
    */
   private void registerGetOne() {
-    vertx.eventBus().<JsonObject> consumer(AddressConstants.STORE_GET_ONE)
+    vertx.eventBus().<JsonObject> consumer(AddressConstants.STORE_GET_ONE + extension)
     .toObservable()
     .subscribe(msg -> {
       store.getOne(msg.body().getString("path"), handler -> {
@@ -135,7 +159,7 @@ public abstract class StoreMessenger<M extends Merger> extends AbstractVerticle 
    * The message contains parameter to invoke the {@link Store#delete} method.
    */
   private void registerDelete() {
-    vertx.eventBus().<JsonObject> consumer(AddressConstants.STORE_DELETE)
+    vertx.eventBus().<JsonObject> consumer(AddressConstants.STORE_DELETE + extension)
     .toObservable()
     .subscribe(msg -> {
       JsonObject body = msg.body();
@@ -152,14 +176,14 @@ public abstract class StoreMessenger<M extends Merger> extends AbstractVerticle 
   }
 
   private void registerGet() {
-    vertx.eventBus().<JsonObject> consumer(AddressConstants.STORE_GET)
+    vertx.eventBus().<JsonObject> consumer(AddressConstants.STORE_GET + extension)
     .toObservable()
     .subscribe(msg -> {
       // get path and search parameter
       JsonObject body = msg.body();
       String search = body.getString("search");
       String path = body.getString("path");
-      
+
       WriteStream<Buffer> bufferWriteStream = new BufferWriteStream();
       // get specific merger
       Merger merger = getMerger();
@@ -177,12 +201,11 @@ public abstract class StoreMessenger<M extends Merger> extends AbstractVerticle 
           }
           msg.fail(-1, "Could not perform query.");
         });
-      
     });
   }
 
   private void registerGetSize() {
-    vertx.eventBus().<JsonObject> consumer(AddressConstants.STORE_GET_SIZE)
+    vertx.eventBus().<JsonObject> consumer(AddressConstants.STORE_GET_SIZE + extension)
     .toObservable()
     .subscribe(msg -> {
       store.getSize(handler -> {
@@ -275,4 +298,15 @@ public abstract class StoreMessenger<M extends Merger> extends AbstractVerticle 
    * @return The merger to use or <code>null</code> if merging not supported
    */
   protected abstract M getMerger();
+  
+  /**
+   * @return The service address extension for this service. The extension
+   *         should be unique between different storage messenger. The ideal
+   *         extension equals the served data type e.g., <i>".XML"</i>. The
+   *         extension should start with a . The used Merger usually restricts
+   *         the served data formats, for example, the XML Merger merges XML
+   *         chunks together.
+   */
+  protected abstract String getStoreServiceAddressExtension();
+
 }
