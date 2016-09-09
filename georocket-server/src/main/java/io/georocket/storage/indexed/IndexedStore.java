@@ -164,9 +164,9 @@ public abstract class IndexedStore implements Store {
 
   /**
    * Generate or get an unique identifier for a given chunk. This
-   * method generate an identifier independently of the
-   * chunk itself. Inheritance classes may override this to generate
-   * identifiers, that are linked to the chunk they belong to.
+   * method generates an identifier independently of the chunk itself.
+   * Inheritance classes may override this to generate identifiers,
+   * that are linked to the chunk they belong to.
    * @param chunk chunk to generate the id for
    * @return chunk identifier
    */
