@@ -4,8 +4,6 @@ import java.net.URL;
 import java.util.Date;
 import java.util.Queue;
 
-import org.bson.types.ObjectId;
-
 import com.amazonaws.ClientConfiguration;
 import com.amazonaws.ClientConfigurationFactory;
 import com.amazonaws.HttpMethod;
@@ -140,7 +138,7 @@ public class S3Store extends IndexedStore {
     }
 
     // generate new file name
-    String id = new ObjectId().toString();
+    String id = generateChunkId(chunk);
     String filename = PathUtils.join(path, id);
     String key = PathUtils.removeLeadingSlash(filename);
 

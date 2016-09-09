@@ -5,7 +5,6 @@ import java.util.Queue;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.bson.Document;
-import org.bson.types.ObjectId;
 
 import com.google.common.base.Preconditions;
 import com.mongodb.async.client.MongoClient;
@@ -135,7 +134,7 @@ public class MongoDBStore extends IndexedStore {
     }
 
     // generate new file name
-    String id = new ObjectId().toString();
+    String id = generateChunkId(chunk);
     String filename = PathUtils.join(path, id);
     
     byte[] bytes = chunk.getBytes(StandardCharsets.UTF_8);

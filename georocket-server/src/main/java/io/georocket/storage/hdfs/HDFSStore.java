@@ -14,7 +14,6 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.FsStatus;
 import org.apache.hadoop.fs.Path;
-import org.bson.types.ObjectId;
 
 import com.google.common.base.Preconditions;
 
@@ -134,7 +133,7 @@ public class HDFSStore extends IndexedStore {
     }
 
     // generate new file name
-    String id = new ObjectId().toString();
+    String id = generateChunkId(chunk);
     String filename = PathUtils.join(path, id);
 
     vertx.executeBlocking(f -> {

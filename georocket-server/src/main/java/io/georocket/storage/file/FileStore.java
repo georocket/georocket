@@ -4,8 +4,6 @@ import java.io.FileNotFoundException;
 import java.nio.file.Paths;
 import java.util.Queue;
 
-import org.bson.types.ObjectId;
-
 import com.google.common.base.Preconditions;
 
 import io.georocket.constants.ConfigConstants;
@@ -77,8 +75,7 @@ public class FileStore extends IndexedStore {
       }
 
       // generate new file name
-      String id = new ObjectId().toString();
-      String filename = id;
+      String filename = generateChunkId(chunk);
 
       // open new file
       FileSystem fs = vertx.fileSystem();

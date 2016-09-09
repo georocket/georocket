@@ -15,6 +15,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.ReplyException;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import org.bson.types.ObjectId;
 
 /**
  * An abstract base class for chunk stores that are backed by an indexer
@@ -159,6 +160,18 @@ public abstract class IndexedStore implements Store {
         doDeleteChunks(paths, handler);
       }
     });
+  }
+
+  /**
+   * Generate or get an unique identifier for a given chunk. This
+   * method generate an identifier independently of the
+   * chunk itself. Inheritance classes may override this to generate
+   * identifiers, that are linked to the chunk they belong to.
+   * @param chunk chunk to generate the id for
+   * @return chunk identifier
+   */
+  protected String generateChunkId(String chunk) {
+    return new ObjectId().toString();
   }
   
   /**
