@@ -134,7 +134,7 @@ public class MongoDBStore extends IndexedStore {
     }
 
     // generate new file name
-    String id = generateChunkId(chunk);
+    String id = generateChunkId();
     String filename = PathUtils.join(path, id);
     
     byte[] bytes = chunk.getBytes(StandardCharsets.UTF_8);

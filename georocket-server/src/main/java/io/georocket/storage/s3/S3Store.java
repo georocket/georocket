@@ -138,7 +138,7 @@ public class S3Store extends IndexedStore {
     }
 
     // generate new file name
-    String id = generateChunkId(chunk);
+    String id = generateChunkId();
     String filename = PathUtils.join(path, id);
     String key = PathUtils.removeLeadingSlash(filename);
 

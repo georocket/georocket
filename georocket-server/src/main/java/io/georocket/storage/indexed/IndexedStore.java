@@ -163,14 +163,11 @@ public abstract class IndexedStore implements Store {
   }
 
   /**
-   * Generate or get an unique identifier for a given chunk. This
-   * method generates an identifier independently of the chunk itself.
-   * Inheritance classes may override this to generate identifiers,
-   * that are linked to the chunk they belong to.
-   * @param chunk chunk to generate the id for
+   * Generate or get an unique identifier. This method generates an
+   * identifier independently of the chunk itself.
    * @return chunk identifier
    */
-  protected String generateChunkId(String chunk) {
+  protected String generateChunkId() {
     return new ObjectId().toString();
   }
   

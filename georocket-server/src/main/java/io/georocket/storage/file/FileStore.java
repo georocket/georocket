@@ -75,7 +75,7 @@ public class FileStore extends IndexedStore {
       }
 
       // generate new file name
-      String filename = generateChunkId(chunk);
+      String filename = generateChunkId();
 
       // open new file
       FileSystem fs = vertx.fileSystem();
