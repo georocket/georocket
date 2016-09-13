@@ -207,22 +207,40 @@ public class ElasticsearchClient {
     
     return performRequestRetry(HttpMethod.POST, uri, body.toString());
   }
-  
+
   /**
    * Check if the index exists
    * @return an observable emitting <code>true</code> if the index exists or
    * <code>false</code> otherwise
    */
   public Observable<Boolean> indexExists() {
-    String uri = "/" + index;
+    return exists("/" + index);
+  }
+
+  /**
+   * Check if the type of the index exists
+   * @return an observable emitting <code>true</code> if the type of
+   * the index exists or <code>false</code> otherwise
+   */
+  public Observable<Boolean> typeExists() {
+    return exists("/" + index + "/" + type);
+  }
+
+  /**
+   * Check if the given URI exists by sending an empty request
+   * @param uri uri to check
+   * @return an observable emitting <code>true</code> if the request
+   * was successful or <code>false</code> otherwise
+   */
+  private Observable<Boolean> exists(String uri) {
     return performRequestRetry(HttpMethod.HEAD, uri, null)
-        .map(o -> true)
-        .onErrorResumeNext(t -> {
-          if (t instanceof HttpException && ((HttpException)t).getStatusCode() == 404) {
-            return Observable.just(false);
-          }
-          return Observable.error(t);
-        });
+      .map(o -> true)
+      .onErrorResumeNext(t -> {
+        if (t instanceof HttpException && ((HttpException)t).getStatusCode() == 404) {
+          return Observable.just(false);
+        }
+        return Observable.error(t);
+      });
   }
   
   /**
@@ -232,15 +250,10 @@ public class ElasticsearchClient {
    * was ackowledged by Elasticsearch, <code>false</code> otherwise
    */
   public Observable<Boolean> createIndex(JsonObject mappings) {
-    String uri = "/" + index;
-    
-    JsonObject source = new JsonObject()
-        .put("mappings", new JsonObject()
-            .put(type, mappings));
-    
-    return performRequestRetry(HttpMethod.PUT, uri, source.encode()).map(res -> {
-      return res.getBoolean("acknowledged", true);
-    });
+    String uri = "/" + index + "/_mapping/" + type;
+
+    return performRequestRetry(HttpMethod.PUT, uri, mappings.encode())
+      .map(res -> res.getBoolean("acknowledged", true));
   }
   
   /**
