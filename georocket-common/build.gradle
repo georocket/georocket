@@ -17,6 +17,11 @@ dependencies {
 
     compile 'com.fasterxml:aalto-xml:1.0.0'
     compile 'com.google.guava:guava:19.0'
+
+    compile('org.geotools:gt-epsg-extension:14.0') {
+        // exclude invalid dependency
+        exclude group: 'javax.media', module: 'jai_core'
+    }
     compile('org.geotools:gt-epsg-hsql:14.0') {
         // exclude invalid dependency
         exclude group: 'javax.media', module: 'jai_core'
@@ -25,7 +30,6 @@ dependencies {
         // exclude invalid dependency
         exclude group: 'javax.media', module: 'jai_core'
     }
-
     // replace invalid jai_core dependency by a valid one
     compile 'javax.media.jai:com.springsource.javax.media.jai.core:1.1.3'
 
