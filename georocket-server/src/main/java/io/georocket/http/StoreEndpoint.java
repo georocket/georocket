@@ -1,14 +1,16 @@
 package io.georocket.http;
 
 import static io.georocket.util.ThrowableHelper.throwableToCode;
-import static io.georocket.util.ThrowableHelper.throwableToMessage;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.nio.file.spi.FileTypeDetector;
 import java.util.List;
+import java.util.NoSuchElementException;
 
+import io.georocket.util.ThrowableHelper;
+import io.netty.handler.codec.http.HttpResponseStatus;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.ParseException;
 import org.apache.http.entity.ContentType;
@@ -205,7 +207,7 @@ public class StoreEndpoint implements Endpoint {
         if (!(err instanceof FileNotFoundException)) {
           log.error("Could not perform query", err);
         }
-        response.setStatusCode(throwableToCode(err)).end(throwableToMessage(err, ""));
+        sendFailure(response, err);
       });
   }
   
@@ -329,18 +331,13 @@ public class StoreEndpoint implements Endpoint {
         if (tags != null) {
           msg.put("tags", new JsonArray(tags));
         }
-
-        request.response()
-          .setStatusCode(202) // Accepted
-          .setStatusMessage("Accepted file - importing in progress")
-          .end();
+        sendResponse(request.response(), 202);
 
         // run importer
         vertx.eventBus().send(AddressConstants.IMPORTER, msg);
       }, err -> {
-        request.response()
-          .setStatusCode(throwableToCode(err))
-          .end("Could not import file: " + err.getMessage());
+        sendResponse(request.response(), throwableToCode(err),
+                "Could not import file: " + err.getMessage());
         err.printStackTrace();
         fs.delete(filepath, ar -> {});
       });
@@ -359,14 +356,50 @@ public class StoreEndpoint implements Endpoint {
     
     store.deleteObservable(search, path)
       .subscribe(v -> {
-        response
-          .setStatusCode(204)
-          .end();
+        sendResponse(response, 204);
       }, err -> {
         log.error("Could not delete chunks", err);
-        response
-          .setStatusCode(throwableToCode(err))
-          .end(throwableToMessage(err, ""));
+        sendFailure(response, err);
       });
+  }
+
+  /**
+   * Set HTTP status code for a response. The response
+   * is ended afterwards. No response's body is set.
+   * @param response response to send
+   * @param httpStatusCode HTTP status code for response
+   */
+  protected void sendResponse(HttpServerResponse response, int httpStatusCode) {
+    sendResponse(response, httpStatusCode, "");
+  }
+
+  /**
+   * Set HTTP status code for a response. The response's body contains
+   * a further message in JSON format if given. The response is ended
+   * afterwards.
+   * @param response response to send
+   * @param httpStatusCode HTTP status code for response
+   * @param message message for response's body with further information
+   */
+  private void sendResponse(HttpServerResponse response, int httpStatusCode, String message) {
+    HttpResponseStatus rs = HttpResponseStatus.valueOf(httpStatusCode);
+    HttpServerResponse result = response.setStatusCode(rs.code()).setStatusMessage(rs.reasonPhrase());
+
+    if (message != null && !message.trim().isEmpty()) {
+      JsonObject msg = new JsonObject().put("message", message);
+      result.end(msg.encodePrettily());
+    } else {
+      result.end();
+    }
+  }
+
+  /**
+   * Same as {@link #sendResponse(HttpServerResponse, int, String)}.
+   * HTTP status code and message are extracted from given Throwable.
+   * @param response response to send
+   * @param t throwable including HTTP status code and message for response
+   */
+  private void sendFailure(HttpServerResponse response, Throwable t) {
+    sendResponse(response, ThrowableHelper.throwableToCode(t), ThrowableHelper.throwableToMessage(t, ""));
   }
 }

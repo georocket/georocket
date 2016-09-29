@@ -15,6 +15,7 @@ import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientRequest;
+import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.streams.ReadStream;
 import io.vertx.core.streams.WriteStream;
 
@@ -212,15 +213,7 @@ public class StoreClient {
       request.setChunked(true);
     }
 
-    request.handler(response -> {
-      if (response.statusCode() != 202) {
-        handler.handle(Future.failedFuture("GeoRocket did not accept the file "
-            + "(status code " + response.statusCode() + ": " + response.statusMessage() + ")"));
-      } else {
-        handler.handle(Future.succeededFuture());
-      }
-    });
-
+    request.handler(handleEmptyResponse(202, handler));
     return configureRequest(request);
   }
 
@@ -283,16 +276,7 @@ public class StoreClient {
     String queryPath = prepareQuery(query, layer);
     HttpClientRequest request = client.get(getEndpoint() + queryPath);
     request.exceptionHandler(t -> handler.handle(Future.failedFuture(t)));
-    request.handler(response -> {
-      if (response.statusCode() == 404) {
-        handler.handle(Future.failedFuture(new NoSuchElementException(
-            response.statusMessage())));
-      } else if (response.statusCode() != 200) {
-        handler.handle(Future.failedFuture(response.statusMessage()));
-      } else {
-        handler.handle(Future.succeededFuture(response));
-      }
-    });
+    request.handler(handleResponse(true, 200, handler));
     configureRequest(request).end();
   }
   
@@ -338,18 +322,8 @@ public class StoreClient {
     }
     String queryPath = prepareQuery(query, layer);
     HttpClientRequest request = client.delete(getEndpoint() + queryPath);
-    request.exceptionHandler(t -> {
-      handler.handle(Future.failedFuture(t));
-    });
-    request.handler(response -> {
-      if (response.statusCode() != 204) {
-        handler.handle(Future.failedFuture(response.statusMessage()));
-      } else {
-        response.endHandler(v -> {
-          handler.handle(Future.succeededFuture());
-        });
-      }
-    });
+    request.exceptionHandler(t -> handler.handle(Future.failedFuture(t)));
+    request.handler(handleEmptyResponse(204, handler));
     configureRequest(request).end();
   }
 
@@ -360,5 +334,64 @@ public class StoreClient {
    */
   protected String getEndpoint() {
     return "/store";
+  }
+
+  /**
+   * Handle a {@link HttpClientResponse}. This method checks if the
+   * response's status code is as expected and forwards the error
+   * message otherwise. The response's body is expected to be empty
+   * in case the request was successful.
+   * @param expectedStatus HTTP status code that indicates a successful request
+   * @param handler a handler that will be called when the operation has
+   * finished
+   * @return handler for HTTP client responses
+   */
+  private static Handler<HttpClientResponse> handleEmptyResponse(int expectedStatus, Handler<AsyncResult<Void>> handler) {
+    return handleResponse(false, expectedStatus, stream -> {
+      if (stream.succeeded()) {
+        handler.handle(Future.succeededFuture());
+      } else {
+        handler.handle(Future.failedFuture(stream.cause().getMessage()));
+      }
+    });
+  }
+
+  /**
+   * Handle a {@link HttpClientResponse}. This method checks if the
+   * response's status code is as expected and forwards the error
+   * message otherwise.
+   * @param searchRequest flag for search requests
+   * @param expectedStatus HTTP status code that indicates a successful request
+   * @param handler a handler that will be called when the operation has
+   * finished. The handler holds the response body then.
+   * @return handler for HTTP client responses
+   */
+  private static Handler<HttpClientResponse> handleResponse(boolean searchRequest, int expectedStatus, Handler<AsyncResult<ReadStream<Buffer>>> handler) {
+    return response -> {
+
+      if (response.statusCode() == expectedStatus) {
+        // everything is fine
+        handler.handle(Future.succeededFuture(response));
+      } else if (response.statusCode() == 404 && searchRequest) {
+        handler.handle(Future.failedFuture(new NoSuchElementException(response.statusMessage())));
+      } else {
+
+        // extract error information
+        response.bodyHandler(buf -> {
+
+          if (buf == null || buf.length() == 0) {
+            // could not receive response error message
+            handler.handle(Future.failedFuture("Server responses with an unknown error"));
+          } else {
+
+            String msg = buf.toJsonObject().getString("message", "");
+            handler.handle(Future.failedFuture("Server responses with an error." +
+              " HTTP status code: " + response.statusCode() +
+              " | HTTP status message: " + response.statusMessage() +
+              " | Error message: " + (msg.isEmpty() ? "not available" : msg)));
+          }
+        });
+      }
+    };
   }
 }
