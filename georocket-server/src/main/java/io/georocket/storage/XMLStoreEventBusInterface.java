@@ -3,12 +3,12 @@ package io.georocket.storage;
 import io.georocket.output.Merger;
 
 /**
- * The {@link StoreMessenger} used to read XML.
+ * The {@link StoreEventBusInterface} used to read XML.
  * 
  * @author Yasmina Kammeyer
  *
  */
-public class XMLStoreMessenger extends StoreMessenger<Merger> {
+public class XMLStoreEventBusInterface extends StoreEventBusInterface<Merger> {
 
   @Override
   protected Merger getMerger() {
@@ -16,7 +16,7 @@ public class XMLStoreMessenger extends StoreMessenger<Merger> {
   }
 
   @Override
-  protected String getStoreServiceAddressExtension() {
+  protected String getStoreEventBusInterfaceAddressExtension() {
     return ".XML";
   }
 

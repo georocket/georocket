@@ -31,19 +31,20 @@ import rx.Observable;
  * The class primarily wraps the store, used by the instance, and makes it
  * accessible from the event bus.
  * 
- * Use the {@link Service} mechanism to discover the message addresses.
+ * Messages can be send directly, or use the {@link Service} mechanism to
+ * discover the message addresses.
  * 
  * Because the chosen merger depends on the chunks to merge, the messenger needs
- * to be extended for every merger available. 
+ * to be extended for every merger available.
  * 
  * Merger code from {@link io.georocket.http.StoreEndpoint}.
  * 
  * @author Yasmina Kammeyer
  *
  */
-public abstract class StoreMessenger<M extends Merger> extends AbstractVerticle {
+public abstract class StoreEventBusInterface<M extends Merger> extends AbstractVerticle {
 
-  private static Logger log = LoggerFactory.getLogger(StoreMessenger.class);
+  private static Logger log = LoggerFactory.getLogger(StoreEventBusInterface.class);
   
   private static String extension;
 
@@ -53,7 +54,7 @@ public abstract class StoreMessenger<M extends Merger> extends AbstractVerticle 
   public void start(Future<Void> future) {
 
     // the extension that starts with a . and is .MIXED by default.
-    extension = Optional.ofNullable(getStoreServiceAddressExtension())
+    extension = Optional.ofNullable(getStoreEventBusInterfaceAddressExtension())
         .map(s -> s.startsWith(".") ? s : "." + s).orElse(".MIXED");
 
     registerAdd();
@@ -68,7 +69,7 @@ public abstract class StoreMessenger<M extends Merger> extends AbstractVerticle 
   }
 
   /**
-   * Publish all the message consumer for the store interface.
+   * Publish all the message consumer for the store event bus interface.
    * The address consists of the {@link AddressConstants} + a specific extension.
    */
   private void publishService() {
@@ -146,6 +147,7 @@ public abstract class StoreMessenger<M extends Merger> extends AbstractVerticle 
           });
           crs.endHandler(v -> {
             msg.reply(chunk);
+            crs.close();
           });
         } else {
           log.error("Could not get chunk", handler.cause());
@@ -293,20 +295,20 @@ public abstract class StoreMessenger<M extends Merger> extends AbstractVerticle 
   }
   
   /**
-   * Override this method to provide the specific Merger to use.
+   * Override this method to provide the specific Merger.
    * 
-   * @return The merger to use or <code>null</code> if merging not supported
+   * @return The merger to use or <code>null</code> if merging is not supported
    */
   protected abstract M getMerger();
   
   /**
    * @return The service address extension for this service. The extension
-   *         should be unique between different storage messenger. The ideal
+   *         should be unique between different storage messengers. The ideal
    *         extension equals the served data type e.g., <i>".XML"</i>. The
-   *         extension should start with a . The used Merger usually restricts
-   *         the served data formats, for example, the XML Merger merges XML
-   *         chunks together.
+   *         extension should start with a '.'. The used Merger usually
+   *         restricts the served data formats, for example, the XML Merger
+   *         merges XML chunks together.
    */
-  protected abstract String getStoreServiceAddressExtension();
+  protected abstract String getStoreEventBusInterfaceAddressExtension();
 
 }
