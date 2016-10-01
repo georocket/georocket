@@ -19,7 +19,7 @@ import io.vertx.core.json.JsonObject;
  * Test {@link DefaultQueryCompiler}
  * @author Michel Kraemer
  */
-public class DefaultQueryCompilerTest {
+public class ChunkQueryCompilerTest {
   private void expectFixture(String fixture) {
     URL u = this.getClass().getResource("fixtures/" + fixture + ".json");
     String fixtureStr;
@@ -41,7 +41,7 @@ public class DefaultQueryCompilerTest {
       throw new RuntimeException(e);
     }
     
-    QueryCompiler compiler = new DefaultQueryCompiler(queryCompilers);
+    QueryCompiler compiler = new ChunkQueryCompiler(queryCompilers);
     JsonObject compiledQuery = compiler.compileQuery(query);
     if (!expected.equals(compiledQuery)) {
       System.out.println(Json.encodePrettily(compiledQuery));
