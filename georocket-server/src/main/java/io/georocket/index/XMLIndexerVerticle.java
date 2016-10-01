@@ -1,13 +1,6 @@
 package io.georocket.index;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.ServiceLoader;
-
 import com.google.common.collect.ImmutableList;
-
 import io.georocket.index.xml.XMLIndexer;
 import io.georocket.index.xml.XMLIndexerFactory;
 import io.georocket.storage.ChunkMeta;
@@ -21,11 +14,17 @@ import io.vertx.core.logging.LoggerFactory;
 import io.vertx.rx.java.RxHelper;
 import rx.Observable;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.ServiceLoader;
+
 /**
  * Background indexing of XML chunks added to the store
  * @author Michel Kraemer
  */
-public class XMLIndexerVerticle extends IndexerVerticle {
+public class XMLIndexerVerticle extends ChunkIndexerVerticle {
   private static Logger log = LoggerFactory.getLogger(IndexerVerticle.class);
 
   @Override
@@ -33,7 +32,7 @@ public class XMLIndexerVerticle extends IndexerVerticle {
     log.info("Launching XML indexer ...");
     super.start(startFuture);
   }
-  
+
   @Override
   protected List<? extends IndexerFactory> createIndexerFactories() {
     // load and copy all indexer factories now and not lazily to avoid
