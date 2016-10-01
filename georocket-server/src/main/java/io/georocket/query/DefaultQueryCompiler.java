@@ -1,25 +1,6 @@
 package io.georocket.query;
 
-import static io.georocket.query.ElasticsearchQueryHelper.boolAddMust;
-import static io.georocket.query.ElasticsearchQueryHelper.boolAddMustNot;
-import static io.georocket.query.ElasticsearchQueryHelper.boolAddShould;
-import static io.georocket.query.ElasticsearchQueryHelper.boolQuery;
-import static io.georocket.query.ElasticsearchQueryHelper.matchAllQuery;
-import static io.georocket.query.ElasticsearchQueryHelper.prefixQuery;
-import static io.georocket.query.ElasticsearchQueryHelper.termQuery;
-
-import java.util.ArrayDeque;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Deque;
-import java.util.ServiceLoader;
-
-import org.antlr.v4.runtime.ANTLRInputStream;
-import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.tree.ParseTreeWalker;
-
 import com.google.common.collect.ImmutableList;
-
 import io.georocket.index.xml.XMLIndexerFactory;
 import io.georocket.query.parser.QueryBaseListener;
 import io.georocket.query.parser.QueryLexer;
@@ -29,18 +10,32 @@ import io.georocket.query.parser.QueryParser.NotContext;
 import io.georocket.query.parser.QueryParser.OrContext;
 import io.georocket.query.parser.QueryParser.QueryContext;
 import io.georocket.query.parser.QueryParser.StringContext;
-import io.georocket.util.PathUtils;
 import io.vertx.core.json.JsonObject;
+import org.antlr.v4.runtime.ANTLRInputStream;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.tree.ParseTreeWalker;
+
+import java.util.ArrayDeque;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.ServiceLoader;
+
+import static io.georocket.query.ElasticsearchQueryHelper.boolAddMust;
+import static io.georocket.query.ElasticsearchQueryHelper.boolAddMustNot;
+import static io.georocket.query.ElasticsearchQueryHelper.boolAddShould;
+import static io.georocket.query.ElasticsearchQueryHelper.boolQuery;
+import static io.georocket.query.ElasticsearchQueryHelper.matchAllQuery;
 
 /**
  * Default implementation of {@link QueryCompiler}
  * @author Michel Kraemer
  */
-public class DefaultQueryCompiler implements QueryCompiler {
+public abstract class DefaultQueryCompiler implements QueryCompiler {
   /**
    * Query compilers for individual properties
    */
-  private final Collection<? extends QueryCompiler> queryCompilers;
+  protected final Collection<? extends QueryCompiler> queryCompilers;
   
   /**
    * Default constructor
@@ -62,32 +57,7 @@ public class DefaultQueryCompiler implements QueryCompiler {
       this.queryCompilers = queryCompilers;
     }
   }
-  
-  /**
-   * Compile a search string
-   * @param search the search string to compile
-   * @param path the path where to perform the search (may be null if the
-   * whole data store should be searched)
-   * @return the compiled query
-   */
-  public JsonObject compileQuery(String search, String path) {
-    JsonObject qb = compileQuery(search);
-    if (path != null && !path.equals("/")) {
-      String prefix = PathUtils.addTrailingSlash(path);
-      
-      JsonObject qi = boolQuery();
-      boolAddShould(qi, termQuery("_id", path));
-      boolAddShould(qi, prefixQuery("_id", prefix));
-      
-      JsonObject qr = boolQuery();
-      boolAddShould(qr, qb);
-      boolAddMust(qr, qi);
-      
-      return qr;
-    }
-    return qb;
-  }
-  
+
   @Override
   public JsonObject compileQuery(String search) {
     if (search == null || search.isEmpty()) {
@@ -115,6 +85,15 @@ public class DefaultQueryCompiler implements QueryCompiler {
   public MatchPriority getQueryPriority(String search) {
     return MatchPriority.MUST;
   }
+
+  /**
+   * Compile a search string
+   * @param search the search string to compile
+   * @param path the path where to perform the search (may be null if the
+   * whole data store should be searched)
+   * @return the compiled query
+   */
+  public abstract JsonObject compileQuery(String search, String path);
   
   /**
    * Handle a string part of a query. Pass it to all query compilers and return
@@ -122,43 +101,8 @@ public class DefaultQueryCompiler implements QueryCompiler {
    * @param str a string part of a query
    * @return a QueryBuilder
    */
-  private JsonObject makeStringQuery(String str) {
-    // general query
-    JsonObject tagsQuery = termQuery("tags", str);
-    
-    // pass on string part to other query compilers
-    JsonObject bqb = null;
-    for (QueryCompiler f : queryCompilers) {
-      MatchPriority mp = f.getQueryPriority(str);
-      if (mp == null) {
-        continue;
-      }
-      
-      // combine queries
-      if (bqb == null && mp != MatchPriority.NONE) {
-        bqb = boolQuery();
-        boolAddShould(bqb, tagsQuery);
-      }
-      switch (mp) {
-      case ONLY:
-        return f.compileQuery(str);
-      case SHOULD:
-        boolAddShould(bqb, f.compileQuery(str));
-        break;
-      case MUST:
-        boolAddMust(bqb, f.compileQuery(str));
-        break;
-      case NONE:
-        break;
-      }
-    }
-    
-    if (bqb == null) {
-      return tagsQuery;
-    }
-    return bqb;
-  }
-  
+  protected abstract JsonObject makeStringQuery(String str);
+
   /**
    * Marker for the current logical operation
    */

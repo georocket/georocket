@@ -1,6 +1,7 @@
 package io.georocket.index;
 
 import io.georocket.constants.AddressConstants;
+import io.georocket.query.ChunkQueryCompiler;
 import io.georocket.query.DefaultQueryCompiler;
 import io.georocket.storage.ChunkMeta;
 import io.georocket.storage.ChunkReadStream;
@@ -281,7 +282,7 @@ public abstract class ChunkIndexerVerticle extends IndexerVerticle {
 
   @Override
   protected DefaultQueryCompiler createQueryCompiler() {
-    return new DefaultQueryCompiler(indexerFactories);
+    return new ChunkQueryCompiler(indexerFactories);
   }
 
   @Override
