@@ -70,7 +70,7 @@ public class ThrowableHelperTest {
    * Test throwable message
    */
   @Test
-  public void testThrowableToMessage_Message() {
+  public void testThrowableToMessage() {
     String expectedMessage = "A Error happen!";
     String defaultMessage = "Oops!";
     
