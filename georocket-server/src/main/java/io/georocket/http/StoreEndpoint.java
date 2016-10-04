@@ -87,7 +87,7 @@ public class StoreEndpoint implements Endpoint {
    */
   private String getStorePath(RoutingContext context) {
     String path = context.normalisedPath();
-    String routePath = context.currentRoute().getPath();
+    String routePath =  context.mountPoint();
     String result = null;
     if (routePath.length() < path.length()) {
       result = path.substring(routePath.length());
