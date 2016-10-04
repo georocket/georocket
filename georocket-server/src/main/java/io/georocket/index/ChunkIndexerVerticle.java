@@ -53,6 +53,13 @@ public abstract class ChunkIndexerVerticle extends IndexerVerticle {
    */
   protected List<? extends IndexerFactory> indexerFactories;
 
+  /**
+   * Constructor. Set addresses according to {@link AddressConstants}
+   */
+  protected ChunkIndexerVerticle() {
+    super(AddressConstants.INDEXER_ADD, AddressConstants.INDEXER_QUERY, AddressConstants.INDEXER_DELETE);
+  }
+
   @Override
   public void start(Future<Void> startFuture) {
     indexerFactories = createIndexerFactories();
@@ -282,21 +289,6 @@ public abstract class ChunkIndexerVerticle extends IndexerVerticle {
   @Override
   protected DefaultQueryCompiler createQueryCompiler() {
     return new DefaultQueryCompiler(indexerFactories);
-  }
-
-  @Override
-  protected String getAddAddress() {
-    return AddressConstants.INDEXER_ADD;
-  }
-
-  @Override
-  protected String getQueryAddress() {
-    return AddressConstants.INDEXER_QUERY;
-  }
-
-  @Override
-  protected String getDeleteAddress() {
-    return AddressConstants.INDEXER_DELETE;
   }
 
   /**

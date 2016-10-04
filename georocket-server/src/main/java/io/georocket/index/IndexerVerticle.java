@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -53,6 +54,13 @@ public abstract class IndexerVerticle extends AbstractVerticle {
   protected static final String INDEX_NAME = "georocket";
 
   /**
+   *  Addresses on Vert.x eventbus for requests
+   */
+  private final String addressAdd;
+  private final String addressQuery;
+  private final String addressDelete;
+
+  /**
    * Runs Elasticsearch
    */
   protected ElasticsearchRunner runner;
@@ -68,9 +76,24 @@ public abstract class IndexerVerticle extends AbstractVerticle {
   protected DefaultQueryCompiler queryCompiler;
   
   /**
-   * True if {@link #ensureMapping(String)}} has been called at least once
+   * HashSet to store if {@link #ensureMapping(String)}} has been
+   * called at least once for particular Elasticsearch type.
+   * If type entry exists in HashSet, it was called.
    */
-  private boolean mappingEnsured;
+  private HashSet<String> mappingEnsured;
+
+  /**
+   * Constructor. Set all addresses on Vert.x eventbus.
+   * @param addressAdd address on Vert.x eventbus for add operations
+   * @param addressQuery address on Vert.x eventbus for query operations
+   * @param addressDelete address on Vert.x eventbus for delete operations
+   */
+  protected IndexerVerticle(String addressAdd, String addressQuery, String addressDelete) {
+    this.addressAdd = addressAdd;
+    this.addressQuery = addressQuery;
+    this.addressDelete = addressDelete;
+    mappingEnsured = new HashSet<>();
+  }
   
   @Override
   public void start(Future<Void> startFuture) {
@@ -177,7 +200,7 @@ public abstract class IndexerVerticle extends AbstractVerticle {
    * Register consumer for add messages
    */
   protected void registerAdd() {
-    vertx.eventBus().<JsonObject>consumer(getAddAddress())
+    vertx.eventBus().<JsonObject>consumer(addressAdd)
       .toObservable()
       .buffer(BUFFER_TIMESPAN, TimeUnit.MILLISECONDS, MAX_ADD_REQUESTS,
           RxHelper.scheduler(getVertx()))
@@ -223,7 +246,7 @@ public abstract class IndexerVerticle extends AbstractVerticle {
    * Register consumer for delete messages
    */
   protected void registerDelete() {
-    vertx.eventBus().<JsonObject>consumer(getDeleteAddress())
+    vertx.eventBus().<JsonObject>consumer(addressDelete)
       .toObservable()
       .subscribe(msg -> {
         onDelete(msg.body()).subscribe(v -> {
@@ -239,7 +262,7 @@ public abstract class IndexerVerticle extends AbstractVerticle {
    * Register consumer for queries
    */
   protected void registerQuery() {
-    vertx.eventBus().<JsonObject>consumer(getQueryAddress())
+    vertx.eventBus().<JsonObject>consumer(addressQuery)
       .toObservable()
       .subscribe(msg -> {
         onQuery(msg.body()).subscribe(reply -> {
@@ -283,10 +306,10 @@ public abstract class IndexerVerticle extends AbstractVerticle {
    * been created or if it already exists
    */
   protected Observable<Void> ensureMapping(String type) {
-    if (mappingEnsured) {
+    if (mappingEnsured.contains(type)) {
       return Observable.just(null);
     }
-    mappingEnsured = true;
+    mappingEnsured.add(type);
 
     // check if index exists
     return client.typeExists(type).flatMap(exists -> {
@@ -402,25 +425,4 @@ public abstract class IndexerVerticle extends AbstractVerticle {
    * @return Collection of {@link QueryCompiler}
    */
   protected abstract DefaultQueryCompiler createQueryCompiler();
-
-  /**
-   * Return address on Vert.x eventbus this verticle accepts requests
-   * for add operations.
-   * @return address for add operation
-   */
-  protected abstract String getAddAddress();
-
-  /**
-   * Return address on Vert.x eventbus this verticle accepts requests
-   * for query operations.
-   * @return address for query operation
-   */
-  protected abstract String getQueryAddress();
-
-  /**
-   * Return address on Vert.x eventbus this verticle accepts requests
-   * for delete operations.
-   * @return address for delete operation
-   */
-  protected abstract String getDeleteAddress();
 }
