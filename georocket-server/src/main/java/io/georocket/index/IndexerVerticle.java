@@ -83,7 +83,7 @@ public abstract class IndexerVerticle extends AbstractVerticle {
   private HashSet<String> mappingEnsured;
 
   /**
-   * Constructor. Set all addresses on Vert.x eventbus.
+   * Constructor. Set all addresses on Vert.x eventbus
    * @param addressAdd address on Vert.x eventbus for add operations
    * @param addressQuery address on Vert.x eventbus for query operations
    * @param addressDelete address on Vert.x eventbus for delete operations
@@ -225,7 +225,7 @@ public abstract class IndexerVerticle extends AbstractVerticle {
           // this bad. it will unsubscribe the consumer from the eventbus!
           // should never happen anyhow, if it does something else has
           // completely gone wrong
-          log.fatal("Could not index chunks", e);
+          log.fatal("Could not index document", e);
         }
         
         @Override
@@ -234,7 +234,7 @@ public abstract class IndexerVerticle extends AbstractVerticle {
             .subscribe(v -> {
               // should never happen
             }, err -> {
-              log.error("Could not index chunks", err);
+              log.error("Could not index document", err);
               messages.forEach(msg -> msg.fail(throwableToCode(err), err.getMessage()));
               doRequest();
             }, this::doRequest);
@@ -252,7 +252,7 @@ public abstract class IndexerVerticle extends AbstractVerticle {
         onDelete(msg.body()).subscribe(v -> {
           msg.reply(v);
         }, err -> {
-          log.error("Could not delete chunks", err);
+          log.error("Could not delete document", err);
           msg.fail(throwableToCode(err), err.getMessage());
         });
       });
@@ -275,27 +275,27 @@ public abstract class IndexerVerticle extends AbstractVerticle {
   }
 
   /**
-   * Will be called before the indexer starts deleting chunks
+   * Will be called before the indexer starts deleting documents
    * @param timeStamp the time when the indexer has started deleting
-   * @param chunkCount the number of chunks to delete
+   * @param count the number of documents to delete
    */
-  protected void onDeletingStarted(long timeStamp, int chunkCount) {
-    log.info("Deleting " + chunkCount + " chunks from index ...");
+  protected void onDeletingStarted(long timeStamp, int count) {
+    log.info("Deleting " + count + " documents from index ...");
   }
 
   /**
-   * Will be called after the indexer has finished deleting chunks
-   * @param duration the time it took to delete the chunks
-   * @param chunkCount the number of deleted chunks
+   * Will be called after the indexer has finished deleting documents
+   * @param duration the time it took to delete the documents
+   * @param count the number of deleted documents
    * @param errorMessage an error message if the process has failed
    * or <code>null</code> if everything was successful
    */
-  protected void onDeletingFinished(long duration, int chunkCount, String errorMessage) {
+  protected void onDeletingFinished(long duration, int count, String errorMessage) {
     if (errorMessage != null) {
-      log.error("Deleting chunks failed: " + errorMessage);
+      log.error("Deleting documents failed: " + errorMessage);
     } else {
-      log.info("Finished deleting " + chunkCount +
-          " chunks from index in " + duration + " ms");
+      log.info("Finished deleting " + count +
+          " documents from index in " + duration + " ms");
     }
   }
 
@@ -366,34 +366,34 @@ public abstract class IndexerVerticle extends AbstractVerticle {
   /**
    * Will be called before the indexer starts the indexing process
    * @param timeStamp the time when the indexer has started the process
-   * @param chunkCount the number of chunks to index
+   * @param count the number of documents to index
    */
-  protected void onIndexingStarted(long timeStamp, int chunkCount) {
-    log.info("Indexing " + chunkCount + " chunks");
+  protected void onIndexingStarted(long timeStamp, int count) {
+    log.info("Indexing " + count + " documents");
   }
 
   /**
    * Will be called after the indexer has finished the indexing process
    * @param duration the time passed during indexing
-   * @param chunkImportIds the import IDs of the chunks that were processed by
-   * the indexer. This list may include IDs of chunks whose indexing failed.
+   * @param importIds the import IDs of the documents that were processed by
+   * the indexer. This list may include IDs of documents whose indexing failed.
    * @param errorMessage an error message if the process has failed
    * or <code>null</code> if everything was successful
    */
-  protected void onIndexingFinished(long duration, List<String> chunkImportIds,
+  protected void onIndexingFinished(long duration, List<String> importIds,
       String errorMessage) {
     if (errorMessage != null) {
       log.error("Indexing failed: " + errorMessage);
     } else {
-      log.info("Finished indexing " + chunkImportIds.size() + " chunks in " +
+      log.info("Finished indexing " + importIds.size() + " documents in " +
           duration + " " + "ms");
     }
   }
 
   /**
-   * Will be called when chunks should be added to the index
+   * Will be called when documents should be added to the index
    * @param messages the list of add messages that contain the paths to
-   * the chunks to be indexed
+   * the documents to be indexed
    * @return an observable that completes when the operation has finished
    */
   protected abstract Observable<Void> onAdd(List<Message<JsonObject>> messages);
@@ -406,9 +406,9 @@ public abstract class IndexerVerticle extends AbstractVerticle {
   abstract protected Observable<JsonObject> onQuery(JsonObject body);
 
   /**
-   * Deletes chunks from the index
-   * @param body the message containing the paths to the chunks to delete
-   * @return an observable that emits a single item when the chunks have
+   * Deletes documents from the index
+   * @param body the message containing the paths to the documents to delete
+   * @return an observable that emits a single item when the documents have
    * been deleted successfully
    */
   protected abstract Observable<Void> onDelete(JsonObject body);
