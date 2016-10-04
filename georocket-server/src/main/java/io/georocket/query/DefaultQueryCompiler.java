@@ -40,7 +40,7 @@ public class DefaultQueryCompiler implements QueryCompiler {
   /**
    * Query compilers for individual properties
    */
-  private final Collection<? extends QueryCompiler> queryCompilers;
+  protected final Collection<? extends QueryCompiler> queryCompilers;
   
   /**
    * Default constructor
