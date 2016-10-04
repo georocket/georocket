@@ -122,7 +122,7 @@ public class DefaultQueryCompiler implements QueryCompiler {
    * @param str a string part of a query
    * @return a QueryBuilder
    */
-  private JsonObject makeStringQuery(String str) {
+  protected JsonObject makeStringQuery(String str) {
     // general query
     JsonObject tagsQuery = termQuery("tags", str);
     
