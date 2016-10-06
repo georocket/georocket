@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicLong;
 
+import io.georocket.util.StoreSummaryBuilder;
 import org.bson.Document;
 
 import com.google.common.base.Preconditions;
@@ -125,6 +126,27 @@ public class MongoDBStore extends IndexedStore {
         }
       });
     });
+  }
+
+  @Override
+  public void getStoreSummery(Handler<AsyncResult<JsonObject>> handler) {
+    StoreSummaryBuilder summaryBuilder = new StoreSummaryBuilder();
+
+    getGridFS().find().forEach(file -> {
+        summaryBuilder.put(
+          file.getFilename(),
+          file.getChunkSize(),
+          file.getUploadDate()
+        );
+      }, (v, t) -> {
+        context.runOnContext(v2 -> {
+          if (t != null) {
+            handler.handle(Future.failedFuture(t));
+          } else {
+            handler.handle(Future.succeededFuture(summaryBuilder.finishBuilding()));
+          }
+        });
+      });
   }
 
   @Override
