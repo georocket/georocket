@@ -136,7 +136,7 @@ public class MongoDBStore extends IndexedStore {
     getGridFS().find().forEach(file -> {
         summaryBuilder.put(
           extractLayer(file.getFilename()),
-          file.getChunkSize(),
+          file.getLength(),
           file.getUploadDate().getTime()
         );
       }, (v, t) -> {
