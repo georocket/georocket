@@ -1,8 +1,10 @@
 package io.georocket.storage.file;
 
 import java.io.FileNotFoundException;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Queue;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.google.common.base.Preconditions;
 
@@ -10,6 +12,7 @@ import io.georocket.constants.ConfigConstants;
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.indexed.IndexedStore;
 import io.georocket.util.PathUtils;
+import io.georocket.util.StoreSummaryBuilder;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -155,8 +158,46 @@ public class FileStore extends IndexedStore {
 
   @Override
   public void getStoreSummery(Handler<AsyncResult<JsonObject>> handler) {
-    handler.handle(Future.succeededFuture(new JsonObject()));
-    // TODO: start here
+    StoreSummaryBuilder summaryBuilder = new StoreSummaryBuilder();
+    AtomicInteger counter = new AtomicInteger(0);
+
+    vertx.fileSystem().readDir(root, h -> {
+      if (h.failed()) {
+        log.error("Failed to retrieve the root content", h.cause());
+        handler.handle(Future.failedFuture(h.cause()));
+      } else {
+        h.result().forEach(path -> {
+          counter.incrementAndGet();
+
+          vertx.fileSystem().props(path, r -> {
+            if (r.failed()) {
+              log.error("Failed to retrieve the file properties", r.cause());
+              handler.handle(Future.failedFuture(r.cause()));
+            } else {
+              FileProps props = r.result();
+              String layer;
+              if (props.isDirectory()) {
+                layer = "/";
+              } else {
+                layer = extractLayer(path);
+              }
+              long changeDate = props.lastModifiedTime();
+              long size = props.size();
+
+              summaryBuilder.put(layer, size, changeDate, 0);
+
+              if (counter.decrementAndGet() == 0) {
+                handler.handle(Future.succeededFuture(summaryBuilder.finishBuilding()));
+              }
+            }
+          });
+        });
+      }
+    });
+  }
+
+  private String extractLayer(String path) {
+    return path.substring(root.length());
   }
 
   @Override

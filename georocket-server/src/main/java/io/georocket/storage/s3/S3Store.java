@@ -19,6 +19,7 @@ import io.georocket.constants.ConfigConstants;
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.indexed.IndexedStore;
 import io.georocket.util.PathUtils;
+import io.georocket.util.StoreSummaryBuilder;
 import io.georocket.util.io.DelegateChunkReadStream;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -249,8 +250,46 @@ public class S3Store extends IndexedStore {
 
   @Override
   public void getStoreSummery(Handler<AsyncResult<JsonObject>> handler) {
-    handler.handle(Future.succeededFuture(new JsonObject()));
-    // TODO: start here
+
+
+    vertx.<JsonObject>executeBlocking(f -> {
+      ListObjectsV2Request req = new ListObjectsV2Request().withBucketName(bucket);
+      ListObjectsV2Result result;
+      StoreSummaryBuilder summaryBuilder = new StoreSummaryBuilder();
+
+      do {
+        result = getS3Client().listObjectsV2(req);
+
+        for (S3ObjectSummary objectSummary : result.getObjectSummaries()) {
+          long size = objectSummary.getSize();
+          long lastChange = objectSummary.getLastModified().getTime();
+          String layer = extractLayer(objectSummary.getKey());
+
+          summaryBuilder.put(layer, size, lastChange);
+        }
+
+        req.setContinuationToken(result.getNextContinuationToken());
+      } while (result.isTruncated());
+
+      f.complete(summaryBuilder.finishBuilding());
+    }, handler);
+  }
+
+  private static String extractLayer(String name) {
+    // I expect exactly two types of names
+    // 1) layer/id
+    // 2) id
+    // One with two slashes and one only with one.
+    String layer;
+    if (name.contains("/")) {
+      String[] parts = name.split("/");
+
+      layer = "/" + parts[0];
+    } else {
+      layer = "/";
+    }
+
+    return layer;
   }
 
   @Override

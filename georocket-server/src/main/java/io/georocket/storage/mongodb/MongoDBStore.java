@@ -1,6 +1,7 @@
 package io.georocket.storage.mongodb;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -134,9 +135,9 @@ public class MongoDBStore extends IndexedStore {
 
     getGridFS().find().forEach(file -> {
         summaryBuilder.put(
-          file.getFilename(),
+          extractLayer(file.getFilename()),
           file.getChunkSize(),
-          file.getUploadDate()
+          file.getUploadDate().getTime()
         );
       }, (v, t) -> {
         context.runOnContext(v2 -> {
@@ -147,6 +148,21 @@ public class MongoDBStore extends IndexedStore {
           }
         });
       });
+  }
+
+  private static String extractLayer(String name) {
+    // I expect exactly two types of names
+    // 1) /layer/id
+    // 2) /id
+    // One with two slashes and one only with one.
+    String parts[] = name.split("/");
+
+    // TODO: currently the names are prefixed with "/store"
+    // TODO: pull from georocket upstream master and decrement all numbers by one
+    String layer = parts.length == 3
+      ? "/" : parts.length == 4 ? "/" + parts[2] : null;
+
+    return layer;
   }
 
   @Override
