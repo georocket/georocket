@@ -116,6 +116,12 @@ public class HDFSStore extends IndexedStore {
     }, handler);
   }
 
+  @Override
+  public void getStoreSummery(Handler<AsyncResult<JsonObject>> handler) {
+    handler.handle(Future.succeededFuture(new JsonObject()));
+    // TODO: start here
+  }
+
   /**
    * Create a new file on HDFS
    * @param filename the file name

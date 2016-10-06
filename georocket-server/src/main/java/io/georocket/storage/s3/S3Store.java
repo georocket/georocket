@@ -248,6 +248,12 @@ public class S3Store extends IndexedStore {
   }
 
   @Override
+  public void getStoreSummery(Handler<AsyncResult<JsonObject>> handler) {
+    handler.handle(Future.succeededFuture(new JsonObject()));
+    // TODO: start here
+  }
+
+  @Override
   protected void doDeleteChunks(Queue<String> paths, Handler<AsyncResult<Void>> handler) {
     if (paths.isEmpty()) {
       handler.handle(Future.succeededFuture());

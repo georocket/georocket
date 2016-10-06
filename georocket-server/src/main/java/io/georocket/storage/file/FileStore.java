@@ -20,6 +20,7 @@ import io.vertx.core.file.FileProps;
 import io.vertx.core.file.FileSystem;
 import io.vertx.core.file.FileSystemProps;
 import io.vertx.core.file.OpenOptions;
+import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.rx.java.ObservableFuture;
@@ -150,6 +151,12 @@ public class FileStore extends IndexedStore {
         handler.handle(Future.succeededFuture(size));
       }
     });
+  }
+
+  @Override
+  public void getStoreSummery(Handler<AsyncResult<JsonObject>> handler) {
+    handler.handle(Future.succeededFuture(new JsonObject()));
+    // TODO: start here
   }
 
   @Override
