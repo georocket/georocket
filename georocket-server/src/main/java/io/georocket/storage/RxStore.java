@@ -126,7 +126,7 @@ public class RxStore implements Store {
   }
 
   /**
-   * Observable version of {@ling #getStoreSummery(Handler)}
+   * Observable version of {@link #getStoreSummery(Handler)}
    * @return on observable that emits the store summery.
    */
   public Observable<JsonObject> getStoreSummeryObservable() {
