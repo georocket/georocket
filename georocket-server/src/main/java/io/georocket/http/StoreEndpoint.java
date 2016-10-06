@@ -74,7 +74,7 @@ public class StoreEndpoint implements Endpoint {
   @Override
   public Router createRouter() {
     Router router = Router.router(vertx);
-    router.head("/").handler(this::onHead);
+    router.get("/layers").handler(this::onHead);
     router.get("/*").handler(this::onGet);
     router.post("/*").handler(this::onPost);
     router.delete("/*").handler(this::onDelete);
