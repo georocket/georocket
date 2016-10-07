@@ -74,12 +74,29 @@ public class StoreEndpoint implements Endpoint {
   @Override
   public Router createRouter() {
     Router router = Router.router(vertx);
+    router.get("/layers").handler(this::onHead);
     router.get("/*").handler(this::onGet);
     router.post("/*").handler(this::onPost);
     router.delete("/*").handler(this::onDelete);
     return router;
   }
-  
+
+  /**
+   * Handle HEAD requests to get all meta information of the store.
+   * @param context the routing context
+   */
+  private void onHead(RoutingContext context) {
+    HttpServerResponse response = context.response();
+
+    store.getStoreSummeryObservable()
+      .subscribe(summary -> {
+        response.setStatusCode(200).end(summary.toString());
+      }, err -> {
+        log.error("Handle HEAD request failed", err);
+        response.setStatusCode(throwableToCode(err)).end(throwableToMessage(err, ""));
+      });
+  }
+
   /**
    * Get absolute data store path from request
    * @param context the current routing context

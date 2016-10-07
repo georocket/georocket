@@ -2,9 +2,13 @@ package io.georocket.storage;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
+import io.vertx.core.json.JsonObject;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
+import javafx.collections.ObservableMap;
 import rx.Observable;
+
+import java.util.Map;
 
 /**
  * Wraps around {@link Store} and adds methods to be used with RxJava
@@ -105,7 +109,7 @@ public class RxStore implements Store {
   public void getSize(Handler<AsyncResult<Long>> handler) {
     delegate.getSize(handler);
   }
-  
+
   /**
    * Observable version of {@link #getSize(Handler)}
    * @return an observable that will emit the store's current size in bytes
@@ -113,6 +117,21 @@ public class RxStore implements Store {
   public Observable<Long> getSizeObservable() {
     ObservableFuture<Long> o = RxHelper.observableFuture();
     getSize(o.toHandler());
+    return o;
+  }
+
+  @Override
+  public void getStoreSummery(Handler<AsyncResult<JsonObject>> handler) {
+    delegate.getStoreSummery(handler);
+  }
+
+  /**
+   * Observable version of {@link #getStoreSummery(Handler)}
+   * @return on observable that emits the store summery.
+   */
+  public Observable<JsonObject> getStoreSummeryObservable() {
+    ObservableFuture<JsonObject> o = RxHelper.observableFuture();
+    getStoreSummery(o.toHandler());
     return o;
   }
 }

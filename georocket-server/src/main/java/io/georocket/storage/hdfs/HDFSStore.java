@@ -4,8 +4,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Paths;
+import java.util.Date;
 import java.util.Queue;
 
+import io.georocket.util.StoreSummaryBuilder;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -13,6 +16,7 @@ import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.FsStatus;
+import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
 
 import com.google.common.base.Preconditions;
@@ -26,6 +30,7 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
+import org.apache.hadoop.fs.RemoteIterator;
 
 /**
  * Stores chunks on HDFS
@@ -114,6 +119,44 @@ public class HDFSStore extends IndexedStore {
         f.fail(e);
       }
     }, handler);
+  }
+
+  @Override
+  public void getStoreSummery(Handler<AsyncResult<JsonObject>> handler) {
+    StoreSummaryBuilder summaryBuilder = new StoreSummaryBuilder();
+
+    vertx.<JsonObject>executeBlocking(f -> {
+      try {
+        synchronized (HDFSStore.this) {
+          FileSystem fs = getFS();
+          RemoteIterator<LocatedFileStatus> files = fs.listFiles(new Path(root), false);
+
+          while (files.hasNext()) {
+            LocatedFileStatus status = files.next();
+            Path filePath = status.getPath();
+            long modificationTime = status.getModificationTime();
+            long size = status.getBlockSize();
+
+            String layer;
+            if (status.isDirectory()) {
+              layer = extractLayer(filePath);
+            } else {
+              layer = "/";
+            }
+
+            summaryBuilder.put(layer, size, modificationTime, 0);
+          }
+
+          f.complete(summaryBuilder.finishBuilding());
+        }
+      } catch (IOException e) {
+        f.fail(e);
+      }
+    }, handler);
+  }
+
+  private String extractLayer(Path path) {
+    return path.toString().substring(root.length());
   }
 
   /**
