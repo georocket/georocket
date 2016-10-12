@@ -118,17 +118,17 @@ public class RxStore implements Store {
   }
 
   @Override
-  public void getStoreSummery(Handler<AsyncResult<JsonObject>> handler) {
-    delegate.getStoreSummery(handler);
+  public void getStoreSummary(Handler<AsyncResult<JsonObject>> handler) {
+    delegate.getStoreSummary(handler);
   }
 
   /**
-   * Observable version of {@link #getStoreSummery(Handler)}
+   * Observable version of {@link #getStoreSummary(Handler)}
    * @return on observable that emits the store summary
    */
-  public Observable<JsonObject> getStoreSummeryObservable() {
+  public Observable<JsonObject> getStoreSummaryObservable() {
     ObservableFuture<JsonObject> o = RxHelper.observableFuture();
-    getStoreSummery(o.toHandler());
+    getStoreSummary(o.toHandler());
     return o;
   }
 }

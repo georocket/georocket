@@ -156,7 +156,7 @@ public class FileStore extends IndexedStore {
   }
 
   @Override
-  public void getStoreSummery(Handler<AsyncResult<JsonObject>> handler) {
+  public void getStoreSummary(Handler<AsyncResult<JsonObject>> handler) {
     StoreSummaryBuilder summaryBuilder = new StoreSummaryBuilder();
     AtomicInteger counter = new AtomicInteger(0);
 

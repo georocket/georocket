@@ -89,7 +89,7 @@ public class StoreEndpoint implements Endpoint {
   private void onHead(RoutingContext context) {
     HttpServerResponse response = context.response();
 
-    store.getStoreSummeryObservable()
+    store.getStoreSummaryObservable()
       .subscribe(summary -> {
         response.setStatusCode(200).end(summary.toString());
       }, err -> {

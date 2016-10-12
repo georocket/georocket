@@ -56,5 +56,5 @@ public interface Store {
    * Get the store's meta data
    * @param handler will be called when the meta data has been generated
    */
-  void getStoreSummery(Handler<AsyncResult<JsonObject>> handler);
+  void getStoreSummary(Handler<AsyncResult<JsonObject>> handler);
 }

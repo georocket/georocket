@@ -249,9 +249,7 @@ public class S3Store extends IndexedStore {
   }
 
   @Override
-  public void getStoreSummery(Handler<AsyncResult<JsonObject>> handler) {
-
-
+  public void getStoreSummary(Handler<AsyncResult<JsonObject>> handler) {
     vertx.<JsonObject>executeBlocking(f -> {
       ListObjectsV2Request req = new ListObjectsV2Request().withBucketName(bucket);
       ListObjectsV2Result result;

@@ -129,7 +129,7 @@ public class MongoDBStore extends IndexedStore {
   }
 
   @Override
-  public void getStoreSummery(Handler<AsyncResult<JsonObject>> handler) {
+  public void getStoreSummary(Handler<AsyncResult<JsonObject>> handler) {
     StoreSummaryBuilder summaryBuilder = new StoreSummaryBuilder();
 
     getGridFS().find().forEach(file -> {
