@@ -7,7 +7,6 @@ import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
 import rx.Observable;
 
-
 /**
  * Wraps around {@link Store} and adds methods to be used with RxJava
  * @author Michel Kraemer

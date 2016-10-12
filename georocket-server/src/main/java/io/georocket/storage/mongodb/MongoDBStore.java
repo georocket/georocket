@@ -1,7 +1,6 @@
 package io.georocket.storage.mongodb;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicLong;
 

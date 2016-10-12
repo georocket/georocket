@@ -4,8 +4,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Paths;
-import java.util.Date;
 import java.util.Queue;
 
 import io.georocket.util.StoreSummaryBuilder;

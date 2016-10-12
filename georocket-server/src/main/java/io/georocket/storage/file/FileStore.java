@@ -1,7 +1,6 @@
 package io.georocket.storage.file;
 
 import java.io.FileNotFoundException;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicInteger;
