@@ -82,7 +82,8 @@ public class StoreEndpoint implements Endpoint {
   }
 
   /**
-   * Handle HEAD requests to get all meta information of the store.
+   * Handle HEAD requests to get the store's meta data
+   * TODO Does not really handle HEAD request but GET on /layers
    * @param context the routing context
    */
   private void onHead(RoutingContext context) {
@@ -92,7 +93,7 @@ public class StoreEndpoint implements Endpoint {
       .subscribe(summary -> {
         response.setStatusCode(200).end(summary.toString());
       }, err -> {
-        log.error("Handle HEAD request failed", err);
+        log.error("Unable to handle HEAD request", err);
         response.setStatusCode(throwableToCode(err)).end(throwableToMessage(err, ""));
       });
   }

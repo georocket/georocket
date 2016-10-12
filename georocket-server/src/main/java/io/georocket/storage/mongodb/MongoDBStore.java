@@ -133,20 +133,17 @@ public class MongoDBStore extends IndexedStore {
     StoreSummaryBuilder summaryBuilder = new StoreSummaryBuilder();
 
     getGridFS().find().forEach(file -> {
-        summaryBuilder.put(
-          extractLayer(file.getFilename()),
-          file.getLength(),
-          file.getUploadDate().getTime()
-        );
-      }, (v, t) -> {
-        context.runOnContext(v2 -> {
-          if (t != null) {
-            handler.handle(Future.failedFuture(t));
-          } else {
-            handler.handle(Future.succeededFuture(summaryBuilder.finishBuilding()));
-          }
-        });
+      summaryBuilder.put(extractLayer(file.getFilename()),
+          file.getLength(), file.getUploadDate().getTime());
+    }, (v, t) -> {
+      context.runOnContext(v2 -> {
+        if (t != null) {
+          handler.handle(Future.failedFuture(t));
+        } else {
+          handler.handle(Future.succeededFuture(summaryBuilder.finishBuilding()));
+        }
       });
+    });
   }
 
   private static String extractLayer(String name) {

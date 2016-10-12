@@ -53,8 +53,8 @@ public interface Store {
   void getSize(Handler<AsyncResult<Long>> handler);
 
   /**
-   * Get the store's current meta information's.
-   * @param handler will be called when the data has been calculated
+   * Get the store's meta data
+   * @param handler will be called when the meta data has been generated
    */
   void getStoreSummery(Handler<AsyncResult<JsonObject>> handler);
 }
