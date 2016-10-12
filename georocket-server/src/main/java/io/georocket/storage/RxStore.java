@@ -5,10 +5,8 @@ import io.vertx.core.Handler;
 import io.vertx.core.json.JsonObject;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
-import javafx.collections.ObservableMap;
 import rx.Observable;
 
-import java.util.Map;
 
 /**
  * Wraps around {@link Store} and adds methods to be used with RxJava
