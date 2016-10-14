@@ -1,5 +1,6 @@
 package io.georocket;
 
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
@@ -90,10 +91,11 @@ public class ImporterVerticle extends AbstractVerticle {
     // get tags
     JsonArray tagsArr = body.getJsonArray("tags");
     List<String> tags = tagsArr != null ? tagsArr.stream().flatMap(o -> o != null ?
-        Stream.of(o.toString()) : Stream.of()).collect(Collectors.toList()) : null;
+        Stream.of(o.toString()) : Stream.of()).collect(Collectors.toList()) : new ArrayList<String>();
     
     // generate ID and timestamp for this import
     String importId = UUID.randomUUID().toString();
+    tags.add(importId);
     Date timeStamp = Calendar.getInstance().getTime();
 
     onImportingStarted(importId, filepath, layer, timeStamp.getTime());
