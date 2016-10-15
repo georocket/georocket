@@ -98,7 +98,7 @@ println "TEST GeoRocket with S3 back-end ..."
 waitHttp("http://s3:8000", "GET", 403)
 run("s3cmd mb s3://georocket")
 runTest("georocket_s3")
-objects = run("s3cmd ls s3://georocket/store/", null, true).split('\n')
+objects = run("s3cmd ls s3://georocket/", null, true).split('\n')
 if (objects.length != expectedNode.children().size()) {
     println("FAIL Expected ${expectedNode.children().size()} objects in "
         + "S3. Got ${objects.length}.")
@@ -111,7 +111,7 @@ waitHttp("http://hdfs:50070", "GET")
 run("/usr/local/hadoop/bin/hdfs dfsadmin -safemode get", null, false, 20)
 run("/usr/local/hadoop/bin/hdfs dfsadmin -safemode wait")
 runTest("georocket_hdfs")
-hdfsfiles = run("/usr/local/hadoop/bin/hdfs dfs -ls /georocket/store/", null, true).split('\n')
+hdfsfiles = run("/usr/local/hadoop/bin/hdfs dfs -ls /georocket/", null, true).split('\n')
 if (hdfsfiles.length - 1 != expectedNode.children().size()) {
     println("FAIL Expected ${expectedNode.children().size()} files in "
         + "HDFS. Got ${hdfsfiles.length - 1}.")
