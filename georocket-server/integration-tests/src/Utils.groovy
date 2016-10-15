@@ -6,6 +6,13 @@ import org.apache.commons.exec.Executor
 import org.apache.commons.exec.PumpStreamHandler
 
 class Utils {
+    private static final RED = '\033[0;31m'
+    private static final GREEN = '\033[0;32m'
+    private static final YELLOW = '\033[0;33m'
+    private static final MAGENTA = '\033[0;35m'
+    private static final CYAN = '\033[0;36m'
+    private static final NC = '\033[0m'
+
     /**
      * Run a command. If the command fails exit the program with the same
      * exit code.
@@ -18,7 +25,7 @@ class Utils {
     static String run(String command, File workingDirectory = null,
             boolean captureOutput = false, int retries = 0) {
         while (true) {
-            println("RUN  $command")
+            logExec(command)
 
             CommandLine cmdLine = CommandLine.parse(command)
             Executor executor = new DefaultExecutor()
@@ -40,13 +47,13 @@ class Utils {
             int exitValue = executor.execute(cmdLine)
             if (exitValue != 0) {
                 if (retries > 0) {
-                    println("WARN Command '${command}' failed with exit code $exitValue")
-                    println("WARN Retrying")
+                    logWarn("Command '${command}' failed with exit code $exitValue")
+                    logWarn("Retrying")
                     retries--
                     Thread.sleep(1000)
                     continue
                 } else {
-                    println("FAIL Command '${command}' failed with exit code $exitValue")
+                    logFail("Command '${command}' failed with exit code $exitValue")
                     System.exit(exitValue)
                 }
             }
@@ -67,7 +74,7 @@ class Utils {
      */
     static boolean waitHttp(String url, String method = 'HEAD',
             Integer expectedStatusCode = null) {
-        println "WAIT $url"
+        logWait(url)
 
         for (int i = 0; i < 60; ++i) {
             try {
@@ -87,7 +94,35 @@ class Utils {
             }
             Thread.sleep(1000)
         }
-        println "FAIL $url not available within 60 seconds"
+        logFail("$url not available within 60 seconds")
         System.exit(1)
+    }
+
+    static void logExec(String msg) {
+        println("[${CYAN}EXEC${NC}] $msg")
+    }
+
+    static void logWait(String msg) {
+        println("[${CYAN}WAIT${NC}] $msg")
+    }
+
+    static void logWarn(String msg) {
+        println("[${YELLOW}WARN${NC}] $msg")
+    }
+
+    static void logFail(String msg) {
+        println("[${RED}FAIL${NC}] $msg")
+    }
+
+    static void logTest(String msg) {
+        println("[${MAGENTA}TEST${NC}] $msg")
+    }
+
+    static void logOK(String msg) {
+        println("[${GREEN} OK ${NC}] $msg")
+    }
+
+    static logSuccess() {
+        logOK("Success.")
     }
 }
