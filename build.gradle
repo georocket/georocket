@@ -28,7 +28,7 @@ subprojects {
 
         plugins.withType(CheckstylePlugin) {
             checkstyle {
-                toolVersion = "7.1"
+                toolVersion = "7.1.2"
                 configFile new File(checkstyleConfigDir, 'checkstyle.xml')
                 configProperties.checkstyleConfigDir = checkstyleConfigDir
             }
