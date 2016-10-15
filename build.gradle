@@ -120,7 +120,7 @@ subprojects {
     }
 
     ext {
-        vertxVersion = '3.3.2'
+        vertxVersion = '3.3.3'
     }
 }
 
