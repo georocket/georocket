@@ -1,12 +1,6 @@
 package io.georocket.storage.file;
 
-import java.io.FileNotFoundException;
-import java.nio.file.Paths;
-import java.util.Queue;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import com.google.common.base.Preconditions;
-
 import io.georocket.constants.ConfigConstants;
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.indexed.IndexedStore;
@@ -28,6 +22,11 @@ import io.vertx.core.logging.LoggerFactory;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
 import rx.Observable;
+
+import java.io.FileNotFoundException;
+import java.nio.file.Paths;
+import java.util.Queue;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Stores chunks on the file system
@@ -176,9 +175,9 @@ public class FileStore extends IndexedStore {
               FileProps props = r.result();
               String layer;
               if (props.isDirectory()) {
-                layer = "/";
-              } else {
                 layer = extractLayer(path);
+              } else {
+                layer = "/";
               }
               long changeDate = props.lastModifiedTime();
               long size = props.size();
