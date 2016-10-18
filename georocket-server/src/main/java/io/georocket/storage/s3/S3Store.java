@@ -1,9 +1,5 @@
 package io.georocket.storage.s3;
 
-import java.net.URL;
-import java.util.Date;
-import java.util.Queue;
-
 import com.amazonaws.ClientConfiguration;
 import com.amazonaws.ClientConfigurationFactory;
 import com.amazonaws.HttpMethod;
@@ -14,7 +10,6 @@ import com.amazonaws.services.s3.model.ListObjectsV2Request;
 import com.amazonaws.services.s3.model.ListObjectsV2Result;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.google.common.base.Preconditions;
-
 import io.georocket.constants.ConfigConstants;
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.indexed.IndexedStore;
@@ -32,6 +27,10 @@ import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+
+import java.net.URL;
+import java.util.Date;
+import java.util.Queue;
 
 /**
  * Stores chunks on Amazon S3
@@ -274,20 +273,9 @@ public class S3Store extends IndexedStore {
   }
 
   private static String extractLayer(String name) {
-    // I expect exactly two types of names
-    // 1) layer/id
-    // 2) id
-    // One with two slashes and one only with one.
-    String layer;
-    if (name.contains("/")) {
-      String[] parts = name.split("/");
-
-      layer = "/" + parts[0];
-    } else {
-      layer = "/";
-    }
-
-    return layer;
+    int lastSlashIndex = name.lastIndexOf('/');
+    String layer = name.substring(0, lastSlashIndex + 1);
+    return PathUtils.addLeadingSlash(layer);
   }
 
   @Override
