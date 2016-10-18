@@ -175,7 +175,7 @@ public class FileStore extends IndexedStore {
               FileProps props = r.result();
               String layer;
               if (props.isDirectory()) {
-                layer = extractLayer(path);
+                layer = makeRelative(path);
               } else {
                 layer = "/";
               }
@@ -194,7 +194,13 @@ public class FileStore extends IndexedStore {
     });
   }
 
-  private String extractLayer(String path) {
+  /**
+   * Remove the root path from the absolute path.
+   *
+   * @param path The absolute path to a file.
+   * @return the relative path
+   */
+  private String makeRelative(String path) {
     return path.substring(root.length());
   }
 

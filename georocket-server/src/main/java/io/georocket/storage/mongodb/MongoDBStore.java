@@ -144,6 +144,11 @@ public class MongoDBStore extends IndexedStore {
     });
   }
 
+  /**
+   * Remove the filename from the given mongo file name and ensure a leading slash.
+   * @param name the S3 object key
+   * @return slash or layer starting with slash.
+   */
   private static String extractLayer(String name) {
     int lastSlashIndex = name.lastIndexOf('/');
     String layer = name.substring(0, lastSlashIndex + 1);

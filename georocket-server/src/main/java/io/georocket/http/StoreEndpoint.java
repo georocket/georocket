@@ -81,7 +81,6 @@ public class StoreEndpoint implements Endpoint {
 
   /**
    * Handle requests to get the store's meta data
-   * TODO Does not really handle HEAD request but GET on /layers
    * @param context the routing context
    */
   private void onGetSummary(RoutingContext context) {
