@@ -1,21 +1,6 @@
 package io.georocket.http;
 
-import static io.georocket.util.ThrowableHelper.throwableToCode;
-import static io.georocket.util.ThrowableHelper.throwableToMessage;
-
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.nio.file.Paths;
-import java.nio.file.spi.FileTypeDetector;
-import java.util.List;
-
-import org.apache.commons.lang3.tuple.Pair;
-import org.apache.http.ParseException;
-import org.apache.http.entity.ContentType;
-import org.bson.types.ObjectId;
-
 import com.google.common.base.Splitter;
-
 import io.georocket.constants.AddressConstants;
 import io.georocket.constants.ConfigConstants;
 import io.georocket.output.Merger;
@@ -45,7 +30,20 @@ import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.http.ParseException;
+import org.apache.http.entity.ContentType;
+import org.bson.types.ObjectId;
 import rx.Observable;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.nio.file.Paths;
+import java.nio.file.spi.FileTypeDetector;
+import java.util.List;
+
+import static io.georocket.util.ThrowableHelper.throwableToCode;
+import static io.georocket.util.ThrowableHelper.throwableToMessage;
 
 /**
  * An HTTP endpoint handling requests related to the GeoRocket data store
@@ -74,7 +72,7 @@ public class StoreEndpoint implements Endpoint {
   @Override
   public Router createRouter() {
     Router router = Router.router(vertx);
-    router.get("/?summary").handler(this::onHead);
+    router.get("/?summary").handler(this::onGetSummary);
     router.get("/*").handler(this::onGet);
     router.post("/*").handler(this::onPost);
     router.delete("/*").handler(this::onDelete);
@@ -82,18 +80,18 @@ public class StoreEndpoint implements Endpoint {
   }
 
   /**
-   * Handle HEAD requests to get the store's meta data
+   * Handle requests to get the store's meta data
    * TODO Does not really handle HEAD request but GET on /layers
    * @param context the routing context
    */
-  private void onHead(RoutingContext context) {
+  private void onGetSummary(RoutingContext context) {
     HttpServerResponse response = context.response();
 
     store.getStoreSummaryObservable()
       .subscribe(summary -> {
         response.setStatusCode(200).end(summary.toString());
       }, err -> {
-        log.error("Unable to handle HEAD request", err);
+        log.error("Unable to handle GET summary request", err);
         response.setStatusCode(throwableToCode(err)).end(throwableToMessage(err, ""));
       });
   }
