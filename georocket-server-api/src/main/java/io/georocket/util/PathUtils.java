@@ -62,6 +62,21 @@ public class PathUtils {
   }
 
   /**
+   * Ensures the given chunk path starts with a leading slash
+   * @param path the path
+   * @return the path with leading slash
+   */
+  public static String addLeadingSlash(String path) {
+    if (path == null) {
+      return null;
+    }
+    if (!path.isEmpty() && path.charAt(0) == '/') {
+      return path;
+    }
+    return "/" + path;
+  }
+
+  /**
    * Ensures the given chunk path ends with a trailing slash
    * @param path the path
    * @return the path with a trailing slash

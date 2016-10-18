@@ -1,12 +1,5 @@
 package io.georocket.storage.mongodb;
 
-import java.nio.charset.StandardCharsets;
-import java.util.Queue;
-import java.util.concurrent.atomic.AtomicLong;
-
-import io.georocket.util.StoreSummaryBuilder;
-import org.bson.Document;
-
 import com.google.common.base.Preconditions;
 import com.mongodb.async.client.MongoClient;
 import com.mongodb.async.client.MongoClients;
@@ -17,17 +10,22 @@ import com.mongodb.async.client.gridfs.GridFSBuckets;
 import com.mongodb.async.client.gridfs.GridFSDownloadStream;
 import com.mongodb.async.client.gridfs.GridFSFindIterable;
 import com.mongodb.async.client.gridfs.helpers.AsyncStreamHelper;
-
 import io.georocket.constants.ConfigConstants;
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.indexed.IndexedStore;
 import io.georocket.util.PathUtils;
+import io.georocket.util.StoreSummaryBuilder;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
+import org.bson.Document;
+
+import java.nio.charset.StandardCharsets;
+import java.util.Queue;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Stores chunks in MongoDB
@@ -147,18 +145,9 @@ public class MongoDBStore extends IndexedStore {
   }
 
   private static String extractLayer(String name) {
-    // I expect exactly two types of names
-    // 1) /layer/id
-    // 2) /id
-    // One with two slashes and one only with one.
-    String parts[] = name.split("/");
-
-    // TODO: currently the names are prefixed with "/store"
-    // TODO: pull from georocket upstream master and decrement all numbers by one
-    String layer = parts.length == 3
-      ? "/" : parts.length == 4 ? "/" + parts[2] : null;
-
-    return layer;
+    int lastSlashIndex = name.lastIndexOf('/');
+    String layer = name.substring(0, lastSlashIndex + 1);
+    return PathUtils.addLeadingSlash(layer);
   }
 
   @Override
