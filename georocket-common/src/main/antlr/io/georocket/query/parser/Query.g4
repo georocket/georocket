@@ -2,7 +2,6 @@ grammar Query;
 
 @header {
 package io.georocket.query.parser;
-import io.georocket.GeoRocket;
 import org.apache.commons.lang3.StringEscapeUtils;
 }
 
