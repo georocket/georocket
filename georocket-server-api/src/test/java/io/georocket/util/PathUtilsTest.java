@@ -1,5 +1,6 @@
 package io.georocket.util;
 
+import static io.georocket.util.PathUtils.addLeadingSlash;
 import static io.georocket.util.PathUtils.addTrailingSlash;
 import static io.georocket.util.PathUtils.isAbsolute;
 import static io.georocket.util.PathUtils.join;
@@ -108,5 +109,16 @@ public class PathUtilsTest {
     assertEquals("/abc/abc/", addTrailingSlash("/abc/abc"));
     assertEquals("/abc/abc/", addTrailingSlash("/abc/abc/"));
     assertEquals("/", addTrailingSlash(""));
+  }
+
+  /**
+   * Add leading slash
+   */
+  @Test
+  public void testAddLeadingSlash() {
+    assertEquals("/abc", addLeadingSlash("abc"));
+    assertEquals("/abc/abc", addLeadingSlash("/abc/abc"));
+    assertEquals("/abc/abc/", addLeadingSlash("abc/abc/"));
+    assertEquals("/", addLeadingSlash(""));
   }
 }

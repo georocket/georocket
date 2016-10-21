@@ -273,21 +273,16 @@ public class S3Store extends IndexedStore {
     }, handler);
   }
 
+  /**
+   * Remove the filename from the given S3 object key and ensure there
+   * is a leading slash
+   * @param name the S3 object key
+   * @return slash or a layer starting with a slash
+   */
   private static String extractLayer(String name) {
-    // I expect exactly two types of names
-    // 1) layer/id
-    // 2) id
-    // One with two slashes and one only with one.
-    String layer;
-    if (name.contains("/")) {
-      String[] parts = name.split("/");
-
-      layer = "/" + parts[0];
-    } else {
-      layer = "/";
-    }
-
-    return layer;
+    int lastSlashIndex = name.lastIndexOf('/');
+    String layer = name.substring(0, lastSlashIndex + 1);
+    return PathUtils.addLeadingSlash(layer);
   }
 
   @Override

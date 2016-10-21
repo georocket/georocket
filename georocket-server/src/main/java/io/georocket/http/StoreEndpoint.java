@@ -74,7 +74,7 @@ public class StoreEndpoint implements Endpoint {
   @Override
   public Router createRouter() {
     Router router = Router.router(vertx);
-    router.get("/layers").handler(this::onHead);
+    router.get("/?summary").handler(this::onGetSummary);
     router.get("/*").handler(this::onGet);
     router.post("/*").handler(this::onPost);
     router.delete("/*").handler(this::onDelete);
@@ -82,18 +82,17 @@ public class StoreEndpoint implements Endpoint {
   }
 
   /**
-   * Handle HEAD requests to get the store's meta data
-   * TODO Does not really handle HEAD request but GET on /layers
+   * Handle requests to get the store's meta data
    * @param context the routing context
    */
-  private void onHead(RoutingContext context) {
+  private void onGetSummary(RoutingContext context) {
     HttpServerResponse response = context.response();
 
     store.getStoreSummaryObservable()
       .subscribe(summary -> {
         response.setStatusCode(200).end(summary.toString());
       }, err -> {
-        log.error("Unable to handle HEAD request", err);
+        log.error("Unable to handle GET summary request", err);
         response.setStatusCode(throwableToCode(err)).end(throwableToMessage(err, ""));
       });
   }

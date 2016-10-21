@@ -4,7 +4,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicLong;
 
-import io.georocket.util.StoreSummaryBuilder;
 import org.bson.Document;
 
 import com.google.common.base.Preconditions;
@@ -22,6 +21,7 @@ import io.georocket.constants.ConfigConstants;
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.indexed.IndexedStore;
 import io.georocket.util.PathUtils;
+import io.georocket.util.StoreSummaryBuilder;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
@@ -146,19 +146,16 @@ public class MongoDBStore extends IndexedStore {
     });
   }
 
+  /**
+   * Remove the filename from the given absolute path and ensure there is
+   * a leading slash
+   * @param name the absolute path
+   * @return slash or a layer starting with a slash
+   */
   private static String extractLayer(String name) {
-    // I expect exactly two types of names
-    // 1) /layer/id
-    // 2) /id
-    // One with two slashes and one only with one.
-    String parts[] = name.split("/");
-
-    // TODO: currently the names are prefixed with "/store"
-    // TODO: pull from georocket upstream master and decrement all numbers by one
-    String layer = parts.length == 3
-      ? "/" : parts.length == 4 ? "/" + parts[2] : null;
-
-    return layer;
+    int lastSlashIndex = name.lastIndexOf('/');
+    String layer = name.substring(0, lastSlashIndex + 1);
+    return PathUtils.addLeadingSlash(layer);
   }
 
   @Override
