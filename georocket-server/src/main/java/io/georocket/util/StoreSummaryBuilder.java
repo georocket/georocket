@@ -16,7 +16,8 @@ public class StoreSummaryBuilder {
   /**
    * Add chunk information to to the summary
    * @param layer the name of the layer containing the chunk. Valid
-   * values are <code>/</code>, <code>/name</code> or <code>/name/.../nameN</code> for example.
+   * values are <code>/</code>, <code>/name</code> or
+   * <code>/name/.../nameN</code> for example.
    * @param chunkSize the chunk's size
    * @param lastChange the chunk's last modification date
    * @param chunkCount the number of chunks stored in the same layer
@@ -41,7 +42,8 @@ public class StoreSummaryBuilder {
    * Add chunk information to the summary. Assume that the layer
    * contains only one chunk.
    * @param layer the name of the layer containing the chunk. Valid
-   * values are <code>/</code>, <code>/name</code> or <code>/name/.../nameN</code> for example.
+   * values are <code>/</code>, <code>/name</code> or
+   * <code>/name/.../nameN</code> for example.
    * @param chunkSize the chunk's size
    * @param lastChange the chunk's last modification date
    * @return <code>this</code> for fluent calls

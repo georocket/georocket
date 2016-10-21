@@ -1,6 +1,21 @@
 package io.georocket.http;
 
+import static io.georocket.util.ThrowableHelper.throwableToCode;
+import static io.georocket.util.ThrowableHelper.throwableToMessage;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.nio.file.Paths;
+import java.nio.file.spi.FileTypeDetector;
+import java.util.List;
+
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.http.ParseException;
+import org.apache.http.entity.ContentType;
+import org.bson.types.ObjectId;
+
 import com.google.common.base.Splitter;
+
 import io.georocket.constants.AddressConstants;
 import io.georocket.constants.ConfigConstants;
 import io.georocket.output.Merger;
@@ -30,20 +45,7 @@ import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
-import org.apache.commons.lang3.tuple.Pair;
-import org.apache.http.ParseException;
-import org.apache.http.entity.ContentType;
-import org.bson.types.ObjectId;
 import rx.Observable;
-
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.nio.file.Paths;
-import java.nio.file.spi.FileTypeDetector;
-import java.util.List;
-
-import static io.georocket.util.ThrowableHelper.throwableToCode;
-import static io.georocket.util.ThrowableHelper.throwableToMessage;
 
 /**
  * An HTTP endpoint handling requests related to the GeoRocket data store

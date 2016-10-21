@@ -1,5 +1,11 @@
 package io.georocket.storage.mongodb;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Queue;
+import java.util.concurrent.atomic.AtomicLong;
+
+import org.bson.Document;
+
 import com.google.common.base.Preconditions;
 import com.mongodb.async.client.MongoClient;
 import com.mongodb.async.client.MongoClients;
@@ -10,6 +16,7 @@ import com.mongodb.async.client.gridfs.GridFSBuckets;
 import com.mongodb.async.client.gridfs.GridFSDownloadStream;
 import com.mongodb.async.client.gridfs.GridFSFindIterable;
 import com.mongodb.async.client.gridfs.helpers.AsyncStreamHelper;
+
 import io.georocket.constants.ConfigConstants;
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.indexed.IndexedStore;
@@ -21,11 +28,6 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
-import org.bson.Document;
-
-import java.nio.charset.StandardCharsets;
-import java.util.Queue;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Stores chunks in MongoDB
@@ -145,9 +147,10 @@ public class MongoDBStore extends IndexedStore {
   }
 
   /**
-   * Remove the filename from the given mongo file name and ensure a leading slash.
-   * @param name the S3 object key
-   * @return slash or layer starting with slash.
+   * Remove the filename from the given absolute path and ensure there is
+   * a leading slash
+   * @param name the absolute path
+   * @return slash or a layer starting with a slash
    */
   private static String extractLayer(String name) {
     int lastSlashIndex = name.lastIndexOf('/');

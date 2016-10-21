@@ -1,16 +1,11 @@
 package io.georocket.storage.hdfs;
 
-import com.google.common.base.Preconditions;
-import io.georocket.constants.ConfigConstants;
-import io.georocket.storage.ChunkReadStream;
-import io.georocket.storage.indexed.IndexedStore;
-import io.georocket.util.PathUtils;
-import io.georocket.util.StoreSummaryBuilder;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonObject;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
+import java.util.Queue;
+
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -22,11 +17,18 @@ import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RemoteIterator;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStreamWriter;
-import java.nio.charset.StandardCharsets;
-import java.util.Queue;
+import com.google.common.base.Preconditions;
+
+import io.georocket.constants.ConfigConstants;
+import io.georocket.storage.ChunkReadStream;
+import io.georocket.storage.indexed.IndexedStore;
+import io.georocket.util.PathUtils;
+import io.georocket.util.StoreSummaryBuilder;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonObject;
 
 /**
  * Stores chunks on HDFS
@@ -152,8 +154,8 @@ public class HDFSStore extends IndexedStore {
   }
 
   /**
-   * Remove the root path from the absolute path.
-   * @param path The absolute path to a file.
+   * Remove the root path from the absolute path
+   * @param path the absolute path to a file
    * @return the relative path
    */
   private String makeRelative(Path path) {
