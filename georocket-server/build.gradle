@@ -72,8 +72,6 @@ dependencies {
     testCompile "io.vertx:vertx-unit:$vertxVersion"
     testCompile 'junit:junit:4.12'
     testCompile 'org.mongodb:mongodb-driver:3.3.0'
-
-    antlr 'org.antlr:antlr4:4.5.3'
 }
 
 ext {
