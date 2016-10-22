@@ -177,7 +177,6 @@ processResources.dependsOn(extractElasticsearch)
 processResources.dependsOn(generateSources)
 
 eclipseClasspath.dependsOn(extractElasticsearch)
-eclipseClasspath.dependsOn(generateGrammarSource)
 eclipseClasspath.dependsOn(generateSources)
 
 ideaModule.dependsOn(generateSources)

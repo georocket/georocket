@@ -40,3 +40,5 @@ dependencies {
 
     antlr 'org.antlr:antlr4:4.5.3'
 }
+
+eclipseClasspath.dependsOn(generateGrammarSource)
