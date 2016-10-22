@@ -3,7 +3,6 @@ plugins {
 }
 
 apply plugin: 'java'
-apply plugin: 'antlr'
 apply plugin: 'application'
 apply plugin: 'maven'
 apply plugin: 'checkstyle'
@@ -48,7 +47,6 @@ dependencies {
     compile 'javax.servlet:javax.servlet-api:3.1.0'
     compile 'net.java.dev.jna:jna:4.2.2'
     compile 'org.apache.commons:commons-exec:1.3'
-    compile 'org.apache.commons:commons-lang3:3.4'
     compile('org.apache.hadoop:hadoop-common:2.7.3') {
         // exclude netty because we want to use the version Vert.x depends on
         exclude group: 'io.netty'
@@ -72,8 +70,6 @@ dependencies {
     testCompile "io.vertx:vertx-unit:$vertxVersion"
     testCompile 'junit:junit:4.12'
     testCompile 'org.mongodb:mongodb-driver:3.3.0'
-
-    antlr 'org.antlr:antlr4:4.5.3'
 }
 
 ext {
@@ -181,7 +177,6 @@ processResources.dependsOn(extractElasticsearch)
 processResources.dependsOn(generateSources)
 
 eclipseClasspath.dependsOn(extractElasticsearch)
-eclipseClasspath.dependsOn(generateGrammarSource)
 eclipseClasspath.dependsOn(generateSources)
 
 ideaModule.dependsOn(generateSources)
