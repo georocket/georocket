@@ -122,6 +122,11 @@ subprojects {
     ext {
         vertxVersion = '3.3.3'
     }
+
+    // print project version to console - used in CI
+    task getVersion << {
+        println version
+    }
 }
 
 versioneye {

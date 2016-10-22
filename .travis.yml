@@ -15,7 +15,10 @@ script:
     cd georocket-server/integration-tests &&
     ./test.sh &&
     cd ../.. &&
-    if ([ "$TRAVIS_BRANCH" == "master" ] || [ ! -z "$TRAVIS_TAG" ]) && [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
+    if [ "$TRAVIS_REPO_SLUG" == "georocket/georocket" ] && [ "$TRAVIS_BRANCH" == "master" ] && [ "$TRAVIS_PULL_REQUEST" == "false" ] && [[ $(./gradlew -q :georocket-server:getVersion) == *SNAPSHOT* ]]; then
+    ./gradlew upload;
+    fi &&
+    if [ "$TRAVIS_REPO_SLUG" == "georocket/georocket" ] && ([ "$TRAVIS_BRANCH" == "master" ] || [ ! -z "$TRAVIS_TAG" ]) && [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
     docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD" &&
     docker push georocket/georocket;
     fi
