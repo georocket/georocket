@@ -162,7 +162,7 @@ public class DefaultQueryCompiler implements QueryCompiler {
   /**
    * Marker for the current logical operation
    */
-  private static enum Logical {
+  protected enum Logical {
     OR, AND, NOT
   }
   
