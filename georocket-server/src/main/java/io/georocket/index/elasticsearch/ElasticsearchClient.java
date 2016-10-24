@@ -72,6 +72,7 @@ public class ElasticsearchClient {
   
   /**
    * Insert a number of documents in one bulk request
+   * @param type the type of the documents to insert
    * @param documents maps document IDs to the actual documents to insert
    * @return the parsed bulk response from the server
    * @see #bulkResponseHasErrors(JsonObject)
@@ -95,14 +96,15 @@ public class ElasticsearchClient {
   
   /**
    * Perform a search and start scrolling over the result documents
+   * @param type the type of the documents to search
    * @param query the query to send
    * @param pageSize the number of objects to return in one response
    * @param timeout the time after which the returned scroll id becomes invalid
    * @return an object containing the search hits and a scroll id that can
    * be passed to {@link #continueScroll(String, String)} to get more results
    */
-  public Observable<JsonObject> beginScroll(String type, JsonObject query, int pageSize,
-      String timeout) {
+  public Observable<JsonObject> beginScroll(String type, JsonObject query,
+      int pageSize, String timeout) {
     return beginScroll(type, query, null, pageSize, timeout);
   }
   
@@ -110,6 +112,7 @@ public class ElasticsearchClient {
    * Perform a search and start scrolling over the result documents. You can
    * either specify a <code>query</code>, a <code>postFilter</code> or both,
    * but one of them is required.
+   * @param type the type of the documents to search
    * @param query the query to send (may be <code>null</code>, in this case
    * <code>postFilter</code> must be set)
    * @param postFilter a filter to apply (may be <code>null</code>, in this case
@@ -119,8 +122,8 @@ public class ElasticsearchClient {
    * @return an object containing the search hits and a scroll id that can
    * be passed to {@link #continueScroll(String, String)} to get more results
    */
-  public Observable<JsonObject> beginScroll(String type, JsonObject query, JsonObject postFilter,
-      int pageSize, String timeout) {
+  public Observable<JsonObject> beginScroll(String type, JsonObject query,
+      JsonObject postFilter, int pageSize, String timeout) {
     return beginScroll(type, query, postFilter, null, pageSize, timeout);
   }
 
@@ -128,6 +131,7 @@ public class ElasticsearchClient {
    * Perform a search, apply an aggregation, and start scrolling over the
    * result documents. You can either specify a <code>query</code>, a
    * <code>postFilter</code> or both, but one of them is required.
+   * @param type the type of the documents to search
    * @param query the query to send (may be <code>null</code>, in this case
    * <code>postFilter</code> must be set)
    * @param postFilter a filter to apply (may be <code>null</code>, in this case
@@ -138,8 +142,8 @@ public class ElasticsearchClient {
    * @return an object containing the search hits and a scroll id that can
    * be passed to {@link #continueScroll(String, String)} to get more results
    */
-  public Observable<JsonObject> beginScroll(String type, JsonObject query, JsonObject postFilter,
-      JsonObject aggregation, int pageSize, String timeout) {
+  public Observable<JsonObject> beginScroll(String type, JsonObject query,
+      JsonObject postFilter, JsonObject aggregation, int pageSize, String timeout) {
     String uri = "/" + index + "/" + type + "/_search";
     uri += "?scroll=" + timeout;
     
@@ -180,6 +184,7 @@ public class ElasticsearchClient {
   
   /**
    * Delete a number of documents in one bulk request
+   * @param type the type of the documents to delete
    * @param ids the IDs of the documents to delete
    * @return the parsed bulk response from the server
    * @see #bulkResponseHasErrors(JsonObject)
@@ -211,6 +216,7 @@ public class ElasticsearchClient {
 
   /**
    * Check if the type of the index exists
+   * @param type the type
    * @return an observable emitting <code>true</code> if the type of
    * the index exists or <code>false</code> otherwise
    */
@@ -236,14 +242,15 @@ public class ElasticsearchClient {
   }
   
   /**
-   * Create the index for given type and mapping.
-   * @param mappings the mappings to set for the index
+   * Add mapping for the given type
+   * @param type the type
+   * @param mapping the mapping to set for the index
    * @return an observable emitting <code>true</code> if the index creation
    * was ackowledged by Elasticsearch, <code>false</code> otherwise
    */
-  public Observable<Boolean> createIndex(String type, JsonObject mappings) {
+  public Observable<Boolean> putMapping(String type, JsonObject mapping) {
     String uri = "/" + index + "/_mapping/" + type;
-    return performRequestRetry(HttpMethod.PUT, uri, mappings.encode())
+    return performRequestRetry(HttpMethod.PUT, uri, mapping.encode())
       .map(res -> res.getBoolean("acknowledged", true));
   }
   

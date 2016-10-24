@@ -185,7 +185,7 @@ public class ElasticsearchClientTest {
           .put("type", "string")));
 
     Async async = context.async();
-    client.createIndex(TYPE, mappings).subscribe(ack -> {
+    client.putMapping(TYPE, mappings).subscribe(ack -> {
       verify(putRequestedFor(urlEqualTo("/" + INDEX + "/_mapping/" + TYPE))
         .withRequestBody(equalToJson("{\"properties\":{\"name\":{\"type\":\"string\"}}}}}")));
       context.assertTrue(ack);

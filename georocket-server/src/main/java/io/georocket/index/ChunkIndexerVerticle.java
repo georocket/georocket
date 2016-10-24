@@ -283,7 +283,7 @@ public abstract class ChunkIndexerVerticle extends IndexerVerticle {
     indexerFactories.forEach(factory ->
             MapUtils.deepMerge(mappings, factory.getMapping()));
 
-    return client.createIndex(TYPE_NAME, new JsonObject(mappings)).map(r -> null);
+    return client.putMapping(TYPE_NAME, new JsonObject(mappings)).map(r -> null);
   }
 
   @Override
