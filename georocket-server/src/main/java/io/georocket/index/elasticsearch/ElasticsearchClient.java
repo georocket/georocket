@@ -251,7 +251,6 @@ public class ElasticsearchClient {
    */
   public Observable<Boolean> createIndex(JsonObject mappings) {
     String uri = "/" + index + "/_mapping/" + type;
-
     return performRequestRetry(HttpMethod.PUT, uri, mappings.encode())
       .map(res -> res.getBoolean("acknowledged", true));
   }
