@@ -550,23 +550,23 @@ public abstract class IndexerVerticle extends AbstractVerticle {
     indexEnsured = true;
     
     // check if index exists
-    return client.indexExists().flatMap(exists -> {
+    return client.typeExists().flatMap(exists -> {
       if (exists) {
         return Observable.just(null);
       } else {
         // index does not exist. create it.
-        return createIndex();
+        return createIndexForType();
       }
     });
   }
   
   /**
-   * Create the Elasticsearch index. Assumes it does not exist yet.
+   * Create the Elasticsearch index for the type. Assumes it does not exist yet.
    * @return an observable that will emit a single item when the index
    * has been created
    */
   @SuppressWarnings("unchecked")
-  private Observable<Void> createIndex() {
+  private Observable<Void> createIndexForType() {
     // load default mapping
     Yaml yaml = new Yaml();
     Map<String, Object> mappings;
