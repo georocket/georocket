@@ -91,9 +91,9 @@ public abstract class IndexerVerticle extends AbstractVerticle {
   protected DefaultQueryCompiler queryCompiler;
   
   /**
-   * True if {@link #ensureIndex()} has been called at least once
+   * True if {@link #ensureMapping()} has been called at least once
    */
-  private boolean indexEnsured;
+  private boolean mappingEnsured;
   
   @Override
   public void start(Future<Void> startFuture) {
@@ -362,7 +362,7 @@ public abstract class IndexerVerticle extends AbstractVerticle {
         i.v2.add(t.v3);
         return i;
       })
-      .flatMap(t -> ensureIndex().map(v -> t))
+      .flatMap(t -> ensureMapping().map(v -> t))
       .flatMap(t -> {
         if (!t.v1.isEmpty()) {
           return insertDocuments(t.v1, t.v2);
@@ -539,34 +539,35 @@ public abstract class IndexerVerticle extends AbstractVerticle {
   }
   
   /**
-   * Ensure the Elasticsearch index exists
-   * @return an observable that will emit a single item when the index has
+   * Ensure the Elasticsearch mapping exists
+   * @return an observable that will emit a single item when the mapping has
    * been created or if it already exists
    */
-  private Observable<Void> ensureIndex() {
-    if (indexEnsured) {
+  private Observable<Void> ensureMapping() {
+    if (mappingEnsured) {
       return Observable.just(null);
     }
-    indexEnsured = true;
+    mappingEnsured = true;
     
-    // check if index exists
-    return client.indexExists().flatMap(exists -> {
+    // check if the target type of the mapping exists
+    return client.typeExists().flatMap(exists -> {
       if (exists) {
         return Observable.just(null);
       } else {
-        // index does not exist. create it.
-        return createIndex();
+        // target type does not exist. create the mapping.
+        return createMapping();
       }
     });
   }
   
   /**
-   * Create the Elasticsearch index. Assumes it does not exist yet.
-   * @return an observable that will emit a single item when the index
+   * Create the Elasticsearch mapping. If the target index does not exist
+   * yet this method will implicitly create it.
+   * @return an observable that will emit a single item when the mapping
    * has been created
    */
   @SuppressWarnings("unchecked")
-  private Observable<Void> createIndex() {
+  private Observable<Void> createMapping() {
     // load default mapping
     Yaml yaml = new Yaml();
     Map<String, Object> mappings;

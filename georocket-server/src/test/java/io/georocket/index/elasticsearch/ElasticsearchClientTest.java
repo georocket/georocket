@@ -113,6 +113,24 @@ public class ElasticsearchClientTest {
       async.complete();
     }, context::fail);
   }
+
+  /**
+   * Test if the {@link ElasticsearchClient#typeExists()} method returns
+   * <code>false</code> if the index does not exist
+   * @param context the test context
+   */
+  @Test
+  public void typeIndexExistsFalse(TestContext context) {
+    stubFor(head(urlEqualTo("/" + INDEX + "/" + TYPE))
+      .willReturn(aResponse()
+        .withStatus(404)));
+
+    Async async = context.async();
+    client.typeExists().subscribe(f -> {
+      context.assertFalse(f);
+      async.complete();
+    }, context::fail);
+  }
   
   /**
    * Test if the {@link ElasticsearchClient#indexExists()} method returns
@@ -131,28 +149,45 @@ public class ElasticsearchClientTest {
       async.complete();
     }, context::fail);
   }
-  
+
+  /**
+   * Test if the {@link ElasticsearchClient#indexExists()} method returns
+   * <code>true</code> if the index exists
+   * @param context the test context
+   */
+  @Test
+  public void typeIndexExistsTrue(TestContext context) {
+    stubFor(head(urlEqualTo("/" + INDEX + "/" + TYPE))
+      .willReturn(aResponse()
+        .withStatus(200)));
+
+    Async async = context.async();
+    client.typeExists().subscribe(f -> {
+      context.assertTrue(f);
+      async.complete();
+    }, context::fail);
+  }
+
   /**
    * Test if the client can create an index
    * @param context the test context
    */
   @Test
   public void createIndex(TestContext context) {
-    stubFor(put(urlEqualTo("/" + INDEX))
-        .willReturn(aResponse()
-            .withStatus(200)
-            .withBody("{\"ackowledged\":true}")));
-    
+    stubFor(put(urlEqualTo("/" + INDEX + "/_mapping/" + TYPE))
+      .willReturn(aResponse()
+        .withStatus(200)
+        .withBody("{\"ackowledged\":true}")));
+
     JsonObject mappings = new JsonObject()
-        .put("properties", new JsonObject()
-            .put("name", new JsonObject()
-                .put("type", "string")));
-    
+      .put("properties", new JsonObject()
+        .put("name", new JsonObject()
+          .put("type", "string")));
+
     Async async = context.async();
     client.createIndex(mappings).subscribe(ack -> {
-      verify(putRequestedFor(urlEqualTo("/" + INDEX))
-          .withRequestBody(equalToJson("{\"mappings\":{\"" + TYPE + "\":"
-              + "{\"properties\":{\"name\":{\"type\":\"string\"}}}}}")));
+      verify(putRequestedFor(urlEqualTo("/" + INDEX + "/_mapping/" + TYPE))
+        .withRequestBody(equalToJson("{\"properties\":{\"name\":{\"type\":\"string\"}}}}}")));
       context.assertTrue(ack);
       async.complete();
     }, context::fail);
