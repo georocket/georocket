@@ -77,7 +77,7 @@ public abstract class ChunkIndexerVerticle extends IndexerVerticle {
    * @return an observable that emits the document
    */
   protected Observable<Map<String, Object>> openChunkToDocument(String path,
-                                                                String fallbackCRSString) {
+      String fallbackCRSString) {
     return Observable.defer(() -> store.getOneObservable(path)
       .flatMap(chunk -> {
         // convert chunk to document and close it
@@ -88,7 +88,7 @@ public abstract class ChunkIndexerVerticle extends IndexerVerticle {
   }
 
   /**
-   * Add chunk metadata (as received via the event bus) to a ElasticSearch
+   * Add chunk metadata (as received via the event bus) to a Elasticsearch
    * document. Insert all properties from the given JsonObject into the
    * document but prepend the string "chunk" to all property names and
    * convert the first character to upper case (or insert an underscore
@@ -110,7 +110,7 @@ public abstract class ChunkIndexerVerticle extends IndexerVerticle {
   }
 
   /**
-   * Get chunk metadata from ElasticSearch document
+   * Get chunk metadata from Elasticsearch document
    * @param source the document
    * @return the metadata
    */
@@ -129,6 +129,7 @@ public abstract class ChunkIndexerVerticle extends IndexerVerticle {
     }
     return makeChunkMeta(filteredSource);
   }
+
   @Override
   protected Observable<Void> onAdd(List<Message<JsonObject>> messages) {
     return Observable.from(messages)
@@ -196,7 +197,6 @@ public abstract class ChunkIndexerVerticle extends IndexerVerticle {
 
   @Override
   protected Observable<JsonObject> onQuery(JsonObject body) {
-
     String search = body.getString("search");
     String path = body.getString("path");
     String scrollId = body.getString("scrollId");
