@@ -23,6 +23,8 @@ subprojects {
                 properties['org.eclipse.jdt.core.formatter.indentation.size'] = '2'
                 properties['org.eclipse.jdt.core.formatter.tabulation.size'] = '2'
                 properties['org.eclipse.jdt.core.formatter.tabulation.char'] = 'space'
+                properties['org.eclipse.jdt.core.formatter.continuation_indentation'] = '1'
+                properties['org.eclipse.jdt.core.formatter.continuation_indentation_for_array_initializer'] = '1'
             }
         }
 
