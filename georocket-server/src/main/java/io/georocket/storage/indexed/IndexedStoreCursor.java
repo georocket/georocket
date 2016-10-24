@@ -52,7 +52,7 @@ public class IndexedStoreCursor implements StoreCursor {
   private long size;
   
   /**
-   * A scroll ID used by ElasticSearch for pagination
+   * A scroll ID used by Elasticsearch for pagination
    */
   private String scrollId;
   

@@ -85,7 +85,7 @@ public class ElasticsearchClientTest {
   public void setUp() {
     configureFor("localhost", wireMockRule.port());
     client = new ElasticsearchClient("localhost", wireMockRule.port(),
-        INDEX, TYPE, new Vertx(rule.vertx()));
+        INDEX, new Vertx(rule.vertx()));
   }
   
   /**
@@ -115,7 +115,7 @@ public class ElasticsearchClientTest {
   }
 
   /**
-   * Test if the {@link ElasticsearchClient#typeExists()} method returns
+   * Test if the {@link ElasticsearchClient#typeExists(String)} method returns
    * <code>false</code> if the index does not exist
    * @param context the test context
    */
@@ -126,7 +126,7 @@ public class ElasticsearchClientTest {
         .withStatus(404)));
 
     Async async = context.async();
-    client.typeExists().subscribe(f -> {
+    client.typeExists(TYPE).subscribe(f -> {
       context.assertFalse(f);
       async.complete();
     }, context::fail);
@@ -162,7 +162,7 @@ public class ElasticsearchClientTest {
         .withStatus(200)));
 
     Async async = context.async();
-    client.typeExists().subscribe(f -> {
+    client.typeExists(TYPE).subscribe(f -> {
       context.assertTrue(f);
       async.complete();
     }, context::fail);
@@ -185,7 +185,7 @@ public class ElasticsearchClientTest {
           .put("type", "string")));
 
     Async async = context.async();
-    client.createIndex(mappings).subscribe(ack -> {
+    client.putMapping(TYPE, mappings).subscribe(ack -> {
       verify(putRequestedFor(urlEqualTo("/" + INDEX + "/_mapping/" + TYPE))
         .withRequestBody(equalToJson("{\"properties\":{\"name\":{\"type\":\"string\"}}}}}")));
       context.assertTrue(ack);
@@ -211,7 +211,7 @@ public class ElasticsearchClientTest {
     documents.put("B", new JsonObject().put("name", "Max"));
     
     Async async = context.async();
-    client.bulkInsert(documents).subscribe(res -> {
+    client.bulkInsert(TYPE, documents).subscribe(res -> {
       verify(postRequestedFor(urlEqualTo(url))
           .withRequestBody(equalToJson("{\"index\":{\"_id\":\"A\"}}\n" + 
               "{\"name\":\"Elvis\"}\n" + 
