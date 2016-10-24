@@ -176,13 +176,13 @@ public class ElasticsearchClientTest {
   public void createIndex(TestContext context) {
     stubFor(put(urlEqualTo("/" + INDEX + "/_mapping/" + TYPE))
       .willReturn(aResponse()
-      .withStatus(200)
-      .withBody("{\"ackowledged\":true}")));
+        .withStatus(200)
+        .withBody("{\"ackowledged\":true}")));
 
     JsonObject mappings = new JsonObject()
       .put("properties", new JsonObject()
-      .put("name", new JsonObject()
-      .put("type", "string")));
+        .put("name", new JsonObject()
+          .put("type", "string")));
 
     Async async = context.async();
     client.createIndex(mappings).subscribe(ack -> {
