@@ -81,6 +81,11 @@ public abstract class IndexerVerticle extends AbstractVerticle {
    * If type entry exists in HashSet, it was called.
    */
   private HashSet<String> mappingEnsured;
+  
+  /**
+   * True if {@link #ensureIndex()} has been called at least once
+   */
+  private boolean indexEnsured;
 
   /**
    * Constructor. Set all addresses on Vert.x eventbus
@@ -298,6 +303,28 @@ public abstract class IndexerVerticle extends AbstractVerticle {
           " documents from index in " + duration + " ms");
     }
   }
+  
+  /**
+   * Ensure the Elasticsearch index exists
+   * @return an observable that will emit a single item when the index has
+   * been created or if it already exists
+   */
+  protected Observable<Void> ensureIndex() {
+    if (indexEnsured) {
+      return Observable.just(null);
+    }
+    indexEnsured = true;
+
+    // check if the index exists
+    return client.indexExists().flatMap(exists -> {
+      if (exists) {
+        return Observable.just(null);
+      } else {
+        // index does not exist. create it.
+        return createIndex();
+      }
+    });
+  }
 
   /**
    * Ensure the Elasticsearch mapping exists
@@ -320,6 +347,15 @@ public abstract class IndexerVerticle extends AbstractVerticle {
         return createMapping();
       }
     });
+  }
+  
+  /**
+   * Create the Elasticsearch index
+   * @return an observable that will emit a single item when the index
+   * has been created
+   */
+  protected Observable<Void> createIndex() {
+    return client.createIndex().map(r -> null);
   }
   
   /**
@@ -414,8 +450,7 @@ public abstract class IndexerVerticle extends AbstractVerticle {
   protected abstract Observable<Void> onDelete(JsonObject body);
 
   /**
-   * Create the Elasticsearch mapping. If the target index does not exist
-   * yet this method will implicitly create it.
+   * Create the Elasticsearch mapping
    * @return an observable that will emit a single item when the mapping
    * has been created
    */

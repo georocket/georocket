@@ -186,6 +186,7 @@ public abstract class ChunkIndexerVerticle extends IndexerVerticle {
         i.v2.add(t.v3);
         return i;
       })
+      .flatMap(t -> ensureIndex().map(v -> t))
       .flatMap(t -> ensureMapping(TYPE_NAME).map(v -> t))
       .flatMap(t -> {
         if (!t.v1.isEmpty()) {

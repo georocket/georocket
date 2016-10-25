@@ -242,11 +242,22 @@ public class ElasticsearchClient {
   }
   
   /**
+   * Create the index
+   * @return an observable emitting <code>true</code> if the index creation
+   * was acknowledged by Elasticsearch, <code>false</code> otherwise
+   */
+  public Observable<Boolean> createIndex() {
+    String uri = "/" + index;
+    return performRequestRetry(HttpMethod.PUT, uri, null)
+      .map(res -> res.getBoolean("acknowledged", true));
+  }
+  
+  /**
    * Add mapping for the given type
    * @param type the type
    * @param mapping the mapping to set for the index
-   * @return an observable emitting <code>true</code> if the index creation
-   * was ackowledged by Elasticsearch, <code>false</code> otherwise
+   * @return an observable emitting <code>true</code> if the operation
+   * was acknowledged by Elasticsearch, <code>false</code> otherwise
    */
   public Observable<Boolean> putMapping(String type, JsonObject mapping) {
     String uri = "/" + index + "/_mapping/" + type;
