@@ -42,7 +42,7 @@ import static io.georocket.util.ThrowableHelper.throwableToCode;
 public abstract class IndexerVerticle extends AbstractVerticle {
   private static Logger log = LoggerFactory.getLogger(IndexerVerticle.class);
   
-  protected static final int MAX_ADD_REQUESTS = 1000;
+  protected static final int MAX_ADD_REQUESTS = 200;
   protected static final long BUFFER_TIMESPAN = 5000;
   protected static final int MAX_INSERT_REQUESTS = 5;
   protected static final int MAX_RETRIES = 5;
