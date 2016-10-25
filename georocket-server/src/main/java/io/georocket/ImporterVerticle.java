@@ -43,6 +43,7 @@ public class ImporterVerticle extends AbstractVerticle {
   
   private static final int MAX_RETRIES = 5;
   private static final int RETRY_INTERVAL = 1000;
+  private static final int MAX_PARALLEL_IMPORTS = 1;
   
   protected RxStore store;
   private String incoming;
@@ -55,32 +56,30 @@ public class ImporterVerticle extends AbstractVerticle {
     String storagePath = config().getString(ConfigConstants.STORAGE_FILE_PATH);
     incoming = storagePath + "/incoming";
     
-    vertx.eventBus().consumer(AddressConstants.IMPORTER, this::onMessage);
-  }
-  
-  /**
-   * Receives a message
-   * @param msg the message
-   */
-  protected void onMessage(Message<JsonObject> msg) {
-    String action = msg.body().getString("action");
-    switch (action) {
-    case "import":
-      onImport(msg);
-      break;
-    
-    default:
-      msg.fail(400, "Invalid action: " + action);
-      log.error("Invalid action: " + action);
-      break;
-    }
+    vertx.eventBus().<JsonObject>consumer(AddressConstants.IMPORTER_IMPORT)
+      .toObservable()
+      .onBackpressureBuffer() // unlimited buffer
+      .flatMap(msg -> {
+        // call onImport() but ignore errors. onImport() will handle errors for us.
+        return onImport(msg).onErrorReturn(err -> null);
+      }, MAX_PARALLEL_IMPORTS)
+      .subscribe(v -> {
+        // ignore
+      }, err -> {
+        // this bad. it will unsubscribe the consumer from the eventbus!
+        // should never happen anyhow, if it does something else has
+        // completely gone wrong
+        log.fatal("Could not import file", err);
+      });
   }
   
   /**
    * Receives a name of a file to import
    * @param msg the event bus message containing the filename
+   * @return an observable that will emit exactly one item when the file has
+   * been imported
    */
-  protected void onImport(Message<JsonObject> msg) {
+  protected Observable<Void> onImport(Message<JsonObject> msg) {
     JsonObject body = msg.body();
     String filename = body.getString("filename");
     String filepath = incoming + "/" + filename;
@@ -100,7 +99,7 @@ public class ImporterVerticle extends AbstractVerticle {
 
     FileSystem fs = vertx.fileSystem();
     OpenOptions openOptions = new OpenOptions().setCreate(false).setWrite(false);
-    fs.openObservable(filepath, openOptions)
+    return fs.openObservable(filepath, openOptions)
       .flatMap(f -> importFile(contentType, f, importId, filename, timeStamp, layer, tags)
       .doAfterTerminate(() -> {
         // delete file from 'incoming' folder
@@ -111,13 +110,15 @@ public class ImporterVerticle extends AbstractVerticle {
             log.error("Could not delete file from 'incoming' folder", err);
           });
       }))
-      .subscribe(chunkCount -> {
-       onImportingFinished(importId, filepath, layer, chunkCount,
+      .doOnNext(chunkCount -> {
+        onImportingFinished(importId, filepath, layer, chunkCount,
            System.currentTimeMillis() - timeStamp.getTime(), null);
-      }, err -> {
+      })
+      .doOnError(err -> {
         onImportingFinished(importId, filepath, layer, null,
             System.currentTimeMillis() - timeStamp.getTime(), err);
-      });
+      })
+      .map(count -> null);
   }
 
   /**

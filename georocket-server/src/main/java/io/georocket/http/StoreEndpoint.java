@@ -338,7 +338,6 @@ public class StoreEndpoint implements Endpoint {
       .subscribe(detectedContentType -> {
         // run importer
         JsonObject msg = new JsonObject()
-            .put("action", "import")
             .put("filename", filename)
             .put("layer", layer)
             .put("contentType", detectedContentType);
@@ -353,7 +352,7 @@ public class StoreEndpoint implements Endpoint {
           .end();
 
         // run importer
-        vertx.eventBus().send(AddressConstants.IMPORTER, msg);
+        vertx.eventBus().send(AddressConstants.IMPORTER_IMPORT, msg);
       }, err -> {
         request.response()
           .setStatusCode(throwableToCode(err))
