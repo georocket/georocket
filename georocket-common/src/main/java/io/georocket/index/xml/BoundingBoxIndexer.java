@@ -127,7 +127,7 @@ public class BoundingBoxIndexer implements XMLIndexer, CRSAware {
         // lower and upper corner of an envelope
         parseCorner = true;
         stringBuilder = new StringBuilder();
-      } else if (localName.equals("posList")) {
+      } else if (localName.equals("posList") || localName.equals("pos")) {
         // list of positions of a GML geometry
         parsePosList = true;
         stringBuilder = new StringBuilder();
@@ -146,7 +146,7 @@ public class BoundingBoxIndexer implements XMLIndexer, CRSAware {
         handlePosList(stringBuilder.toString());
         stringBuilder = null;
         parseCorner = false;
-      } else if (localName.equals("posList")) {
+      } else if (localName.equals("posList") || localName.equals("pos")) {
         handlePosList(stringBuilder.toString());
         stringBuilder = null;
         parsePosList = false;
