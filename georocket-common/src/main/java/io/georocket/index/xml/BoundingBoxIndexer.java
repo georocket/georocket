@@ -33,24 +33,24 @@ public class BoundingBoxIndexer implements XMLIndexer, CRSAware {
   /**
    * The string of the detected CRS
    */
-  private String crsStr;
+  protected String crsStr;
   
   /**
    * The detected CRS or <code>null</code> if either there was no CRS in the
    * chunk or if it was invalid
    */
-  private CoordinateReferenceSystem crs;
+  protected CoordinateReferenceSystem crs;
   
   /**
    * True if x and y are flipped in {@link #crs}
    */
-  private boolean flippedCRS;
+  protected boolean flippedCRS;
   
   /**
    * A transformation from {@link #crs} to WGS84. <code>null</code> if
    * {@link #crs} is also <code>null</code>.
    */
-  private MathTransform transform;
+  protected MathTransform transform;
   
   /**
    * True if we're currently parsing a <code>&lt;lowerCorner&gt;</code> or
@@ -68,7 +68,7 @@ public class BoundingBoxIndexer implements XMLIndexer, CRSAware {
    * <code>-1</code> if it could not be determined or if we are currently
    * not parsing an element with spatial content.
    */
-  private int srsDimension = -1;
+  protected int srsDimension = -1;
   
   /**
    * Collects XML element contents
