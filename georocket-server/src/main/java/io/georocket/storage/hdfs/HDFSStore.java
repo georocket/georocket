@@ -1,11 +1,14 @@
 package io.georocket.storage.hdfs;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.Queue;
 
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -35,6 +38,7 @@ import io.vertx.core.json.JsonObject;
  * @author Michel Kraemer
  */
 public class HDFSStore extends IndexedStore {
+  private static Logger log = LoggerFactory.getLogger(HDFSStore.class);
   private final Vertx vertx;
   private final Configuration configuration;
   private final String root;
@@ -147,6 +151,11 @@ public class HDFSStore extends IndexedStore {
 
           f.complete(summaryBuilder.finishBuilding());
         }
+
+      } catch (FileNotFoundException e) {
+        log.warn("Could not read files from store '" + root + "'. This is ok if the system does not contain or" +
+            " never contained data (initial start without use).");
+        f.complete(summaryBuilder.finishBuilding());
       } catch (IOException e) {
         f.fail(e);
       }
