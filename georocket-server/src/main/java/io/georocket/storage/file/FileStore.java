@@ -160,39 +160,53 @@ public class FileStore extends IndexedStore {
     StoreSummaryBuilder summaryBuilder = new StoreSummaryBuilder();
     AtomicInteger counter = new AtomicInteger(0);
 
-    vertx.fileSystem().readDir(root, h -> {
-      if (h.failed()) {
-        log.error("Failed to retrieve the root content", h.cause());
-        handler.handle(Future.failedFuture(h.cause()));
-      } else {
-        h.result().forEach(path -> {
-          counter.incrementAndGet();
-
-          vertx.fileSystem().props(path, r -> {
-            if (r.failed()) {
-              log.error("Failed to retrieve the file properties", r.cause());
-              handler.handle(Future.failedFuture(r.cause()));
-            } else {
-              FileProps props = r.result();
-              String layer;
-              if (props.isDirectory()) {
-                layer = makeRelative(path);
+    vertx.fileSystem().exists(root, existsHandler -> {
+        if (existsHandler.failed()) {
+          log.error("Failed to check for folder existence", existsHandler.cause());
+          handler.handle(Future.failedFuture(existsHandler.cause()));
+        } else {
+          if (existsHandler.result()) {
+            vertx.fileSystem().readDir(root, h -> {
+              if (h.failed()) {
+                log.error("Failed to retrieve the root content", h.cause());
+                handler.handle(Future.failedFuture(h.cause()));
               } else {
-                layer = "/";
-              }
-              long changeDate = props.lastModifiedTime();
-              long size = props.size();
+                h.result().forEach(path -> {
+                  counter.incrementAndGet();
 
-              summaryBuilder.put(layer, size, changeDate, 0);
+                  vertx.fileSystem().props(path, r -> {
+                    if (r.failed()) {
+                      log.error("Failed to retrieve the file properties", r.cause());
+                      handler.handle(Future.failedFuture(r.cause()));
+                    } else {
+                      FileProps props = r.result();
+                      String layer;
+                      if (props.isDirectory()) {
+                        layer = makeRelative(path);
+                      } else {
+                        layer = "/";
+                      }
+                      long changeDate = props.lastModifiedTime();
+                      long size = props.size();
 
-              if (counter.decrementAndGet() == 0) {
-                handler.handle(Future.succeededFuture(summaryBuilder.finishBuilding()));
+                      summaryBuilder.put(layer, size, changeDate, 0);
+
+                      if (counter.decrementAndGet() == 0) {
+                        handler.handle(Future.succeededFuture(summaryBuilder.finishBuilding()));
+                      }
+                    }
+                  });
+                });
               }
-            }
-          });
-        });
-      }
+            });
+          } else {
+            log.warn("Could not read files from store '" + root + "'. This is ok if the system does not contain or" +
+                " never contained data (initial start without use).");
+            handler.handle(Future.succeededFuture(summaryBuilder.finishBuilding()));
+          }
+        }
     });
+
   }
 
   /**
