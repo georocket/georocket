@@ -74,7 +74,6 @@ public class StoreEndpoint implements Endpoint {
   @Override
   public Router createRouter() {
     Router router = Router.router(vertx);
-    router.get("/?summary").handler(this::onGetSummary);
     router.get("/*").handler(this::onGet);
     router.post("/*").handler(this::onPost);
     router.delete("/*").handler(this::onDelete);
@@ -198,7 +197,14 @@ public class StoreEndpoint implements Endpoint {
    */
   private void onGet(RoutingContext context) {
     String path = getStorePath(context);
-    
+    String summary = context.request().getParam("summary");
+
+    // Client requested only a summary of the store.
+    if (summary != null) {
+      this.onGetSummary(context);
+      return;
+    }
+
     HttpServerResponse response = context.response();
     HttpServerRequest request = context.request();
     String search = request.getParam("search");
