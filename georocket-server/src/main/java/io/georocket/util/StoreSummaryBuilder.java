@@ -14,6 +14,13 @@ public class StoreSummaryBuilder {
   private JsonObject summary = new JsonObject();
 
   /**
+   * Create a store summary with a single entry for the root layer <code>/</code>.
+   */
+  public StoreSummaryBuilder() {
+    summary.put("/", createEmptyInfo());
+  }
+
+  /**
    * Add chunk information to to the summary
    * @param layer the name of the layer containing the chunk. Valid
    * values are <code>/</code>, <code>/name</code> or
