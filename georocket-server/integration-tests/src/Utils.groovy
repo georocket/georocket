@@ -76,7 +76,9 @@ class Utils {
             Integer expectedStatusCode = null) {
         logWait(url)
 
-        for (int i = 0; i < 60; ++i) {
+        int timeout = 180
+        int count = 0
+        for (int i = 0; i < timeout; ++i) {
             try {
                 def c = new URL(url).openConnection()
                 c.connectTimeout = 1000
@@ -93,8 +95,12 @@ class Utils {
                 // connection was not successful. fall through.
             }
             Thread.sleep(1000)
+            count++
+            if (count % 20 == 0) {
+                logWarn("$url not available within $count seconds. Waiting ${timeout - count} more seconds ...")
+            }
         }
-        logFail("$url not available within 60 seconds")
+        logFail("$url not available within $timeout seconds")
         System.exit(1)
     }
 
