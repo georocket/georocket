@@ -21,7 +21,8 @@ ADD georocket-server /usr/local/georocket-server
 RUN mkdir -p /data/georocket/storage && \
     chown -R georocket:georocket /data/georocket/storage && \
     export ELASTICSEARCH_HOME=$(set -- /usr/local/georocket-server/elasticsearch/*/; echo $1) && \
-    set -ex && for dirs in /usr/local/georocket-server/bin/.vertx ${ELASTICSEARCH_HOME}config ${ELASTICSEARCH_HOME}logs; do \
+    mkdir -p ${ELASTICSEARCH_HOME}plugins && \
+    set -ex && for dirs in /usr/local/georocket-server/bin/.vertx ${ELASTICSEARCH_HOME}config ${ELASTICSEARCH_HOME}logs ${ELASTICSEARCH_HOME}plugins; do \
         mkdir -p $dirs; \
         chown -R georocket:georocket $dirs; \
     done
