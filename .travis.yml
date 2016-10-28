@@ -10,6 +10,7 @@ jdk:
 
 script:
   - ./gradlew check installDist &&
+    cp docker/.dockerignore georocket-server/build/install/.dockerignore &&
     cp docker/Dockerfile georocket-server/build/install/Dockerfile &&
     docker build -t georocket/georocket georocket-server/build/install &&
     cd georocket-server/integration-tests &&
