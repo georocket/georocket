@@ -76,18 +76,12 @@ public class ElasticsearchRunner {
       
       // start Elasticsearch
       CommandLine cmdl = new CommandLine(executable);
-      cmdl.addArgument("--cluster.name");
-      cmdl.addArgument("georocket-cluster");
-      cmdl.addArgument("--node.name");
-      cmdl.addArgument("georocket-node");
-      cmdl.addArgument("--network.host");
-      cmdl.addArgument(host);
-      cmdl.addArgument("--http.port");
-      cmdl.addArgument(String.valueOf(port));
-      cmdl.addArgument("--path.home");
-      cmdl.addArgument(elasticsearchInstallPath);
-      cmdl.addArgument("--path.data");
-      cmdl.addArgument(root + "/data");
+      cmdl.addArgument("-Ecluster.name=georocket-cluster");
+      cmdl.addArgument("-Enode.name=georocket-node");
+      cmdl.addArgument("-Enetwork.host=" + host);
+      cmdl.addArgument("-Ehttp.port=" + port);
+      cmdl.addArgument("-Edefault.path.home=" + elasticsearchInstallPath);
+      cmdl.addArgument("-Epath.data=" + root + "/data");
       
       executor = new DefaultExecutor();
       executor.setProcessDestroyer(new ShutdownHookProcessDestroyer());
