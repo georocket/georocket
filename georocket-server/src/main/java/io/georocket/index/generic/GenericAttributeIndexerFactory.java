@@ -22,7 +22,7 @@ public abstract class GenericAttributeIndexerFactory implements IndexerFactory {
         "genAttrsFields", ImmutableMap.of(
             "path_match", "genAttrs.*",
             "mapping", ImmutableMap.of(
-                "index", "not_analyzed"
+                "type", "keyword"
             )
         )
     )), "properties", ImmutableMap.of("genAttrs", ImmutableMap.of(
