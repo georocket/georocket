@@ -7,4 +7,4 @@ ADD src/tester.groovy /
 ADD src/Utils.groovy /
 RUN chmod +x /tester.groovy
 
-CMD [ "/tester.groovy" ]
+ENTRYPOINT [ "/tester.groovy" ]

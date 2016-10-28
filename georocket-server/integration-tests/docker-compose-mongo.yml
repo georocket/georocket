@@ -1,0 +1,16 @@
+integration-tester:
+  build: .
+  command: mongo
+  links:
+    - georocket_mongo
+    - mongo
+
+georocket_mongo:
+  image: georocket/georocket
+  volumes:
+    - ./conf/georocket_mongo:/usr/local/georocket-server/conf
+  links:
+    - mongo
+
+mongo:
+  image: mongo

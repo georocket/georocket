@@ -1,0 +1,8 @@
+integration-tester:
+  build: .
+  command: standalone
+  links:
+    - georocket_standalone
+
+georocket_standalone:
+  image: georocket/georocket
