@@ -166,6 +166,7 @@ public abstract class ChunkIndexerVerticle extends IndexerVerticle {
         // open chunk and create IndexRequest
         return openChunkToDocument(path, fallbackCRSString)
           .doOnNext(doc -> {
+            doc.put("path", path);
             doc.put("importId", importId);
             doc.put("filename", filename);
             doc.put("importTime", importTime);

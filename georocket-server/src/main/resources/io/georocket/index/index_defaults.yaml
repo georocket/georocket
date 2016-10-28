@@ -9,6 +9,9 @@ variables:
 
 # Properties to index
 properties:
+  # path to the chunk
+  path:
+    type: keyword
   # tags attached to chunks
   tags:
     type: string  # array of strings actually, auto-supported by Elasticsearch

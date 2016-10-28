@@ -76,8 +76,8 @@ public class DefaultQueryCompiler implements QueryCompiler {
       String prefix = PathUtils.addTrailingSlash(path);
       
       JsonObject qi = boolQuery();
-      boolAddShould(qi, termQuery("_id", path));
-      boolAddShould(qi, prefixQuery("_id", prefix));
+      boolAddShould(qi, termQuery("path", path));
+      boolAddShould(qi, prefixQuery("path", prefix));
       
       JsonObject qr = boolQuery();
       boolAddShould(qr, qb);
