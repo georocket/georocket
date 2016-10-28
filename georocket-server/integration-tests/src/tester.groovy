@@ -6,6 +6,11 @@ import groovy.xml.XmlUtil
 expectedContents = new File("/data/berlin_alexanderplatz_mini.xml").text
 expectedNode = new XmlSlurper().parseText(expectedContents)
 
+/**
+ * Export the whole data store of GeoRocket to a file and check if the
+ * contents are as expected
+ * @param georocketHost the host where GeoRocket is running
+ */
 def testExport(String georocketHost) {
     // export file
     run("curl -sS -X GET http://${georocketHost}:63020/store/ "
@@ -52,6 +57,43 @@ def testExport(String georocketHost) {
     return true
 }
 
+/**
+ * Search for a building using a bounding box. Check if GeoRocket really
+ * exports only one building and if it is the right one.
+ * @param georocketHost the host where GeoRocket is running
+ */
+def testExportByBoundingBox(String georocketHost) {
+    // export file using bounding box that relates to the one of the building
+    // we are looking for
+    run("curl -sS -X GET http://${georocketHost}:63020/store/"
+        + "?search=13.04709829608855,52.33016111449572,13.047127397967273,52.330179231017645 "
+        + "-o /data/exported_berlin_by_bbox.xml", new File("/"))
+
+    // read exported file
+    def exportedContents = new File("/data/exported_berlin_by_bbox.xml").text
+    if (exportedContents.length() < 100) {
+        logFail("Response: $exportedContents")
+        System.exit(1)
+    }
+
+    // parser exported file
+    def exportedNode = new XmlSlurper().parseText(exportedContents)
+
+    // check if we have only exported one chunk
+    if (exportedNode.children().size() != 1) {
+        logFail("Expected 1 chunks. Got ${exportedNode.children().size()}.")
+        System.exit(1)
+    }
+
+    // check if we found the right building
+    def child = exportedNode.children().getAt(0)
+    def gmlId = child.Building.'@gml:id'
+    if (gmlId != 'ID_147_D') {
+        logFail("Expected gml:id ID_147_D. Got ${gmlId}.")
+        System.exit(1)
+    }
+}
+
 def runTest(String georocketHost) {
     // wait for GeoRocket
     waitHttp("http://${georocketHost}:63020")
@@ -77,6 +119,11 @@ def runTest(String georocketHost) {
         logFail("Export failed")
         System.exit(1)
     }
+
+    // run bounding box test - we don't have to do this in a loop
+    // because GeoRocket should already be up and running and all
+    // chunks should have been indexed.
+    testExportByBoundingBox(georocketHost)
 }
 
 String mode = args.length > 0 ? args[0] : null
