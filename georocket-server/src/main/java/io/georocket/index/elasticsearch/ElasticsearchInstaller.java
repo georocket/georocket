@@ -19,6 +19,7 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.file.OpenOptions;
+import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.rx.java.ObservableFuture;
@@ -152,7 +153,11 @@ public class ElasticsearchInstaller {
     ObservableFuture<Void> observable = RxHelper.observableFuture();
     Handler<AsyncResult<Void>> handler = observable.toHandler();
     
-    HttpClient client = vertx.createHttpClient();
+    HttpClientOptions options = new HttpClientOptions();
+    if (downloadUrl.startsWith("https")) {
+      options.setSsl(true);
+    }
+    HttpClient client = vertx.createHttpClient(options);
     HttpClientRequest req = client.getAbs(downloadUrl);
     
     req.exceptionHandler(t -> handler.handle(Future.failedFuture(t)));

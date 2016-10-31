@@ -13,7 +13,7 @@ georocket_s3:
     - s3
 
 s3:
-  image: scality/s3server
+  image: scality/s3server:mem-latest
   # Allow s3 server to be accessed through the "s3" domain name.
   # If we don't add the domain name to the config file the server will
   # fail with an authentication error.

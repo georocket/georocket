@@ -3,30 +3,32 @@ variables:
   integer_no_index: &integer_no_index
     type: integer
     index: "no"
-  string_no_index: &string_no_index
-    type: string
+  keyword_no_index: &keyword_no_index
+    type: keyword
     index: "no"
 
 # Properties to index
 properties:
+  # path to the chunk
+  path:
+    type: keyword
   # tags attached to chunks
   tags:
-    type: string  # array of strings actually, auto-supported by Elasticsearch
-    index: not_analyzed
+    type: keyword  # array of keyword actually, auto-supported by Elasticsearch
   # metadata: don't index it
   chunkStart: *integer_no_index
   chunkEnd: *integer_no_index
-  chunkMimeType: *string_no_index
+  chunkMimeType: *keyword_no_index
   chunkParents:
     type: object
     properties:
-      prefix: *string_no_index
-      localName: *string_no_index
-      namespacePrefixes: *string_no_index
-      namespaceUris: *string_no_index
-      attributePrefixes: *string_no_index
-      attributeLocalNames: *string_no_index
-      attributeValues: *string_no_index
+      prefix: *keyword_no_index
+      localName: *keyword_no_index
+      namespacePrefixes: *keyword_no_index
+      namespaceUris: *keyword_no_index
+      attributePrefixes: *keyword_no_index
+      attributeLocalNames: *keyword_no_index
+      attributeValues: *keyword_no_index
 
 # Do not save the original indexed document to save space. only include metadata!
 # See https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-source-field.html

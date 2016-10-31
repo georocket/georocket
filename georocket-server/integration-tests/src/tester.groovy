@@ -242,6 +242,8 @@ if (mode == "standalone") {
     waitHttp("http://hdfs:50070", "GET")
     run("/usr/local/hadoop/bin/hdfs dfsadmin -safemode get", null, false, 20)
     run("/usr/local/hadoop/bin/hdfs dfsadmin -safemode wait")
+    run("/usr/local/hadoop/bin/hdfs dfs -mkdir /georocket")
+    run("/usr/local/hadoop/bin/hdfs dfs -chown georocket:georocket /georocket")
     runTest("georocket_hdfs")
     hdfsfiles = run("/usr/local/hadoop/bin/hdfs dfs -ls /georocket/", null, true).split('\n')
     if (hdfsfiles.length - 1 != expectedNode.children().size()) {

@@ -22,7 +22,7 @@ public abstract class GenericAttributeIndexerFactory implements IndexerFactory {
         "genAttrsFields", ImmutableMap.of(
             "path_match", "genAttrs.*",
             "mapping", ImmutableMap.of(
-                "index", "not_analyzed"
+                "type", "keyword"
             )
         )
     )), "properties", ImmutableMap.of("genAttrs", ImmutableMap.of(
@@ -30,8 +30,7 @@ public abstract class GenericAttributeIndexerFactory implements IndexerFactory {
         // https://github.com/elastic/elasticsearch/issues/16098
         "properties", ImmutableMap.of(
             "$$$$HIDDEN_FIELD_WORKAROUND_FOR_ELASTICSEARCH_ISSUE_16098$$$$", ImmutableMap.of(
-                "type", "string",
-                "index", "no"
+                "type", "keyword"
             )
         )
     )));

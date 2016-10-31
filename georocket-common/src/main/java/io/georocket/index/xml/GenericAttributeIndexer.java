@@ -37,7 +37,8 @@ public class GenericAttributeIndexer implements XMLIndexer {
           ln.equals("dateAttribute") || ln.equals("uriAttribute") || ln.equals("measureAttribute")) {
         if (event.getEvent() == XMLEvent.START_ELEMENT) {
           currentKey = event.getXMLReader().getAttributeValue(null, "name");
-          // Elasticsearch 2.x does not support dots in field names
+          // Remove dot from field name so that Elasticsearch does not think
+          // this field is of type 'object' instead of 'keyword'
           currentKey = currentKey.replace('.', '_');
         } else if (event.getEvent() == XMLEvent.END_ELEMENT) {
           currentKey = null;

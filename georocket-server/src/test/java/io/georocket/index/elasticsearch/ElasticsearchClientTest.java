@@ -182,12 +182,12 @@ public class ElasticsearchClientTest {
     JsonObject mappings = new JsonObject()
       .put("properties", new JsonObject()
         .put("name", new JsonObject()
-          .put("type", "string")));
+          .put("type", "text")));
 
     Async async = context.async();
     client.putMapping(TYPE, mappings).subscribe(ack -> {
       verify(putRequestedFor(urlEqualTo("/" + INDEX + "/_mapping/" + TYPE))
-        .withRequestBody(equalToJson("{\"properties\":{\"name\":{\"type\":\"string\"}}}}}")));
+        .withRequestBody(equalToJson("{\"properties\":{\"name\":{\"type\":\"text\"}}}}}")));
       context.assertTrue(ack);
       async.complete();
     }, context::fail);

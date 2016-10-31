@@ -76,7 +76,7 @@ ext {
     elasticsearchUrl = new File(sourceSets.main.resources.srcDirs.first(),
         "elasticsearch_download_url.txt").text
     elasticsearchArchiveName = new File(new URL(elasticsearchUrl).path).name
-    elasticsearchVersion = new File(new URL(elasticsearchUrl).path).parentFile.name
+    elasticsearchVersion = (elasticsearchUrl =~ /-([0-9]\.[0-9]\.[0-9])\.zip$/)[0][1]
     elasticsearchInstallDir = new File(projectDir, "elasticsearch/" + elasticsearchVersion)
 }
 
@@ -157,6 +157,10 @@ task extractElasticsearch(dependsOn: downloadElasticsearch, type: Copy) {
     }
 }
 
+task cleanExtractedElasticsearch(type: Delete) {
+    delete 'elasticsearch'
+}
+
 task generateVersionFile << {
     def dstRes = new File(project.projectDir, 'src-gen/main/resources')
     def dst = new File(dstRes, 'io/georocket')
@@ -181,6 +185,7 @@ eclipseClasspath.dependsOn(generateSources)
 
 ideaModule.dependsOn(generateSources)
 
+clean.dependsOn(cleanExtractedElasticsearch)
 clean.dependsOn(cleanGeneratedSources)
 
 // include generated sources

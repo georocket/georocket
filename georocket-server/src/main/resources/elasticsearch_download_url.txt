@@ -1,1 +1,1 @@
-http://download.elastic.co/elasticsearch/release/org/elasticsearch/distribution/zip/elasticsearch/2.4.0/elasticsearch-2.4.0.zip
+http://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-5.0.0.zip

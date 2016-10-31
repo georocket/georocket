@@ -1,5 +1,20 @@
 package io.georocket.index;
 
+import static io.georocket.util.ThrowableHelper.throwableToCode;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.tuple.Pair;
+import org.jooq.lambda.Seq;
+
 import io.georocket.constants.ConfigConstants;
 import io.georocket.index.elasticsearch.ElasticsearchClient;
 import io.georocket.index.elasticsearch.ElasticsearchInstaller;
@@ -8,6 +23,7 @@ import io.georocket.query.DefaultQueryCompiler;
 import io.georocket.query.QueryCompiler;
 import io.georocket.util.RxUtils;
 import io.vertx.core.Future;
+import io.vertx.core.impl.NoStackTraceThrowable;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -15,25 +31,10 @@ import io.vertx.core.logging.LoggerFactory;
 import io.vertx.rx.java.RxHelper;
 import io.vertx.rxjava.core.AbstractVerticle;
 import io.vertx.rxjava.core.eventbus.Message;
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.tuple.Pair;
-import org.jooq.lambda.Seq;
 import rx.Observable;
 import rx.Scheduler;
 import rx.Subscriber;
 import rx.functions.Func1;
-
-import java.io.File;
-import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
-
-import static io.georocket.util.ThrowableHelper.throwableToCode;
 
 /**
  * Generic methods for background indexing of any messages
@@ -159,19 +160,21 @@ public abstract class IndexerVerticle extends AbstractVerticle {
         return Observable.error(e);
       }
 
-      String defaultElasticsearchVersion;
-      try {
-        defaultElasticsearchVersion = new File(new URL(defaultElasticsearchDownloadUrl)
-                .getPath()).getParentFile().getName();
-      } catch (MalformedURLException e) {
-        return Observable.error(e);
-      }
-
       String elasticsearchDownloadUrl = config().getString(
               ConfigConstants.INDEX_ELASTICSEARCH_DOWNLOAD_URL, defaultElasticsearchDownloadUrl);
+
+      Pattern pattern = Pattern.compile("-([0-9]\\.[0-9]\\.[0-9])\\.zip$");
+      Matcher matcher = pattern.matcher(elasticsearchDownloadUrl);
+      if (!matcher.find()) {
+        return Observable.error(new NoStackTraceThrowable("Could not extract "
+          + "version number from Elasticsearch download URL: "
+          + elasticsearchDownloadUrl));
+      }
+      String elasticsearchVersion = matcher.group(1);
+
       String elasticsearchInstallPath = config().getString(
               ConfigConstants.INDEX_ELASTICSEARCH_INSTALL_PATH,
-              home + "/elasticsearch/" + defaultElasticsearchVersion);
+              home + "/elasticsearch/" + elasticsearchVersion);
 
       // install Elasticsearch, start it and then create the client
       ElasticsearchInstaller installer = new ElasticsearchInstaller(vertx);
