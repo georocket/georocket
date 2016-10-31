@@ -41,7 +41,7 @@ public class EmbeddedElasticsearchClient implements ElasticsearchClient {
   @Override
   public Observable<JsonObject> beginScroll(String type, JsonObject query,
     JsonObject postFilter, JsonObject aggregation, int pageSize, String timeout) {
-    return delegate.beginScroll(type, query, pageSize, timeout);
+    return delegate.beginScroll(type, query, postFilter, aggregation, pageSize, timeout);
   }
 
   @Override
