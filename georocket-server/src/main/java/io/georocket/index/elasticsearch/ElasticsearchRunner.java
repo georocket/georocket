@@ -14,15 +14,12 @@ import org.apache.commons.lang.SystemUtils;
 
 import io.georocket.constants.ConfigConstants;
 import io.georocket.util.RxUtils;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
 import io.vertx.core.impl.NoStackTraceThrowable;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.rx.java.ObservableFuture;
-import io.vertx.rx.java.RxHelper;
+import io.vertx.rxjava.core.RxHelper;
+import io.vertx.rxjava.core.Vertx;
 import rx.Observable;
 import rx.Scheduler;
 
@@ -58,10 +55,7 @@ public class ElasticsearchRunner {
     String storage = config.getString(ConfigConstants.STORAGE_FILE_PATH);
     String root = storage + "/index";
     
-    ObservableFuture<Void> observable = RxHelper.observableFuture();
-    Handler<AsyncResult<Void>> handler = observable.toHandler();
-    
-    vertx.<Void>executeBlocking(f -> {
+    return vertx.<Void>executeBlockingObservable(f -> {
       log.info("Starting Elasticsearch ...");
       
       // get Elasticsearch executable
@@ -105,9 +99,7 @@ public class ElasticsearchRunner {
       } catch (IOException e) {
         f.fail(e);
       }
-    }, handler);
-    
-    return observable;
+    });
   }
   
   /**

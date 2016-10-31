@@ -34,11 +34,11 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.rxjava.core.Vertx;
 
 /**
- * Test for {@link ElasticsearchClient}
+ * Test for {@link RemoteElasticsearchClient}
  * @author Michel Kraemer
  */
 @RunWith(VertxUnitRunner.class)
-public class ElasticsearchClientTest {
+public class RemoteElasticsearchClientTest {
   private static final String INDEX = "myindex";
   private static final String TYPE = "mytype";
   
@@ -84,7 +84,7 @@ public class ElasticsearchClientTest {
   @Before
   public void setUp() {
     configureFor("localhost", wireMockRule.port());
-    client = new ElasticsearchClient("localhost", wireMockRule.port(),
+    client = new RemoteElasticsearchClient("localhost", wireMockRule.port(),
         INDEX, new Vertx(rule.vertx()));
   }
   

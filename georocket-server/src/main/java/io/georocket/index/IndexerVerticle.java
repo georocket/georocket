@@ -2,28 +2,19 @@ package io.georocket.index;
 
 import static io.georocket.util.ThrowableHelper.throwableToCode;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.tuple.Pair;
 import org.jooq.lambda.Seq;
 
-import io.georocket.constants.ConfigConstants;
 import io.georocket.index.elasticsearch.ElasticsearchClient;
-import io.georocket.index.elasticsearch.ElasticsearchInstaller;
-import io.georocket.index.elasticsearch.ElasticsearchRunner;
+import io.georocket.index.elasticsearch.ElasticsearchClientFactory;
 import io.georocket.query.DefaultQueryCompiler;
 import io.georocket.query.QueryCompiler;
 import io.georocket.util.RxUtils;
 import io.vertx.core.Future;
-import io.vertx.core.impl.NoStackTraceThrowable;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -62,11 +53,6 @@ public abstract class IndexerVerticle extends AbstractVerticle {
   private final String addressDelete;
 
   /**
-   * Runs Elasticsearch
-   */
-  protected ElasticsearchRunner runner;
-  
-  /**
    * The Elasticsearch client
    */
   protected ElasticsearchClient client;
@@ -103,11 +89,9 @@ public abstract class IndexerVerticle extends AbstractVerticle {
   
   @Override
   public void start(Future<Void> startFuture) {
-
-    createElasticsearchClient()
+    new ElasticsearchClientFactory(vertx).createElasticsearchClient(INDEX_NAME)
       .subscribe(es -> {
-        client = es.getKey();
-        runner = es.getValue();
+        client = es;
 
         queryCompiler = createQueryCompiler();
 
@@ -122,70 +106,8 @@ public abstract class IndexerVerticle extends AbstractVerticle {
   @Override
   public void stop() {
     client.close();
-    if (runner != null) {
-      runner.stop();
-    }
   }
 
-  /**
-   * Create an Elasticsearch client. Either start an Elasticsearch instance or
-   * connect to an external one - depending on the configuration.
-   * @return an observable emitting an Elasticsearch client and runner
-   */
-  private Observable<Pair<ElasticsearchClient, ElasticsearchRunner>> createElasticsearchClient() {
-    boolean embedded = config().getBoolean(ConfigConstants.INDEX_ELASTICSEARCH_EMBEDDED, true);
-    String host = config().getString(ConfigConstants.INDEX_ELASTICSEARCH_HOST, "localhost");
-    int port = config().getInteger(ConfigConstants.INDEX_ELASTICSEARCH_PORT, 9200);
-
-    ElasticsearchClient client = new ElasticsearchClient(host, port, INDEX_NAME, vertx);
-    
-    if (!embedded) {
-      // just return the client
-      return Observable.just(Pair.of(client, null));
-    }
-    
-    return client.isRunning().flatMap(running -> {
-      if (running) {
-        // we don't have to start Elasticsearch again
-        return Observable.just(Pair.of(client, null));
-      }
-
-      String home = config().getString(ConfigConstants.HOME);
-
-      String defaultElasticsearchDownloadUrl;
-      try {
-        defaultElasticsearchDownloadUrl = IOUtils.toString(getClass().getResource(
-                "/elasticsearch_download_url.txt"), StandardCharsets.UTF_8);
-      } catch (IOException e) {
-        return Observable.error(e);
-      }
-
-      String elasticsearchDownloadUrl = config().getString(
-              ConfigConstants.INDEX_ELASTICSEARCH_DOWNLOAD_URL, defaultElasticsearchDownloadUrl);
-
-      Pattern pattern = Pattern.compile("-([0-9]\\.[0-9]\\.[0-9])\\.zip$");
-      Matcher matcher = pattern.matcher(elasticsearchDownloadUrl);
-      if (!matcher.find()) {
-        return Observable.error(new NoStackTraceThrowable("Could not extract "
-          + "version number from Elasticsearch download URL: "
-          + elasticsearchDownloadUrl));
-      }
-      String elasticsearchVersion = matcher.group(1);
-
-      String elasticsearchInstallPath = config().getString(
-              ConfigConstants.INDEX_ELASTICSEARCH_INSTALL_PATH,
-              home + "/elasticsearch/" + elasticsearchVersion);
-
-      // install Elasticsearch, start it and then create the client
-      ElasticsearchInstaller installer = new ElasticsearchInstaller(vertx);
-      ElasticsearchRunner runner = new ElasticsearchRunner(getVertx());
-      return installer.download(elasticsearchDownloadUrl, elasticsearchInstallPath)
-        .flatMap(path -> runner.runElasticsearch(host, port, path))
-        .flatMap(v -> runner.waitUntilElasticsearchRunning(client))
-        .map(v -> Pair.of(client, runner));
-    });
-  }
-  
   /**
    * Register all message consumers for this verticle
    */
