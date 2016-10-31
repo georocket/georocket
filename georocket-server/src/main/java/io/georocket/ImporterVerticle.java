@@ -66,9 +66,9 @@ public class ImporterVerticle extends AbstractVerticle {
       .subscribe(v -> {
         // ignore
       }, err -> {
-        // this bad. it will unsubscribe the consumer from the eventbus!
-        // should never happen anyhow, if it does something else has
-        // completely gone wrong
+        // This is bad. It will unsubscribe the consumer from the eventbus!
+        // Should never happen anyhow. If it does, something else has
+        // completely gone wrong.
         log.fatal("Could not import file", err);
       });
   }

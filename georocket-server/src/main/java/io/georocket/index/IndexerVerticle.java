@@ -24,7 +24,6 @@ import io.vertx.rxjava.core.AbstractVerticle;
 import io.vertx.rxjava.core.eventbus.Message;
 import rx.Observable;
 import rx.Scheduler;
-import rx.Subscriber;
 import rx.functions.Func1;
 
 /**
@@ -135,40 +134,23 @@ public abstract class IndexerVerticle extends AbstractVerticle {
       .buffer(BUFFER_TIMESPAN, TimeUnit.MILLISECONDS, MAX_ADD_REQUESTS,
           RxHelper.scheduler(getVertx()))
       .onBackpressureBuffer() // unlimited buffer
-      .subscribe(new Subscriber<List<Message<JsonObject>>>() {
-        private void doRequest() {
-          request(MAX_INSERT_REQUESTS);
-        }
-        
-        @Override
-        public void onStart() {
-          doRequest();
-        }
-
-        @Override
-        public void onCompleted() {
-          // nothing to do here
-        }
-
-        @Override
-        public void onError(Throwable e) {
-          // this bad. it will unsubscribe the consumer from the eventbus!
-          // should never happen anyhow, if it does something else has
-          // completely gone wrong
-          log.fatal("Could not index document", e);
-        }
-        
-        @Override
-        public void onNext(List<Message<JsonObject>> messages) {
-          onAdd(messages)
-            .subscribe(v -> {
-              // should never happen
-            }, err -> {
-              log.error("Could not index document", err);
-              messages.forEach(msg -> msg.fail(throwableToCode(err), err.getMessage()));
-              doRequest();
-            }, this::doRequest);
-        }
+      .flatMap(messages -> {
+        return onAdd(messages)
+          .onErrorReturn(err -> {
+            // reply with error to all peers
+            log.error("Could not index document", err);
+            messages.forEach(msg -> msg.fail(throwableToCode(err), err.getMessage()));
+            // ignore error
+            return null;
+          });
+      }, MAX_INSERT_REQUESTS)
+      .subscribe(v -> {
+        // ignore
+      }, err -> {
+        // This is bad. It will unsubscribe the consumer from the eventbus!
+        // Should never happen anyhow. If it does, something else has
+        // completely gone wrong.
+        log.fatal("Could not index document", err);
       });
   }
   
