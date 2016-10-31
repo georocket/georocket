@@ -30,10 +30,24 @@ public abstract class BoundingBoxIndexerFactory implements IndexerFactory {
   public Map<String, Object> getMapping() {
     return ImmutableMap.of("properties", ImmutableMap.of("bbox", ImmutableMap.of(
         "type", "geo_shape",
-        "tree", "quadtree", // see https://github.com/elastic/elasticsearch/issues/14181
-        "precision", "29" // this is the maximum level
+        
+        // for a discussion on the tree type to use see
+        // https://github.com/elastic/elasticsearch/issues/14181
+        
         // quadtree uses less memory and seems to be a lot faster than geohash
         // see http://tech.taskrabbit.com/blog/2015/06/09/elasticsearch-geohash-vs-geotree/
+        "tree", "quadtree",
+        
+        // use the maximum number of tree levels to achieve highest precision
+        // see org.apache.lucene.spatial.prefix.tree.PackedQuadPrefixTree.MAX_LEVELS_POSSIBLE
+        "tree_levels", "29"
+        
+        // TODO Setting tree_levels to 29 might be too slow for very large data
+        // sets. It might be better to reduce the precision by setting the
+        // 'precision' property to "1m" or "10m" or something similar. This
+        // should be configurable in GeoRocket's configuration file.
+        // "tree_levels": "29" could be the default if no 'precision' is set in
+        // the config file.
     )));
   }
 
