@@ -6,8 +6,7 @@ import java.util.Collection;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.stream.Collectors;
-
-import com.google.common.base.Splitter;
+import java.util.stream.Stream;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -59,7 +58,12 @@ public class StoreClient {
   protected String prepareQuery(String query, String layer) {
     if (layer == null || layer.isEmpty()) {
       layer = "/";
+    } else {
+      layer = Stream.of(layer.split("/"))
+        .map(this::urlencode)
+        .collect(Collectors.joining("/"));
     }
+
     if (!layer.endsWith("/")) {
       layer += "/";
     }
@@ -71,9 +75,6 @@ public class StoreClient {
     if (query != null && !query.isEmpty()) {
       urlQuery = "?search=" + urlencode(query);
     }
-    
-    layer = Splitter.on('/').splitToList(layer).stream()
-      .map(this::urlencode).collect(Collectors.joining("/"));
     
     return layer + urlQuery;
   }
@@ -90,15 +91,16 @@ public class StoreClient {
     String path = getEndpoint();
 
     if (layer != null && !layer.isEmpty()) {
+      layer = Stream.of(layer.split("/"))
+        .map(this::urlencode)
+        .collect(Collectors.joining("/"));
+
       if (!layer.endsWith("/")) {
         layer += "/";
       }
       if (!layer.startsWith("/")) {
         layer = "/" + layer;
       }
-
-      layer = Splitter.on('/').splitToList(layer).stream()
-          .map(this::urlencode).collect(Collectors.joining("/"));
 
       path += layer;
     }
