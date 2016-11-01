@@ -17,7 +17,7 @@ dependencies {
     
     compile 'commons-io:commons-io:2.5'
     compile 'de.undercouch:underline:1.0.0'
-    compile 'net.time4j:time4j-core:4.19'
+    compile 'net.time4j:time4j-core:4.20'
     compile 'org.apache.ant:ant:1.9.7'
     compile 'org.apache.commons:commons-lang3:3.5'
 
