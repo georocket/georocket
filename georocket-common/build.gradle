@@ -16,7 +16,7 @@ dependencies {
     compile "io.vertx:vertx-core:$vertxVersion"
     compile "io.vertx:vertx-rx-java:$vertxVersion"
 
-    compile 'org.apache.commons:commons-lang3:3.4'
+    compile 'org.apache.commons:commons-lang3:3.5'
     compile 'com.fasterxml:aalto-xml:1.0.0'
     compile 'com.google.guava:guava:19.0'
 

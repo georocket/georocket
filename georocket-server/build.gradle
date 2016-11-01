@@ -38,7 +38,7 @@ dependencies {
     compile "io.vertx:vertx-service-discovery:$vertxVersion"
     compile "io.vertx:vertx-web:$vertxVersion"
 
-    compile 'com.amazonaws:aws-java-sdk-s3:1.11.43'
+    compile 'com.amazonaws:aws-java-sdk-s3:1.11.49'
     compile 'com.fasterxml:aalto-xml:1.0.0'
     compile 'com.google.guava:guava:19.0'
     compile 'com.vividsolutions:jts:1.13'
@@ -66,7 +66,7 @@ dependencies {
     compile 'org.yaml:snakeyaml:1.17'
 
     testCompile 'de.flapdoodle.embed:de.flapdoodle.embed.mongo:1.50.5'
-    testCompile 'com.github.tomakehurst:wiremock:2.2.1'
+    testCompile 'com.github.tomakehurst:wiremock:2.2.2'
     testCompile "io.vertx:vertx-unit:$vertxVersion"
     testCompile 'junit:junit:4.12'
     testCompile 'org.mongodb:mongodb-driver:3.3.0'
