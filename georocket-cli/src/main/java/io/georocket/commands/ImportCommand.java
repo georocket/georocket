@@ -10,6 +10,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.Queue;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.SystemUtils;
@@ -17,8 +19,6 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.tools.ant.DirectoryScanner;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.types.FileSet;
-
-import com.google.common.base.Splitter;
 
 import de.undercouch.underline.InputReader;
 import de.undercouch.underline.Option.ArgumentType;
@@ -70,7 +70,9 @@ public class ImportCommand extends AbstractGeoRocketCommand {
     if (tags == null || tags.isEmpty()) {
       this.tags = null;
     } else {
-      this.tags = Splitter.on(',').trimResults().splitToList(tags);
+      this.tags = Stream.of(tags.split(","))
+        .map(t -> t.trim())
+        .collect(Collectors.toList());
     }
   }
   
