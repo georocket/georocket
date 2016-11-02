@@ -151,7 +151,7 @@ public class GeoRocketCli extends AbstractGeoRocketCommand {
   /**
    * Setup GeoRocket CLI
    */
-  protected void setup() {
+  public void setup() {
     // get GEOROCKET_CLI_HOME
     String geoRocketCliHomeStr = System.getenv("GEOROCKET_CLI_HOME");
     if (geoRocketCliHomeStr == null) {

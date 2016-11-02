@@ -41,7 +41,8 @@ public class HelpCommand extends AbstractGeoRocketCommand {
   public void doRun(String[] remainingArgs, InputReader in, PrintWriter out,
       Handler<Integer> handler) throws OptionParserException, IOException {
     // simply forward commands to GeoRocketCli and append '-h'
-    AbstractGeoRocketCommand cmd = new GeoRocketCli();
+    GeoRocketCli cmd = new GeoRocketCli();
+    cmd.setup();
     String[] args = commands.toArray(new String[commands.size() + 1]);
     args[args.length - 1] = "-h";
     cmd.setEndHandler(handler);
