@@ -1,6 +1,8 @@
 package io.georocket.index.elasticsearch;
 
-import java.util.Map;
+import java.util.List;
+
+import org.jooq.lambda.tuple.Tuple2;
 
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -19,12 +21,13 @@ public interface ElasticsearchClient {
   /**
    * Insert a number of documents in one bulk request
    * @param type the type of the documents to insert
-   * @param documents maps document IDs to the actual documents to insert
+   * @param documents a list of document IDs and actual documents to insert
    * @return the parsed bulk response from the server
    * @see #bulkResponseHasErrors(JsonObject)
    * @see #bulkResponseGetErrorMessage(JsonObject)
    */
-  Observable<JsonObject> bulkInsert(String type, Map<String, JsonObject> documents);
+  Observable<JsonObject> bulkInsert(String type,
+      List<Tuple2<String, JsonObject>> documents);
   
   /**
    * Perform a search and start scrolling over the result documents
@@ -139,7 +142,7 @@ public interface ElasticsearchClient {
    * @param response the bulk response
    * @return <code>true</code> if the response has errors, <code>false</code>
    * otherwise
-   * @see #bulkInsert(String, Map)
+   * @see #bulkInsert(String, List)
    * @see #bulkDelete(String, JsonArray)
    * @see #bulkResponseGetErrorMessage(JsonObject)
    */
@@ -152,7 +155,7 @@ public interface ElasticsearchClient {
    * @param response the response containing errors
    * @return the error message or null if the bulk response does not contain
    * errors
-   * @see #bulkInsert(String, Map)
+   * @see #bulkInsert(String, List)
    * @see #bulkDelete(String, JsonArray)
    * @see #bulkResponseHasErrors(JsonObject)
    */

@@ -1,5 +1,18 @@
 package io.georocket.index;
 
+import static io.georocket.util.ThrowableHelper.throwableToCode;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import org.apache.commons.lang.StringUtils;
+import org.jooq.lambda.tuple.Tuple;
+import org.yaml.snakeyaml.Yaml;
+
 import io.georocket.constants.AddressConstants;
 import io.georocket.query.DefaultQueryCompiler;
 import io.georocket.storage.ChunkMeta;
@@ -14,21 +27,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.rxjava.core.eventbus.Message;
-import org.apache.commons.lang.StringUtils;
-import org.jooq.lambda.tuple.Tuple;
-import org.yaml.snakeyaml.Yaml;
 import rx.Observable;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import static io.georocket.util.ThrowableHelper.throwableToCode;
 
 /**
  * Background indexing of chunks added to the store
@@ -174,23 +173,18 @@ public abstract class ChunkIndexerVerticle extends IndexerVerticle {
               doc.put("tags", tags);
             }
           })
-          .map(doc -> Tuple.tuple(path, doc, msg))
+          .map(doc -> Tuple.tuple(path, new JsonObject(doc), msg))
           .onErrorResumeNext(err -> {
             msg.fail(throwableToCode(err), err.getMessage());
             return Observable.empty();
           });
       })
-      // create map containing all documents and list containing all messages
-      .reduce(Tuple.tuple(new HashMap<String, JsonObject>(), new ArrayList<Message<JsonObject>>()), (i, t) -> {
-        i.v1.put(t.v1, new JsonObject(t.v2));
-        i.v2.add(t.v3);
-        return i;
-      })
-      .flatMap(t -> ensureIndex().map(v -> t))
-      .flatMap(t -> ensureMapping(TYPE_NAME).map(v -> t))
-      .flatMap(t -> {
-        if (!t.v1.isEmpty()) {
-          return insertDocuments(TYPE_NAME, t.v1, t.v2);
+      .toList()
+      .flatMap(l -> ensureIndex().map(v -> l))
+      .flatMap(l -> ensureMapping(TYPE_NAME).map(v -> l))
+      .flatMap(l -> {
+        if (!l.isEmpty()) {
+          return insertDocuments(TYPE_NAME, l);
         }
         return Observable.empty();
       });

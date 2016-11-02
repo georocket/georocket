@@ -1,6 +1,8 @@
 package io.georocket.index.elasticsearch;
 
-import java.util.Map;
+import java.util.List;
+
+import org.jooq.lambda.tuple.Tuple2;
 
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -34,7 +36,7 @@ public class EmbeddedElasticsearchClient implements ElasticsearchClient {
 
   @Override
   public Observable<JsonObject> bulkInsert(String type,
-      Map<String, JsonObject> documents) {
+      List<Tuple2<String, JsonObject>> documents) {
     return delegate.bulkInsert(type, documents);
   }
 

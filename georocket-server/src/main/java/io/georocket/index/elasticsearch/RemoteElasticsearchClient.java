@@ -1,6 +1,8 @@
 package io.georocket.index.elasticsearch;
 
-import java.util.Map;
+import java.util.List;
+
+import org.jooq.lambda.tuple.Tuple2;
 
 import io.georocket.util.HttpException;
 import io.georocket.util.RxUtils;
@@ -63,15 +65,16 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
   }
   
   @Override
-  public Observable<JsonObject> bulkInsert(String type, Map<String, JsonObject> documents) {
+  public Observable<JsonObject> bulkInsert(String type,
+      List<Tuple2<String, JsonObject>> documents) {
     String uri = "/" + index + "/" + type + "/_bulk";
     
     // prepare the whole body now because it's much faster to send
     // it at once instead of using HTTP chunked mode.
     StringBuilder body = new StringBuilder();
-    for (Map.Entry<String, JsonObject> e : documents.entrySet()) {
-      String id = e.getKey();
-      String source = e.getValue().encode();
+    for (Tuple2<String, JsonObject> e : documents) {
+      String id = e.v1;
+      String source = e.v2.encode();
       JsonObject subject = new JsonObject().put("_id", id);
       body.append("{\"index\":" + subject.encode() + "}\n" + source + "\n");
     }

@@ -14,9 +14,11 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 
+import org.jooq.lambda.tuple.Tuple;
+import org.jooq.lambda.tuple.Tuple2;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -206,9 +208,9 @@ public class RemoteElasticsearchClientTest {
             .withStatus(200)
             .withBody("{}")));
     
-    Map<String, JsonObject> documents = new HashMap<>();
-    documents.put("A", new JsonObject().put("name", "Elvis"));
-    documents.put("B", new JsonObject().put("name", "Max"));
+    List<Tuple2<String, JsonObject>> documents = new ArrayList<>();
+    documents.add(Tuple.tuple("A", new JsonObject().put("name", "Elvis")));
+    documents.add(Tuple.tuple("B", new JsonObject().put("name", "Max")));
     
     Async async = context.async();
     client.bulkInsert(TYPE, documents).subscribe(res -> {

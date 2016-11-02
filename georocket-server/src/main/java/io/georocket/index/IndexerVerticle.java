@@ -4,10 +4,11 @@ import static io.georocket.util.ThrowableHelper.throwableToCode;
 
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.jooq.lambda.Seq;
+import org.jooq.lambda.tuple.Tuple2;
+import org.jooq.lambda.tuple.Tuple3;
 
 import io.georocket.index.elasticsearch.ElasticsearchClient;
 import io.georocket.index.elasticsearch.ElasticsearchClientFactory;
@@ -266,18 +267,23 @@ public abstract class IndexerVerticle extends AbstractVerticle {
    * bulk request. This method replies to all messages if the bulk request
    * was successful.
    * @param type Elasticsearch type for documents
-   * @param documents the documents to insert
-   * @param messages a list of messages from which the index requests were
-   * created; items are in the same order as the respective index requests in
-   * the given bulk request
+   * @param documents a list of tuples containing document IDs, documents to
+   * index, and the respective messages from which the documents were created
    * @return an observable that completes when the operation has finished
    */
-  protected Observable<Void> insertDocuments(String type, Map<String, JsonObject> documents,
-      List<Message<JsonObject>> messages) {
+  protected Observable<Void> insertDocuments(String type,
+      List<Tuple3<String, JsonObject, Message<JsonObject>>> documents) {
     long startTimeStamp = System.currentTimeMillis();
-    onIndexingStarted(startTimeStamp, messages.size());
+    onIndexingStarted(startTimeStamp, documents.size());
 
-    return client.bulkInsert(type, documents).flatMap(bres -> {
+    List<Tuple2<String, JsonObject>> docsToInsert = Seq.seq(documents)
+      .map(Tuple3::limit2)
+      .toList();
+    List<Message<JsonObject>> messages = Seq.seq(documents)
+      .map(Tuple3::v3)
+      .toList();
+    
+    return client.bulkInsert(type, docsToInsert).flatMap(bres -> {
       JsonArray items = bres.getJsonArray("items");
       for (int i = 0; i < items.size(); ++i) {
         JsonObject jo = items.getJsonObject(i);
