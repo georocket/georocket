@@ -17,4 +17,4 @@ s3:
   # Allow s3 server to be accessed through the "s3" domain name.
   # If we don't add the domain name to the config file the server will
   # fail with an authentication error.
-  command: bash -c "sed -i s/\\\"localregion\\\".*$$/\\\\0,\\\\n\\\\t\\\"specifiedregion\\\":\ [\\\"s3\\\"]/ /usr/src/app/config.json && npm start"
+  command: bash -c "cp /usr/src/app/config.json /usr/src/app/config2.json && cat /usr/src/app/config2.json | python -c 'import sys, json; j = json.load(sys.stdin); j[\"regions\"][\"specifiedregion\"] = [\"s3\"]; print json.dumps(j)' | python -m json.tool > /usr/src/app/config.json && npm start"
