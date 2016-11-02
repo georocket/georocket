@@ -18,10 +18,8 @@ import io.vertx.core.impl.NoStackTraceThrowable;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.rxjava.core.RxHelper;
 import io.vertx.rxjava.core.Vertx;
 import rx.Observable;
-import rx.Scheduler;
 
 /**
  * Runs an Elasticsearch instance
@@ -111,7 +109,6 @@ public class ElasticsearchRunner {
    */
   public Observable<Void> waitUntilElasticsearchRunning(
       ElasticsearchClient client) {
-    Scheduler scheduler = RxHelper.scheduler(vertx);
     final Throwable repeat = new NoStackTraceThrowable("");
     return Observable.<Boolean>create(subscriber -> {
       client.isRunning().subscribe(subscriber);
@@ -130,8 +127,8 @@ public class ElasticsearchRunner {
         return Observable.error(t);
       });
       // retry for 60 seconds
-      return RxUtils.makeRetry(60, 1000, scheduler, null).call(o);
-    }, scheduler).map(r -> null);
+      return RxUtils.makeRetry(60, 1000, null).call(o);
+    }).map(r -> null);
   }
   
   /**

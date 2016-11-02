@@ -19,11 +19,9 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.rx.java.RxHelper;
 import io.vertx.rxjava.core.AbstractVerticle;
 import io.vertx.rxjava.core.eventbus.Message;
 import rx.Observable;
-import rx.Scheduler;
 import rx.functions.Func1;
 
 /**
@@ -118,11 +116,10 @@ public abstract class IndexerVerticle extends AbstractVerticle {
 
   /**
    * @return a function that can be passed to {@link Observable#retryWhen(Func1)}
-   * @see RxUtils#makeRetry(int, int, Scheduler, Logger)
+   * @see RxUtils#makeRetry(int, int, Logger)
    */
   protected Func1<Observable<? extends Throwable>, Observable<Long>> makeRetry() {
-    Scheduler scheduler = RxHelper.scheduler(getVertx());
-    return RxUtils.makeRetry(MAX_RETRIES, RETRY_INTERVAL, scheduler, log);
+    return RxUtils.makeRetry(MAX_RETRIES, RETRY_INTERVAL, log);
   }
   
   /**
@@ -131,8 +128,7 @@ public abstract class IndexerVerticle extends AbstractVerticle {
   protected void registerAdd() {
     vertx.eventBus().<JsonObject>consumer(addressAdd)
       .toObservable()
-      .buffer(BUFFER_TIMESPAN, TimeUnit.MILLISECONDS, MAX_ADD_REQUESTS,
-          RxHelper.scheduler(getVertx()))
+      .buffer(BUFFER_TIMESPAN, TimeUnit.MILLISECONDS, MAX_ADD_REQUESTS)
       .onBackpressureBuffer() // unlimited buffer
       .flatMap(messages -> {
         return onAdd(messages)

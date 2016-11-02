@@ -13,7 +13,6 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.rx.java.RxHelper;
 import io.vertx.rxjava.core.eventbus.Message;
 import org.apache.commons.lang.StringUtils;
 import org.jooq.lambda.tuple.Tuple;
@@ -84,7 +83,7 @@ public abstract class ChunkIndexerVerticle extends IndexerVerticle {
         return chunkToDocument(chunk, fallbackCRSString)
           .doAfterTerminate(chunk::close);
       }))
-      .retryWhen(makeRetry(), RxHelper.scheduler(getVertx()));
+      .retryWhen(makeRetry());
   }
 
   /**

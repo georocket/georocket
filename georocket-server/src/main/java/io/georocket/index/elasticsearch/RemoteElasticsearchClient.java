@@ -20,7 +20,6 @@ import io.vertx.rxjava.core.buffer.Buffer;
 import io.vertx.rxjava.core.http.HttpClient;
 import io.vertx.rxjava.core.http.HttpClientRequest;
 import rx.Observable;
-import rx.Scheduler;
 
 /**
  * An Elasticsearch client using the HTTP API
@@ -33,11 +32,6 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
    * The index to query against
    */
   private final String index;
-  
-  /**
-   * The Vert.x instance
-   */
-  private final Vertx vertx;
   
   /**
    * The HTTP client used to talk to Elasticsearch
@@ -55,7 +49,6 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
   public RemoteElasticsearchClient(String host, int port, String index,
       Vertx vertx) {
     this.index = index;
-    this.vertx = vertx;
     
     HttpClientOptions clientOptions = new HttpClientOptions()
         .setDefaultHost(host)
@@ -194,7 +187,6 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
    */
   private Observable<JsonObject> performRequestRetry(HttpMethod method,
       String uri, String body) {
-    Scheduler scheduler = RxHelper.scheduler((io.vertx.core.Vertx)vertx.getDelegate());
     return Observable.<JsonObject>create(subscriber -> {
       HttpClientRequest req = client.request(method, uri);
       performRequest(req, body).subscribe(subscriber);
@@ -206,8 +198,8 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
         }
         return Observable.just(error);
       });
-      return RxUtils.makeRetry(5, 1000, scheduler, log).call(o);
-    }, scheduler);
+      return RxUtils.makeRetry(5, 1000, log).call(o);
+    });
   }
   
   /**

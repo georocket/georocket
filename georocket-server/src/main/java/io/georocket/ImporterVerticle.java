@@ -26,7 +26,6 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.rx.java.RxHelper;
 import io.vertx.rxjava.core.AbstractVerticle;
 import io.vertx.rxjava.core.buffer.Buffer;
 import io.vertx.rxjava.core.eventbus.Message;
@@ -287,7 +286,6 @@ public class ImporterVerticle extends AbstractVerticle {
   protected Observable<Void> addToStore(String chunk, ChunkMeta meta,
       String layer, IndexMeta indexMeta) {
     return Observable.defer(() -> store.addObservable(chunk, meta, layer, indexMeta))
-        .retryWhen(RxUtils.makeRetry(MAX_RETRIES, RETRY_INTERVAL,
-            RxHelper.scheduler(getVertx()), log));
+        .retryWhen(RxUtils.makeRetry(MAX_RETRIES, RETRY_INTERVAL, log));
   }
 }

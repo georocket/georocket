@@ -30,6 +30,7 @@ import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.web.Router;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
+import rx.plugins.RxJavaHooks;
 
 /**
  * GeoRocket - A high-performance database for geospatial files
@@ -258,6 +259,12 @@ public class GeoRocket extends AbstractVerticle {
    */
   public static void main(String[] args) {
     Vertx vertx = Vertx.vertx();
+
+    // register schedulers that run Rx operations on the Vert.x event bus
+    RxJavaHooks.setOnComputationScheduler(s -> RxHelper.scheduler(vertx));
+    RxJavaHooks.setOnIOScheduler(s -> RxHelper.blockingScheduler(vertx));
+    RxJavaHooks.setOnNewThreadScheduler(s -> RxHelper.scheduler(vertx));
+
     DeploymentOptions options = new DeploymentOptions();
 
     try {
