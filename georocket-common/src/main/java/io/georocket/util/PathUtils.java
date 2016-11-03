@@ -7,7 +7,6 @@ import java.util.stream.Stream;
 
 /**
  * Utility functions to manipulate paths in a chunk store
- * @since 1.0.0
  * @author Michel Kraemer
  */
 public class PathUtils {
