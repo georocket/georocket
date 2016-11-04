@@ -90,8 +90,15 @@ public class IndexerVerticle extends AbstractVerticle {
    */
   private ChunkMapper xmlChunkMapper;
   
+  /**
+   * True if the indexer should report activities to the Vert.x event bus
+   */
+  private boolean reportActivities;
+  
   @Override
   public void start(Future<Void> startFuture) {
+    reportActivities = config().getBoolean("georocket.reportActivities", false);
+    
     // load and copy all indexer factories now and not lazily to avoid
     // concurrent modifications to the service loader's internal cache
     indexerFactories = ImmutableList.copyOf(ServiceLoader.load(IndexerFactory.class));
@@ -201,27 +208,27 @@ public class IndexerVerticle extends AbstractVerticle {
   }
 
   /**
-   * Will be called before the indexer starts deleting documents
+   * Will be called before the indexer starts deleting chunks
    * @param timeStamp the time when the indexer has started deleting
-   * @param count the number of documents to delete
+   * @param count the number of chunks to delete
    */
   private void onDeletingStarted(long timeStamp, int count) {
-    log.info("Deleting " + count + " documents from index ...");
+    log.info("Deleting " + count + " chunks from index ...");
   }
 
   /**
-   * Will be called after the indexer has finished deleting documents
-   * @param duration the time it took to delete the documents
-   * @param count the number of deleted documents
+   * Will be called after the indexer has finished deleting chunks
+   * @param duration the time it took to delete the chunks
+   * @param count the number of deleted chunks
    * @param errorMessage an error message if the process has failed
    * or <code>null</code> if everything was successful
    */
   private void onDeletingFinished(long duration, int count, String errorMessage) {
     if (errorMessage != null) {
-      log.error("Deleting documents failed: " + errorMessage);
+      log.error("Deleting chunks failed: " + errorMessage);
     } else {
       log.info("Finished deleting " + count +
-          " documents from index in " + duration + " ms");
+          " chunks from index in " + duration + " ms");
     }
   }
   
@@ -247,7 +254,7 @@ public class IndexerVerticle extends AbstractVerticle {
   }
   
   /**
-   * Inserts multiple Elasticsearch documents to the index. It performs a
+   * Insert multiple Elasticsearch documents into the index. Perform a
    * bulk request. This method replies to all messages if the bulk request
    * was successful.
    * @param type Elasticsearch type for documents
@@ -294,18 +301,27 @@ public class IndexerVerticle extends AbstractVerticle {
 
   /**
    * Will be called before the indexer starts the indexing process
-   * @param timeStamp the time when the indexer has started the process
-   * @param count the number of documents to index
+   * @param timestamp the time when the indexer has started the process
+   * @param count the number of chunks to index
    */
-  private void onIndexingStarted(long timeStamp, int count) {
-    log.info("Indexing " + count + " documents");
+  private void onIndexingStarted(long timestamp, int count) {
+    log.info("Indexing " + count + " chunks");
+    
+    if (reportActivities) {
+      JsonObject msg = new JsonObject()
+        .put("activity", "indexing")
+        .put("owner", deploymentID())
+        .put("action", "start")
+        .put("timestamp", timestamp);
+      vertx.eventBus().send(AddressConstants.ACTIVITIES, msg);
+    }
   }
 
   /**
    * Will be called after the indexer has finished the indexing process
    * @param duration the time passed during indexing
-   * @param importIds the import IDs of the documents that were processed by
-   * the indexer. This list may include IDs of documents whose indexing failed.
+   * @param importIds the import IDs of the chunks that were processed by
+   * the indexer. This list may include IDs of chunks whose indexing failed.
    * @param errorMessage an error message if the process has failed
    * or <code>null</code> if everything was successful
    */
@@ -314,8 +330,18 @@ public class IndexerVerticle extends AbstractVerticle {
     if (errorMessage != null) {
       log.error("Indexing failed: " + errorMessage);
     } else {
-      log.info("Finished indexing " + importIds.size() + " documents in " +
+      log.info("Finished indexing " + importIds.size() + " chunks in " +
           duration + " " + "ms");
+    }
+    
+    if (reportActivities) {
+      JsonObject msg = new JsonObject()
+        .put("activity", "indexing")
+        .put("owner", deploymentID())
+        .put("action", "stop")
+        .put("importIds", new JsonArray(importIds))
+        .put("duration", duration);
+      vertx.eventBus().send(AddressConstants.ACTIVITIES, msg);
     }
   }
   
@@ -393,9 +419,9 @@ public class IndexerVerticle extends AbstractVerticle {
   }
 
   /**
-   * Will be called when documents should be added to the index
+   * Will be called when chunks should be added to the index
    * @param messages the list of add messages that contain the paths to
-   * the documents to be indexed
+   * the chunks to be indexed
    * @return an observable that completes when the operation has finished
    */
   private Observable<Void> onAdd(List<Message<JsonObject>> messages) {
@@ -507,9 +533,9 @@ public class IndexerVerticle extends AbstractVerticle {
   }
 
   /**
-   * Deletes documents from the index
-   * @param body the message containing the paths to the documents to delete
-   * @return an observable that emits a single item when the documents have
+   * Delete chunks from the index
+   * @param body the message containing the paths to the chunks to delete
+   * @return an observable that emits a single item when the chunks have
    * been deleted successfully
    */
   private Observable<Void> onDelete(JsonObject body) {

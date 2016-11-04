@@ -41,3 +41,7 @@ georocket:
       embedded: true
       host: localhost
       port: 9200
+
+  # True if the indexer and other verticles should report their activities
+  # to the Vert.x event bus (mostly useful for GeoRocket plug-ins)
+  reportActivities: false
