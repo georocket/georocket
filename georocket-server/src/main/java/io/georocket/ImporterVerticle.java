@@ -1,5 +1,7 @@
 package io.georocket;
 
+import static io.georocket.util.MimeTypeUtils.belongsTo;
+
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
@@ -179,49 +181,6 @@ public class ImporterVerticle extends AbstractVerticle {
           "Received an unexpected content type '%s' while trying to import"
           + "file '%s'", contentType, filename)));
     }
-  }
-
-  /**
-   * <p>Check if the contentType belongs to an another one.</p>
-   * <p>Examples:</p>
-   * <ul>
-   *   <li>belongsTo("application/gml+xml", "application", "xml") == true</li>
-   *   <li>belongsTo("application/exp+xml", "application", "xml") == true</li>
-   *   <li>belongsTo("application/xml", "application", "xml") == true</li>
-   *   <li>belongsTo("application/exp+xml", "text", "xml") == false</li>
-   *   <li>belongsTo("application/exp+xml", "application", "json") == false</li>
-   * </ul>
-   * @param contentType the content type
-   * @param otherType the type part of the other content type
-   * @param otherStructuredSyntax the structured syntax of the other subtype
-   * (subtype = example+structuredSyntax)
-   * @return true if the content type belongs to the other one
-   */
-  private boolean belongsTo(String contentType, String otherType,
-      String otherStructuredSyntax) {
-    String mediaParts[] = contentType.split("/");
-    if (mediaParts.length != 2) {
-      return false;
-    }
-
-    String type = mediaParts[0];
-    String subtype = mediaParts[1];
-
-    if (!type.equals(otherType)) {
-      return false;
-    }
-
-    if (subtype.equals(otherStructuredSyntax)) {
-      return true;
-    }
-
-    String subtypeParts[] = subtype.split("\\+");
-    if (subtypeParts.length != 2) {
-      return false;
-    }
-
-    String structuredSyntax = subtypeParts[1];
-    return structuredSyntax.equals(otherStructuredSyntax);
   }
 
   /**
