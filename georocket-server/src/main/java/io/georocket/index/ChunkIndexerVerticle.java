@@ -77,7 +77,13 @@ public class ChunkIndexerVerticle extends IndexerVerticle {
     xmlChunkMapper = new XMLChunkMapper(indexerFactories);
     
     store = new RxStore(StoreFactory.createStore(getVertx()));
+    
     super.start(startFuture);
+    
+    // create index and mapping
+    client.ensureIndex()
+      .flatMap(v -> ensureMapping())
+      .subscribe(startFuture::complete, startFuture::fail);
   }
 
   /**
@@ -205,8 +211,6 @@ public class ChunkIndexerVerticle extends IndexerVerticle {
           });
       })
       .toList()
-      .flatMap(l -> ensureIndex().map(v -> l))
-      .flatMap(l -> ensureMapping(TYPE_NAME).map(v -> l))
       .flatMap(l -> {
         if (!l.isEmpty()) {
           return insertDocuments(TYPE_NAME, l);
@@ -284,9 +288,8 @@ public class ChunkIndexerVerticle extends IndexerVerticle {
     });
   }
 
-  @Override
   @SuppressWarnings("unchecked")
-  protected Observable<Void> createMapping() {
+  protected Observable<Void> ensureMapping() {
     // load default mapping
     Yaml yaml = new Yaml();
     Map<String, Object> mappings;

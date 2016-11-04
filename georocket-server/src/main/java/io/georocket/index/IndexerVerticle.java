@@ -2,7 +2,6 @@ package io.georocket.index;
 
 import static io.georocket.util.ThrowableHelper.throwableToCode;
 
-import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -61,18 +60,6 @@ public abstract class IndexerVerticle extends AbstractVerticle {
   protected DefaultQueryCompiler queryCompiler;
   
   /**
-   * HashSet to store if {@link #ensureMapping(String)}} has been
-   * called at least once for particular Elasticsearch type.
-   * If type entry exists in HashSet, it was called.
-   */
-  private HashSet<String> mappingEnsured;
-  
-  /**
-   * True if {@link #ensureIndex()} has been called at least once
-   */
-  private boolean indexEnsured;
-
-  /**
    * Constructor. Set all addresses on Vert.x eventbus
    * @param addressAdd address on Vert.x eventbus for add operations
    * @param addressQuery address on Vert.x eventbus for query operations
@@ -82,7 +69,6 @@ public abstract class IndexerVerticle extends AbstractVerticle {
     this.addressAdd = addressAdd;
     this.addressQuery = addressQuery;
     this.addressDelete = addressDelete;
-    mappingEnsured = new HashSet<>();
   }
   
   @Override
@@ -209,51 +195,6 @@ public abstract class IndexerVerticle extends AbstractVerticle {
   }
   
   /**
-   * Ensure the Elasticsearch index exists
-   * @return an observable that will emit a single item when the index has
-   * been created or if it already exists
-   */
-  protected Observable<Void> ensureIndex() {
-    if (indexEnsured) {
-      return Observable.just(null);
-    }
-    indexEnsured = true;
-
-    // check if the index exists
-    return client.indexExists().flatMap(exists -> {
-      if (exists) {
-        return Observable.just(null);
-      } else {
-        // index does not exist. create it.
-        return createIndex();
-      }
-    });
-  }
-
-  /**
-   * Ensure the Elasticsearch mapping exists
-   * @param type the target type for the mapping
-   * @return an observable that will emit a single item when the mapping has
-   * been created or if it already exists
-   */
-  protected Observable<Void> ensureMapping(String type) {
-    if (mappingEnsured.contains(type)) {
-      return Observable.just(null);
-    }
-    mappingEnsured.add(type);
-
-    // check if the target type exists
-    return client.typeExists(type).flatMap(exists -> {
-      if (exists) {
-        return Observable.just(null);
-      } else {
-        // target type does not exist. create the mapping.
-        return createMapping();
-      }
-    });
-  }
-  
-  /**
    * Create the Elasticsearch index
    * @return an observable that will emit a single item when the index
    * has been created
@@ -357,13 +298,6 @@ public abstract class IndexerVerticle extends AbstractVerticle {
    * been deleted successfully
    */
   protected abstract Observable<Void> onDelete(JsonObject body);
-
-  /**
-   * Create the Elasticsearch mapping
-   * @return an observable that will emit a single item when the mapping
-   * has been created
-   */
-  protected abstract Observable<Void> createMapping();
 
   /**
    * Create collection of all query compilers for this verticle.

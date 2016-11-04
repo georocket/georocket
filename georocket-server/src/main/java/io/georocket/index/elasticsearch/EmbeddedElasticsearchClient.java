@@ -70,10 +70,20 @@ public class EmbeddedElasticsearchClient implements ElasticsearchClient {
   public Observable<Boolean> createIndex() {
     return delegate.createIndex();
   }
+  
+  @Override
+  public Observable<Void> ensureIndex() {
+    return delegate.ensureIndex();
+  }
 
   @Override
   public Observable<Boolean> putMapping(String type, JsonObject mapping) {
     return delegate.putMapping(type, mapping);
+  }
+  
+  @Override
+  public Observable<Void> ensureMapping(String type, JsonObject mapping) {
+    return delegate.ensureMapping(type, mapping);
   }
 
   @Override

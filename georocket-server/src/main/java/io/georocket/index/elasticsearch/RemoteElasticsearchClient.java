@@ -11,6 +11,7 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.http.HttpMethod;
+import io.vertx.core.impl.NoStackTraceThrowable;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -167,11 +168,60 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
       .map(res -> res.getBoolean("acknowledged", true));
   }
   
+  /**
+   * Ensure the Elasticsearch index exists
+   * @return an observable that will emit a single item when the index has
+   * been created or if it already exists
+   */
+  @Override
+  public Observable<Void> ensureIndex() {
+    // check if the index exists
+    return indexExists().flatMap(exists -> {
+      if (exists) {
+        return Observable.just(null);
+      } else {
+        // index does not exist. create it.
+        return createIndex().flatMap(ack -> {
+          if (ack) {
+            return Observable.just(null);
+          }
+          return Observable.error(new NoStackTraceThrowable("Index creation "
+            + "was not acknowledged by Elasticsearch"));
+        });
+      }
+    });
+  }
+  
   @Override
   public Observable<Boolean> putMapping(String type, JsonObject mapping) {
     String uri = "/" + index + "/_mapping/" + type;
     return performRequestRetry(HttpMethod.PUT, uri, mapping.encode())
       .map(res -> res.getBoolean("acknowledged", true));
+  }
+  
+  /**
+   * Ensure the Elasticsearch mapping exists
+   * @param type the target type for the mapping
+   * @return an observable that will emit a single item when the mapping has
+   * been created or if it already exists
+   */
+  @Override
+  public Observable<Void> ensureMapping(String type, JsonObject mapping) {
+    // check if the target type exists
+    return typeExists(type).flatMap(exists -> {
+      if (exists) {
+        return Observable.just(null);
+      } else {
+        // target type does not exist. create the mapping.
+        return putMapping(type, mapping).flatMap(ack -> {
+          if (ack) {
+            return Observable.just(null);
+          }
+          return Observable.error(new NoStackTraceThrowable("Mapping creation "
+            + "was not acknowledged by Elasticsearch"));
+        });
+      }
+    });
   }
   
   @Override

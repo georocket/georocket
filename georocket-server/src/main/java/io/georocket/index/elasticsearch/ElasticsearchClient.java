@@ -122,13 +122,33 @@ public interface ElasticsearchClient {
   Observable<Boolean> createIndex();
   
   /**
+   * Convenience method that makes sure the index exists. It first calls
+   * {@link #indexExists()} and then {@link #createIndex()} if the index does
+   * not exist yet.
+   * @return an observable that will emit a single item when the index has
+   * been created or if it already exists
+   */
+  Observable<Void> ensureIndex();
+  
+  /**
    * Add mapping for the given type
    * @param type the type
-   * @param mapping the mapping to set for the index
+   * @param mapping the mapping to set for the type
    * @return an observable emitting <code>true</code> if the operation
    * was acknowledged by Elasticsearch, <code>false</code> otherwise
    */
   Observable<Boolean> putMapping(String type, JsonObject mapping);
+  
+  /**
+   * Convenience method that makes sure the given mapping exists. It first calls
+   * {@link #typeExists(String)} and then {@link #putMapping(String, JsonObject)}
+   * if the mapping does not exist yet.
+   * @param type the target type for the mapping
+   * @param mapping the mapping to set for the type
+   * @return an observable that will emit a single item when the mapping has
+   * been created or if it already exists
+   */
+  Observable<Void> ensureMapping(String type, JsonObject mapping);
   
   /**
    * Check if Elasticsearch is running and if it answers to a simple request
