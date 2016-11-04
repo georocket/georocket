@@ -26,9 +26,9 @@ import io.vertx.core.logging.LoggerFactory;
  * Indexes bounding boxes of inserted chunks
  * @author Michel Kraemer
  */
-public class BoundingBoxIndexer implements XMLIndexer, CRSAware {
+public class XMLBoundingBoxIndexer implements XMLIndexer, CRSAware {
   private static final CoordinateReferenceSystem WGS84 = DefaultGeographicCRS.WGS84;
-  private static Logger log = LoggerFactory.getLogger(BoundingBoxIndexer.class);
+  private static Logger log = LoggerFactory.getLogger(XMLBoundingBoxIndexer.class);
   
   /**
    * The string of the detected CRS

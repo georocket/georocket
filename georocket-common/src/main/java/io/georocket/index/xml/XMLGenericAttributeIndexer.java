@@ -13,7 +13,7 @@ import io.georocket.util.XMLStreamEvent;
  * Index for CityGML generic attributes
  * @author Michel Kraemer
  */
-public class GenericAttributeIndexer implements XMLIndexer {
+public class XMLGenericAttributeIndexer implements XMLIndexer {
   /**
    * The key of the currently parsed generic attribute
    */

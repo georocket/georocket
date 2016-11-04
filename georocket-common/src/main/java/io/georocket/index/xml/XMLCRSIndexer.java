@@ -10,11 +10,11 @@ import com.google.common.collect.ImmutableMap;
 import io.georocket.util.XMLStreamEvent;
 
 /**
- * Indexes the coordinate reference system of a chunk. Only indexes first
+ * Indexes the coordinate reference system of a chunk. Only indexes the first
  * CRS found.
  * @author Michel Kraemer
  */
-public class CRSIndexer implements XMLIndexer {
+public class XMLCRSIndexer implements XMLIndexer {
   /**
    * The string of the detected CRS
    */

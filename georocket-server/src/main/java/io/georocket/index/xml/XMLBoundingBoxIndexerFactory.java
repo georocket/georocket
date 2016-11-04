@@ -7,7 +7,7 @@ import java.util.Properties;
 import io.georocket.index.generic.BoundingBoxIndexerFactory;
 
 /**
- * Create instances of {@link BoundingBoxIndexer}
+ * Create instances of {@link XMLBoundingBoxIndexer}
  * @author Michel Kraemer
  */
 public class XMLBoundingBoxIndexerFactory extends BoundingBoxIndexerFactory
@@ -15,8 +15,8 @@ public class XMLBoundingBoxIndexerFactory extends BoundingBoxIndexerFactory
   private static final String PROPERTIES_FILENAME =
     "io.georocket.index.xml.XMLBoundingBoxIndexerFactory.properties";
   private static final String BOUNDINGBOXINDEXER_CLASSNAME =
-    "io.georocket.index.xml.BoundingBoxIndexer";
-  private static Class<? extends BoundingBoxIndexer> configuredClass;
+    "io.georocket.index.xml.XMLBoundingBoxIndexer";
+  private static Class<? extends XMLBoundingBoxIndexer> configuredClass;
 
   static {
     loadConfig();
@@ -32,7 +32,7 @@ public class XMLBoundingBoxIndexerFactory extends BoundingBoxIndexerFactory
         String cls = p.getProperty(BOUNDINGBOXINDEXER_CLASSNAME);
         if (cls != null) {
           try {
-            configuredClass = (Class<? extends BoundingBoxIndexer>)Class.forName(cls);
+            configuredClass = (Class<? extends XMLBoundingBoxIndexer>)Class.forName(cls);
           } catch (ClassNotFoundException e) {
             throw new RuntimeException("Could not find custom "
               + "BoundingBoxIndexer class: " + cls, e);
@@ -47,7 +47,7 @@ public class XMLBoundingBoxIndexerFactory extends BoundingBoxIndexerFactory
   @Override
   public XMLIndexer createIndexer() {
     if (configuredClass == null) {
-      return new BoundingBoxIndexer();
+      return new XMLBoundingBoxIndexer();
     }
     try {
       return configuredClass.newInstance();

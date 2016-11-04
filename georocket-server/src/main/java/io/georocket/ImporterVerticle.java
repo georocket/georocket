@@ -12,7 +12,7 @@ import java.util.stream.Stream;
 
 import io.georocket.constants.AddressConstants;
 import io.georocket.constants.ConfigConstants;
-import io.georocket.index.xml.CRSIndexer;
+import io.georocket.index.xml.XMLCRSIndexer;
 import io.georocket.input.xml.FirstLevelSplitter;
 import io.georocket.input.xml.XMLSplitter;
 import io.georocket.storage.ChunkMeta;
@@ -198,7 +198,7 @@ public class ImporterVerticle extends AbstractVerticle {
     Window window = new Window();
     XMLSplitter splitter = new FirstLevelSplitter(window);
     AtomicInteger processing = new AtomicInteger(0);
-    CRSIndexer crsIndexer = new CRSIndexer();
+    XMLCRSIndexer crsIndexer = new XMLCRSIndexer();
     return f.toObservable()
         .map(buf -> (io.vertx.core.buffer.Buffer)buf.getDelegate())
         .doOnNext(window::append)
