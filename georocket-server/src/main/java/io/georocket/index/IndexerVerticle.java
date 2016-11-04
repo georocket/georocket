@@ -4,6 +4,8 @@ import static io.georocket.util.ThrowableHelper.throwableToCode;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
@@ -23,23 +25,31 @@ import com.google.common.collect.ImmutableList;
 import io.georocket.constants.AddressConstants;
 import io.georocket.index.elasticsearch.ElasticsearchClient;
 import io.georocket.index.elasticsearch.ElasticsearchClientFactory;
-import io.georocket.index.xml.XMLChunkMapper;
+import io.georocket.index.xml.StreamIndexer;
+import io.georocket.index.xml.XMLIndexerFactory;
 import io.georocket.query.DefaultQueryCompiler;
 import io.georocket.storage.ChunkMeta;
+import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.RxStore;
 import io.georocket.storage.StoreFactory;
+import io.georocket.storage.XMLChunkMeta;
 import io.georocket.util.MapUtils;
 import io.georocket.util.MimeTypeUtils;
 import io.georocket.util.RxUtils;
+import io.georocket.util.StreamEvent;
+import io.georocket.util.XMLParserOperator;
 import io.vertx.core.Future;
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.impl.NoStackTraceThrowable;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.rx.java.RxHelper;
 import io.vertx.rxjava.core.AbstractVerticle;
 import io.vertx.rxjava.core.eventbus.Message;
 import rx.Observable;
+import rx.Observable.Operator;
 import rx.functions.Func1;
 
 /**
@@ -86,11 +96,6 @@ public class IndexerVerticle extends AbstractVerticle {
   private List<? extends IndexerFactory> indexerFactories;
   
   /**
-   * Maps XML chunks to Elasticsearch documents and vice-versa
-   */
-  private ChunkMapper xmlChunkMapper;
-  
-  /**
    * True if the indexer should report activities to the Vert.x event bus
    */
   private boolean reportActivities;
@@ -102,8 +107,6 @@ public class IndexerVerticle extends AbstractVerticle {
     // load and copy all indexer factories now and not lazily to avoid
     // concurrent modifications to the service loader's internal cache
     indexerFactories = ImmutableList.copyOf(ServiceLoader.load(IndexerFactory.class));
-    
-    xmlChunkMapper = new XMLChunkMapper(indexerFactories);
     
     store = new RxStore(StoreFactory.createStore(getVertx()));
     
@@ -346,23 +349,65 @@ public class IndexerVerticle extends AbstractVerticle {
   }
   
   /**
-   * Open a chunk and convert to to an Elasticsearch document. Retry
-   * operation several times before failing.
+   * Open a chunk and convert it to an Elasticsearch document. Retry operation
+   * several times before failing.
    * @param path the path to the chunk to open
+   * @param mimeType the chunk's mime type
    * @param fallbackCRSString a string representing the CRS that should be used
    * to index the chunk if it does not specify a CRS itself (may be null if no
    * CRS is available as fallback)
    * @return an observable that emits the document
    */
   private Observable<Map<String, Object>> openChunkToDocument(String path,
-      String fallbackCRSString) {
+      String mimeType, String fallbackCRSString) {
     return Observable.defer(() -> store.getOneObservable(path)
       .flatMap(chunk -> {
         // convert chunk to document and close it
-        return xmlChunkMapper.chunkToDocument(chunk, fallbackCRSString)
-          .doAfterTerminate(chunk::close);
+        Seq<? extends IndexerFactory> filteredFactories = Seq.seq(indexerFactories)
+          .filter(f -> f instanceof XMLIndexerFactory);
+        return chunkToDocument(chunk, fallbackCRSString, new XMLParserOperator(),
+          filteredFactories).doAfterTerminate(chunk::close);
       }))
       .retryWhen(makeRetry());
+  }
+  
+  /**
+   * Convert a chunk to a Elasticsearch document
+   * @param chunk the chunk to convert
+   * @param fallbackCRSString a string representing the CRS that should be used
+   * to index the chunk if it does not specify a CRS itself (may be null if no
+   * CRS is available as fallback)
+   * @param parserOperator the operator used to parse the chunk stream into
+   * stream events
+   * @param indexerFactories a sequence of indexer factories that should be
+   * used to index the chunk
+   * @param <T> the type of the stream events created by <code>parserOperator</code>
+   * @return an observable that will emit the document
+   */
+  private <T extends StreamEvent> Observable<Map<String, Object>> chunkToDocument(
+      ChunkReadStream chunk, String fallbackCRSString,
+      Operator<T, Buffer> parserOperator,
+      Seq<? extends IndexerFactory> indexerFactories) {
+    List<StreamIndexer<T>> indexers = new ArrayList<>();
+    indexerFactories.forEach(factory -> {
+      @SuppressWarnings("unchecked")
+      StreamIndexer<T> i = (StreamIndexer<T>)factory.createIndexer();
+      if (fallbackCRSString != null && i instanceof CRSAware) {
+        ((CRSAware)i).setFallbackCRSString(fallbackCRSString);
+      }
+      indexers.add(i);
+    });
+    
+    return RxHelper.toObservable(chunk)
+      .lift(parserOperator)
+      .doOnNext(e -> indexers.forEach(i -> i.onEvent(e)))
+      .last() // "wait" until the whole chunk has been consumed
+      .map(e -> {
+        // create the Elasticsearch document
+        Map<String, Object> doc = new HashMap<>();
+        indexers.forEach(i -> doc.putAll(i.getResult()));
+        return doc;
+      });
   }
   
   /**
@@ -409,13 +454,10 @@ public class IndexerVerticle extends AbstractVerticle {
     String mimeType = filteredSource.getString("mimeType", "application/xml");
     if (MimeTypeUtils.belongsTo(mimeType, "application", "xml") ||
       MimeTypeUtils.belongsTo(mimeType, "text", "xml")) {
-      return xmlChunkMapper.makeChunkMeta(filteredSource);
+      return new XMLChunkMeta(filteredSource);
+    } else {
+      return new ChunkMeta(filteredSource);
     }
-    
-    // TODO should actually never happen, but we should return a proper
-    // error anyhow instead of throwing an exception
-    throw new RuntimeException("Could not convert document to chunk. "
-      + "Unknown mime type: " + mimeType);
   }
 
   /**
@@ -456,8 +498,10 @@ public class IndexerVerticle extends AbstractVerticle {
         String filename = body.getString("filename");
         Long importTime = body.getLong("importTime");
 
+        String mimeType = meta.getString("mimeType", XMLChunkMeta.MIME_TYPE);
+
         // open chunk and create IndexRequest
-        return openChunkToDocument(path, fallbackCRSString)
+        return openChunkToDocument(path, mimeType, fallbackCRSString)
           .doOnNext(doc -> {
             doc.put("path", path);
             doc.put("importId", importId);
