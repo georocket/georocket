@@ -13,7 +13,7 @@ import io.georocket.constants.ConfigConstants;
 import io.georocket.http.Endpoint;
 import io.georocket.http.GeneralEndpoint;
 import io.georocket.http.StoreEndpoint;
-import io.georocket.index.XMLIndexerVerticle;
+import io.georocket.index.ChunkIndexerVerticle;
 import io.georocket.util.JsonUtils;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.DeploymentOptions;
@@ -30,6 +30,7 @@ import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.web.Router;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
+import rx.Observable;
 import rx.plugins.RxJavaHooks;
 
 /**
@@ -44,9 +45,9 @@ public class GeoRocket extends AbstractVerticle {
   /**
    * Deploy a new verticle with the standard configuration of this instance
    * @param cls the class of the verticle class to deploy
-   * @return a future that will carry the verticle's deployment id
+   * @return an observable that will carry the verticle's deployment id
    */
-  protected ObservableFuture<String> deployVerticle(Class<? extends Verticle> cls) {
+  protected Observable<String> deployVerticle(Class<? extends Verticle> cls) {
     ObservableFuture<String> observable = RxHelper.observableFuture();
     DeploymentOptions options = new DeploymentOptions().setConfig(config());
     vertx.deployVerticle(cls.getName(), options, observable.toHandler());
@@ -54,24 +55,24 @@ public class GeoRocket extends AbstractVerticle {
   }
 
   /**
-   * Deploy the XML indexer verticle
-   * @return a future that will be completed when the verticle was deployed and
-   * will carry the verticle's deployment id
+   * Deploy the chunk indexer verticle
+   * @return an observable that will complete when the verticle was deployed
+   * and will carry the verticle's deployment id
    */
-  protected ObservableFuture<String> deployXMLIndexer() {
-    return deployVerticle(XMLIndexerVerticle.class);
+  protected Observable<String> deployChunkIndexer() {
+    return deployVerticle(ChunkIndexerVerticle.class);
   }
 
   /**
    * Deploy the importer verticle
-   * @return a future that will be completed if the verticle was deployed
-   * and will carry the verticle's deployment id.
+   * @return an observable that will complete when the verticle was deployed
+   * and will carry the verticle's deployment id
    */
-  protected ObservableFuture<String> deployImporter() {
+  protected Observable<String> deployImporter() {
     return deployVerticle(ImporterVerticle.class);
   }
 
-  private ObservableFuture<HttpServer> deployHttpServer() {
+  private Observable<HttpServer> deployHttpServer() {
     int port = config().getInteger(ConfigConstants.PORT, ConfigConstants.DEFAULT_PORT);
 
     Router router = createRouter();
@@ -136,7 +137,7 @@ public class GeoRocket extends AbstractVerticle {
   public void start(Future<Void> startFuture) {
     log.info("Launching GeoRocket ...");
 
-    deployXMLIndexer()
+    deployChunkIndexer()
       .flatMap(v -> deployImporter())
       .flatMap(v -> deployHttpServer())
       .subscribe(id -> {

@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -13,13 +14,16 @@ import org.apache.commons.lang.StringUtils;
 import org.jooq.lambda.tuple.Tuple;
 import org.yaml.snakeyaml.Yaml;
 
+import com.google.common.collect.ImmutableList;
+
 import io.georocket.constants.AddressConstants;
+import io.georocket.index.xml.XMLChunkMapper;
 import io.georocket.query.DefaultQueryCompiler;
 import io.georocket.storage.ChunkMeta;
-import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.RxStore;
 import io.georocket.storage.StoreFactory;
 import io.georocket.util.MapUtils;
+import io.georocket.util.MimeTypeUtils;
 import io.vertx.core.Future;
 import io.vertx.core.impl.NoStackTraceThrowable;
 import io.vertx.core.json.JsonArray;
@@ -32,6 +36,7 @@ import rx.Observable;
 /**
  * Background indexing of chunks added to the store
  * @author Benedikt Hiemenz
+ * @author Michel Kraemer
  */
 public abstract class ChunkIndexerVerticle extends IndexerVerticle {
   private static Logger log = LoggerFactory.getLogger(ChunkIndexerVerticle.class);
@@ -50,6 +55,11 @@ public abstract class ChunkIndexerVerticle extends IndexerVerticle {
    * A list of {@link IndexerFactory} objects
    */
   protected List<? extends IndexerFactory> indexerFactories;
+  
+  /**
+   * Maps XML chunks to Elasticsearch documents and vice-versa
+   */
+  protected ChunkMapper xmlChunkMapper;
 
   /**
    * Constructor. Set addresses according to {@link AddressConstants}
@@ -60,7 +70,12 @@ public abstract class ChunkIndexerVerticle extends IndexerVerticle {
 
   @Override
   public void start(Future<Void> startFuture) {
-    indexerFactories = createIndexerFactories();
+    // load and copy all indexer factories now and not lazily to avoid
+    // concurrent modifications to the service loader's internal cache
+    indexerFactories = ImmutableList.copyOf(ServiceLoader.load(IndexerFactory.class));
+    
+    xmlChunkMapper = new XMLChunkMapper(indexerFactories);
+    
     store = new RxStore(StoreFactory.createStore(getVertx()));
     super.start(startFuture);
   }
@@ -79,7 +94,7 @@ public abstract class ChunkIndexerVerticle extends IndexerVerticle {
     return Observable.defer(() -> store.getOneObservable(path)
       .flatMap(chunk -> {
         // convert chunk to document and close it
-        return chunkToDocument(chunk, fallbackCRSString)
+        return xmlChunkMapper.chunkToDocument(chunk, fallbackCRSString)
           .doAfterTerminate(chunk::close);
       }))
       .retryWhen(makeRetry());
@@ -125,7 +140,17 @@ public abstract class ChunkIndexerVerticle extends IndexerVerticle {
         filteredSource.put(newFieldName, source.getValue(fieldName));
       }
     }
-    return makeChunkMeta(filteredSource);
+    
+    String mimeType = filteredSource.getString("mimeType", "application/xml");
+    if (MimeTypeUtils.belongsTo(mimeType, "application", "xml") ||
+      MimeTypeUtils.belongsTo(mimeType, "text", "xml")) {
+      return xmlChunkMapper.makeChunkMeta(filteredSource);
+    }
+    
+    // TODO should actually never happen, but we should return a proper
+    // error anyhow instead of throwing an exception
+    throw new RuntimeException("Could not convert document to chunk. "
+      + "Unknown mime type: " + mimeType);
   }
 
   @Override
@@ -285,28 +310,4 @@ public abstract class ChunkIndexerVerticle extends IndexerVerticle {
   protected DefaultQueryCompiler createQueryCompiler() {
     return new DefaultQueryCompiler(indexerFactories);
   }
-
-  /**
-   * Create a {@link ChunkMeta} object from the given JSON object
-   * @param json the JSON object
-   * @return the {@link ChunkMeta} object
-   */
-  protected abstract ChunkMeta makeChunkMeta(JsonObject json);
-
-  /**
-   * Convert a chunk to a Elasticsearch document
-   * @param chunk the chunk to convert
-   * @param fallbackCRSString a string representing the CRS that should be used
-   * to index the chunk if it does not specify a CRS itself (may be null if no
-   * CRS is available as fallback)
-   * @return an observable that will emit the document
-   */
-  protected abstract Observable<Map<String, Object>> chunkToDocument(
-          ChunkReadStream chunk, String fallbackCRSString);
-
-  /**
-   * Create a list of indexer factories
-   * @return the list
-   */
-  protected abstract List<? extends IndexerFactory> createIndexerFactories();
 }
