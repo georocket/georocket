@@ -38,7 +38,7 @@ import rx.Observable;
  * @author Benedikt Hiemenz
  * @author Michel Kraemer
  */
-public abstract class ChunkIndexerVerticle extends IndexerVerticle {
+public class ChunkIndexerVerticle extends IndexerVerticle {
   private static Logger log = LoggerFactory.getLogger(ChunkIndexerVerticle.class);
 
   /**
@@ -64,7 +64,7 @@ public abstract class ChunkIndexerVerticle extends IndexerVerticle {
   /**
    * Constructor. Set addresses according to {@link AddressConstants}
    */
-  protected ChunkIndexerVerticle() {
+  public ChunkIndexerVerticle() {
     super(AddressConstants.INDEXER_ADD, AddressConstants.INDEXER_QUERY, AddressConstants.INDEXER_DELETE);
   }
 
