@@ -13,7 +13,7 @@ import io.georocket.constants.ConfigConstants;
 import io.georocket.http.Endpoint;
 import io.georocket.http.GeneralEndpoint;
 import io.georocket.http.StoreEndpoint;
-import io.georocket.index.ChunkIndexerVerticle;
+import io.georocket.index.IndexerVerticle;
 import io.georocket.util.JsonUtils;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.DeploymentOptions;
@@ -55,12 +55,12 @@ public class GeoRocket extends AbstractVerticle {
   }
 
   /**
-   * Deploy the chunk indexer verticle
+   * Deploy the indexer verticle
    * @return an observable that will complete when the verticle was deployed
    * and will carry the verticle's deployment id
    */
-  protected Observable<String> deployChunkIndexer() {
-    return deployVerticle(ChunkIndexerVerticle.class);
+  protected Observable<String> deployIndexer() {
+    return deployVerticle(IndexerVerticle.class);
   }
 
   /**
@@ -137,7 +137,7 @@ public class GeoRocket extends AbstractVerticle {
   public void start(Future<Void> startFuture) {
     log.info("Launching GeoRocket ...");
 
-    deployChunkIndexer()
+    deployIndexer()
       .flatMap(v -> deployImporter())
       .flatMap(v -> deployHttpServer())
       .subscribe(id -> {
