@@ -220,7 +220,8 @@ public class IndexerVerticle extends AbstractVerticle {
 
     if (reportActivities) {
       JsonObject msg = new JsonObject()
-          .put("activity", "deleting-index")
+          .put("activity", "deleting")
+          .put("scope", "index")
           .put("owner", deploymentID())
           .put("action", "start")
           .put("timestamp", timeStamp);
@@ -245,7 +246,8 @@ public class IndexerVerticle extends AbstractVerticle {
 
     if (reportActivities) {
       JsonObject msg = new JsonObject()
-          .put("activity", "deleting-index")
+          .put("activity", "deleting")
+          .put("scope", "index")
           .put("owner", deploymentID())
           .put("action", "stop")
           .put("chunkCount", count)
