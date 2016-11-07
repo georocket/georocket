@@ -135,7 +135,7 @@ public class ImporterVerticle extends AbstractVerticle {
    * @param layer the layer where to import the chunks
    * @param timestamp the time when the importer has started importing
    */
-  protected void onImportingStarted(String importId, String filepath,
+  private void onImportingStarted(String importId, String filepath,
       String layer, long timestamp) {
     log.info(String.format("Importing [%s] '%s' to layer '%s' started at '%d'",
         importId, filepath, layer, timestamp));
@@ -160,7 +160,7 @@ public class ImporterVerticle extends AbstractVerticle {
    * @param duration the time it took to import the chunks
    * @param error an error if the process has failed
    */
-  protected void onImportingFinished(String importId, String filepath,
+  private void onImportingFinished(String importId, String filepath,
       String layer, Integer chunkCount, long duration, Throwable error) {
     if (error == null) {
       log.info(String.format("Finished importing [%s] %d chunks '%s' "
