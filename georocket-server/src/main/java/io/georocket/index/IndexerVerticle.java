@@ -217,6 +217,16 @@ public class IndexerVerticle extends AbstractVerticle {
    */
   private void onDeletingStarted(long timeStamp, int count) {
     log.info("Deleting " + count + " chunks from index ...");
+
+    if (reportActivities) {
+      JsonObject msg = new JsonObject()
+          .put("activity", "deleting")
+          .put("scope", "index")
+          .put("owner", deploymentID())
+          .put("action", "start")
+          .put("timestamp", timeStamp);
+      vertx.eventBus().send(AddressConstants.ACTIVITIES, msg);
+    }
   }
 
   /**
@@ -232,6 +242,22 @@ public class IndexerVerticle extends AbstractVerticle {
     } else {
       log.info("Finished deleting " + count +
           " chunks from index in " + duration + " ms");
+    }
+
+    if (reportActivities) {
+      JsonObject msg = new JsonObject()
+          .put("activity", "deleting")
+          .put("scope", "index")
+          .put("owner", deploymentID())
+          .put("action", "stop")
+          .put("chunkCount", count)
+          .put("duration", duration);
+
+      if (errorMessage != null) {
+        msg.put("error", errorMessage);
+      }
+
+      vertx.eventBus().send(AddressConstants.ACTIVITIES, msg);
     }
   }
   

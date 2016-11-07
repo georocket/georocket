@@ -48,10 +48,16 @@ public class ImporterVerticle extends AbstractVerticle {
   
   protected RxStore store;
   private String incoming;
+
+  /**
+   * True if the importer should report activities to the Vert.x event bus
+   */
+  private boolean reportActivities;
   
   @Override
   public void start() {
     log.info("Launching importer ...");
+    reportActivities = config().getBoolean("georocket.reportActivities", false);
     
     store = new RxStore(StoreFactory.createStore(getVertx()));
     String storagePath = config().getString(ConfigConstants.STORAGE_FILE_PATH);
@@ -127,12 +133,22 @@ public class ImporterVerticle extends AbstractVerticle {
    * @param importId the id for this import
    * @param filepath the filepath of the file containing the chunks
    * @param layer the layer where to import the chunks
-   * @param startTimeStamp the time when the importer has started importing
+   * @param timestamp the time when the importer has started importing
    */
-  protected void onImportingStarted(String importId, String filepath,
-      String layer, long startTimeStamp) {
+  private void onImportingStarted(String importId, String filepath,
+      String layer, long timestamp) {
     log.info(String.format("Importing [%s] '%s' to layer '%s' started at '%d'",
-        importId, filepath, layer, startTimeStamp));
+        importId, filepath, layer, timestamp));
+
+    if (reportActivities) {
+      JsonObject msg = new JsonObject()
+          .put("activity", "importing")
+          .put("owner", deploymentID())
+          .put("action", "start")
+          .put("importId", importId)
+          .put("timestamp", timestamp);
+      vertx.eventBus().send(AddressConstants.ACTIVITIES, msg);
+    }
   }
 
   /**
@@ -144,7 +160,7 @@ public class ImporterVerticle extends AbstractVerticle {
    * @param duration the time it took to import the chunks
    * @param error an error if the process has failed
    */
-  protected void onImportingFinished(String importId, String filepath,
+  private void onImportingFinished(String importId, String filepath,
       String layer, Integer chunkCount, long duration, Throwable error) {
     if (error == null) {
       log.info(String.format("Finished importing [%s] %d chunks '%s' "
@@ -154,6 +170,22 @@ public class ImporterVerticle extends AbstractVerticle {
       log.error(String.format("Failed to import [%s] '%s' "
           + "to layer '%s' after %d ms", importId, filepath,
           layer, duration), error);
+    }
+
+    if (reportActivities) {
+      JsonObject msg = new JsonObject()
+          .put("activity", "importing")
+          .put("owner", deploymentID())
+          .put("action", "stop")
+          .put("importId", importId)
+          .put("chunkCount", chunkCount)
+          .put("duration", duration);
+
+      if (error != null) {
+        msg.put("error", error.getMessage());
+      }
+
+      vertx.eventBus().send(AddressConstants.ACTIVITIES, msg);
     }
   }
 
