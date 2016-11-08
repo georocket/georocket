@@ -3,10 +3,9 @@ package io.georocket.http;
 import static io.georocket.util.ThrowableHelper.throwableToCode;
 import static io.georocket.util.ThrowableHelper.throwableToMessage;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.nio.file.Paths;
-import java.nio.file.spi.FileTypeDetector;
 import java.util.List;
 
 import org.apache.commons.lang3.tuple.Pair;
@@ -24,7 +23,7 @@ import io.georocket.storage.RxStoreCursor;
 import io.georocket.storage.StoreFactory;
 import io.georocket.storage.XMLChunkMeta;
 import io.georocket.util.HttpException;
-import io.georocket.util.TikaFileTypeDetector;
+import io.georocket.util.MimeTypeUtils;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -55,7 +54,6 @@ public class StoreEndpoint implements Endpoint {
   private static Logger log = LoggerFactory.getLogger(StoreEndpoint.class);
   
   private final Vertx vertx;
-  private final FileTypeDetector typeDetector = new TikaFileTypeDetector();
   
   private RxStore store;
   private String storagePath;
@@ -244,7 +242,12 @@ public class StoreEndpoint implements Endpoint {
     
     vertx.<String>executeBlocking(f -> {
       try {
-        String mimeType = typeDetector.probeContentType(Paths.get(filepath));
+        String mimeType = MimeTypeUtils.detect(new File(filepath));
+        if (mimeType == null) {
+          log.warn("Could not detect file type for " + filepath + ". Using "
+            + "application/octet-stream.");
+          mimeType = "application/octet-stream";
+        }
         f.complete(mimeType);
       } catch (IOException e) {
         f.fail(e);
@@ -332,10 +335,10 @@ public class StoreEndpoint implements Endpoint {
             mimeType.equals("application/x-www-form-urlencoded")) {
           // fallback: if the client has not sent a Content-Type or if it's
           // a generic one, then try to guess it
-          log.warn("Mime type '" + mimeType + "' is invalid or generic. "
+          log.debug("Mime type '" + mimeType + "' is invalid or generic. "
               + "Trying to guess the right type.");
           return detectContentType(filepath).doOnNext(guessedType -> {
-            log.warn("Guessed mime type '" + guessedType + "'.");
+            log.debug("Guessed mime type '" + guessedType + "'.");
           });
         }
 

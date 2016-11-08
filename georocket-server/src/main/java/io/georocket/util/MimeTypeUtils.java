@@ -1,11 +1,26 @@
 package io.georocket.util;
 
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+
 /**
  * Utility methods for mime types
  * @author Andrej Sajenko
  * @author Michel Kraemer
  */
 public class MimeTypeUtils {
+  /**
+   * Mime type for XML
+   */
+  public static final String XML = "application/xml";
+
+  /**
+   * Mime type for JSON
+   */
+  public static final String JSON = "application/json";
+
   /**
    * <p>Check if the given mime type belongs to another one.</p>
    * <p>Examples:</p>
@@ -47,5 +62,61 @@ public class MimeTypeUtils {
 
     String structuredSyntaxSuffix = subtypeParts[1];
     return structuredSyntaxSuffix.equals(otherStructuredSyntaxSuffix);
+  }
+
+  /**
+   * Read the first bytes of the given file and try to determine the file
+   * format. Read up to 100 KB before giving up.
+   * @param f the file to read
+   * @return the file format (or <code>null</code> if the format
+   * could not be determined)
+   * @throws IOException if the input stream could not be read
+   */
+  public static String detect(File f) throws IOException {
+    if (!f.exists()) {
+      return null;
+    }
+    try (BufferedInputStream bis = new BufferedInputStream(
+        new FileInputStream(f))) {
+      return determineFileFormat(bis);
+    }
+  }
+
+  /**
+   * Read the first bytes of the given input stream and try to
+   * determine the file format. Reset the input stream to the position
+   * it had when the method was called. Read up to 100 KB before
+   * giving up.
+   * @param bis a buffered input stream that supports the mark and reset
+   * methods
+   * @return the file format (or <code>null</code> if the format
+   * could not be determined)
+   * @throws IOException if the input stream could not be read
+   */
+  private static String determineFileFormat(BufferedInputStream bis)
+      throws IOException {
+    int len = 1024 * 100;
+    
+    bis.mark(len);
+    try {
+      while (true) {
+        int c = bis.read();
+        --len;
+        if (c < 0 || len < 2) {
+          return null;
+        }
+        
+        if (!Character.isWhitespace(c)) {
+          if (c == '[' || c == '{') {
+            return JSON;
+          } else if (c == '<') {
+            return XML;
+          }
+          return null;
+        }
+      }
+    } finally {
+      bis.reset();
+    }
   }
 }

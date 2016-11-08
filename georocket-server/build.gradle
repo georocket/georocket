@@ -57,7 +57,6 @@ dependencies {
         // exclude servlet-api v2, we add an explicit dependency to v3 instead
         exclude group: 'javax.servlet', module: 'servlet-api'
     }
-    compile 'org.apache.tika:tika-core:1.13'
     compile 'org.jooq:jool:0.9.12'
     compile 'org.mongodb:bson:3.3.0'
     compile 'org.mongodb:mongodb-driver-async:3.3.0'
