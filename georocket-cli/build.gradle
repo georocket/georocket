@@ -11,10 +11,9 @@ repositories {
 
 dependencies {
     compile project(':georocket-client-api')
-    
-    compile "io.vertx:vertx-core:$vertxVersion"
+
     compile "io.vertx:vertx-rx-java:$vertxVersion"
-    
+
     compile 'commons-io:commons-io:2.5'
     compile 'de.undercouch:underline:1.0.0'
     compile 'net.time4j:time4j-core:4.20'
