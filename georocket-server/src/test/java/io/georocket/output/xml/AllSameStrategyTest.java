@@ -36,18 +36,16 @@ public class AllSameStrategyTest {
     Async async = context.async();
     MergeStrategy strategy = new AllSameStrategy();
     BufferWriteStream bws = new BufferWriteStream();
-    strategy.init(cm, context.asyncAssertSuccess(v1 -> {
-      strategy.init(cm, context.asyncAssertSuccess(v2 -> {
-        strategy.merge(new DelegateChunkReadStream(chunk1), cm, bws, context.asyncAssertSuccess(v3 -> {
-          strategy.merge(new DelegateChunkReadStream(chunk2), cm, bws, context.asyncAssertSuccess(v4 -> {
-            strategy.finishMerge(bws);
-            context.assertEquals(XMLHEADER + "<root><test chunk=\"1\"></test><test chunk=\"2\"></test></root>",
-                bws.getBuffer().toString("utf-8"));
-            async.complete();
-          }));
-        }));
-      }));
-    }));
+    strategy.init(cm)
+      .flatMap(v -> strategy.init(cm))
+      .flatMap(v -> strategy.merge(new DelegateChunkReadStream(chunk1), cm, bws))
+      .flatMap(v -> strategy.merge(new DelegateChunkReadStream(chunk2), cm, bws))
+      .doOnNext(v -> strategy.finish(bws))
+      .subscribe(v -> {
+        context.assertEquals(XMLHEADER + "<root><test chunk=\"1\"></test><test chunk=\"2\"></test></root>",
+            bws.getBuffer().toString("utf-8"));
+        async.complete();
+      }, context::fail);
   }
   
   /**
@@ -59,17 +57,16 @@ public class AllSameStrategyTest {
     Async async = context.async();
     MergeStrategy strategy = new AllSameStrategy();
     BufferWriteStream bws = new BufferWriteStream();
-    strategy.init(cm, context.asyncAssertSuccess(v1 -> {
+    strategy.init(cm)
       // skip second init
-      strategy.merge(new DelegateChunkReadStream(chunk1), cm, bws, context.asyncAssertSuccess(v3 -> {
-        strategy.merge(new DelegateChunkReadStream(chunk2), cm, bws, context.asyncAssertSuccess(v4 -> {
-          strategy.finishMerge(bws);
-          context.assertEquals(XMLHEADER + "<root><test chunk=\"1\"></test><test chunk=\"2\"></test></root>",
-              bws.getBuffer().toString("utf-8"));
-          async.complete();
-        }));
-      }));
-    }));
+      .flatMap(v -> strategy.merge(new DelegateChunkReadStream(chunk1), cm, bws))
+      .flatMap(v -> strategy.merge(new DelegateChunkReadStream(chunk2), cm, bws))
+      .doOnNext(v -> strategy.finish(bws))
+      .subscribe(v -> {
+        context.assertEquals(XMLHEADER + "<root><test chunk=\"1\"></test><test chunk=\"2\"></test></root>",
+            bws.getBuffer().toString("utf-8"));
+        async.complete();
+      }, context::fail);
   }
   
   /**
@@ -85,24 +82,20 @@ public class AllSameStrategyTest {
     
     Async async = context.async();
     MergeStrategy strategy = new AllSameStrategy();
-    strategy.canMerge(cm, context.asyncAssertSuccess(canMerge1 -> {
-      context.assertTrue(canMerge1);
-      strategy.init(cm, context.asyncAssertSuccess(v1 -> {
-        strategy.canMerge(cm, context.asyncAssertSuccess(canMerge2 -> {
-          context.assertTrue(canMerge2);
-          strategy.canMerge(cm2, context.asyncAssertSuccess(canMerge3 -> {
-            context.assertFalse(canMerge3);
-            strategy.canMerge(cm3, context.asyncAssertSuccess(canMerge4 -> {
-              context.assertFalse(canMerge4);
-              strategy.canMerge(cm4, context.asyncAssertSuccess(canMerge5 -> {
-                context.assertFalse(canMerge5);
-                async.complete();
-              }));
-            }));
-          }));
-        }));
-      }));
-    }));
+    strategy.canMerge(cm)
+      .doOnNext(c -> context.assertTrue(c))
+      .flatMap(v -> strategy.init(cm))
+      .flatMap(v -> strategy.canMerge(cm))
+      .doOnNext(c -> context.assertTrue(c))
+      .flatMap(v -> strategy.canMerge(cm2))
+      .doOnNext(c -> context.assertFalse(c))
+      .flatMap(v -> strategy.canMerge(cm3))
+      .doOnNext(c -> context.assertFalse(c))
+      .flatMap(v -> strategy.canMerge(cm4))
+      .doOnNext(c -> context.assertFalse(c))
+      .subscribe(v -> {
+        async.complete();
+      }, context::fail);
   }
   
   /**
@@ -116,10 +109,11 @@ public class AllSameStrategyTest {
     Async async = context.async();
     MergeStrategy strategy = new AllSameStrategy();
     BufferWriteStream bws = new BufferWriteStream();
-    strategy.init(cm, context.asyncAssertSuccess(v1 -> {
-      strategy.merge(new DelegateChunkReadStream(chunk2), cm2, bws, context.asyncAssertFailure(err -> {
+    strategy.init(cm)
+      .flatMap(v -> strategy.merge(new DelegateChunkReadStream(chunk2), cm2, bws))
+      .subscribe(v -> context.fail(), err -> {
+        context.assertTrue(err instanceof IllegalArgumentException);
         async.complete();
-      }));
-    }));
+      });
   }
 }

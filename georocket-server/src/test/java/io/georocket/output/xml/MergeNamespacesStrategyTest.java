@@ -62,18 +62,16 @@ public class MergeNamespacesStrategyTest {
     Async async = context.async();
     MergeStrategy strategy = new MergeNamespacesStrategy();
     BufferWriteStream bws = new BufferWriteStream();
-    strategy.init(META1, context.asyncAssertSuccess(v1 -> {
-      strategy.init(META2, context.asyncAssertSuccess(v2 -> {
-        strategy.merge(new DelegateChunkReadStream(CHUNK1), META1, bws, context.asyncAssertSuccess(v3 -> {
-          strategy.merge(new DelegateChunkReadStream(CHUNK2), META2, bws, context.asyncAssertSuccess(v4 -> {
-            strategy.finishMerge(bws);
-            context.assertEquals(XMLHEADER + EXPECTEDROOT + CONTENTS1 + CONTENTS2 + "</" + EXPECTEDROOT.getName() + ">",
-                bws.getBuffer().toString("utf-8"));
-            async.complete();
-          }));
-        }));
-      }));
-    }));
+    strategy.init(META1)
+      .flatMap(v -> strategy.init(META2))
+      .flatMap(v -> strategy.merge(new DelegateChunkReadStream(CHUNK1), META1, bws))
+      .flatMap(v -> strategy.merge(new DelegateChunkReadStream(CHUNK2), META2, bws))
+      .doOnNext(v -> strategy.finish(bws))
+      .subscribe(v -> {
+        context.assertEquals(XMLHEADER + EXPECTEDROOT + CONTENTS1 + CONTENTS2 +
+            "</" + EXPECTEDROOT.getName() + ">", bws.getBuffer().toString("utf-8"));
+        async.complete();
+      }, context::fail);
   }
   
   /**
@@ -85,13 +83,13 @@ public class MergeNamespacesStrategyTest {
     Async async = context.async();
     MergeStrategy strategy = new MergeNamespacesStrategy();
     BufferWriteStream bws = new BufferWriteStream();
-    strategy.init(META1, context.asyncAssertSuccess(v1 -> {
+    strategy.init(META1)
       // skip second init
-      strategy.merge(new DelegateChunkReadStream(CHUNK1), META1, bws, context.asyncAssertSuccess(v3 -> {
-        strategy.merge(new DelegateChunkReadStream(CHUNK2), META2, bws, context.asyncAssertFailure(err -> {
-          async.complete();
-        }));
-      }));
-    }));
+      .flatMap(v -> strategy.merge(new DelegateChunkReadStream(CHUNK1), META1, bws))
+      .flatMap(v -> strategy.merge(new DelegateChunkReadStream(CHUNK2), META2, bws))
+      .subscribe(v -> context.fail(), err -> {
+        context.assertTrue(err instanceof IllegalArgumentException);
+        async.complete();
+      });
   }
 }

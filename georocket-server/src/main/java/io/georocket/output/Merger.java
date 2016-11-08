@@ -18,7 +18,7 @@ public interface Merger<T extends ChunkMeta> {
    * {@link #merge(ChunkReadStream, ChunkMeta, WriteStream)}
    * has been called this method must not be called any more.
    * @param meta the chunk metadata
-   * @return an observable that completes once the merger has been
+   * @return an observable that emits exactly one item when the merger has been
    * initialized with the given chunk
    */
   Observable<Void> init(T meta);
@@ -31,7 +31,8 @@ public interface Merger<T extends ChunkMeta> {
    * @param chunk the chunk to merge
    * @param meta the chunk's metadata
    * @param out the stream to write the merged result to
-   * @return an observable that completes once the chunk has been merged
+   * @return an observable that emits exactly one item when the chunk has
+   * been merged
    */
   Observable<Void> merge(ChunkReadStream chunk, T meta,
       WriteStream<Buffer> out);

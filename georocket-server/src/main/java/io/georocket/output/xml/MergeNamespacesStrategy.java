@@ -13,9 +13,7 @@ import com.google.common.base.Splitter;
 
 import io.georocket.storage.XMLChunkMeta;
 import io.georocket.util.XMLStartElement;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
+import rx.Observable;
 
 /**
  * Merge namespaces of XML root elements
@@ -203,21 +201,21 @@ public class MergeNamespacesStrategy extends AbstractMergeStrategy {
   }
   
   @Override
-  public void canMerge(XMLChunkMeta meta, Handler<AsyncResult<Boolean>> handler) {
-    if (getParents() == null || canMerge(getParents(), meta.getParents(), !isHeaderWritten())) {
-      handler.handle(ASYNC_TRUE);
+  public Observable<Boolean> canMerge(XMLChunkMeta meta) {
+    if (getParents() == null || canMerge(getParents(), meta.getParents(),
+        !isHeaderWritten())) {
+      return Observable.just(true);
     } else {
-      handler.handle(ASYNC_FALSE);
+      return Observable.just(false);
     }
   }
   
   @Override
-  protected void mergeParents(XMLChunkMeta meta, Handler<AsyncResult<Void>> handler) {
+  protected Observable<Void> mergeParents(XMLChunkMeta meta) {
     if (getParents() == null) {
       // no merge necessary yet, just save the chunk's parents
       setParents(meta.getParents());
-      handler.handle(Future.succeededFuture());
-      return;
+      return Observable.just(null);
     }
     
     // merge current parents and chunk parents
@@ -239,7 +237,7 @@ public class MergeNamespacesStrategy extends AbstractMergeStrategy {
       super.setParents(newParents);
     }
     
-    handler.handle(Future.succeededFuture());
+    return Observable.just(null);
   }
   
   /**

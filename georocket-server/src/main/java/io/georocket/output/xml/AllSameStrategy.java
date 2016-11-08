@@ -1,9 +1,7 @@
 package io.georocket.output.xml;
 
 import io.georocket.storage.XMLChunkMeta;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
+import rx.Observable;
 
 /**
  * Merge chunks whose root XML elements are all equal
@@ -11,19 +9,19 @@ import io.vertx.core.Handler;
  */
 public class AllSameStrategy extends AbstractMergeStrategy {
   @Override
-  public void canMerge(XMLChunkMeta meta, Handler<AsyncResult<Boolean>> handler) {
+  public Observable<Boolean> canMerge(XMLChunkMeta meta) {
     if (getParents() == null || getParents().equals(meta.getParents())) {
-      handler.handle(ASYNC_TRUE);
+      return Observable.just(Boolean.TRUE);
     } else {
-      handler.handle(ASYNC_FALSE);
+      return Observable.just(Boolean.FALSE);
     }
   }
 
   @Override
-  protected void mergeParents(XMLChunkMeta meta, Handler<AsyncResult<Void>> handler) {
+  protected Observable<Void> mergeParents(XMLChunkMeta meta) {
     if (getParents() == null) {
       setParents(meta.getParents());
     }
-    handler.handle(Future.succeededFuture());
+    return Observable.just(null);
   }
 }
