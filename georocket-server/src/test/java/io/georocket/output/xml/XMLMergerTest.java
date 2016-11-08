@@ -1,4 +1,4 @@
-package io.georocket.output;
+package io.georocket.output.xml;
 
 import java.util.Arrays;
 
@@ -7,8 +7,8 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import io.georocket.storage.XMLChunkMeta;
 import io.georocket.storage.ChunkReadStream;
+import io.georocket.storage.XMLChunkMeta;
 import io.georocket.util.XMLStartElement;
 import io.georocket.util.io.BufferWriteStream;
 import io.georocket.util.io.DelegateChunkReadStream;
@@ -20,11 +20,11 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 import rx.Observable;
 
 /**
- * Test {@link Merger}
+ * Test {@link XMLMerger}
  * @author Michel Kraemer
  */
 @RunWith(VertxUnitRunner.class)
-public class MergerTest {
+public class XMLMergerTest {
   private static final String XMLHEADER = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n";
   
   private static final String XSI = "xsi";
@@ -57,18 +57,18 @@ public class MergerTest {
   
   private void doMerge(TestContext context, Observable<Buffer> chunks,
       Observable<XMLChunkMeta> metas, String xmlContents) {
-    Merger m = new Merger();
+    XMLMerger m = new XMLMerger();
     BufferWriteStream bws = new BufferWriteStream();
     Async async = context.async();
     metas
-      .flatMap(meta -> m.initObservable(meta).map(v -> meta))
+      .flatMap(meta -> m.init(meta).map(v -> meta))
       .toList()
       .flatMap(l -> chunks.map(DelegateChunkReadStream::new)
           .<XMLChunkMeta, Pair<ChunkReadStream, XMLChunkMeta>>zipWith(l, Pair::of))
-      .flatMap(p -> m.mergeObservable(p.getLeft(), p.getRight(), bws))
+      .flatMap(p -> m.merge(p.getLeft(), p.getRight(), bws))
       .last()
       .subscribe(v -> {
-        m.finishMerge(bws);
+        m.finish(bws);
         context.assertEquals(XMLHEADER + xmlContents, bws.getBuffer().toString("utf-8"));
         async.complete();
       }, err -> {

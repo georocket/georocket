@@ -17,7 +17,7 @@ import com.google.common.base.Splitter;
 
 import io.georocket.constants.AddressConstants;
 import io.georocket.constants.ConfigConstants;
-import io.georocket.output.Merger;
+import io.georocket.output.xml.XMLMerger;
 import io.georocket.storage.RxStore;
 import io.georocket.storage.RxStoreCursor;
 import io.georocket.storage.StoreFactory;
@@ -124,7 +124,7 @@ public class StoreEndpoint implements Endpoint {
    * @return an observable that will emit exactly one item when the merger
    * has been initialized with all results
    */
-  private Observable<Void> initializeMerger(Merger merger, String search,
+  private Observable<Void> initializeMerger(XMLMerger merger, String search,
       String path) {
     return store.getObservable(search, path)
       .map(RxStoreCursor::new)
@@ -132,7 +132,7 @@ public class StoreEndpoint implements Endpoint {
       .map(Pair::getLeft)
       // TODO handle cast to XMLChunkMeta according to mime type
       .cast(XMLChunkMeta.class)
-      .flatMap(merger::initObservable)
+      .flatMap(merger::init)
       .defaultIfEmpty(null)
       .last();
   }
@@ -145,19 +145,19 @@ public class StoreEndpoint implements Endpoint {
    * @param out a write stream to write the merged chunks to
    * @return an observable that will emit one item when all chunks have been merged
    */
-  private Observable<Void> doMerge(Merger merger, String search, String path,
+  private Observable<Void> doMerge(XMLMerger merger, String search, String path,
       WriteStream<Buffer> out) {
     return store.getObservable(search, path)
       .map(RxStoreCursor::new)
       .flatMap(RxStoreCursor::toObservable)
       .flatMap(p -> store.getOneObservable(p.getRight())
         // TODO handle cast to XMLChunkMeta according to mime type
-        .flatMap(crs -> merger.mergeObservable(crs, (XMLChunkMeta)p.getLeft(), out)
+        .flatMap(crs -> merger.merge(crs, (XMLChunkMeta)p.getLeft(), out)
           .map(v -> Pair.of(1L, 0L)) // left: count, right: not_accepted
           .onErrorResumeNext(t -> {
             if (t instanceof IllegalStateException) {
               // Chunk cannot be merged. maybe it's a new one that has
-              // been added after the Merger was initialized. Just
+              // been added after the merger was initialized. Just
               // ignore it, but emit a warning later
               return Observable.just(Pair.of(0L, 1L));
             }
@@ -181,7 +181,7 @@ public class StoreEndpoint implements Endpoint {
               + "repeat the request.");
         }
         if (count > 0) {
-          merger.finishMerge(out);
+          merger.finish(out);
           return Observable.just(null);
         } else {
           return Observable.error(new FileNotFoundException("Not Found"));
@@ -217,7 +217,7 @@ public class StoreEndpoint implements Endpoint {
     
     // perform two searches: first initialize the merger and then
     // merge all retrieved chunks
-    Merger merger = new Merger();
+    XMLMerger merger = new XMLMerger();
     initializeMerger(merger, search, path)
       .flatMap(v -> doMerge(merger, search, path, response))
       .subscribe(v -> {

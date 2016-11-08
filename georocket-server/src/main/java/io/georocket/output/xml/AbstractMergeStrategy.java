@@ -1,4 +1,4 @@
-package io.georocket.output;
+package io.georocket.output.xml;
 
 import java.util.List;
 

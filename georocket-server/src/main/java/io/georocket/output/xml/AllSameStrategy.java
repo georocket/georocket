@@ -1,4 +1,4 @@
-package io.georocket.output;
+package io.georocket.output.xml;
 
 import io.georocket.storage.XMLChunkMeta;
 import io.vertx.core.AsyncResult;
