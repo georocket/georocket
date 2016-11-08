@@ -2,6 +2,7 @@ package io.georocket;
 
 import static io.georocket.util.MimeTypeUtils.belongsTo;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
@@ -13,13 +14,17 @@ import java.util.stream.Stream;
 import io.georocket.constants.AddressConstants;
 import io.georocket.constants.ConfigConstants;
 import io.georocket.index.xml.XMLCRSIndexer;
+import io.georocket.input.Splitter.Result;
+import io.georocket.input.json.JsonSplitter;
 import io.georocket.input.xml.FirstLevelSplitter;
 import io.georocket.input.xml.XMLSplitter;
 import io.georocket.storage.ChunkMeta;
 import io.georocket.storage.IndexMeta;
 import io.georocket.storage.RxStore;
 import io.georocket.storage.StoreFactory;
+import io.georocket.util.JsonParserOperator;
 import io.georocket.util.RxUtils;
+import io.georocket.util.StringWindow;
 import io.georocket.util.Window;
 import io.georocket.util.XMLParserOperator;
 import io.vertx.core.file.OpenOptions;
@@ -208,9 +213,11 @@ public class ImporterVerticle extends AbstractVerticle {
     if (belongsTo(contentType, "application", "xml") ||
         belongsTo(contentType, "text", "xml")) {
       return importXML(f, importId, filename, importTimeStamp, layer, tags);
+    } else if (belongsTo(contentType, "application", "json")) {
+      return importJSON(f, importId, filename, importTimeStamp, layer, tags);
     } else {
       return Observable.error(new NoStackTraceThrowable(String.format(
-          "Received an unexpected content type '%s' while trying to import"
+          "Received an unexpected content type '%s' while trying to import "
           + "file '%s'", contentType, filename)));
     }
   }
@@ -243,26 +250,74 @@ public class ImporterVerticle extends AbstractVerticle {
         })
         .flatMap(splitter::onEventObservable)
         .flatMap(result -> {
-          // pause stream while chunk is being written
-          f.pause();
-          
-          // count number of chunks being written
-          processing.incrementAndGet();
-
           IndexMeta indexMeta = new IndexMeta(importId, filename,
               importTimeStamp, tags, crsIndexer.getCRS());
-          Observable<Void> o = addToStore(result.getChunk(), result.getMeta(),
-              layer, indexMeta);
-          return o.doOnNext(v -> {
-            // resume stream only after all chunks from the current
-            // buffer have been stored
-            if (processing.decrementAndGet() == 0) {
-              // go ahead
-              f.resume();
-            }
-          });
+          return addToStoreWithPause(result, layer, indexMeta, f, processing);
         })
         .count();
+  }
+  
+  /**
+   * Imports a JSON file from the given input stream into the store
+   * @param f the JSON file to read
+   * @param importId a unique identifier for this import process
+   * @param filename the name of the file currently being imported
+   * @param importTimeStamp denotes when the import process has started
+   * @param layer the layer where the file should be stored (may be null)
+   * @param tags the list of tags to attach to the file (may be null)
+   * @return an observable that will emit when the file has been imported
+   */
+  private Observable<Integer> importJSON(ReadStream<Buffer> f, String importId,
+      String filename, Date importTimeStamp, String layer, List<String> tags) {
+    StringWindow window = new StringWindow();
+    JsonSplitter splitter = new JsonSplitter(window);
+    AtomicInteger processing = new AtomicInteger(0);
+    return f.toObservable()
+        .map(buf -> (io.vertx.core.buffer.Buffer)buf.getDelegate())
+        .doOnNext(buf -> window.append(buf.toString(StandardCharsets.UTF_8)))
+        .lift(new JsonParserOperator())
+        .flatMap(splitter::onEventObservable)
+        .flatMap(result -> {
+          IndexMeta indexMeta = new IndexMeta(importId, filename,
+              importTimeStamp, tags, null);
+          return addToStoreWithPause(result, layer, indexMeta, f, processing);
+        })
+        .count();
+  }
+  
+  /**
+   * Add a chunk to the store. Pause the given read stream before adding and
+   * increase the given counter. Decrease the counter after the chunk has been
+   * written and only resume the read stream if the counter is <code>0</code>.
+   * This is necessary because the writing to the store may take longer than
+   * reading. We need to pause reading so the store is not overloaded (i.e.
+   * we handle back-pressure here).
+   * @param chunk the chunk to write
+   * @param layer the layer the chunk should be added to (may be null)
+   * @param indexMeta metadata specifying how the chunk should be indexed
+   * @param f the read stream to pause while writing
+   * @param processing an AtomicInteger keeping the number of chunks currently
+   * being written (should be initialized to <code>0</code> the first time this
+   * method is called)
+   * @return an observable that will emit exactly one item when the
+   * operation has finished
+   */
+  private Observable<Void> addToStoreWithPause(Result<? extends ChunkMeta> chunk,
+      String layer, IndexMeta indexMeta, ReadStream<Buffer> f, AtomicInteger processing) {
+    // pause stream while chunk is being written
+    f.pause();
+    
+    // count number of chunks being written
+    processing.incrementAndGet();
+
+    return addToStore(chunk.getChunk(), chunk.getMeta(), layer, indexMeta)
+        .doOnNext(v -> {
+          // resume stream only after all chunks from the current
+          // buffer have been stored
+          if (processing.decrementAndGet() == 0) {
+            f.resume();
+          }
+        });
   }
   
   /**

@@ -1,5 +1,6 @@
 package io.georocket.index;
 
+import static io.georocket.util.MimeTypeUtils.belongsTo;
 import static io.georocket.util.ThrowableHelper.throwableToCode;
 
 import java.io.IOException;
@@ -25,6 +26,7 @@ import com.google.common.collect.ImmutableList;
 import io.georocket.constants.AddressConstants;
 import io.georocket.index.elasticsearch.ElasticsearchClient;
 import io.georocket.index.elasticsearch.ElasticsearchClientFactory;
+import io.georocket.index.xml.JsonIndexerFactory;
 import io.georocket.index.xml.StreamIndexer;
 import io.georocket.index.xml.XMLIndexerFactory;
 import io.georocket.query.DefaultQueryCompiler;
@@ -33,6 +35,7 @@ import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.RxStore;
 import io.georocket.storage.StoreFactory;
 import io.georocket.storage.XMLChunkMeta;
+import io.georocket.util.JsonParserOperator;
 import io.georocket.util.MapUtils;
 import io.georocket.util.MimeTypeUtils;
 import io.georocket.util.RxUtils;
@@ -109,6 +112,7 @@ public class IndexerVerticle extends AbstractVerticle {
     indexerFactories = ImmutableList.copyOf(ServiceLoader.load(IndexerFactory.class));
     
     store = new RxStore(StoreFactory.createStore(getVertx()));
+    queryCompiler = new DefaultQueryCompiler(indexerFactories);
     
     new ElasticsearchClientFactory(vertx).createElasticsearchClient(INDEX_NAME)
       .doOnNext(es -> {
@@ -117,11 +121,7 @@ public class IndexerVerticle extends AbstractVerticle {
       .flatMap(v -> client.ensureIndex())
       .flatMap(v -> ensureMapping())
       .subscribe(es -> {
-
-        queryCompiler = new DefaultQueryCompiler(indexerFactories);
-
         registerMessageConsumers();
-
         startFuture.complete();
       }, err -> {
         startFuture.fail(err);
@@ -388,10 +388,27 @@ public class IndexerVerticle extends AbstractVerticle {
       String mimeType, String fallbackCRSString) {
     return Observable.defer(() -> store.getOneObservable(path)
       .flatMap(chunk -> {
+        Seq<? extends IndexerFactory> filteredFactories;
+        Operator<? extends StreamEvent, Buffer> parserOperator;
+        
+        // select indexers and parser depending on the mime type
+        if (belongsTo(mimeType, "application", "xml") ||
+          belongsTo(mimeType, "text", "xml")) {
+          filteredFactories = Seq.seq(indexerFactories)
+            .filter(f -> f instanceof XMLIndexerFactory);
+          parserOperator = new XMLParserOperator();
+        } else if (belongsTo(mimeType, "application", "json")) {
+          filteredFactories = Seq.seq(indexerFactories)
+            .filter(f -> f instanceof JsonIndexerFactory);
+          parserOperator = new JsonParserOperator();
+        } else {
+          return Observable.error(new NoStackTraceThrowable(String.format(
+              "Unexpected mime type '%s' while trying to index "
+              + "chunk '%s'", mimeType, path)));
+        }
+        
         // convert chunk to document and close it
-        Seq<? extends IndexerFactory> filteredFactories = Seq.seq(indexerFactories)
-          .filter(f -> f instanceof XMLIndexerFactory);
-        return chunkToDocument(chunk, fallbackCRSString, new XMLParserOperator(),
+        return chunkToDocument(chunk, fallbackCRSString, parserOperator,
           filteredFactories).doAfterTerminate(chunk::close);
       }))
       .retryWhen(makeRetry());
@@ -477,7 +494,7 @@ public class IndexerVerticle extends AbstractVerticle {
       }
     }
     
-    String mimeType = filteredSource.getString("mimeType", "application/xml");
+    String mimeType = filteredSource.getString("mimeType", XMLChunkMeta.MIME_TYPE);
     if (MimeTypeUtils.belongsTo(mimeType, "application", "xml") ||
       MimeTypeUtils.belongsTo(mimeType, "text", "xml")) {
       return new XMLChunkMeta(filteredSource);
