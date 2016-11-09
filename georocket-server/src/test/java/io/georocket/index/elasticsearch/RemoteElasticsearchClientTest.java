@@ -192,7 +192,7 @@ public class RemoteElasticsearchClientTest {
     stubFor(put(urlEqualTo("/" + INDEX + "/_mapping/" + TYPE))
       .willReturn(aResponse()
         .withStatus(200)
-        .withBody("{\"ackowledged\":true}")));
+        .withBody(ACKNOWLEDGED.encode())));
 
     JsonObject mappings = new JsonObject()
       .put("properties", new JsonObject()
