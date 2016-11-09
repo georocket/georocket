@@ -17,6 +17,7 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options
 import java.util.ArrayList;
 import java.util.List;
 
+import com.github.tomakehurst.wiremock.stubbing.StubMapping;
 import org.jooq.lambda.tuple.Tuple;
 import org.jooq.lambda.tuple.Tuple2;
 import org.junit.After;
@@ -65,6 +66,20 @@ public class RemoteElasticsearchClientTest {
               .put("error", new JsonObject()
                 .put("type", "mapper_parsing_exception")
                 .put("reason", "Field name [nam.e] cannot contain '.'")))));
+
+  private static final JsonObject SETTINGS = new JsonObject("{\n" +
+      "  \"analysis\" : {\n" +
+      "    \"analyzer\":{\n" +
+      "      \"content\":{\n" +
+      "        \"type\":\"custom\",\n" +
+      "        \"tokenizer\":\"whitespace\"\n" +
+      "      }\n" +
+      "    }\n" +
+      "  }\n" +
+      "}");
+
+  private static final JsonObject ACKNOWLEDGED = new JsonObject()
+      .put("acknowledged", true);
   
   private ElasticsearchClient client;
   
@@ -169,6 +184,34 @@ public class RemoteElasticsearchClientTest {
       async.complete();
     }, context::fail);
   }
+
+
+  @Test
+  public void putSettingsTest(TestContext context) {
+    StubMapping close = stubFor(post(urlEqualTo("/" + INDEX + "/_close"))
+        .willReturn(aResponse()
+          .withBody(ACKNOWLEDGED.encode())
+          .withStatus(200)));
+    StubMapping settings = stubFor(put(urlEqualTo("/" + INDEX + "/_settings"))
+        .withRequestBody(equalToJson(SETTINGS.encode()))
+        .willReturn(aResponse()
+          .withBody(ACKNOWLEDGED.encode())
+          .withStatus(200)));
+    StubMapping open = stubFor(post(urlEqualTo("/" + INDEX + "/_open"))
+        .willReturn(aResponse()
+          .withBody(ACKNOWLEDGED.encode())
+          .withStatus(200)));
+
+    Async async = context.async();
+    client.putSettings(SETTINGS).subscribe(ok -> {
+      context.assertTrue(ok);
+      verify(postRequestedFor(close.getRequest().getUrlMatcher()));
+      verify(putRequestedFor(settings.getRequest().getUrlMatcher()));
+      verify(postRequestedFor(open.getRequest().getUrlMatcher()));
+      async.complete();
+    }, context::fail);
+  }
+
 
   /**
    * Test if the client can create an index
