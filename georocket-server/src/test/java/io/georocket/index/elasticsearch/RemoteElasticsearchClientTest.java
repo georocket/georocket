@@ -2,6 +2,7 @@ package io.georocket.index.elasticsearch;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.configureFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalToJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.head;
 import static com.github.tomakehurst.wiremock.client.WireMock.headRequestedFor;
@@ -26,6 +27,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
+import com.github.tomakehurst.wiremock.stubbing.StubMapping;
 
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -65,7 +67,17 @@ public class RemoteElasticsearchClientTest {
               .put("error", new JsonObject()
                 .put("type", "mapper_parsing_exception")
                 .put("reason", "Field name [nam.e] cannot contain '.'")))));
-  
+
+  private static final JsonObject SETTINGS = new JsonObject()
+    .put("index", new JsonObject()
+      .put("number_of_shards", 3)
+      .put("number_of_replicas", 3));
+  private static final JsonObject SETTINGS_WRAPPER = new JsonObject()
+      .put("settings", SETTINGS);
+
+  private static final JsonObject ACKNOWLEDGED = new JsonObject()
+      .put("acknowledged", true);
+
   private ElasticsearchClient client;
   
   /**
@@ -171,15 +183,15 @@ public class RemoteElasticsearchClientTest {
   }
 
   /**
-   * Test if the client can create an index
+   * Test if the client can create a mapping for an index
    * @param context the test context
    */
   @Test
-  public void createIndex(TestContext context) {
+  public void putMapping(TestContext context) {
     stubFor(put(urlEqualTo("/" + INDEX + "/_mapping/" + TYPE))
       .willReturn(aResponse()
         .withStatus(200)
-        .withBody("{\"ackowledged\":true}")));
+        .withBody(ACKNOWLEDGED.encode())));
 
     JsonObject mappings = new JsonObject()
       .put("properties", new JsonObject()
@@ -195,6 +207,46 @@ public class RemoteElasticsearchClientTest {
     }, context::fail);
   }
   
+  /**
+   * Test if the client can create an index
+   * @param context the test context
+   */
+  @Test
+  public void createIndex(TestContext context) {
+    StubMapping settings = stubFor(put(urlEqualTo("/" + INDEX))
+      .withRequestBody(equalTo(""))
+      .willReturn(aResponse()
+        .withBody(ACKNOWLEDGED.encode())
+        .withStatus(200)));
+
+    Async async = context.async();
+    client.createIndex().subscribe(ok -> {
+      context.assertTrue(ok);
+      verify(putRequestedFor(settings.getRequest().getUrlMatcher()));
+      async.complete();
+    }, context::fail);
+  }
+
+  /**
+   * Test if the client can create an index with settings
+   * @param context the test context
+   */
+  @Test
+  public void createIndexWithSettings(TestContext context) {
+    StubMapping settings = stubFor(put(urlEqualTo("/" + INDEX))
+      .withRequestBody(equalToJson(SETTINGS_WRAPPER.encode()))
+      .willReturn(aResponse()
+        .withBody(ACKNOWLEDGED.encode())
+        .withStatus(200)));
+
+    Async async = context.async();
+    client.createIndex(SETTINGS).subscribe(ok -> {
+      context.assertTrue(ok);
+      verify(putRequestedFor(settings.getRequest().getUrlMatcher()));
+      async.complete();
+    }, context::fail);
+  }
+
   /**
    * Test if the client can insert multiple documents in one request
    * @param context the test context
