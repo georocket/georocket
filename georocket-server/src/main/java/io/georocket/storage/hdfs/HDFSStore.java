@@ -7,15 +7,12 @@ import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.Queue;
 
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.FsStatus;
 import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RemoteIterator;
@@ -32,6 +29,8 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 /**
  * Stores chunks on HDFS
@@ -114,8 +113,17 @@ public class HDFSStore extends IndexedStore {
       try {
         synchronized (HDFSStore.this) {
           FileSystem fs = getFS();
-          FsStatus status = fs.getStatus();
-          f.complete(status.getUsed());
+          RemoteIterator<LocatedFileStatus> files = fs.listFiles(new Path(root), true);
+          long total = 0;
+          
+          while (files.hasNext()) {
+            LocatedFileStatus status = files.next();
+            if (status.isFile()) {
+              total += status.getLen();
+            }
+          }
+          
+          f.complete(total);
         }
       } catch (IOException e) {
         f.fail(e);

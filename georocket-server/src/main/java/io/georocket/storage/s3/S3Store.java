@@ -230,12 +230,13 @@ public class S3Store extends IndexedStore {
   @Override
   public void getSize(Handler<AsyncResult<Long>> handler) {
     vertx.<Long>executeBlocking(f -> {
+      AmazonS3Client client = getS3Client();
       ListObjectsV2Request req = new ListObjectsV2Request().withBucketName(bucket);
       ListObjectsV2Result result;
       long size = 0;
 
       do {
-        result = getS3Client().listObjectsV2(req);
+        result = client.listObjectsV2(req);
 
         for (S3ObjectSummary objectSummary : result.getObjectSummaries()) {
           size = size + objectSummary.getSize();

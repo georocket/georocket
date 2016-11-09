@@ -5,6 +5,8 @@ import java.nio.file.Paths;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.jooq.lambda.tuple.Tuple;
+
 import com.google.common.base.Preconditions;
 
 import io.georocket.constants.ConfigConstants;
@@ -20,7 +22,6 @@ import io.vertx.core.buffer.Buffer;
 import io.vertx.core.file.AsyncFile;
 import io.vertx.core.file.FileProps;
 import io.vertx.core.file.FileSystem;
-import io.vertx.core.file.FileSystemProps;
 import io.vertx.core.file.OpenOptions;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -143,18 +144,49 @@ public class FileStore extends IndexedStore {
 
   @Override
   public void getSize(Handler<AsyncResult<Long>> handler) {
-    vertx.fileSystem().fsProps("/", props -> {
-      if (props.failed()) {
-        log.error("Failed to retrieve the properties of a file", props.cause());
-        handler.handle(Future.failedFuture(props.cause()));
-      } else {
-        FileSystemProps fsp = props.result();
-        Long size = fsp.totalSpace() - fsp.usableSpace();
-        handler.handle(Future.succeededFuture(size));
+    // check if the root folder exists
+    vertx.fileSystem().exists(root, ar -> {
+      if (ar.failed()) {
+        handler.handle(Future.failedFuture(ar.cause()));
+        return;
       }
+      
+      boolean exists = ar.result();
+      if (!exists) {
+        // root folder does not exist yet - store must be empty
+        handler.handle(Future.succeededFuture(0L));
+        return;
+      }
+      
+      calculateSize(root)
+        .subscribe(size -> {
+          handler.handle(Future.succeededFuture(size));
+        }, err -> {
+          handler.handle(Future.failedFuture(err));
+        });
     });
   }
-
+  
+  /**
+   * Recursively calculate the sum of all chunk sizes in the given directory
+   * @param path the directory
+   * @return the sum
+   */
+  private Observable<Long> calculateSize(String path) {
+    io.vertx.rxjava.core.Vertx rxvertx = new io.vertx.rxjava.core.Vertx(vertx);
+    io.vertx.rxjava.core.file.FileSystem fs = rxvertx.fileSystem();
+    return fs.readDirObservable(path)
+      .flatMap(Observable::from)
+      .flatMap(file -> fs.propsObservable(file).map(props -> Tuple.tuple(file, props)))
+      .flatMap(t -> {
+        if (t.v2.isDirectory()) {
+          return calculateSize(t.v1);
+        }
+        return Observable.just(t.v2.size());
+      })
+      .reduce(0L, (a, b) -> a + b);
+  }
+  
   @Override
   public void getStoreSummary(Handler<AsyncResult<JsonObject>> handler) {
     StoreSummaryBuilder summaryBuilder = new StoreSummaryBuilder();
