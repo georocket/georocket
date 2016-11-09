@@ -55,6 +55,9 @@ public interface Store {
   /**
    * Get the store's meta data
    * @param handler will be called when the meta data has been generated
+   * @deprecated this method will be removed or replaced in an upcoming release
+   * without further warning
    */
+  @Deprecated
   void getStoreSummary(Handler<AsyncResult<JsonObject>> handler);
 }

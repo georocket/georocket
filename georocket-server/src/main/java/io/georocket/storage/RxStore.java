@@ -118,6 +118,7 @@ public class RxStore implements Store {
   }
 
   @Override
+  @Deprecated
   public void getStoreSummary(Handler<AsyncResult<JsonObject>> handler) {
     delegate.getStoreSummary(handler);
   }
@@ -125,7 +126,10 @@ public class RxStore implements Store {
   /**
    * Observable version of {@link #getStoreSummary(Handler)}
    * @return on observable that emits the store summary
+   * @deprecated this method will be removed or replaced in an upcoming release
+   * without further warning
    */
+  @Deprecated
   public Observable<JsonObject> getStoreSummaryObservable() {
     ObservableFuture<JsonObject> o = RxHelper.observableFuture();
     getStoreSummary(o.toHandler());
