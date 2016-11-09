@@ -17,6 +17,7 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options
 import java.util.ArrayList;
 import java.util.List;
 
+import com.github.tomakehurst.wiremock.stubbing.StubMapping;
 import org.jooq.lambda.tuple.Tuple;
 import org.jooq.lambda.tuple.Tuple2;
 import org.junit.After;
@@ -65,7 +66,19 @@ public class RemoteElasticsearchClientTest {
               .put("error", new JsonObject()
                 .put("type", "mapper_parsing_exception")
                 .put("reason", "Field name [nam.e] cannot contain '.'")))));
-  
+
+  private static final JsonObject SETTINGS = new JsonObject("{\n" +
+      "        \"index\" : {\n" +
+      "            \"number_of_shards\" : 3, \n" +
+      "            \"number_of_replicas\" : 2 \n" +
+      "        }\n" +
+      "    }");
+  private static final JsonObject SETTINGS_WRAPPER = new JsonObject()
+      .put("settings", SETTINGS);
+
+  private static final JsonObject ACKNOWLEDGED = new JsonObject()
+      .put("acknowledged", true);
+
   private ElasticsearchClient client;
   
   /**
@@ -179,7 +192,7 @@ public class RemoteElasticsearchClientTest {
     stubFor(put(urlEqualTo("/" + INDEX + "/_mapping/" + TYPE))
       .willReturn(aResponse()
         .withStatus(200)
-        .withBody("{\"ackowledged\":true}")));
+        .withBody(ACKNOWLEDGED.encode())));
 
     JsonObject mappings = new JsonObject()
       .put("properties", new JsonObject()
@@ -194,7 +207,23 @@ public class RemoteElasticsearchClientTest {
       async.complete();
     }, context::fail);
   }
-  
+
+  @Test
+  public void createIndexWithSettings(TestContext context) {
+    StubMapping settings = stubFor(put(urlEqualTo("/" + INDEX))
+        .withRequestBody(equalToJson(SETTINGS_WRAPPER.encode()))
+        .willReturn(aResponse()
+            .withBody(ACKNOWLEDGED.encode())
+            .withStatus(200)));
+
+    Async async = context.async();
+    client.createIndex(SETTINGS).subscribe(ok -> {
+      context.assertTrue(ok);
+      verify(putRequestedFor(settings.getRequest().getUrlMatcher()));
+      async.complete();
+    }, context::fail);
+  }
+
   /**
    * Test if the client can insert multiple documents in one request
    * @param context the test context
