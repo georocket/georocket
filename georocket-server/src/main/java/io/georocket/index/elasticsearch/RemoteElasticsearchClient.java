@@ -169,8 +169,12 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
   @Override
   public Observable<Boolean> createIndex(JsonObject settings) {
     String uri = "/" + index;
+
+    JsonObject body = new JsonObject()
+        .put("settings", settings);
+
     return performRequestRetry(HttpMethod.PUT, uri,
-            settings == null ? null : settings.encode())
+            settings == null ? null : body.encode())
         .map(res -> res.getBoolean("acknowledged", true));
   }
 

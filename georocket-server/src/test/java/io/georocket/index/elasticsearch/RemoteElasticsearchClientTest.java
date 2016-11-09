@@ -68,13 +68,13 @@ public class RemoteElasticsearchClientTest {
                 .put("reason", "Field name [nam.e] cannot contain '.'")))));
 
   private static final JsonObject SETTINGS = new JsonObject("{\n" +
-      "    \"settings\" : {\n" +
       "        \"index\" : {\n" +
       "            \"number_of_shards\" : 3, \n" +
       "            \"number_of_replicas\" : 2 \n" +
       "        }\n" +
-      "    }\n" +
-      "}");
+      "    }");
+  private static final JsonObject SETTINGS_WRAPPER = new JsonObject()
+      .put("settings", SETTINGS);
 
   private static final JsonObject ACKNOWLEDGED = new JsonObject()
       .put("acknowledged", true);
@@ -211,7 +211,7 @@ public class RemoteElasticsearchClientTest {
   @Test
   public void createIndexWithSettings(TestContext context) {
     StubMapping settings = stubFor(put(urlEqualTo("/" + INDEX))
-        .withRequestBody(equalToJson(SETTINGS.encode()))
+        .withRequestBody(equalToJson(SETTINGS_WRAPPER.encode()))
         .willReturn(aResponse()
             .withBody(ACKNOWLEDGED.encode())
             .withStatus(200)));
