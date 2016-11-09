@@ -191,7 +191,35 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
       }
     });
   }
-  
+
+  @Override
+  public Observable<Boolean> putSettings(JsonObject settings) {
+    String indexUri = "/" + index;
+    String settingsUri = indexUri + "/_settings";
+    String openUri = indexUri + "/_open";
+    String closeUri = indexUri + "/_close";
+
+    // Elasticsearch need to close a index befor it can be updated.
+    return performRequestRetry(HttpMethod.POST, closeUri, null)
+      .map(res -> res.getBoolean("acknowledged", true))
+      .flatMap(ok -> {
+        if (ok) {
+          return performRequestRetry(HttpMethod.PUT, settingsUri, settings.encode());
+        }
+        return Observable.error(new NoStackTraceThrowable(
+            "Close index was not acknowledged by Elasticsearch"));
+      })
+      .map(res -> res.getBoolean("acknowledged", true))
+      .flatMap(ok -> {
+        if (ok) {
+          return performRequestRetry(HttpMethod.POST, openUri, null);
+        }
+        return Observable.error(new NoStackTraceThrowable(
+            "Put settings was not acknowledged by Elasticsearch"));
+      })
+      .map(res -> res.getBoolean("acknowledged", true));
+  }
+
   @Override
   public Observable<Boolean> putMapping(String type, JsonObject mapping) {
     String uri = "/" + index + "/_mapping/" + type;

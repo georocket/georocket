@@ -129,7 +129,15 @@ public interface ElasticsearchClient {
    * been created or if it already exists
    */
   Observable<Void> ensureIndex();
-  
+
+  /**
+   * Add Elasticsearch index settings.
+   * @param settings the settings to set for an index.
+   * @return on observable emitting <code>true</code> if the operation
+   * was acknowledged by Elasticsearch, <code>false</code> otherwise.
+   */
+  Observable<Boolean> putSettings(JsonObject settings);
+
   /**
    * Add mapping for the given type
    * @param type the type

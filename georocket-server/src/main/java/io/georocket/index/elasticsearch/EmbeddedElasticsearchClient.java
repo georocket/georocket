@@ -77,6 +77,11 @@ public class EmbeddedElasticsearchClient implements ElasticsearchClient {
   }
 
   @Override
+  public Observable<Boolean> putSettings(JsonObject settings) {
+    return delegate.putSettings(settings);
+  }
+
+  @Override
   public Observable<Boolean> putMapping(String type, JsonObject mapping) {
     return delegate.putMapping(type, mapping);
   }
