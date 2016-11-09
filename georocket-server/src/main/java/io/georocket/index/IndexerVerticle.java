@@ -71,12 +71,12 @@ public class IndexerVerticle extends AbstractVerticle {
   /**
    * Elasticsearch index
    */
-  private static final String INDEX_NAME = "georocket";
+  public static final String INDEX_NAME = "georocket";
   
   /**
    * Type of documents stored in the Elasticsearch index
    */
-  private static final String TYPE_NAME = "object";
+  public static final String TYPE_NAME = "object";
 
   /**
    * The Elasticsearch client
