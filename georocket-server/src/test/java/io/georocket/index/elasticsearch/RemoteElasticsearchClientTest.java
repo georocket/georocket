@@ -17,6 +17,7 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options
 import java.util.ArrayList;
 import java.util.List;
 
+import com.github.tomakehurst.wiremock.stubbing.StubMapping;
 import org.jooq.lambda.tuple.Tuple;
 import org.jooq.lambda.tuple.Tuple2;
 import org.junit.After;
@@ -65,7 +66,19 @@ public class RemoteElasticsearchClientTest {
               .put("error", new JsonObject()
                 .put("type", "mapper_parsing_exception")
                 .put("reason", "Field name [nam.e] cannot contain '.'")))));
-  
+
+  private static final JsonObject SETTINGS = new JsonObject("{\n" +
+      "    \"settings\" : {\n" +
+      "        \"index\" : {\n" +
+      "            \"number_of_shards\" : 3, \n" +
+      "            \"number_of_replicas\" : 2 \n" +
+      "        }\n" +
+      "    }\n" +
+      "}");
+
+  private static final JsonObject ACKNOWLEDGED = new JsonObject()
+      .put("acknowledged", true);
+
   private ElasticsearchClient client;
   
   /**
@@ -194,7 +207,23 @@ public class RemoteElasticsearchClientTest {
       async.complete();
     }, context::fail);
   }
-  
+
+  @Test
+  public void createIndexWithSettings(TestContext context) {
+    StubMapping settings = stubFor(put(urlEqualTo("/" + INDEX))
+        .withRequestBody(equalToJson(SETTINGS.encode()))
+        .willReturn(aResponse()
+            .withBody(ACKNOWLEDGED.encode())
+            .withStatus(200)));
+
+    Async async = context.async();
+    client.createIndex(SETTINGS).subscribe(ok -> {
+      context.assertTrue(ok);
+      verify(putRequestedFor(settings.getRequest().getUrlMatcher()));
+      async.complete();
+    }, context::fail);
+  }
+
   /**
    * Test if the client can insert multiple documents in one request
    * @param context the test context

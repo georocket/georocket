@@ -120,6 +120,14 @@ public interface ElasticsearchClient {
    * was acknowledged by Elasticsearch, <code>false</code> otherwise
    */
   Observable<Boolean> createIndex();
+
+  /**
+   * Create the index with settings.
+   * @param settings the settings to set for the index.
+   * @return an observable emitting <code>true</code> if the index creation
+   * was acknowledged by Elasticsearch, <code>false</code> otherwise
+   */
+  Observable<Boolean> createIndex(JsonObject settings);
   
   /**
    * Convenience method that makes sure the index exists. It first calls
