@@ -25,35 +25,35 @@ public class JsonSplitter implements Splitter<JsonStreamEvent, JsonChunkMeta> {
   /**
    * Saves whether the parser is currently inside an array or not.
    */
-  private Deque<Boolean> inArray = new ArrayDeque<>();
+  protected Deque<Boolean> inArray = new ArrayDeque<>();
   
   /**
    * Saves the name of the last field encountered
    */
-  private String lastFieldName;
+  protected String lastFieldName;
   
   /**
    * A marked position in the input stream
    */
-  private int mark = -1;
+  protected int mark = -1;
   
   /**
    * The size of {@link #inArray} when the {@link #mark} was set. This is
    * used to decide if a chunk has to be created and the mark should be unset.
    */
-  private int markedLevel = -1;
+  protected int markedLevel = -1;
   
   /**
    * Will be increased whenever the parser is currently inside an array. Helps
    * save space because we don't have to push to {@link #inArray} anymore.
    */
-  private int insideLevel = 0;
+  protected int insideLevel = 0;
   
   /**
    * <code>true</code> if the {@link #makeResult(int)} method was called
    * at least once
    */
-  private boolean resultsCreated = false;
+  protected boolean resultsCreated = false;
   
   /**
    * Create splitter
@@ -142,7 +142,7 @@ public class JsonSplitter implements Splitter<JsonStreamEvent, JsonChunkMeta> {
    * @param pos the position of the end of the chunk to create
    * @return the chunk and meta data
    */
-  private Result<JsonChunkMeta> makeResult(int pos) {
+  protected Result<JsonChunkMeta> makeResult(int pos) {
     resultsCreated = true;
     String chunk = window.getChars(mark, pos);
     window.advanceTo(pos);

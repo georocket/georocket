@@ -30,6 +30,7 @@ properties:
       attributeLocalNames: *keyword_no_index
       attributeValues: *keyword_no_index
   chunkParentName: *keyword_no_index
+  chunkType: *keyword_no_index
 
 # Do not save the original indexed document to save space. only include metadata!
 # See https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-source-field.html

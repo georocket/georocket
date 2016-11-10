@@ -15,7 +15,7 @@ import io.georocket.constants.AddressConstants;
 import io.georocket.constants.ConfigConstants;
 import io.georocket.index.xml.XMLCRSIndexer;
 import io.georocket.input.Splitter.Result;
-import io.georocket.input.json.JsonSplitter;
+import io.georocket.input.geojson.GeoJsonSplitter;
 import io.georocket.input.xml.FirstLevelSplitter;
 import io.georocket.input.xml.XMLSplitter;
 import io.georocket.storage.ChunkMeta;
@@ -270,7 +270,7 @@ public class ImporterVerticle extends AbstractVerticle {
   private Observable<Integer> importJSON(ReadStream<Buffer> f, String importId,
       String filename, Date importTimeStamp, String layer, List<String> tags) {
     StringWindow window = new StringWindow();
-    JsonSplitter splitter = new JsonSplitter(window);
+    GeoJsonSplitter splitter = new GeoJsonSplitter(window);
     AtomicInteger processing = new AtomicInteger(0);
     return f.toObservable()
         .map(buf -> (io.vertx.core.buffer.Buffer)buf.getDelegate())

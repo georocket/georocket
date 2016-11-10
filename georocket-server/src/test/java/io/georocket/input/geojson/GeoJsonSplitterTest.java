@@ -1,4 +1,4 @@
-package io.georocket.input.json;
+package io.georocket.input.geojson;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -14,7 +14,7 @@ import org.jooq.lambda.tuple.Tuple;
 import org.jooq.lambda.tuple.Tuple2;
 import org.junit.Test;
 
-import io.georocket.storage.JsonChunkMeta;
+import io.georocket.storage.GeoJsonChunkMeta;
 import io.georocket.util.JsonParserOperator;
 import io.georocket.util.StringWindow;
 import io.vertx.core.buffer.Buffer;
@@ -22,22 +22,22 @@ import io.vertx.core.json.JsonObject;
 import rx.Observable;
 
 /**
- * Test for {@link JsonSplitter}
+ * Test for {@link GeoJsonSplitter}
  * @author Michel Kraemer
  */
-public class JsonSplitterTest {
+public class GeoJsonSplitterTest {
   private long getFileSize(String file) throws IOException {
-    try (InputStream is = JsonSplitterTest.class.getResourceAsStream(file)) {
+    try (InputStream is = GeoJsonSplitterTest.class.getResourceAsStream(file)) {
       return IOUtils.skip(is, Long.MAX_VALUE);
     }
   }
 
-  private List<Tuple2<JsonChunkMeta, JsonObject>> split(String file)
+  private List<Tuple2<GeoJsonChunkMeta, JsonObject>> split(String file)
       throws IOException {
-    byte[] json = IOUtils.toByteArray(JsonSplitterTest.class.getResource(file));
-    List<Tuple2<JsonChunkMeta, JsonObject>> chunks = new ArrayList<>();
+    byte[] json = IOUtils.toByteArray(GeoJsonSplitterTest.class.getResource(file));
+    List<Tuple2<GeoJsonChunkMeta, JsonObject>> chunks = new ArrayList<>();
     StringWindow window = new StringWindow();
-    JsonSplitter splitter = new JsonSplitter(window);
+    GeoJsonSplitter splitter = new GeoJsonSplitter(window);
     Observable.just(json)
       .map(Buffer::buffer)
       .doOnNext(buf -> window.append(buf.toString(StandardCharsets.UTF_8)))
@@ -46,7 +46,7 @@ public class JsonSplitterTest {
       .toBlocking()
       .forEach(result -> {
         JsonObject o = new JsonObject(result.getChunk());
-        chunks.add(Tuple.tuple(result.getMeta(), o));
+        chunks.add(Tuple.tuple((GeoJsonChunkMeta)result.getMeta(), o));
       });
     return chunks;
   }
@@ -60,15 +60,16 @@ public class JsonSplitterTest {
     String filename = "feature.json";
     long size = getFileSize(filename);
     
-    List<Tuple2<JsonChunkMeta, JsonObject>> chunks = split(filename);
+    List<Tuple2<GeoJsonChunkMeta, JsonObject>> chunks = split(filename);
     assertEquals(1, chunks.size());
     
-    Tuple2<JsonChunkMeta, JsonObject> t1 = chunks.get(0);
+    Tuple2<GeoJsonChunkMeta, JsonObject> t1 = chunks.get(0);
     
-    JsonChunkMeta m1 = t1.v1;
+    GeoJsonChunkMeta m1 = t1.v1;
     assertNull(m1.getParentFieldName());
     assertEquals(0, m1.getStart());
     assertEquals(size, m1.getEnd());
+    assertEquals("Feature", m1.getType());
     
     JsonObject o1 = t1.v2;
     assertEquals("Feature", o1.getString("type"));
@@ -82,26 +83,28 @@ public class JsonSplitterTest {
   @Test
   public void featureCollection() throws IOException {
     String filename = "featurecollection.json";
-    List<Tuple2<JsonChunkMeta, JsonObject>> chunks = split(filename);
+    List<Tuple2<GeoJsonChunkMeta, JsonObject>> chunks = split(filename);
     assertEquals(2, chunks.size());
     
-    Tuple2<JsonChunkMeta, JsonObject> t1 = chunks.get(0);
+    Tuple2<GeoJsonChunkMeta, JsonObject> t1 = chunks.get(0);
     
-    JsonChunkMeta m1 = t1.v1;
+    GeoJsonChunkMeta m1 = t1.v1;
     assertEquals("features", m1.getParentFieldName());
     assertEquals(0, m1.getStart());
     assertEquals(307, m1.getEnd());
+    assertEquals("Feature", m1.getType());
     
     JsonObject o1 = t1.v2;
     assertEquals("Feature", o1.getString("type"));
     assertEquals("Fraunhofer IGD", o1.getJsonObject("properties").getString("name"));
     
-    Tuple2<JsonChunkMeta, JsonObject> t2 = chunks.get(1);
+    Tuple2<GeoJsonChunkMeta, JsonObject> t2 = chunks.get(1);
     
-    JsonChunkMeta m2 = t2.v1;
+    GeoJsonChunkMeta m2 = t2.v1;
     assertEquals("features", m2.getParentFieldName());
     assertEquals(0, m2.getStart());
     assertEquals(305, m2.getEnd());
+    assertEquals("Feature", m2.getType());
     
     JsonObject o2 = t2.v2;
     assertEquals("Feature", o2.getString("type"));
@@ -115,26 +118,28 @@ public class JsonSplitterTest {
   @Test
   public void geometryCollection() throws IOException {
     String filename = "geometrycollection.json";
-    List<Tuple2<JsonChunkMeta, JsonObject>> chunks = split(filename);
+    List<Tuple2<GeoJsonChunkMeta, JsonObject>> chunks = split(filename);
     assertEquals(2, chunks.size());
     
-    Tuple2<JsonChunkMeta, JsonObject> t1 = chunks.get(0);
+    Tuple2<GeoJsonChunkMeta, JsonObject> t1 = chunks.get(0);
     
-    JsonChunkMeta m1 = t1.v1;
+    GeoJsonChunkMeta m1 = t1.v1;
     assertEquals("geometries", m1.getParentFieldName());
     assertEquals(0, m1.getStart());
     assertEquals(132, m1.getEnd());
+    assertEquals("Point", m1.getType());
     
     JsonObject o1 = t1.v2;
     assertEquals("Point", o1.getString("type"));
     assertEquals(8.6599, o1.getJsonArray("coordinates").getDouble(0).doubleValue(), 0.00001);
     
-    Tuple2<JsonChunkMeta, JsonObject> t2 = chunks.get(1);
+    Tuple2<GeoJsonChunkMeta, JsonObject> t2 = chunks.get(1);
     
-    JsonChunkMeta m2 = t2.v1;
+    GeoJsonChunkMeta m2 = t2.v1;
     assertEquals("geometries", m2.getParentFieldName());
     assertEquals(0, m2.getStart());
     assertEquals(132, m2.getEnd());
+    assertEquals("Point", m2.getType());
     
     JsonObject o2 = t2.v2;
     assertEquals("Point", o2.getString("type"));
@@ -150,15 +155,16 @@ public class JsonSplitterTest {
     String filename = "linestring.json";
     long size = getFileSize(filename);
     
-    List<Tuple2<JsonChunkMeta, JsonObject>> chunks = split(filename);
+    List<Tuple2<GeoJsonChunkMeta, JsonObject>> chunks = split(filename);
     assertEquals(1, chunks.size());
     
-    Tuple2<JsonChunkMeta, JsonObject> t1 = chunks.get(0);
+    Tuple2<GeoJsonChunkMeta, JsonObject> t1 = chunks.get(0);
     
-    JsonChunkMeta m1 = t1.v1;
+    GeoJsonChunkMeta m1 = t1.v1;
     assertNull(m1.getParentFieldName());
     assertEquals(0, m1.getStart());
     assertEquals(size, m1.getEnd());
+    assertEquals("LineString", m1.getType());
     
     JsonObject o1 = t1.v2;
     assertEquals("LineString", o1.getString("type"));
@@ -174,15 +180,16 @@ public class JsonSplitterTest {
     String filename = "multilinestring.json";
     long size = getFileSize(filename);
     
-    List<Tuple2<JsonChunkMeta, JsonObject>> chunks = split(filename);
+    List<Tuple2<GeoJsonChunkMeta, JsonObject>> chunks = split(filename);
     assertEquals(1, chunks.size());
     
-    Tuple2<JsonChunkMeta, JsonObject> t1 = chunks.get(0);
+    Tuple2<GeoJsonChunkMeta, JsonObject> t1 = chunks.get(0);
     
-    JsonChunkMeta m1 = t1.v1;
+    GeoJsonChunkMeta m1 = t1.v1;
     assertNull(m1.getParentFieldName());
     assertEquals(0, m1.getStart());
     assertEquals(size, m1.getEnd());
+    assertEquals("MultiLineString", m1.getType());
     
     JsonObject o1 = t1.v2;
     assertEquals("MultiLineString", o1.getString("type"));
@@ -198,15 +205,16 @@ public class JsonSplitterTest {
     String filename = "multipoint.json";
     long size = getFileSize(filename);
     
-    List<Tuple2<JsonChunkMeta, JsonObject>> chunks = split(filename);
+    List<Tuple2<GeoJsonChunkMeta, JsonObject>> chunks = split(filename);
     assertEquals(1, chunks.size());
     
-    Tuple2<JsonChunkMeta, JsonObject> t1 = chunks.get(0);
+    Tuple2<GeoJsonChunkMeta, JsonObject> t1 = chunks.get(0);
     
-    JsonChunkMeta m1 = t1.v1;
+    GeoJsonChunkMeta m1 = t1.v1;
     assertNull(m1.getParentFieldName());
     assertEquals(0, m1.getStart());
     assertEquals(size, m1.getEnd());
+    assertEquals("MultiPoint", m1.getType());
     
     JsonObject o1 = t1.v2;
     assertEquals("MultiPoint", o1.getString("type"));
@@ -222,15 +230,16 @@ public class JsonSplitterTest {
     String filename = "multipolygon.json";
     long size = getFileSize(filename);
     
-    List<Tuple2<JsonChunkMeta, JsonObject>> chunks = split(filename);
+    List<Tuple2<GeoJsonChunkMeta, JsonObject>> chunks = split(filename);
     assertEquals(1, chunks.size());
     
-    Tuple2<JsonChunkMeta, JsonObject> t1 = chunks.get(0);
+    Tuple2<GeoJsonChunkMeta, JsonObject> t1 = chunks.get(0);
     
-    JsonChunkMeta m1 = t1.v1;
+    GeoJsonChunkMeta m1 = t1.v1;
     assertNull(m1.getParentFieldName());
     assertEquals(0, m1.getStart());
     assertEquals(size, m1.getEnd());
+    assertEquals("MultiPolygon", m1.getType());
     
     JsonObject o1 = t1.v2;
     assertEquals("MultiPolygon", o1.getString("type"));
@@ -249,15 +258,16 @@ public class JsonSplitterTest {
     String filename = "point.json";
     long size = getFileSize(filename);
     
-    List<Tuple2<JsonChunkMeta, JsonObject>> chunks = split(filename);
+    List<Tuple2<GeoJsonChunkMeta, JsonObject>> chunks = split(filename);
     assertEquals(1, chunks.size());
     
-    Tuple2<JsonChunkMeta, JsonObject> t1 = chunks.get(0);
+    Tuple2<GeoJsonChunkMeta, JsonObject> t1 = chunks.get(0);
     
-    JsonChunkMeta m1 = t1.v1;
+    GeoJsonChunkMeta m1 = t1.v1;
     assertNull(m1.getParentFieldName());
     assertEquals(0, m1.getStart());
     assertEquals(size, m1.getEnd());
+    assertEquals("Point", m1.getType());
     
     JsonObject o1 = t1.v2;
     assertEquals("Point", o1.getString("type"));
@@ -273,19 +283,77 @@ public class JsonSplitterTest {
     String filename = "polygon.json";
     long size = getFileSize(filename);
     
-    List<Tuple2<JsonChunkMeta, JsonObject>> chunks = split(filename);
+    List<Tuple2<GeoJsonChunkMeta, JsonObject>> chunks = split(filename);
     assertEquals(1, chunks.size());
     
-    Tuple2<JsonChunkMeta, JsonObject> t1 = chunks.get(0);
+    Tuple2<GeoJsonChunkMeta, JsonObject> t1 = chunks.get(0);
     
-    JsonChunkMeta m1 = t1.v1;
+    GeoJsonChunkMeta m1 = t1.v1;
     assertNull(m1.getParentFieldName());
     assertEquals(0, m1.getStart());
     assertEquals(size, m1.getEnd());
+    assertEquals("Polygon", m1.getType());
     
     JsonObject o1 = t1.v2;
     assertEquals("Polygon", o1.getString("type"));
     assertEquals(1, o1.getJsonArray("coordinates").size());
     assertEquals(13, o1.getJsonArray("coordinates").getJsonArray(0).size());
+  }
+  
+  /**
+   * Test if extra attributes not part of the standard are ignored
+   * @throws IOException if the test file could not be read
+   */
+  @Test
+  public void extraAttributes() throws IOException {
+    String filename = "featurecollectionext.json";
+    List<Tuple2<GeoJsonChunkMeta, JsonObject>> chunks = split(filename);
+    assertEquals(2, chunks.size());
+    
+    Tuple2<GeoJsonChunkMeta, JsonObject> t1 = chunks.get(0);
+    
+    GeoJsonChunkMeta m1 = t1.v1;
+    assertEquals("features", m1.getParentFieldName());
+    assertEquals(0, m1.getStart());
+    assertEquals(307, m1.getEnd());
+    assertEquals("Feature", m1.getType());
+    
+    JsonObject o1 = t1.v2;
+    assertEquals("Feature", o1.getString("type"));
+    assertEquals("Fraunhofer IGD", o1.getJsonObject("properties").getString("name"));
+    
+    Tuple2<GeoJsonChunkMeta, JsonObject> t2 = chunks.get(1);
+    
+    GeoJsonChunkMeta m2 = t2.v1;
+    assertEquals("features", m2.getParentFieldName());
+    assertEquals(0, m2.getStart());
+    assertEquals(305, m2.getEnd());
+    assertEquals("Feature", m2.getType());
+    
+    JsonObject o2 = t2.v2;
+    assertEquals("Feature", o2.getString("type"));
+    assertEquals("Darmstadtium", o2.getJsonObject("properties").getString("name"));
+  }
+  
+  /**
+   * Make sure the splitter doesn't find any chunks in an empty feature collection
+   * @throws IOException if the test file could not be read
+   */
+  @Test
+  public void emptyFeatureCollection() throws IOException {
+    String filename = "featurecollectionempty.json";
+    List<Tuple2<GeoJsonChunkMeta, JsonObject>> chunks = split(filename);
+    assertEquals(0, chunks.size());
+  }
+  
+  /**
+   * Make sure the splitter doesn't find any chunks in an empty geometry collection
+   * @throws IOException if the test file could not be read
+   */
+  @Test
+  public void emptyGeometryCollection() throws IOException {
+    String filename = "geometrycollectionempty.json";
+    List<Tuple2<GeoJsonChunkMeta, JsonObject>> chunks = split(filename);
+    assertEquals(0, chunks.size());
   }
 }
