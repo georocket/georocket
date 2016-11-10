@@ -5,7 +5,7 @@ import java.util.Deque;
 
 import de.undercouch.actson.JsonEvent;
 import io.georocket.input.Splitter;
-import io.georocket.storage.ChunkMeta;
+import io.georocket.storage.JsonChunkMeta;
 import io.georocket.util.JsonStreamEvent;
 import io.georocket.util.StringWindow;
 
@@ -16,7 +16,7 @@ import io.georocket.util.StringWindow;
  * reached and no chunks were found).
  * @author Michel Kraemer
  */
-public class JsonSplitter implements Splitter<JsonStreamEvent, ChunkMeta> {
+public class JsonSplitter implements Splitter<JsonStreamEvent, JsonChunkMeta> {
   /**
    * A buffer for incoming data
    */
@@ -26,6 +26,11 @@ public class JsonSplitter implements Splitter<JsonStreamEvent, ChunkMeta> {
    * Saves whether the parser is currently inside an array or not.
    */
   private Deque<Boolean> inArray = new ArrayDeque<>();
+  
+  /**
+   * Saves the name of the last field encountered
+   */
+  private String lastFieldName;
   
   /**
    * A marked position in the input stream
@@ -60,7 +65,7 @@ public class JsonSplitter implements Splitter<JsonStreamEvent, ChunkMeta> {
   }
   
   @Override
-  public Result<ChunkMeta> onEvent(JsonStreamEvent event) {
+  public Result<JsonChunkMeta> onEvent(JsonStreamEvent event) {
     switch (event.getEvent()) {
     case JsonEvent.START_OBJECT:
       if (mark == -1 && inArray.peek() == Boolean.TRUE) {
@@ -72,6 +77,15 @@ public class JsonSplitter implements Splitter<JsonStreamEvent, ChunkMeta> {
         inArray.push(Boolean.FALSE);
       } else {
         ++insideLevel;
+      }
+      break;
+    
+    case JsonEvent.FIELD_NAME:
+      // Don't save the last field name if we are currently parsing a chunk. We
+      // need to keep the field name until the chunk has been parsed completely
+      // so #makeResult() can use it to generate the JsonChunkMeta object.
+      if (mark == -1) {
+        lastFieldName = event.getCurrentValue().toString();
       }
       break;
     
@@ -90,7 +104,7 @@ public class JsonSplitter implements Splitter<JsonStreamEvent, ChunkMeta> {
         --insideLevel;
       }
       if (mark != -1 && markedLevel == inArray.size() + insideLevel) {
-        Result<ChunkMeta> r = makeResult(event.getPos());
+        Result<JsonChunkMeta> r = makeResult(event.getPos());
         mark = -1;
         markedLevel = -1;
         return r;
@@ -110,7 +124,8 @@ public class JsonSplitter implements Splitter<JsonStreamEvent, ChunkMeta> {
         // we haven't found any chunk so far. return the whole input stream
         // as one chunk
         mark = 0;
-        Result<ChunkMeta> r = makeResult(event.getPos());
+        lastFieldName = null;
+        Result<JsonChunkMeta> r = makeResult(event.getPos());
         mark = -1;
         return r;
       }
@@ -127,11 +142,11 @@ public class JsonSplitter implements Splitter<JsonStreamEvent, ChunkMeta> {
    * @param pos the position of the end of the chunk to create
    * @return the chunk and meta data
    */
-  private Result<ChunkMeta> makeResult(int pos) {
+  private Result<JsonChunkMeta> makeResult(int pos) {
     resultsCreated = true;
     String chunk = window.getChars(mark, pos);
     window.advanceTo(pos);
-    ChunkMeta meta = new ChunkMeta(0, chunk.length(), "application/json");
-    return new Result<ChunkMeta>(chunk, meta);
+    JsonChunkMeta meta = new JsonChunkMeta(lastFieldName, 0, chunk.length());
+    return new Result<>(chunk, meta);
   }
 }

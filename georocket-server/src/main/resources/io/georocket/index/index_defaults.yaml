@@ -14,13 +14,14 @@ properties:
     type: keyword
   # tags attached to chunks
   tags:
-    type: keyword  # array of keyword actually, auto-supported by Elasticsearch
+    type: keyword  # array of keywords actually, auto-supported by Elasticsearch
   # metadata: don't index it
   chunkStart: *integer_no_index
   chunkEnd: *integer_no_index
   chunkMimeType: *keyword_no_index
   chunkParents:
     type: object
+    index: "no"
     properties:
       prefix: *keyword_no_index
       localName: *keyword_no_index
@@ -29,6 +30,7 @@ properties:
       attributePrefixes: *keyword_no_index
       attributeLocalNames: *keyword_no_index
       attributeValues: *keyword_no_index
+  chunkParentName: *keyword_no_index
 
 # Do not save the original indexed document to save space. only include metadata!
 # See https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-source-field.html
@@ -39,3 +41,4 @@ _source:
   - chunkEnd
   - chunkMimeType
   - chunkParents
+  - chunkParentName

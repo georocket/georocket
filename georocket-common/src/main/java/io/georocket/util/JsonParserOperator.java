@@ -41,7 +41,15 @@ public class JsonParserOperator implements Operator<JsonStreamEvent, Buffer> {
         return false;
       } else if (event != JsonEvent.NEED_MORE_INPUT) {
         // forward JSON event
-        s.onNext(new JsonStreamEvent(event, parser.getParsedCharacterCount()));
+        Object value = null;
+        if (event == JsonEvent.VALUE_STRING || event == JsonEvent.FIELD_NAME) {
+          value = parser.getCurrentString();
+        } else if (event == JsonEvent.VALUE_DOUBLE) {
+          value = parser.getCurrentDouble();
+        } else if (event == JsonEvent.VALUE_INT) {
+          value = parser.getCurrentInt();
+        }
+        s.onNext(new JsonStreamEvent(event, parser.getParsedCharacterCount(), value));
       }
     } while (event != JsonEvent.NEED_MORE_INPUT);
 

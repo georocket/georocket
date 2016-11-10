@@ -32,6 +32,7 @@ import io.georocket.index.xml.XMLIndexerFactory;
 import io.georocket.query.DefaultQueryCompiler;
 import io.georocket.storage.ChunkMeta;
 import io.georocket.storage.ChunkReadStream;
+import io.georocket.storage.JsonChunkMeta;
 import io.georocket.storage.RxStore;
 import io.georocket.storage.StoreFactory;
 import io.georocket.storage.XMLChunkMeta;
@@ -498,6 +499,8 @@ public class IndexerVerticle extends AbstractVerticle {
     if (MimeTypeUtils.belongsTo(mimeType, "application", "xml") ||
       MimeTypeUtils.belongsTo(mimeType, "text", "xml")) {
       return new XMLChunkMeta(filteredSource);
+    } else if (MimeTypeUtils.belongsTo(mimeType, "application", "json")) {
+      return new JsonChunkMeta(filteredSource);
     } else {
       return new ChunkMeta(filteredSource);
     }
