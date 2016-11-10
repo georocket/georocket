@@ -9,7 +9,11 @@
         <property name="file" value="${checkstyleConfigDir}/suppressions.xml" />
     </module>
 
+    <module name="SuppressionCommentFilter" />
+
     <module name="TreeWalker">
+        <module name="FileContentsHolder"/>
+
         <module name="AvoidStarImport" />
         <module name="NoWhitespaceAfter">
             <property name="tokens" value="INC, DEC, UNARY_MINUS, UNARY_PLUS, BNOT, LNOT, DOT, TYPECAST, ARRAY_DECLARATOR, INDEX_OP" />

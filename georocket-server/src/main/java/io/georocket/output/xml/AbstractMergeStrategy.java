@@ -2,17 +2,11 @@ package io.georocket.output.xml;
 
 import java.util.List;
 
-import io.georocket.storage.XMLChunkMeta;
-import io.georocket.storage.ChunkMeta;
 import io.georocket.storage.ChunkReadStream;
+import io.georocket.storage.XMLChunkMeta;
 import io.georocket.util.XMLStartElement;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.streams.WriteStream;
-import io.vertx.rx.java.ObservableFuture;
-import io.vertx.rx.java.RxHelper;
 import rx.Observable;
 
 /**
@@ -107,40 +101,5 @@ public abstract class AbstractMergeStrategy implements MergeStrategy {
       XMLStartElement e = parents.get(i);
       out.write(Buffer.buffer("</" + e.getName() + ">"));
     }
-  }
-  
-  /**
-   * Write a chunk unchanged to an output stream without doing further checks
-   * @param chunk the chunk to write
-   * @param meta the chunk's metadata
-   * @param out the stream to write the chunk to
-   * @return an observable that will emit one item when the chunk has been written
-   */
-  protected Observable<Void> writeChunk(ChunkReadStream chunk, ChunkMeta meta,
-      WriteStream<Buffer> out) {
-    // write chunk to output stream
-    int[] start = new int[] { meta.getStart() };
-    int[] end = new int[] { meta.getEnd() };
-    chunk.handler(buf -> {
-      int s = Math.max(Math.min(start[0], buf.length()), 0);
-      int e = Math.max(Math.min(end[0], buf.length()), 0);
-      if (s != e) {
-        out.write(buf.getBuffer(s, e));
-      }
-      start[0] -= buf.length();
-      end[0] -= buf.length();
-    });
-    
-    ObservableFuture<Void> o = RxHelper.observableFuture();
-    Handler<AsyncResult<Void>> handler = o.toHandler();
-    
-    chunk.exceptionHandler(err -> {
-      chunk.endHandler(null);
-      handler.handle(Future.failedFuture(err));
-    });
-    
-    chunk.endHandler(v -> handler.handle(Future.succeededFuture()));
-    
-    return o;
   }
 }
