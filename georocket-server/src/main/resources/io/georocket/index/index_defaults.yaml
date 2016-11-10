@@ -21,7 +21,6 @@ properties:
   chunkMimeType: *keyword_no_index
   chunkParents:
     type: object
-    index: "no"
     properties:
       prefix: *keyword_no_index
       localName: *keyword_no_index
