@@ -70,7 +70,7 @@ public class JsonChunkMeta extends ChunkMeta {
     if (getClass() != obj.getClass()) {
       return false;
     }
-    JsonChunkMeta other = (JsonChunkMeta) obj;
+    JsonChunkMeta other = (JsonChunkMeta)obj;
     if (parentFieldName == null) {
       if (other.parentFieldName != null) {
         return false;
