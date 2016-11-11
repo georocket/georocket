@@ -71,14 +71,14 @@ public interface ElasticsearchClient {
    * <code>postFilter</code> must be set)
    * @param postFilter a filter to apply (may be <code>null</code>, in this case
    * <code>query</code> must be set)
-   * @param aggregation the aggregation to apply. Can be <code>null</code>
+   * @param aggregations the aggregations to apply. Can be <code>null</code>
    * @param pageSize the number of objects to return in one response
    * @param timeout the time after which the returned scroll id becomes invalid
    * @return an object containing the search hits and a scroll id that can
    * be passed to {@link #continueScroll(String, String)} to get more results
    */
   Observable<JsonObject> beginScroll(String type, JsonObject query,
-      JsonObject postFilter, JsonObject aggregation, int pageSize, String timeout);
+      JsonObject postFilter, JsonObject aggregations, int pageSize, String timeout);
   
   /**
    * Continue scrolling through search results. Call
@@ -88,6 +88,51 @@ public interface ElasticsearchClient {
    * @return an object containing new search hits and possibly a new scroll id
    */
   Observable<JsonObject> continueScroll(String scrollId, String timeout);
+  
+  /**
+   * Perform a search. The result set might not contain all documents. If you
+   * want to scroll over all results use
+   * {@link #beginScroll(String, JsonObject, int, String)}
+   * instead.
+   * @param type the type of the documents to search
+   * @param query the query to send
+   * @param size the maximum number of documents to return
+   * @return an object containing the search result as returned from Elasticsearch
+   */
+  default Observable<JsonObject> search(String type, JsonObject query, int size) {
+    return search(type, query, null, null, size);
+  }
+  
+  /**
+   * Perform a search. The result set might not contain all documents. If you
+   * want to scroll over all results use
+   * {@link #beginScroll(String, JsonObject, JsonObject, int, String)}
+   * instead.
+   * @param type the type of the documents to search
+   * @param query the query to send (may be <code>null</code>)
+   * @param postFilter a filter to apply (may be <code>null</code>)
+   * @param size the maximum number of documents to return
+   * @return an object containing the search result as returned from Elasticsearch
+   */
+  default Observable<JsonObject> search(String type, JsonObject query,
+    JsonObject postFilter, int size) {
+    return search(type, query, postFilter, null, size);
+  }
+  
+  /**
+   * Perform a search. The result set might not contain all documents. If you
+   * want to scroll over all results use
+   * {@link #beginScroll(String, JsonObject, JsonObject, JsonObject, int, String)}
+   * instead.
+   * @param type the type of the documents to search
+   * @param query the query to send (may be <code>null</code>)
+   * @param postFilter a filter to apply (may be <code>null</code>)
+   * @param aggregations the aggregations to apply (may be <code>null</code>)
+   * @param size the maximum number of documents to return
+   * @return an object containing the search result as returned from Elasticsearch
+   */
+  Observable<JsonObject> search(String type, JsonObject query,
+    JsonObject postFilter, JsonObject aggregations, int size);
   
   /**
    * Delete a number of documents in one bulk request

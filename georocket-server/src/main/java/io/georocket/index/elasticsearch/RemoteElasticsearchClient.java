@@ -85,7 +85,7 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
   
   @Override
   public Observable<JsonObject> beginScroll(String type, JsonObject query,
-      JsonObject postFilter, JsonObject aggregation, int pageSize, String timeout) {
+      JsonObject postFilter, JsonObject aggregations, int pageSize, String timeout) {
     String uri = "/" + index + "/" + type + "/_search";
     uri += "?scroll=" + timeout;
     
@@ -97,8 +97,8 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
     if (postFilter != null) {
       source.put("post_filter", postFilter);
     }
-    if (aggregation != null) {
-      source.put("aggs", aggregation);
+    if (aggregations != null) {
+      source.put("aggs", aggregations);
     }
     
     // sort by doc (fastest way to scroll)
@@ -114,6 +114,26 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
     JsonObject source = new JsonObject();
     source.put("scroll", timeout);
     source.put("scroll_id", scrollId);
+    
+    return performRequestRetry(HttpMethod.GET, uri, source.encode());
+  }
+  
+  @Override
+  public Observable<JsonObject> search(String type, JsonObject query,
+      JsonObject postFilter, JsonObject aggregations, int size) {
+    String uri = "/" + index + "/" + type + "/_search";
+    
+    JsonObject source = new JsonObject();
+    source.put("size", size);
+    if (query != null) {
+      source.put("query", query);
+    }
+    if (postFilter != null) {
+      source.put("post_filter", postFilter);
+    }
+    if (aggregations != null) {
+      source.put("aggs", aggregations);
+    }
     
     return performRequestRetry(HttpMethod.GET, uri, source.encode());
   }

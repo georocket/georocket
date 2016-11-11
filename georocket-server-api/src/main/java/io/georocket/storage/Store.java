@@ -46,8 +46,10 @@ public interface Store {
   void get(String search, String path, Handler<AsyncResult<StoreCursor>> handler);
 
   /**
-   * Get the store's current size in bytes (i.e. the number of bytes occupied
-   * by stored chunks)
+   * <p>Calculate the sum of the sizes of all stored chunks. This number does
+   * not include any overhead such as metadata or chunk replications.</p>
+   * <p>Note that, depending on the actual implementation, this method may be
+   * rather costly. Callers are advised to cache the result.</p>
    * @param handler will be called when the data size has been calculated
    */
   void getSize(Handler<AsyncResult<Long>> handler);

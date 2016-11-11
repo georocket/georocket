@@ -5,8 +5,6 @@ import java.nio.file.Paths;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.jooq.lambda.tuple.Tuple;
-
 import com.google.common.base.Preconditions;
 
 import io.georocket.constants.ConfigConstants;
@@ -140,51 +138,6 @@ public class FileStore extends IndexedStore {
       }, err -> {
         handler.handle(Future.failedFuture(err));
       });
-  }
-
-  @Override
-  public void getSize(Handler<AsyncResult<Long>> handler) {
-    // check if the root folder exists
-    vertx.fileSystem().exists(root, ar -> {
-      if (ar.failed()) {
-        handler.handle(Future.failedFuture(ar.cause()));
-        return;
-      }
-      
-      boolean exists = ar.result();
-      if (!exists) {
-        // root folder does not exist yet - store must be empty
-        handler.handle(Future.succeededFuture(0L));
-        return;
-      }
-      
-      calculateSize(root)
-        .subscribe(size -> {
-          handler.handle(Future.succeededFuture(size));
-        }, err -> {
-          handler.handle(Future.failedFuture(err));
-        });
-    });
-  }
-  
-  /**
-   * Recursively calculate the sum of all chunk sizes in the given directory
-   * @param path the directory
-   * @return the sum
-   */
-  private Observable<Long> calculateSize(String path) {
-    io.vertx.rxjava.core.Vertx rxvertx = new io.vertx.rxjava.core.Vertx(vertx);
-    io.vertx.rxjava.core.file.FileSystem fs = rxvertx.fileSystem();
-    return fs.readDirObservable(path)
-      .flatMap(Observable::from)
-      .flatMap(file -> fs.propsObservable(file).map(props -> Tuple.tuple(file, props)))
-      .flatMap(t -> {
-        if (t.v2.isDirectory()) {
-          return calculateSize(t.v1);
-        }
-        return Observable.just(t.v2.size());
-      })
-      .reduce(0L, (a, b) -> a + b);
   }
   
   @Override

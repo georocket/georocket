@@ -108,30 +108,6 @@ public class HDFSStore extends IndexedStore {
   }
 
   @Override
-  public void getSize(Handler<AsyncResult<Long>> handler) {
-    vertx.<Long>executeBlocking(f -> {
-      try {
-        synchronized (HDFSStore.this) {
-          FileSystem fs = getFS();
-          RemoteIterator<LocatedFileStatus> files = fs.listFiles(new Path(root), true);
-          long total = 0;
-          
-          while (files.hasNext()) {
-            LocatedFileStatus status = files.next();
-            if (status.isFile()) {
-              total += status.getLen();
-            }
-          }
-          
-          f.complete(total);
-        }
-      } catch (IOException e) {
-        f.fail(e);
-      }
-    }, handler);
-  }
-
-  @Override
   public void getStoreSummary(Handler<AsyncResult<JsonObject>> handler) {
     StoreSummaryBuilder summaryBuilder = new StoreSummaryBuilder();
 

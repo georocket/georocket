@@ -42,13 +42,19 @@ public class EmbeddedElasticsearchClient implements ElasticsearchClient {
 
   @Override
   public Observable<JsonObject> beginScroll(String type, JsonObject query,
-    JsonObject postFilter, JsonObject aggregation, int pageSize, String timeout) {
-    return delegate.beginScroll(type, query, postFilter, aggregation, pageSize, timeout);
+    JsonObject postFilter, JsonObject aggregations, int pageSize, String timeout) {
+    return delegate.beginScroll(type, query, postFilter, aggregations, pageSize, timeout);
   }
 
   @Override
   public Observable<JsonObject> continueScroll(String scrollId, String timeout) {
     return delegate.continueScroll(scrollId, timeout);
+  }
+
+  @Override
+  public Observable<JsonObject> search(String type, JsonObject query,
+    JsonObject postFilter, JsonObject aggregations, int size) {
+    return delegate.search(type, query, postFilter, aggregations, size);
   }
 
   @Override

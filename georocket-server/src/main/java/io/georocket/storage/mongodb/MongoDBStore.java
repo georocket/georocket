@@ -2,7 +2,6 @@ package io.georocket.storage.mongodb;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Queue;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.bson.Document;
 
@@ -107,22 +106,6 @@ public class MongoDBStore extends IndexedStore {
           int chunkSize = file.getChunkSize();
           handler.handle(Future.succeededFuture(new MongoDBChunkReadStream(
               downloadStream, length, chunkSize, context)));
-        }
-      });
-    });
-  }
-
-  @Override
-  public void getSize(Handler<AsyncResult<Long>> handler) {
-    AtomicLong total = new AtomicLong();
-    getGridFS().find().forEach(file -> {
-      total.getAndAdd(file.getLength());
-    }, (v, t) -> {
-      context.runOnContext(v2 -> {
-        if (t != null) {
-          handler.handle(Future.failedFuture(t));
-        } else {
-          handler.handle(Future.succeededFuture(total.get()));
         }
       });
     });
