@@ -196,7 +196,7 @@ public class ImportCommand extends AbstractGeoRocketCommand {
       
       if (exitCode == 0) {
         String m = "file";
-        if (patterns.size() > 1) {
+        if (queueSize > 1) {
           m += "s";
         }
         System.out.println("Successfully imported " + queueSize + " " +
