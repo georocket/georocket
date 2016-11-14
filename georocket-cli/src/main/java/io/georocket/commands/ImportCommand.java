@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.Queue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -262,16 +263,20 @@ public class ImportCommand extends AbstractGeoRocketCommand {
         WriteStream<Buffer> out = client.getStore().startImport(layer, tags,
             Optional.of(f.getRight()), handler);
 
+        AtomicBoolean fileClosed = new AtomicBoolean();
+
         Pump pump = Pump.pump(file, out);
         file.endHandler(v -> {
           file.close();
           out.end();
+          fileClosed.set(true);
         });
 
         Handler<Throwable> exceptionHandler = t -> {
-          file.endHandler(null);
-          file.close();
-          out.end();
+          if (!fileClosed.get()) {
+            file.endHandler(null);
+            file.close();
+          }
           handler.handle(Future.failedFuture(t));
         };
         file.exceptionHandler(exceptionHandler);
