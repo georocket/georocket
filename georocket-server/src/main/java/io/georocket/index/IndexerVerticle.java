@@ -32,13 +32,13 @@ import io.georocket.index.xml.XMLIndexerFactory;
 import io.georocket.query.DefaultQueryCompiler;
 import io.georocket.storage.ChunkMeta;
 import io.georocket.storage.ChunkReadStream;
+import io.georocket.storage.GeoJsonChunkMeta;
 import io.georocket.storage.JsonChunkMeta;
 import io.georocket.storage.RxStore;
 import io.georocket.storage.StoreFactory;
 import io.georocket.storage.XMLChunkMeta;
 import io.georocket.util.JsonParserOperator;
 import io.georocket.util.MapUtils;
-import io.georocket.util.MimeTypeUtils;
 import io.georocket.util.RxUtils;
 import io.georocket.util.StreamEvent;
 import io.georocket.util.XMLParserOperator;
@@ -548,10 +548,12 @@ public class IndexerVerticle extends AbstractVerticle {
     }
     
     String mimeType = filteredSource.getString("mimeType", XMLChunkMeta.MIME_TYPE);
-    if (MimeTypeUtils.belongsTo(mimeType, "application", "xml") ||
-      MimeTypeUtils.belongsTo(mimeType, "text", "xml")) {
+    if (belongsTo(mimeType, "application", "xml") ||
+      belongsTo(mimeType, "text", "xml")) {
       return new XMLChunkMeta(filteredSource);
-    } else if (MimeTypeUtils.belongsTo(mimeType, "application", "json")) {
+    } else if (belongsTo(mimeType, "application", "geo+json")) {
+      return new GeoJsonChunkMeta(filteredSource);
+    } else if (belongsTo(mimeType, "application", "json")) {
       return new JsonChunkMeta(filteredSource);
     } else {
       return new ChunkMeta(filteredSource);

@@ -4,6 +4,7 @@ import static io.georocket.util.MimeTypeUtils.belongsTo;
 
 import io.georocket.constants.AddressConstants;
 import io.georocket.storage.ChunkMeta;
+import io.georocket.storage.GeoJsonChunkMeta;
 import io.georocket.storage.JsonChunkMeta;
 import io.georocket.storage.StoreCursor;
 import io.georocket.storage.XMLChunkMeta;
@@ -173,6 +174,8 @@ public class IndexedStoreCursor implements StoreCursor {
     if (belongsTo(mimeType, "application", "xml") ||
       belongsTo(mimeType, "text", "xml")) {
       return new XMLChunkMeta(hit);
+    } else if (belongsTo(mimeType, "application", "geo+json")) {
+      return new GeoJsonChunkMeta(hit);
     } else if (belongsTo(mimeType, "application", "json")) {
       return new JsonChunkMeta(hit);
     }
