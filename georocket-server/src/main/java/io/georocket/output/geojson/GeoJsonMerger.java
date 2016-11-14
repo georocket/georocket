@@ -72,7 +72,7 @@ public class GeoJsonMerger implements Merger<GeoJsonChunkMeta> {
     }
     
     // calculate the type of the merged document
-    if (meta.getType().equals("Feature")) {
+    if ("Feature".equals(meta.getType())) {
       mergedType = TRANSITIONS[mergedType][0];
     } else {
       mergedType = TRANSITIONS[mergedType][1];

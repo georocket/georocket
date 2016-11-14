@@ -42,3 +42,4 @@ _source:
   - chunkMimeType
   - chunkParents
   - chunkParentName
+  - chunkType
