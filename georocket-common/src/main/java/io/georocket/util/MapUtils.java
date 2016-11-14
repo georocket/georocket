@@ -22,11 +22,23 @@ public class MapUtils {
       V v1 = m1.get(k);
       V v2 = m2.get(k);
       if (v1 instanceof Collection && v2 instanceof Collection) {
-        ((Collection<Object>)v1).addAll((Collection<Object>)v2);
+        if (((Collection<Object>)v1).containsAll((Collection<Object>)v2)) {
+          // Don't overwrite existing values if the collection already contains
+          // all values from the other collection. This is useful if we are
+          // trying to merge unmodifiable collections.
+        } else {
+          ((Collection<Object>)v1).addAll((Collection<Object>)v2);
+        }
       } else if (v1 instanceof Map && v2 instanceof Map) {
         deepMerge((Map<Object, Object>)v1, (Map<Object, Object>)v2);
       } else {
-        m1.put(k, v2);
+        V existingV = m1.get(k);
+        if (existingV != null && existingV.equals(v2)) {
+          // Don't overwrite an existing value that is equal to the new value.
+          // This is useful if we are trying to merge unmodifiable maps.
+        } else {
+          m1.put(k, v2);
+        }
       }
     }
   }
