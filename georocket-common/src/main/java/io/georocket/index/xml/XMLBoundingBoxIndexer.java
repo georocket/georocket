@@ -1,8 +1,5 @@
 package io.georocket.index.xml;
 
-import java.util.Arrays;
-import java.util.Map;
-
 import javax.xml.stream.XMLStreamReader;
 import javax.xml.stream.events.XMLEvent;
 
@@ -14,21 +11,18 @@ import org.opengis.referencing.cs.AxisDirection;
 import org.opengis.referencing.operation.MathTransform;
 import org.opengis.referencing.operation.TransformException;
 
-import com.google.common.collect.ImmutableMap;
-
 import io.georocket.index.CRSAware;
+import io.georocket.index.generic.BoundingBoxIndexer;
 import io.georocket.util.CompoundCRSDecoder;
 import io.georocket.util.XMLStreamEvent;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 
 /**
  * Indexes bounding boxes of inserted chunks
  * @author Michel Kraemer
  */
-public class XMLBoundingBoxIndexer implements XMLIndexer, CRSAware {
+public class XMLBoundingBoxIndexer extends BoundingBoxIndexer
+    implements XMLIndexer, CRSAware {
   private static final CoordinateReferenceSystem WGS84 = DefaultGeographicCRS.WGS84;
-  private static Logger log = LoggerFactory.getLogger(XMLBoundingBoxIndexer.class);
   
   /**
    * The string of the detected CRS
@@ -74,21 +68,6 @@ public class XMLBoundingBoxIndexer implements XMLIndexer, CRSAware {
    * Collects XML element contents
    */
   private StringBuilder stringBuilder;
-  
-  /**
-   * True if {@link #addToBoundingBox(double, double)} has been called
-   * at least once
-   */
-  private boolean boundingBoxInitialized = false;
-  
-  /**
-   * The calculated bounding box of this chunk. Only contains valid values
-   * if {@link #boundingBoxInitialized} is true
-   */
-  protected double minX;
-  protected double maxX;
-  protected double minY;
-  protected double maxY;
   
   /**
    * Check if x and y are flipped in the given CRS
@@ -267,61 +246,5 @@ public class XMLBoundingBoxIndexer implements XMLIndexer, CRSAware {
     } catch (TransformException e) {
       // ignore
     }
-  }
-  
-  /**
-   * Adds the given coordinate to the bounding box
-   * @param x the x ordinate
-   * @param y the y ordinate
-   */
-  private void addToBoundingBox(double x, double y) {
-    if (!boundingBoxInitialized) {
-      minX = maxX = x;
-      minY = maxY = y;
-      boundingBoxInitialized = true;
-    } else {
-      if (x < minX) {
-        minX = x;
-      }
-      if (x > maxX) {
-        maxX = x;
-      }
-      if (y < minY) {
-        minY = y;
-      }
-      if (y > maxY) {
-        maxY = y;
-      }
-    }
-  }
-  
-  /**
-   * Check if the current bounding box contains valid values for WGS84
-   * @return true if the current bounding box is valid, false otherwise
-   */
-  private boolean validate() {
-    return (minX >= -180.0 && minY >= -90.0 && maxX <= 180.0 && maxY <= 90.0);
-  }
-  
-  @Override
-  public Map<String, Object> getResult() {
-    if (!boundingBoxInitialized) {
-      // the chunk's bounding box is unknown. do not add it to the index
-      return ImmutableMap.of();
-    }
-    if (!validate()) {
-      boundingBoxInitialized = false;
-      log.warn("Invalid bounding box [" + minX + "," + minY + "," + maxX + "," + maxY + "]. "
-          + "Values outside [-180.0, -90.0, 180.0, 90.0]. Skipping chunk.");
-      return ImmutableMap.of();
-    }
-    //System.out.println(minX + "," + minY + "," + maxX + "," + maxY);
-    return ImmutableMap.of("bbox", ImmutableMap.of(
-        "type", "envelope",
-        "coordinates", Arrays.asList(
-            Arrays.asList(minX, maxY), // upper left
-            Arrays.asList(maxX, minY)  // lower right
-        )
-    ));
   }
 }
