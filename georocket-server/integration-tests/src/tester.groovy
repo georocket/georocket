@@ -57,6 +57,30 @@ def testExport(String georocketHost) {
     return true
 }
 
+def testImport(String georocketHost) {
+    // import file
+    run("curl -sS -X POST http://${georocketHost}:63020/store "
+        + "--data @data/berlin_alexanderplatz_mini.xml "
+        + "-H Content-Type:application/xml", new File("/"))
+
+    boolean exportOk = false
+    for (int i = 0; i < 20; ++i) {
+        // wait until GeoRocket has indexed the file
+        logWait("GeoRocket indexer")
+        Thread.sleep(1000)
+
+        if (testExport(georocketHost)) {
+            exportOk = true
+            break
+        }
+    }
+
+    if (!exportOk) {
+        logFail("Export failed")
+        System.exit(1)
+    }
+}
+
 /**
  * Search for a building using a bounding box. Check if GeoRocket really
  * exports only one building and if it is the right one.
@@ -152,6 +176,42 @@ def testExportByGmlId(String georocketHost) {
 }
 
 /**
+ * Search for a building by a generic attribute. Check if GeoRocket
+ * really exports only one building and if it is the right one.
+ * @param georocketHost the host where GeoRocket is running
+ */
+def testExportByGenericAttribute(String georocketHost) {
+    // export file using an attributes
+    run("curl -sS -X GET http://${georocketHost}:63020/store/"
+        + "?search=TestBuilding2 "
+        + "-o /data/exported_berlin_by_generic_attribute.xml", new File("/"))
+
+    // read exported file
+    def exportedContents = new File("/data/exported_berlin_by_generic_attribute.xml").text
+    if (exportedContents.length() < 100) {
+        logFail("Response: $exportedContents")
+        System.exit(1)
+    }
+
+    // parser exported file
+    def exportedNode = new XmlSlurper().parseText(exportedContents)
+
+    // check if we have only exported one chunk
+    if (exportedNode.children().size() != 1) {
+        logFail("Expected 1 chunks. Got ${exportedNode.children().size()}.")
+        System.exit(1)
+    }
+
+    // check if we found the right building
+    def child = exportedNode.children().getAt(0)
+    def gmlId = child.Building.'@gml:id'
+    if (gmlId != 'ID_146_D') {
+        logFail("Expected gml:id ID_146_D. Got ${gmlId}.")
+        System.exit(1)
+    }
+}
+
+/**
  * Search for a dummy string. Check if GeoRocket really returns no chunks.
  * @param georocketHost the host where GeoRocket is running
  */
@@ -174,27 +234,8 @@ def runTest(String georocketHost) {
     // wait for GeoRocket
     waitHttp("http://${georocketHost}:63020")
 
-    // import file
-    run("curl -sS -X POST http://${georocketHost}:63020/store "
-        + "--data @data/berlin_alexanderplatz_mini.xml "
-        + "-H Content-Type:application/xml", new File("/"))
-
-    boolean exportOk = false
-    for (int i = 0; i < 20; ++i) {
-        // wait until GeoRocket has indexed the file
-        logWait("GeoRocket indexer")
-        Thread.sleep(1000)
-
-        if (testExport(georocketHost)) {
-            exportOk = true
-            break
-        }
-    }
-
-    if (!exportOk) {
-        logFail("Export failed")
-        System.exit(1)
-    }
+    // import file (waits until GeoRocket has imported the file)
+    testImport(georocketHost)
 
     // run other tests - we don't have to do this in a loop
     // because GeoRocket should already be up and running and all
@@ -202,6 +243,7 @@ def runTest(String georocketHost) {
     testExportByBoundingBox(georocketHost)
     testExportByBoundingBoxNone(georocketHost)
     testExportByGmlId(georocketHost)
+    testExportByGenericAttribute(georocketHost)
     testExportNone(georocketHost)
 }
 
