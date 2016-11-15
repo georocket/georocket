@@ -44,11 +44,9 @@ if (mode == "standalone") {
     runXMLTests("georocket_mongo")
     def chunkCountInMongo = run('mongo mongo/georocket --quiet '
         + '--eval "db.fs.chunks.count()"', null, true).trim()
-    if (chunkCountInMongo != String.valueOf(EXPECTED_NODE.children().size())) {
-        logFail("Expected ${EXPECTED_NODE.children().size()} chunks in "
-            + "MongoDB. Got ${chunkCountInMongo}.")
-        System.exit(1)
-    }
+    assertEquals(chunkCountInMongo, String.valueOf(EXPECTED_NODE.children().size()),
+        "Expected ${EXPECTED_NODE.children().size()} chunks in " +
+        "MongoDB. Got ${chunkCountInMongo}.")
     finishXMLTests("georocket_mongo")
     logSuccess()
 } else if (mode == "s3") {
@@ -57,11 +55,9 @@ if (mode == "standalone") {
     run("s3cmd mb s3://georocket")
     runXMLTests("georocket_s3")
     objects = run("s3cmd ls s3://georocket/", null, true).split('\n')
-    if (objects.length != expectedNode.children().size()) {
-        logFail("Expected ${expectedNode.children().size()} objects in "
-            + "S3. Got ${objects.length}.")
-        System.exit(1)
-    }
+    assertEquals(objects.length, EXPECTED_NODE.children().size(),
+        "Expected ${EXPECTED_NODE.children().size()} objects in " +
+        "S3. Got ${objects.length}.")
     finishXMLTests("georocket_s3")
     logSuccess()
 } else if (mode == "hdfs") {
@@ -73,11 +69,9 @@ if (mode == "standalone") {
     run("/usr/local/hadoop/bin/hdfs dfs -chown georocket:georocket /georocket")
     runXMLTests("georocket_hdfs")
     hdfsfiles = run("/usr/local/hadoop/bin/hdfs dfs -ls /georocket/", null, true).split('\n')
-    if (hdfsfiles.length - 1 != EXPECTED_NODE.children().size()) {
-        logFail("Expected ${EXPECTED_NODE.children().size()} files in "
-            + "HDFS. Got ${hdfsfiles.length - 1}.")
-        System.exit(1)
-    }
+    assertEquals(hdfsfiles.length - 1, EXPECTED_NODE.children().size(),
+        "Expected ${EXPECTED_NODE.children().size()} files in " +
+        "HDFS. Got ${hdfsfiles.length - 1}.")
     finishXMLTests("georocket_hdfs")
     logSuccess()
 }

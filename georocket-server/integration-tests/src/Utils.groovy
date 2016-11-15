@@ -100,8 +100,7 @@ class Utils {
                 logWarn("$url not available within $count seconds. Waiting ${timeout - count} more seconds ...")
             }
         }
-        logFail("$url not available within $timeout seconds")
-        System.exit(1)
+        fail("$url not available within $timeout seconds")
     }
 
     static void logExec(String msg) {
@@ -128,7 +127,24 @@ class Utils {
         println("[${GREEN} OK ${NC}] $msg")
     }
 
-    static logSuccess() {
+    static void logSuccess() {
         logOK("Success.")
+    }
+
+    static void fail(String msg) {
+        logFail(msg)
+        System.exit(1)
+    }
+
+    static void assertEquals(a, b, msg) {
+        if (a != b) {
+            fail(msg)
+        }
+    }
+
+    static void assertTrue(b, msg) {
+        if (!b) {
+            fail(msg)
+        }
     }
 }
