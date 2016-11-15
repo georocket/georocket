@@ -23,6 +23,10 @@ def runXMLTests(String georocketHost) {
 }
 
 def finishXMLTests(String georocketHost) {
+    def xml = new XMLTests(georocketHost)
+
+    // delete all chunks
+    xml.testDelete()
 }
 
 String mode = args.length > 0 ? args[0] : null

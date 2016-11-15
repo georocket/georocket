@@ -240,4 +240,37 @@ class XMLTests {
             System.exit(1)
         }
     }
+
+    /**
+     * Delete all chunks and check if the store is empty
+     */
+    def testDelete() {
+        // delete all chunks
+        run("curl -sS -X DELETE http://${georocketHost}:63020/store/")
+
+        boolean deleteOk = false
+        for (int i = 0; i < 5; ++i) {
+            // wait until GeoRocket has deleted the chunks
+            logWait("GeoRocket indexer")
+            Thread.sleep(1000)
+
+            // export whole data store
+            run("curl -sS -X GET http://${georocketHost}:63020/store/ "
+                + "-o /data/exported_berlin_deleted.xml", new File("/"))
+
+            // read exported file
+            def exportedContents = new File("/data/exported_berlin_deleted.xml").text
+            if (exportedContents != "Not Found") {
+                logWarn("Response: $exportedContents")
+            } else {
+                deleteOk = true
+                break
+            }
+        }
+
+        if (!deleteOk) {
+            logFail("Deleting failed")
+            System.exit(1)
+        }
+    }
 }
