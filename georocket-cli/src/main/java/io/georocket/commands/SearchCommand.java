@@ -3,6 +3,7 @@ package io.georocket.commands;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import de.undercouch.underline.InputReader;
 import de.undercouch.underline.Option.ArgumentType;
@@ -25,7 +26,13 @@ public class SearchCommand extends AbstractQueryCommand {
    */
   @UnknownAttributes("QUERY")
   public void setQueryParts(List<String> queryParts) {
-    this.query = String.join(" ", queryParts);
+    // put quotes around query parts containing a space
+    List<String> quotedQueryParts = queryParts.stream()
+      .map(s -> s.indexOf(' ') >= 0 ? "\"" + s + "\"" : s)
+      .collect(Collectors.toList());
+    
+    // join all query parts using the space character
+    this.query = String.join(" ", quotedQueryParts);
   }
   
   /**
