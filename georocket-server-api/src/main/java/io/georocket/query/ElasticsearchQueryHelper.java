@@ -25,7 +25,8 @@ public final class ElasticsearchQueryHelper {
   }
   
   /**
-   * Add a filter to a bool query
+   * Add a filter to a bool query. Do not add it if the clause already exists
+   * in the query.
    * @param bool the bool query
    * @param filter the filter to add
    */
@@ -34,7 +35,8 @@ public final class ElasticsearchQueryHelper {
   }
   
   /**
-   * Add a "must" clause to a bool query
+   * Add a "must" clause to a bool query. Do not add it if the clause already
+   * exists in the query.
    * @param bool the bool query
    * @param must the clause to add
    */
@@ -43,7 +45,8 @@ public final class ElasticsearchQueryHelper {
   }
   
   /**
-   * Add a "must_not" clause to a bool query
+   * Add a "must_not" clause to a bool query. Do not add it if the clause
+   * already exists in the query.
    * @param bool the bool query
    * @param mustNot the clause to add
    */
@@ -52,7 +55,8 @@ public final class ElasticsearchQueryHelper {
   }
   
   /**
-   * Add a "should" clause to a bool query
+   * Add a "should" clause to a bool query. Do not add it if the clause already
+   * exists in the query.
    * @param bool the bool query
    * @param should the clause to add
    */
@@ -61,7 +65,8 @@ public final class ElasticsearchQueryHelper {
   }
 
   /**
-   * Add a clause to a bool query
+   * Add a clause to a bool query. Do not add it if the clause already exists
+   * in the query.
    * @param bool the bool query
    * @param clause the clause to add
    * @param occurrenceType the clause's occurrence type (e.g. "must", "should")
@@ -73,10 +78,15 @@ public final class ElasticsearchQueryHelper {
     if (eso == null) {
       b.put(occurrenceType, clause);
     } else if (eso instanceof JsonArray) {
-      ((JsonArray)eso).add(clause);
+      JsonArray esoa = (JsonArray)eso;
+      if (!esoa.contains(clause)) {
+        esoa.add(clause);
+      }
     } else {
-      JsonArray es = new JsonArray().add(eso).add(clause);
-      b.put(occurrenceType, es);
+      if (!eso.equals(clause)) {
+        JsonArray es = new JsonArray().add(eso).add(clause);
+        b.put(occurrenceType, es);
+      }
     }
   }
   
