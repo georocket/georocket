@@ -90,15 +90,11 @@ class XMLTests {
     }
 
     /**
-    * Search for a building using a bounding box. Check if GeoRocket really
-    * exports only one building and if it is the right one.
-    */
-    def testExportByBoundingBox() {
-        // export file using bounding box that relates to the one of the building
-        // we are looking for
-        def exportedContents = run("curl -sS -X GET http://${georocketHost}:63020/store/"
-            + "?search=13.04709829608855,52.33016111449572,13.047127397967273,52.330179231017645",
-            null, true)
+     * Assert that the given string contains exactly one Building with the given ID
+     * @param exportedContents the string to parse
+     * @param expectedId the expected building ID
+     */
+    private void assertExportedBuilding(exportedContents, expectedId) {
         assertTrue(exportedContents.length() >= 100, "Response: $exportedContents")
 
         // parse exported file
@@ -111,7 +107,20 @@ class XMLTests {
         // check if we found the right building
         def child = exportedNode.children().getAt(0)
         def gmlId = child.Building.'@gml:id'
-        assertEquals(gmlId, 'ID_147_D', "Expected gml:id ID_147_D. Got ${gmlId}.")
+        assertEquals(gmlId, expectedId, "Expected gml:id ${expectedId}. Got ${gmlId}.")
+    }
+
+    /**
+    * Search for a building using a bounding box. Check if GeoRocket really
+    * exports only one building and if it is the right one.
+    */
+    def testExportByBoundingBox() {
+        // export file using bounding box that relates to the one of the building
+        // we are looking for
+        def exportedContents = run("curl -sS -X GET http://${georocketHost}:63020/store/"
+            + "?search=13.04709829608855,52.33016111449572,13.047127397967273,52.330179231017645",
+            null, true)
+        assertExportedBuilding(exportedContents, 'ID_147_D')
     }
 
     /**
@@ -133,19 +142,7 @@ class XMLTests {
         // we are looking for
         def exportedContents = run("curl -sS -X GET http://${georocketHost}:63020/store/"
             + "?search=ID_146_D", null, true)
-        assertTrue(exportedContents.length() >= 100, "Response: $exportedContents")
-
-        // parse exported file
-        def exportedNode = new XmlSlurper().parseText(exportedContents)
-
-        // check if we have only exported one chunk
-        assertEquals(exportedNode.children().size(), 1,
-            "Expected 1 chunks. Got ${exportedNode.children().size()}.")
-
-        // check if we found the right building
-        def child = exportedNode.children().getAt(0)
-        def gmlId = child.Building.'@gml:id'
-        assertEquals(gmlId, 'ID_146_D', "Expected gml:id ID_146_D. Got ${gmlId}.")
+        assertExportedBuilding(exportedContents, 'ID_146_D')
     }
 
     /**
@@ -156,19 +153,7 @@ class XMLTests {
         // export file using a generic attribute
         def exportedContents = run("curl -sS -X GET http://${georocketHost}:63020/store/"
             + "?search=TestBuilding2", null, true)
-        assertTrue(exportedContents.length() >= 100, "Response: $exportedContents")
-
-        // parse exported file
-        def exportedNode = new XmlSlurper().parseText(exportedContents)
-
-        // check if we have only exported one chunk
-        assertEquals(exportedNode.children().size(), 1,
-            "Expected 1 chunks. Got ${exportedNode.children().size()}.")
-
-        // check if we found the right building
-        def child = exportedNode.children().getAt(0)
-        def gmlId = child.Building.'@gml:id'
-        assertEquals(gmlId, 'ID_146_D', "Expected gml:id ID_146_D. Got ${gmlId}.")
+        assertExportedBuilding(exportedContents, 'ID_146_D')
     }
 
     /**
