@@ -1,4 +1,5 @@
 io.georocket.index.geojson.GeoJsonBoundingBoxIndexerFactory
+io.georocket.index.geojson.GeoJsonGenericAttributeIndexerFactory
 io.georocket.index.xml.XMLBoundingBoxIndexerFactory
 io.georocket.index.xml.XMLGenericAttributeIndexerFactory
 io.georocket.index.xml.GmlIdIndexerFactory
