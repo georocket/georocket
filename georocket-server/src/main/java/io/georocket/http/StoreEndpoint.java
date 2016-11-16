@@ -84,9 +84,14 @@ public class StoreEndpoint implements Endpoint {
   private void onGetSummary(RoutingContext context) {
     HttpServerResponse response = context.response();
 
-    store.getStoreSummaryObservable()
-      .subscribe(summary -> {
-        response.setStatusCode(200).end(summary.toString());
+    store.getSizeObservable()
+      .subscribe(size -> {
+        JsonObject summary = new JsonObject()
+          .put("size", size);
+        response
+          .putHeader("Content-Type", "application/json")
+          .setStatusCode(200)
+          .end(summary.encode());
       }, err -> {
         log.error("Unable to handle GET summary request", err);
         response.setStatusCode(throwableToCode(err)).end(throwableToMessage(err, ""));
@@ -190,18 +195,18 @@ public class StoreEndpoint implements Endpoint {
    * @param context the routing context
    */
   private void onGet(RoutingContext context) {
+    HttpServerRequest request = context.request();
+    HttpServerResponse response = context.response();
+
     String path = getStorePath(context);
+    String search = request.getParam("search");
     String summary = context.request().getParam("summary");
 
-    // Client requested only a summary of the store.
+    // client requested summary only
     if (summary != null) {
-      this.onGetSummary(context);
+      onGetSummary(context);
       return;
     }
-
-    HttpServerResponse response = context.response();
-    HttpServerRequest request = context.request();
-    String search = request.getParam("search");
     
     // Our responses must always be chunked because we cannot calculate
     // the exact content-length beforehand. We perform two searches, one to
