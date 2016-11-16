@@ -1,6 +1,5 @@
 package io.georocket.storage.hdfs;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStreamWriter;
@@ -13,9 +12,7 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.RemoteIterator;
 
 import com.google.common.base.Preconditions;
 
@@ -23,21 +20,17 @@ import io.georocket.constants.ConfigConstants;
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.indexed.IndexedStore;
 import io.georocket.util.PathUtils;
-import io.georocket.util.StoreSummaryBuilder;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 
 /**
  * Stores chunks on HDFS
  * @author Michel Kraemer
  */
 public class HDFSStore extends IndexedStore {
-  private static Logger log = LoggerFactory.getLogger(HDFSStore.class);
   private final Vertx vertx;
   private final Configuration configuration;
   private final String root;
@@ -105,54 +98,6 @@ public class HDFSStore extends IndexedStore {
             new InputStreamChunkReadStream(p.getValue(), p.getKey(), vertx)));
       }
     });
-  }
-
-  @Override
-  public void getStoreSummary(Handler<AsyncResult<JsonObject>> handler) {
-    StoreSummaryBuilder summaryBuilder = new StoreSummaryBuilder();
-
-    vertx.<JsonObject>executeBlocking(f -> {
-      try {
-        synchronized (HDFSStore.this) {
-          FileSystem fs = getFS();
-          RemoteIterator<LocatedFileStatus> files = fs.listFiles(new Path(root), false);
-
-          while (files.hasNext()) {
-            LocatedFileStatus status = files.next();
-            Path filePath = status.getPath();
-            long modificationTime = status.getModificationTime();
-            long size = status.getBlockSize();
-
-            String layer;
-            if (status.isDirectory()) {
-              layer = makeRelative(filePath);
-            } else {
-              layer = "/";
-            }
-
-            summaryBuilder.put(layer, size, modificationTime, 0);
-          }
-
-          f.complete(summaryBuilder.finishBuilding());
-        }
-
-      } catch (FileNotFoundException e) {
-        log.warn("Could not read files from store '" + root + "'. This is ok if the system does not contain or" +
-            " never contained data (initial start without use).");
-        f.complete(summaryBuilder.finishBuilding());
-      } catch (IOException e) {
-        f.fail(e);
-      }
-    }, handler);
-  }
-
-  /**
-   * Remove the root path from the absolute path
-   * @param path the absolute path to a file
-   * @return the relative path
-   */
-  private String makeRelative(Path path) {
-    return path.toString().substring(root.length());
   }
 
   /**

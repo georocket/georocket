@@ -20,7 +20,6 @@ import io.georocket.constants.ConfigConstants;
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.indexed.IndexedStore;
 import io.georocket.util.PathUtils;
-import io.georocket.util.StoreSummaryBuilder;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
@@ -109,36 +108,6 @@ public class MongoDBStore extends IndexedStore {
         }
       });
     });
-  }
-
-  @Override
-  public void getStoreSummary(Handler<AsyncResult<JsonObject>> handler) {
-    StoreSummaryBuilder summaryBuilder = new StoreSummaryBuilder();
-
-    getGridFS().find().forEach(file -> {
-      summaryBuilder.put(extractLayer(file.getFilename()),
-          file.getLength(), file.getUploadDate().getTime());
-    }, (v, t) -> {
-      context.runOnContext(v2 -> {
-        if (t != null) {
-          handler.handle(Future.failedFuture(t));
-        } else {
-          handler.handle(Future.succeededFuture(summaryBuilder.finishBuilding()));
-        }
-      });
-    });
-  }
-
-  /**
-   * Remove the filename from the given absolute path and ensure there is
-   * a leading slash
-   * @param name the absolute path
-   * @return slash or a layer starting with a slash
-   */
-  private static String extractLayer(String name) {
-    int lastSlashIndex = name.lastIndexOf('/');
-    String layer = name.substring(0, lastSlashIndex + 1);
-    return PathUtils.addLeadingSlash(layer);
   }
 
   @Override

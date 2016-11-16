@@ -2,7 +2,6 @@ package io.georocket.storage;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
-import io.vertx.core.json.JsonObject;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
 import rx.Observable;
@@ -114,25 +113,6 @@ public class RxStore implements Store {
   public Observable<Long> getSizeObservable() {
     ObservableFuture<Long> o = RxHelper.observableFuture();
     getSize(o.toHandler());
-    return o;
-  }
-
-  @Override
-  @Deprecated
-  public void getStoreSummary(Handler<AsyncResult<JsonObject>> handler) {
-    delegate.getStoreSummary(handler);
-  }
-
-  /**
-   * Observable version of {@link #getStoreSummary(Handler)}
-   * @return on observable that emits the store summary
-   * @deprecated this method will be removed or replaced in an upcoming release
-   * without further warning
-   */
-  @Deprecated
-  public Observable<JsonObject> getStoreSummaryObservable() {
-    ObservableFuture<JsonObject> o = RxHelper.observableFuture();
-    getStoreSummary(o.toHandler());
     return o;
   }
 }

@@ -10,16 +10,12 @@ import com.amazonaws.HttpMethod;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.S3ClientOptions;
-import com.amazonaws.services.s3.model.ListObjectsV2Request;
-import com.amazonaws.services.s3.model.ListObjectsV2Result;
-import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.google.common.base.Preconditions;
 
 import io.georocket.constants.ConfigConstants;
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.indexed.IndexedStore;
 import io.georocket.util.PathUtils;
-import io.georocket.util.StoreSummaryBuilder;
 import io.georocket.util.io.DelegateChunkReadStream;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -225,43 +221,6 @@ public class S3Store extends IndexedStore {
 
       request.end();
     });
-  }
-
-  @Override
-  public void getStoreSummary(Handler<AsyncResult<JsonObject>> handler) {
-    vertx.<JsonObject>executeBlocking(f -> {
-      ListObjectsV2Request req = new ListObjectsV2Request().withBucketName(bucket);
-      ListObjectsV2Result result;
-      StoreSummaryBuilder summaryBuilder = new StoreSummaryBuilder();
-
-      do {
-        result = getS3Client().listObjectsV2(req);
-
-        for (S3ObjectSummary objectSummary : result.getObjectSummaries()) {
-          long size = objectSummary.getSize();
-          long lastChange = objectSummary.getLastModified().getTime();
-          String layer = extractLayer(objectSummary.getKey());
-
-          summaryBuilder.put(layer, size, lastChange);
-        }
-
-        req.setContinuationToken(result.getNextContinuationToken());
-      } while (result.isTruncated());
-
-      f.complete(summaryBuilder.finishBuilding());
-    }, handler);
-  }
-
-  /**
-   * Remove the filename from the given S3 object key and ensure there
-   * is a leading slash
-   * @param name the S3 object key
-   * @return slash or a layer starting with a slash
-   */
-  private static String extractLayer(String name) {
-    int lastSlashIndex = name.lastIndexOf('/');
-    String layer = name.substring(0, lastSlashIndex + 1);
-    return PathUtils.addLeadingSlash(layer);
   }
 
   @Override

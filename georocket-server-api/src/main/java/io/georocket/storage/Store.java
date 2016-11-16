@@ -2,7 +2,6 @@ package io.georocket.storage;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
-import io.vertx.core.json.JsonObject;
 
 /**
  * A store for chunks
@@ -53,13 +52,4 @@ public interface Store {
    * @param handler will be called when the data size has been calculated
    */
   void getSize(Handler<AsyncResult<Long>> handler);
-
-  /**
-   * Get the store's meta data
-   * @param handler will be called when the meta data has been generated
-   * @deprecated this method will be removed or replaced in an upcoming release
-   * without further warning
-   */
-  @Deprecated
-  void getStoreSummary(Handler<AsyncResult<JsonObject>> handler);
 }

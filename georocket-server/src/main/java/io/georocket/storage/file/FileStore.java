@@ -3,7 +3,6 @@ package io.georocket.storage.file;
 import java.io.FileNotFoundException;
 import java.nio.file.Paths;
 import java.util.Queue;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import com.google.common.base.Preconditions;
 
@@ -11,7 +10,6 @@ import io.georocket.constants.ConfigConstants;
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.indexed.IndexedStore;
 import io.georocket.util.PathUtils;
-import io.georocket.util.StoreSummaryBuilder;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -21,9 +19,6 @@ import io.vertx.core.file.AsyncFile;
 import io.vertx.core.file.FileProps;
 import io.vertx.core.file.FileSystem;
 import io.vertx.core.file.OpenOptions;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
 import rx.Observable;
@@ -33,8 +28,6 @@ import rx.Observable;
  * @author Michel Kraemer
  */
 public class FileStore extends IndexedStore {
-  private static Logger log = LoggerFactory.getLogger(FileStore.class);
-
   /**
    * The folder where the chunks should be saved
    */
@@ -138,69 +131,6 @@ public class FileStore extends IndexedStore {
       }, err -> {
         handler.handle(Future.failedFuture(err));
       });
-  }
-  
-  @Override
-  public void getStoreSummary(Handler<AsyncResult<JsonObject>> handler) {
-    StoreSummaryBuilder summaryBuilder = new StoreSummaryBuilder();
-    AtomicInteger counter = new AtomicInteger(0);
-
-    vertx.fileSystem().exists(root, existsHandler -> {
-        if (existsHandler.failed()) {
-          log.error("Failed to check for folder existence", existsHandler.cause());
-          handler.handle(Future.failedFuture(existsHandler.cause()));
-        } else {
-          if (existsHandler.result()) {
-            vertx.fileSystem().readDir(root, h -> {
-              if (h.failed()) {
-                log.error("Failed to retrieve the root content", h.cause());
-                handler.handle(Future.failedFuture(h.cause()));
-              } else {
-                h.result().forEach(path -> {
-                  counter.incrementAndGet();
-
-                  vertx.fileSystem().props(path, r -> {
-                    if (r.failed()) {
-                      log.error("Failed to retrieve the file properties", r.cause());
-                      handler.handle(Future.failedFuture(r.cause()));
-                    } else {
-                      FileProps props = r.result();
-                      String layer;
-                      if (props.isDirectory()) {
-                        layer = makeRelative(path);
-                      } else {
-                        layer = "/";
-                      }
-                      long changeDate = props.lastModifiedTime();
-                      long size = props.size();
-
-                      summaryBuilder.put(layer, size, changeDate, 0);
-
-                      if (counter.decrementAndGet() == 0) {
-                        handler.handle(Future.succeededFuture(summaryBuilder.finishBuilding()));
-                      }
-                    }
-                  });
-                });
-              }
-            });
-          } else {
-            log.warn("Could not read files from store '" + root + "'. This is ok if the system does not contain or" +
-                " never contained data (initial start without use).");
-            handler.handle(Future.succeededFuture(summaryBuilder.finishBuilding()));
-          }
-        }
-    });
-
-  }
-
-  /**
-   * Remove the root path from the absolute path
-   * @param path the absolute path to a file
-   * @return the relative path
-   */
-  private String makeRelative(String path) {
-    return path.substring(root.length());
   }
 
   @Override
