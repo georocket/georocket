@@ -318,11 +318,11 @@ public class IndexerVerticle extends AbstractVerticle {
       }
       
       long stopTimeStamp = System.currentTimeMillis();
-      List<String> importIds = Seq.seq(messages)
+      List<String> correlationIds = Seq.seq(messages)
         .map(Message::body)
-        .map(d -> d.getString("importId"))
+        .map(d -> d.getString("correlationId"))
         .toList();
-      onIndexingFinished(stopTimeStamp - startTimeStamp, importIds,
+      onIndexingFinished(stopTimeStamp - startTimeStamp, correlationIds,
           client.bulkResponseGetErrorMessage(bres));
 
       return Observable.empty();
@@ -350,17 +350,17 @@ public class IndexerVerticle extends AbstractVerticle {
   /**
    * Will be called after the indexer has finished the indexing process
    * @param duration the time passed during indexing
-   * @param importIds the import IDs of the chunks that were processed by
+   * @param correlationIds the correlation IDs of the chunks that were processed by
    * the indexer. This list may include IDs of chunks whose indexing failed.
    * @param errorMessage an error message if the process has failed
    * or <code>null</code> if everything was successful
    */
-  private void onIndexingFinished(long duration, List<String> importIds,
+  private void onIndexingFinished(long duration, List<String> correlationIds,
       String errorMessage) {
     if (errorMessage != null) {
       log.error("Indexing failed: " + errorMessage);
     } else {
-      log.info("Finished indexing " + importIds.size() + " chunks in " +
+      log.info("Finished indexing " + correlationIds.size() + " chunks in " +
           duration + " " + "ms");
     }
     
@@ -369,7 +369,7 @@ public class IndexerVerticle extends AbstractVerticle {
         .put("activity", "indexing")
         .put("owner", deploymentID())
         .put("action", "stop")
-        .put("importIds", new JsonArray(importIds))
+        .put("correlationIds", new JsonArray(correlationIds))
         .put("duration", duration);
       vertx.eventBus().send(AddressConstants.ACTIVITIES, msg);
     }
@@ -542,7 +542,7 @@ public class IndexerVerticle extends AbstractVerticle {
 
         log.trace("Indexing " + path);
 
-        String importId = body.getString("importId");
+        String correlationId = body.getString("correlationId");
         String filename = body.getString("filename");
         Long importTime = body.getLong("importTime");
 
@@ -552,7 +552,7 @@ public class IndexerVerticle extends AbstractVerticle {
         return openChunkToDocument(path, mimeType, fallbackCRSString)
           .doOnNext(doc -> {
             doc.put("path", path);
-            doc.put("importId", importId);
+            doc.put("correlationId", correlationId);
             doc.put("filename", filename);
             doc.put("importTime", importTime);
             addMeta(doc, meta);

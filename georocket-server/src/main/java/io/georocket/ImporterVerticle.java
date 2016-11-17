@@ -6,7 +6,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -97,22 +96,22 @@ public class ImporterVerticle extends AbstractVerticle {
     String filepath = incoming + "/" + filename;
     String layer = body.getString("layer", "/");
     String contentType = body.getString("contentType");
+    String correlationId = body.getString("correlationId");
 
     // get tags
     JsonArray tagsArr = body.getJsonArray("tags");
     List<String> tags = tagsArr != null ? tagsArr.stream().flatMap(o -> o != null ?
         Stream.of(o.toString()) : Stream.of()).collect(Collectors.toList()) : null;
     
-    // generate ID and timestamp for this import
-    String importId = UUID.randomUUID().toString();
+    // generate timestamp for this import
     Date timeStamp = Calendar.getInstance().getTime();
 
-    onImportingStarted(importId, filepath, layer, timeStamp.getTime());
+    onImportingStarted(correlationId, filepath, layer, timeStamp.getTime());
 
     FileSystem fs = vertx.fileSystem();
     OpenOptions openOptions = new OpenOptions().setCreate(false).setWrite(false);
     return fs.openObservable(filepath, openOptions)
-      .flatMap(f -> importFile(contentType, f, importId, filename, timeStamp, layer, tags)
+      .flatMap(f -> importFile(contentType, f, correlationId, filename, timeStamp, layer, tags)
       .doAfterTerminate(() -> {
         // delete file from 'incoming' folder
         log.info("Deleting " + filepath + " from incoming folder");
@@ -123,11 +122,11 @@ public class ImporterVerticle extends AbstractVerticle {
           });
       }))
       .doOnNext(chunkCount -> {
-        onImportingFinished(importId, filepath, layer, chunkCount,
+        onImportingFinished(correlationId, filepath, layer, chunkCount,
            System.currentTimeMillis() - timeStamp.getTime(), null);
       })
       .doOnError(err -> {
-        onImportingFinished(importId, filepath, layer, null,
+        onImportingFinished(correlationId, filepath, layer, null,
             System.currentTimeMillis() - timeStamp.getTime(), err);
       })
       .map(count -> null);
@@ -135,22 +134,22 @@ public class ImporterVerticle extends AbstractVerticle {
 
   /**
    * Will be called before the importer starts importing chunks
-   * @param importId the id for this import
+   * @param correlationId the id for this import
    * @param filepath the filepath of the file containing the chunks
    * @param layer the layer where to import the chunks
    * @param timestamp the time when the importer has started importing
    */
-  private void onImportingStarted(String importId, String filepath,
+  private void onImportingStarted(String correlationId, String filepath,
       String layer, long timestamp) {
     log.info(String.format("Importing [%s] '%s' to layer '%s' started at '%d'",
-        importId, filepath, layer, timestamp));
+        correlationId, filepath, layer, timestamp));
 
     if (reportActivities) {
       JsonObject msg = new JsonObject()
           .put("activity", "importing")
           .put("owner", deploymentID())
           .put("action", "start")
-          .put("importId", importId)
+          .put("correlationId", correlationId)
           .put("timestamp", timestamp);
       vertx.eventBus().send(AddressConstants.ACTIVITIES, msg);
     }
@@ -158,22 +157,22 @@ public class ImporterVerticle extends AbstractVerticle {
 
   /**
    * Will be called after the importer has finished importing chunks
-   * @param importId the id for this import
+   * @param correlationId the id for this import
    * @param filepath the filepath of the file containing the chunks
    * @param layer the layer where to import the chunks
    * @param chunkCount the number of chunks that have been imported
    * @param duration the time it took to import the chunks
    * @param error an error if the process has failed
    */
-  private void onImportingFinished(String importId, String filepath,
+  private void onImportingFinished(String correlationId, String filepath,
       String layer, Integer chunkCount, long duration, Throwable error) {
     if (error == null) {
       log.info(String.format("Finished importing [%s] %d chunks '%s' "
-          + "to layer '%s' after %d ms", importId, chunkCount, filepath,
+          + "to layer '%s' after %d ms", correlationId, chunkCount, filepath,
           layer, duration));
     } else {
       log.error(String.format("Failed to import [%s] '%s' "
-          + "to layer '%s' after %d ms", importId, filepath,
+          + "to layer '%s' after %d ms", correlationId, filepath,
           layer, duration), error);
     }
 
@@ -182,7 +181,7 @@ public class ImporterVerticle extends AbstractVerticle {
           .put("activity", "importing")
           .put("owner", deploymentID())
           .put("action", "stop")
-          .put("importId", importId)
+          .put("correlationId", correlationId)
           .put("chunkCount", chunkCount)
           .put("duration", duration);
 
@@ -199,7 +198,7 @@ public class ImporterVerticle extends AbstractVerticle {
    * content type and forward to the correct import method.
    * @param contentType the file's content type
    * @param f the file to import
-   * @param importId a unique identifier for this import process
+   * @param correlationId a unique identifier for this import process
    * @param filename the name of the file currently being imported
    * @param importTimeStamp denotes when the import process has started
    * @param layer the layer where the file should be stored (may be null)
@@ -208,13 +207,13 @@ public class ImporterVerticle extends AbstractVerticle {
    * when the file has been imported
    */
   protected Observable<Integer> importFile(String contentType, ReadStream<Buffer> f,
-      String importId, String filename, Date importTimeStamp, String layer,
+      String correlationId, String filename, Date importTimeStamp, String layer,
       List<String> tags) {
     if (belongsTo(contentType, "application", "xml") ||
         belongsTo(contentType, "text", "xml")) {
-      return importXML(f, importId, filename, importTimeStamp, layer, tags);
+      return importXML(f, correlationId, filename, importTimeStamp, layer, tags);
     } else if (belongsTo(contentType, "application", "json")) {
-      return importJSON(f, importId, filename, importTimeStamp, layer, tags);
+      return importJSON(f, correlationId, filename, importTimeStamp, layer, tags);
     } else {
       return Observable.error(new NoStackTraceThrowable(String.format(
           "Received an unexpected content type '%s' while trying to import "
@@ -225,14 +224,14 @@ public class ImporterVerticle extends AbstractVerticle {
   /**
    * Imports an XML file from the given input stream into the store
    * @param f the XML file to read
-   * @param importId a unique identifier for this import process
+   * @param correlationId a unique identifier for this import process
    * @param filename the name of the file currently being imported
    * @param importTimeStamp denotes when the import process has started
    * @param layer the layer where the file should be stored (may be null)
    * @param tags the list of tags to attach to the file (may be null)
    * @return an observable that will emit when the file has been imported
    */
-  private Observable<Integer> importXML(ReadStream<Buffer> f, String importId,
+  private Observable<Integer> importXML(ReadStream<Buffer> f, String correlationId,
       String filename, Date importTimeStamp, String layer, List<String> tags) {
     Window window = new Window();
     XMLSplitter splitter = new FirstLevelSplitter(window);
@@ -250,7 +249,7 @@ public class ImporterVerticle extends AbstractVerticle {
         })
         .flatMap(splitter::onEventObservable)
         .flatMap(result -> {
-          IndexMeta indexMeta = new IndexMeta(importId, filename,
+          IndexMeta indexMeta = new IndexMeta(correlationId, filename,
               importTimeStamp, tags, crsIndexer.getCRS());
           return addToStoreWithPause(result, layer, indexMeta, f, processing);
         })
@@ -260,14 +259,14 @@ public class ImporterVerticle extends AbstractVerticle {
   /**
    * Imports a JSON file from the given input stream into the store
    * @param f the JSON file to read
-   * @param importId a unique identifier for this import process
+   * @param correlationId a unique identifier for this import process
    * @param filename the name of the file currently being imported
    * @param importTimeStamp denotes when the import process has started
    * @param layer the layer where the file should be stored (may be null)
    * @param tags the list of tags to attach to the file (may be null)
    * @return an observable that will emit when the file has been imported
    */
-  private Observable<Integer> importJSON(ReadStream<Buffer> f, String importId,
+  private Observable<Integer> importJSON(ReadStream<Buffer> f, String correlationId,
       String filename, Date importTimeStamp, String layer, List<String> tags) {
     StringWindow window = new StringWindow();
     GeoJsonSplitter splitter = new GeoJsonSplitter(window);
@@ -278,7 +277,7 @@ public class ImporterVerticle extends AbstractVerticle {
         .lift(new JsonParserOperator())
         .flatMap(splitter::onEventObservable)
         .flatMap(result -> {
-          IndexMeta indexMeta = new IndexMeta(importId, filename,
+          IndexMeta indexMeta = new IndexMeta(correlationId, filename,
               importTimeStamp, tags, null);
           return addToStoreWithPause(result, layer, indexMeta, f, processing);
         })
