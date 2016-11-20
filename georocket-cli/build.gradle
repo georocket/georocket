@@ -7,22 +7,22 @@ mainClassName = 'io.georocket.GeoRocketCli'
 
 repositories {
     jcenter()
+    maven {
+        url 'http://download.osgeo.org/webdav/geotools/'
+    }
 }
 
 dependencies {
     compile project(':georocket-client-api')
-
-    compile "io.vertx:vertx-rx-java:$vertxVersion"
+    compile project(':georocket-common')
 
     compile 'commons-io:commons-io:2.5'
     compile 'de.undercouch:underline:1.0.0'
     compile 'net.time4j:time4j-core:4.20'
     compile 'org.apache.ant:ant:1.9.7'
-    compile 'org.apache.commons:commons-lang3:3.5'
+    compile 'org.yaml:snakeyaml:1.17'
 
     testCompile 'com.github.tomakehurst:wiremock:2.2.2'
-    testCompile "io.vertx:vertx-unit:$vertxVersion"
-    testCompile 'junit:junit:4.12'
     testCompile 'org.slf4j:slf4j-jcl:1.7.21'
 }
 

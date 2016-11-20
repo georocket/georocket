@@ -1,0 +1,6 @@
+georocket:
+  # The name of the host where GeoRocket is running
+  host: localhost
+  
+  # The port GeoRocket server is listening on
+  port: 63020

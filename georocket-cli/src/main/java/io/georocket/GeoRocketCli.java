@@ -6,17 +6,19 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.yaml.snakeyaml.Yaml;
 
 import de.undercouch.underline.CommandDesc;
 import de.undercouch.underline.CommandDescList;
 import de.undercouch.underline.InputReader;
+import de.undercouch.underline.Option.ArgumentType;
 import de.undercouch.underline.OptionDesc;
 import de.undercouch.underline.OptionParserException;
 import de.undercouch.underline.StandardInputReader;
-import de.undercouch.underline.Option.ArgumentType;
 import io.georocket.client.GeoRocketClient;
 import io.georocket.commands.AbstractGeoRocketCommand;
 import io.georocket.commands.DeleteCommand;
@@ -24,6 +26,7 @@ import io.georocket.commands.ExportCommand;
 import io.georocket.commands.HelpCommand;
 import io.georocket.commands.ImportCommand;
 import io.georocket.commands.SearchCommand;
+import io.georocket.util.JsonUtils;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.DecodeException;
@@ -71,12 +74,25 @@ public class GeoRocketCli extends AbstractGeoRocketCommand {
         confFile = new File(confFilePath);
       } else {
         File confDir = new File(geoRocketCliHome, "conf");
-        confFile = new File(confDir, "georocket.json");
+        confFile = new File(confDir, "georocket.yaml");
+        if (!confFile.exists()) {
+          confFile = new File(confDir, "georocket.yml");
+          if (!confFile.exists()) {
+            confFile = new File(confDir, "georocket.json");
+          }
+        }
       }
       config = new JsonObject();
       try {
         String confFileStr = FileUtils.readFileToString(confFile, "UTF-8");
-        config = new JsonObject(confFileStr);
+        if (confFile.getName().endsWith(".json")) {
+          config = new JsonObject(confFileStr);
+        } else {
+          Yaml yaml = new Yaml();
+          @SuppressWarnings("unchecked")
+          Map<String, Object> m = yaml.loadAs(confFileStr, Map.class);
+          config = JsonUtils.flatten(new JsonObject(m));
+        }
       } catch (IOException e) {
         System.err.println("Could not read config file " + confFile + ": " + e.getMessage());
         System.exit(1);
