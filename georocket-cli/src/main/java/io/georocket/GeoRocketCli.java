@@ -40,6 +40,8 @@ public class GeoRocketCli extends AbstractGeoRocketCommand {
   protected File geoRocketCliHome;
   
   private boolean displayVersion;
+  private String host;
+  private Integer port;
   private String confFilePath;
   private AbstractGeoRocketCommand command;
   
@@ -91,9 +93,44 @@ public class GeoRocketCli extends AbstractGeoRocketCommand {
         config.put(ConfigConstants.PORT, GeoRocketClient.DEFAULT_PORT);
       }
       
+      // overwrite with values from command line
+      if (host != null) {
+        config.put(ConfigConstants.HOST, host);
+      }
+      if (port != null) {
+        config.put(ConfigConstants.PORT, port);
+      }
+      
       setConfig(config);
     }
     return config;
+  }
+  
+  /**
+   * Set the name of the host where GeoRocket is running
+   * @param host the host
+   */
+  @OptionDesc(longName = "host",
+      description = "the name of the host where GeoRocket is running",
+      argumentName = "HOST", argumentType = ArgumentType.STRING)
+  public void setHost(String host) {
+    this.host = host;
+  }
+  
+  /**
+   * Set the port GeoRocket server is listening on
+   * @param port the port
+   */
+  @OptionDesc(longName = "port",
+      description = "the port GeoRocket server is listening on",
+      argumentName = "PORT", argumentType = ArgumentType.STRING)
+  public void setPort(String port) {
+    try {
+      this.port = Integer.parseInt(port);
+    } catch (NumberFormatException e) {
+      error("invalid port: " + port);
+      System.exit(1);
+    }
   }
   
   /**
