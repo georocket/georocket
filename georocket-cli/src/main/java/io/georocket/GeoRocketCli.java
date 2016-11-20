@@ -16,6 +16,7 @@ import de.undercouch.underline.InputReader;
 import de.undercouch.underline.OptionDesc;
 import de.undercouch.underline.OptionParserException;
 import de.undercouch.underline.StandardInputReader;
+import de.undercouch.underline.Option.ArgumentType;
 import io.georocket.client.GeoRocketClient;
 import io.georocket.commands.AbstractGeoRocketCommand;
 import io.georocket.commands.DeleteCommand;
@@ -39,6 +40,7 @@ public class GeoRocketCli extends AbstractGeoRocketCommand {
   protected File geoRocketCliHome;
   
   private boolean displayVersion;
+  private String confFilePath;
   private AbstractGeoRocketCommand command;
   
   /**
@@ -62,16 +64,23 @@ public class GeoRocketCli extends AbstractGeoRocketCommand {
     JsonObject config = super.config();
     if (config == null || config.isEmpty()) {
       // load configuration file
-      File confDir = new File(geoRocketCliHome, "conf");
-      File confFile = new File(confDir, "georocket.json");
+      File confFile;
+      if (confFilePath != null) {
+        confFile = new File(confFilePath);
+      } else {
+        File confDir = new File(geoRocketCliHome, "conf");
+        confFile = new File(confDir, "georocket.json");
+      }
       config = new JsonObject();
       try {
         String confFileStr = FileUtils.readFileToString(confFile, "UTF-8");
         config = new JsonObject(confFileStr);
       } catch (IOException e) {
-        System.err.println("Could not read config file " + confFile + ":" + e.getMessage());
+        System.err.println("Could not read config file " + confFile + ": " + e.getMessage());
+        System.exit(1);
       } catch (DecodeException e) {
         System.err.println("Invalid config file: " + e.getMessage());
+        System.exit(1);
       }
       
       // set default values
@@ -85,6 +94,17 @@ public class GeoRocketCli extends AbstractGeoRocketCommand {
       setConfig(config);
     }
     return config;
+  }
+  
+  /**
+   * Set the path to the application's configuration file
+   * @param path the path
+   */
+  @OptionDesc(longName = "conf", shortName = "c",
+      description = "path to the application's configuration file",
+      argumentName = "PATH", argumentType = ArgumentType.STRING)
+  public void setConfFilePath(String path) {
+    this.confFilePath = path;
   }
   
   /**
