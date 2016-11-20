@@ -227,30 +227,6 @@ abstract public class StorageTest {
   }
 
   /**
-   * Get the current size of the storage
-   * @param context test context
-   */
-  @Test
-  public void testGetSize(TestContext context) {
-    Vertx vertx = rule.vertx();
-    Async async = context.async();
-
-    vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER).handler(request -> {
-      context.assertEquals("getSize", request.headers().get("action"));
-      request.reply(12345L);
-    });
-
-    prepareData(context, vertx, null, context.asyncAssertSuccess(resultPath -> {
-      Store store = createStore(vertx);
-
-      store.getSize(context.asyncAssertSuccess(sh -> {
-        context.assertEquals(12345L, sh);
-        async.complete();
-      }));
-    }));
-  }
-
-  /**
    * Call {@link #testAdd(TestContext, String)} with null as path.
    * @param context Test context
    */

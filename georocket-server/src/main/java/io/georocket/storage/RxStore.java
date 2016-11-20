@@ -100,19 +100,4 @@ public class RxStore implements Store {
     get(search, path, o.toHandler());
     return o;
   }
-
-  @Override
-  public void getSize(Handler<AsyncResult<Long>> handler) {
-    delegate.getSize(handler);
-  }
-
-  /**
-   * Observable version of {@link #getSize(Handler)}
-   * @return an observable that will emit the store's current size in bytes
-   */
-  public Observable<Long> getSizeObservable() {
-    ObservableFuture<Long> o = RxHelper.observableFuture();
-    getSize(o.toHandler());
-    return o;
-  }
 }

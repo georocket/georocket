@@ -78,27 +78,6 @@ public class StoreEndpoint implements Endpoint {
   }
 
   /**
-   * Handle requests to get the store's meta data
-   * @param context the routing context
-   */
-  private void onGetSummary(RoutingContext context) {
-    HttpServerResponse response = context.response();
-
-    store.getSizeObservable()
-      .subscribe(size -> {
-        JsonObject summary = new JsonObject()
-          .put("size", size);
-        response
-          .putHeader("Content-Type", "application/json")
-          .setStatusCode(200)
-          .end(summary.encode());
-      }, err -> {
-        log.error("Unable to handle GET summary request", err);
-        response.setStatusCode(throwableToCode(err)).end(throwableToMessage(err, ""));
-      });
-  }
-
-  /**
    * Get absolute data store path from request
    * @param context the current routing context
    * @return the absolute path (never null, default: "/")
@@ -200,14 +179,7 @@ public class StoreEndpoint implements Endpoint {
 
     String path = getStorePath(context);
     String search = request.getParam("search");
-    String summary = context.request().getParam("summary");
 
-    // client requested summary only
-    if (summary != null) {
-      onGetSummary(context);
-      return;
-    }
-    
     // Our responses must always be chunked because we cannot calculate
     // the exact content-length beforehand. We perform two searches, one to
     // initialize the merger and one to do the actual merge. The problem is

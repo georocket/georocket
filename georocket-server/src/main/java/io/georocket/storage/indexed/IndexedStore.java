@@ -3,6 +3,8 @@ package io.georocket.storage.indexed;
 import java.util.ArrayDeque;
 import java.util.Queue;
 
+import org.bson.types.ObjectId;
+
 import io.georocket.constants.AddressConstants;
 import io.georocket.storage.ChunkMeta;
 import io.georocket.storage.IndexMeta;
@@ -12,11 +14,9 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.core.eventbus.ReplyException;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import org.bson.types.ObjectId;
 
 /**
  * An abstract base class for chunk stores that are backed by an indexer
@@ -90,19 +90,6 @@ public abstract class IndexedStore implements Store {
   @Override
   public void get(String search, String path, Handler<AsyncResult<StoreCursor>> handler) {
     new IndexedStoreCursor(vertx, PAGE_SIZE, search, path).start(handler);
-  }
-  
-  @Override
-  public void getSize(Handler<AsyncResult<Long>> handler) {
-    DeliveryOptions options = new DeliveryOptions()
-      .addHeader("action", "getSize");
-    vertx.eventBus().<Long>send(AddressConstants.INDEXER, null, options, ar -> {
-      if (ar.failed()) {
-        handler.handle(Future.failedFuture(ar.cause()));
-        return;
-      }
-      handler.handle(Future.succeededFuture(ar.result().body()));
-    });
   }
   
   /**

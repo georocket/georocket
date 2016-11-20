@@ -138,7 +138,6 @@ public class IndexerVerticle extends AbstractVerticle {
    * Register all message consumers for this verticle
    */
   private void registerMessageConsumers() {
-    registerConsumer();
     registerAdd();
     registerDelete();
     registerQuery();
@@ -150,30 +149,6 @@ public class IndexerVerticle extends AbstractVerticle {
    */
   private Func1<Observable<? extends Throwable>, Observable<Long>> makeRetry() {
     return RxUtils.makeRetry(MAX_RETRIES, RETRY_INTERVAL, log);
-  }
-  
-  /**
-   * Register general message consumer
-   */
-  private void registerConsumer() {
-    vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER)
-      .toObservable()
-      .subscribe(msg -> {
-        String action = msg.headers().get("action");
-        if (action == null) {
-          msg.fail(400, "Missing action in message header");
-          return;
-        }
-        
-        switch (action) {
-        case "getSize":
-          onGetSize(msg);
-          break;
-        default:
-          msg.fail(400, "Unknown action: " + action);
-          break;
-        }
-      });
   }
   
   /**
@@ -233,33 +208,6 @@ public class IndexerVerticle extends AbstractVerticle {
           log.error("Could not perform query", err);
           msg.fail(throwableToCode(err), err.getMessage());
         });
-      });
-  }
-  
-  /**
-   * Handle the 'getSize' action
-   * @param msg the message to reply to
-   */
-  private void onGetSize(Message<JsonObject> msg) {
-    JsonObject aggs = new JsonObject()
-      .put("size", new JsonObject()
-        .put("sum", new JsonObject()
-          .put("script", new JsonObject()
-            .put("lang", "expression")
-            .put("inline", "doc['chunkEnd'].value - doc['chunkStart'].value"))));
-    client.search(TYPE_NAME, null, null, aggs, 0)
-      .subscribe(r -> {
-        JsonObject raggs = r.getJsonObject("aggregations", new JsonObject());
-        JsonObject size = raggs.getJsonObject("size", new JsonObject());
-        Long value = size.getLong("value");
-        if (value == null) {
-          msg.fail(500, "Could not get size from response");
-        } else {
-          msg.reply(value);
-        }
-      }, err -> {
-        log.error("Could not perform search", err);
-        msg.fail(500, err.getMessage());
       });
   }
 
