@@ -28,8 +28,7 @@ RUN mkdir -p /data/georocket/storage && \
     done
 
 # configure GeoRocket
-RUN sed -i -e 's/\$GEOROCKET_HOME\/storage/\/data\/georocket\/storage/g' /usr/local/georocket-server/conf/georocketd.yaml && \
-    sed -i '2iES_JAVA_OPTS="-Des.insecure.allow.root=true"' /usr/local/georocket-server/elasticsearch/*/bin/elasticsearch
+RUN sed -i -e 's/\$GEOROCKET_HOME\/storage/\/data\/georocket\/storage/g' /usr/local/georocket-server/conf/georocketd.yaml
 
 USER georocket
 VOLUME /data/georocket/storage
