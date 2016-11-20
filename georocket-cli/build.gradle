@@ -22,7 +22,8 @@ dependencies {
     compile 'org.apache.ant:ant:1.9.7'
     compile 'org.yaml:snakeyaml:1.17'
 
-    testCompile 'com.github.tomakehurst:wiremock:2.2.2'
+    testCompile 'com.github.tomakehurst:wiremock:2.3.1'
+    testCompile "io.vertx:vertx-unit:$vertxVersion"
     testCompile 'org.slf4j:slf4j-jcl:1.7.21'
 }
 
