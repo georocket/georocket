@@ -48,17 +48,23 @@ if (mode == "standalone") {
         "Expected ${EXPECTED_NODE.children().size()} chunks in " +
         "MongoDB. Got ${chunkCountInMongo}.")
     finishXMLTests("georocket_mongo")
+    chunkCountInMongo = run('mongo mongo/georocket --quiet '
+        + '--eval "db.fs.chunks.count()"', null, true).trim()
+    assertEquals(chunkCountInMongo, "0",
+        "Expected no chunks in MongoDB. Got ${chunkCountInMongo}.")
     logSuccess()
 } else if (mode == "s3") {
     logTest("GeoRocket with S3 back-end ...")
     waitHttp("http://s3:8000", "GET", 403)
     run("s3cmd mb s3://georocket")
     runXMLTests("georocket_s3")
-    objects = run("s3cmd ls s3://georocket/", null, true).split('\n')
+    def objects = run("s3cmd ls s3://georocket/", null, true).split('\n')
     assertEquals(objects.length, EXPECTED_NODE.children().size(),
         "Expected ${EXPECTED_NODE.children().size()} objects in " +
         "S3. Got ${objects.length}.")
     finishXMLTests("georocket_s3")
+    objects = run("s3cmd ls s3://georocket/", null, true)
+    assertEquals(objects, "", "Expected no objects in S3. Got ${objects}.")
     logSuccess()
 } else if (mode == "hdfs") {
     logTest("GeoRocket with HDFS back-end ...")
@@ -68,10 +74,12 @@ if (mode == "standalone") {
     run("/usr/local/hadoop/bin/hdfs dfs -mkdir /georocket")
     run("/usr/local/hadoop/bin/hdfs dfs -chown georocket:georocket /georocket")
     runXMLTests("georocket_hdfs")
-    hdfsfiles = run("/usr/local/hadoop/bin/hdfs dfs -ls /georocket/", null, true).split('\n')
+    def hdfsfiles = run("/usr/local/hadoop/bin/hdfs dfs -ls /georocket/", null, true).split('\n')
     assertEquals(hdfsfiles.length - 1, EXPECTED_NODE.children().size(),
         "Expected ${EXPECTED_NODE.children().size()} files in " +
         "HDFS. Got ${hdfsfiles.length - 1}.")
     finishXMLTests("georocket_hdfs")
+    hdfsfiles = run("/usr/local/hadoop/bin/hdfs dfs -ls /georocket/", null, true)
+    assertEquals(hdfsfiles, "", "Expected no files in HDFS. Got ${hdfsfiles}.")
     logSuccess()
 }
