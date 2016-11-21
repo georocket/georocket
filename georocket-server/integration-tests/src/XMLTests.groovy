@@ -5,7 +5,7 @@ import groovy.xml.XmlUtil
  * Tests if GeoRocket can handle XML files correctly
  * @author Michel Kraemer
  */
-class XMLTests {
+class XMLTests extends StoreTests {
     private String georocketHost
 
     static EXPECTED_CONTENTS = new File("/data/berlin_alexanderplatz_mini.xml").text
@@ -19,10 +19,7 @@ class XMLTests {
         this.georocketHost = georocketHost
     }
 
-    /**
-     * Export the whole data store of GeoRocket to a file and check if the
-     * contents are as expected
-     */
+    @Override
     def testExport() {
         // export file
         def exportedContents = run("curl -sS -X GET " +
@@ -71,22 +68,8 @@ class XMLTests {
     def testImport() {
         // import file
         run("curl -sS -X POST http://${georocketHost}:63020/store "
-            + "--data @data/berlin_alexanderplatz_mini.xml "
-            + "-H Content-Type:application/xml", new File("/"))
-
-        boolean exportOk = false
-        for (int i = 0; i < 20; ++i) {
-            // wait until GeoRocket has indexed the file
-            logWait("GeoRocket indexer")
-            Thread.sleep(1000)
-
-            if (testExport()) {
-                exportOk = true
-                break
-            }
-        }
-
-        assertTrue(exportOk, "Export failed")
+            + "--data @data/berlin_alexanderplatz_mini.xml")
+        testExportUntilOK()
     }
 
     /**
@@ -111,9 +94,9 @@ class XMLTests {
     }
 
     /**
-    * Search for a building using a bounding box. Check if GeoRocket really
-    * exports only one building and if it is the right one.
-    */
+     * Search for a building using a bounding box. Check if GeoRocket really
+     * exports only one building and if it is the right one.
+     */
     def testExportByBoundingBox() {
         // export file using bounding box that relates to the one of the building
         // we are looking for
@@ -124,71 +107,23 @@ class XMLTests {
     }
 
     /**
-    * Search for buildings in an area where there should be none. Check if
-    * GeoRocket really returns no chunks.
-    */
-    def testExportByBoundingBoxNone() {
-        def exportedContents = run("curl -sS -X GET http://${georocketHost}:63020/store/"
-            + "?search=12.0,51.0,12.1,51.1", null, true)
-        assertEquals(exportedContents, "Not Found", "Response: $exportedContents")
-    }
-
-    /**
-    * Search for a building by gml:id. Check if GeoRocket really
-    * exports only one building and if it is the right one.
-    */
+     * Search for a building by gml:id. Check if GeoRocket really
+     * exports only one building and if it is the right one.
+     */
     def testExportByGmlId() {
-        // export file using bounding box that relates to the one of the building
-        // we are looking for
         def exportedContents = run("curl -sS -X GET http://${georocketHost}:63020/store/"
             + "?search=ID_146_D", null, true)
         assertExportedBuilding(exportedContents, 'ID_146_D')
     }
 
     /**
-    * Search for a building by a generic attribute. Check if GeoRocket
-    * really exports only one building and if it is the right one.
-    */
+     * Search for a building by a generic attribute. Check if GeoRocket
+     * really exports only one building and if it is the right one.
+     */
     def testExportByGenericAttribute() {
         // export file using a generic attribute
         def exportedContents = run("curl -sS -X GET http://${georocketHost}:63020/store/"
             + "?search=TestBuilding2", null, true)
         assertExportedBuilding(exportedContents, 'ID_146_D')
-    }
-
-    /**
-    * Search for a dummy string. Check if GeoRocket really returns no chunks.
-    */
-    def testExportNone() {
-        def exportedContents = run("curl -sS -X GET http://${georocketHost}:63020/store/"
-            + "?search=foobar", null, true)
-        assertEquals(exportedContents, "Not Found", "Response: $exportedContents")
-    }
-
-    /**
-     * Delete all chunks and check if the store is empty
-     */
-    def testDelete() {
-        // delete all chunks
-        run("curl -sS -X DELETE http://${georocketHost}:63020/store/")
-
-        boolean deleteOk = false
-        for (int i = 0; i < 5; ++i) {
-            // wait until GeoRocket has deleted the chunks
-            logWait("GeoRocket indexer")
-            Thread.sleep(1000)
-
-            // export whole data store
-            def exportedContents = run("curl -sS -X GET "
-                + "http://${georocketHost}:63020/store/", null, true)
-            if (exportedContents != "Not Found") {
-                logWarn("Response: $exportedContents")
-            } else {
-                deleteOk = true
-                break
-            }
-        }
-
-        assertTrue(deleteOk, "Deleting failed")
     }
 }

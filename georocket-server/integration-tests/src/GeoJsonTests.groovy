@@ -1,0 +1,123 @@
+import static Utils.*
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+
+/**
+ * Tests if GeoRocket can handle GeoJSON files correctly
+ * @author Michel Kraemer
+ */
+class GeoJsonTests extends StoreTests {
+    private String georocketHost
+
+    static EXPECTED_CONTENTS = new File("/data/featurecollection.json").text
+    static EXPECTED_FEATURE_COLL = new JsonSlurper().parseText(EXPECTED_CONTENTS)
+
+    /**
+     * Creates the test class
+     * @param georocketHost the host where GeoRocket is running
+     */
+    GeoJsonTests(String georocketHost) {
+        this.georocketHost = georocketHost
+    }
+
+    @Override
+    def testExport() {
+        // export file
+        def exportedContents = run("curl -sS -X GET " +
+            "http://${georocketHost}:63020/store/", null, true)
+        if (exportedContents.length() < 100) {
+            logWarn("Response: $exportedContents")
+        }
+
+        if (exportedContents.trim().equalsIgnoreCase("Not Found") ||
+                exportedContents.trim().equalsIgnoreCase("404") ||
+                exportedContents.trim().equalsIgnoreCase("503")) {
+            logWarn("Got 0 chunks.")
+            return false
+        }
+
+        // compare file with exported file
+        def exportedFeatureColl = new JsonSlurper().parseText(exportedContents)
+
+        // compare number of features
+        def expectedCount = EXPECTED_FEATURE_COLL.features.size()
+        if (exportedFeatureColl.type == 'Feature') {
+            logWarn("Expected ${expectedCount} chunks. Got 1.")
+            return false
+        } else {
+            def exportedCount = exportedFeatureColl.features.size()
+            if (exportedCount < expectedCount) {
+                logWarn("Expected ${expectedCount} chunks. Got ${exportedCount}.")
+                return false
+            } else if (exportedCount > expectedCount) {
+                fail("Expected ${expectedCount} chunks. Got ${exportedCount}.")
+            }
+        }
+
+        // compare features
+        for (exportedFeature in exportedFeatureColl.features) {
+            def expectedFeature = EXPECTED_FEATURE_COLL.features.find {
+                it.properties.name == exportedFeature.properties.name }
+            String exportedStr = JsonOutput.toJson(exportedFeature)
+            String expectedStr = JsonOutput.toJson(expectedFeature)
+            assertEquals(exportedStr.trim(), expectedStr.trim(),
+                "Exported feature does not match expected one")
+        }
+
+        return true
+    }
+
+    /**
+     * Import a GeoJSON file into the GeoRocket store, wait until it has been
+     * indexed and then check if the store's contents are as expected
+     */
+    def testImport() {
+        // import file
+        run("curl -sS -X POST http://${georocketHost}:63020/store "
+            + "--data @data/featurecollection.json")
+        testExportUntilOK()
+    }
+
+    /**
+     * Assert that the given string contains exactly one feature with the given name
+     * @param exportedContents the string to parse
+     * @param expectedId the expected feature name
+     */
+    private void assertExportedFeature(exportedContents, expectedName) {
+        assertTrue(exportedContents.length() >= 100, "Response: $exportedContents")
+
+        // parse exported file
+        def exportedFeature = new JsonSlurper().parseText(exportedContents)
+
+        // check if we have only exported one feature
+        assertEquals("Feature", exportedFeature.type,
+            "Expected a feature. Got ${exportedFeature.type}.")
+
+        // check if we found the right feature
+        def name = exportedFeature.properties.name
+        assertEquals(name, expectedName, "Expected name ${expectedName}. Got ${name}.")
+    }
+
+    /**
+     * Search for a features using a bounding box. Check if GeoRocket really
+     * exports only one feature and if it is the right one.
+     */
+    def testExportByBoundingBox() {
+        // export file using bounding box that relates to the one of the features
+        // we are looking for
+        def exportedContents = run("curl -sS -X GET http://${georocketHost}:63020/store/"
+            + "?search=8.6598,49.87423,8.6600,49.87426",
+            null, true)
+        assertExportedFeature(exportedContents, 'Fraunhofer IGD')
+    }
+
+    /**
+     * Search for a feature by a property. Check if GeoRocket really
+     * exports only one feature and if it is the right one.
+     */
+    def testExportByProperty() {
+        def exportedContents = run("curl -sS -X GET http://${georocketHost}:63020/store/"
+            + "?search=Darmstadtium", null, true)
+        assertExportedFeature(exportedContents, 'Darmstadtium')
+    }
+}
