@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.ParseException;
@@ -258,7 +259,7 @@ public class StoreEndpoint implements Endpoint {
     String incoming = storagePath + "/incoming";
     String filename = new ObjectId().toString();
     String filepath = incoming + "/" + filename;
-    
+
     log.info("Receiving file ...");
     
     // create directory for incoming files
@@ -319,10 +320,12 @@ public class StoreEndpoint implements Endpoint {
       })
       .subscribe(detectedContentType -> {
         // run importer
+        String correlationId = UUID.randomUUID().toString();
         JsonObject msg = new JsonObject()
             .put("filename", filename)
             .put("layer", layer)
-            .put("contentType", detectedContentType);
+            .put("contentType", detectedContentType)
+            .put("correlationId", correlationId);
 
         if (tags != null) {
           msg.put("tags", new JsonArray(tags));
@@ -330,6 +333,7 @@ public class StoreEndpoint implements Endpoint {
 
         request.response()
           .setStatusCode(202) // Accepted
+          .putHeader("X-Correlation-Id", correlationId)
           .setStatusMessage("Accepted file - importing in progress")
           .end();
 
