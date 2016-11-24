@@ -67,7 +67,7 @@ public class ImporterVerticle extends AbstractVerticle {
     String storagePath = config().getString(ConfigConstants.STORAGE_FILE_PATH);
     incoming = storagePath + "/incoming";
     
-    vertx.eventBus().<JsonObject>consumer(AddressConstants.IMPORTER_IMPORT)
+    vertx.eventBus().<JsonObject>localConsumer(AddressConstants.IMPORTER_IMPORT)
       .toObservable()
       .onBackpressureBuffer() // unlimited buffer
       .flatMap(msg -> {
