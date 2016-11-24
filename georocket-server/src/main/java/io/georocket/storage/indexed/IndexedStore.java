@@ -56,7 +56,7 @@ public abstract class IndexedStore implements Store {
         if (indexMeta != null && indexMeta.getFallbackCRSString() != null) {
           indexMsg.put("fallbackCRSString", indexMeta.getFallbackCRSString());
         }
-        vertx.eventBus().publish(AddressConstants.INDEXER_ADD, indexMsg);
+        vertx.eventBus().send(AddressConstants.INDEXER_ADD, indexMsg);
         
         // tell sender that writing was successful
         handler.handle(Future.succeededFuture());
