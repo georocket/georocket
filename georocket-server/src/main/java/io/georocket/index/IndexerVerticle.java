@@ -544,7 +544,7 @@ public class IndexerVerticle extends AbstractVerticle {
 
         String correlationId = body.getString("correlationId");
         String filename = body.getString("filename");
-        Long importTime = body.getLong("importTime");
+        long timestamp = body.getLong("timestamp", System.currentTimeMillis());
 
         String mimeType = meta.getString("mimeType", XMLChunkMeta.MIME_TYPE);
 
@@ -554,7 +554,7 @@ public class IndexerVerticle extends AbstractVerticle {
             doc.put("path", path);
             doc.put("correlationId", correlationId);
             doc.put("filename", filename);
-            doc.put("importTime", importTime);
+            doc.put("timestamp", timestamp);
             addMeta(doc, meta);
             if (tags != null) {
               doc.put("tags", tags);

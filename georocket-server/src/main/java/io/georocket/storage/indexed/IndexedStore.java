@@ -47,8 +47,8 @@ public abstract class IndexedStore implements Store {
             .put("path", ar.result())
             .put("meta", chunkMeta.toJsonObject())
             .put("correlationId", indexMeta.getCorrelationId())
-            .put("filename", indexMeta.getFromFile())
-            .put("importTime", indexMeta.getImportTimeStamp().getTime());
+            .put("filename", indexMeta.getFilename())
+            .put("timestamp", indexMeta.getTimestamp());
 
         if (indexMeta != null && indexMeta.getTags() != null) {
           indexMsg.put("tags", new JsonArray(indexMeta.getTags()));

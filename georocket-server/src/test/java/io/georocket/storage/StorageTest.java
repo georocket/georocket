@@ -1,8 +1,6 @@
 package io.georocket.storage;
 
 import java.util.Arrays;
-import java.util.Calendar;
-import java.util.Date;
 import java.util.List;
 
 import org.bson.types.ObjectId;
@@ -90,7 +88,7 @@ abstract public class StorageTest {
   /**
    * Test data: the timestamp for an import
    */
-  protected final static Date TIME_STAMP = Calendar.getInstance().getTime();
+  protected final static long TIMESTAMP = System.currentTimeMillis();
 
   /**
    * Test data: a sample tag list for an Store::add method
@@ -420,7 +418,7 @@ abstract public class StorageTest {
       context.fail("Indexer should not be notified for a query event after"
           + "Store::add was called!"));
 
-    IndexMeta indexMeta = new IndexMeta(IMPORT_ID, ID, TIME_STAMP, TAGS, FALLBACK_CRS_STRING);
+    IndexMeta indexMeta = new IndexMeta(IMPORT_ID, ID, TIMESTAMP, TAGS, FALLBACK_CRS_STRING);
     store.add(CHUNK_CONTENT, META, path, indexMeta, context.asyncAssertSuccess(err -> {
       validateAfterStoreAdd(context, vertx, path, context.asyncAssertSuccess(v -> {
         asyncAdd.complete();

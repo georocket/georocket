@@ -3,8 +3,6 @@ package io.georocket;
 import static io.georocket.util.MimeTypeUtils.belongsTo;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Calendar;
-import java.util.Date;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -104,14 +102,14 @@ public class ImporterVerticle extends AbstractVerticle {
         Stream.of(o.toString()) : Stream.of()).collect(Collectors.toList()) : null;
     
     // generate timestamp for this import
-    Date timeStamp = Calendar.getInstance().getTime();
+    long timestamp = System.currentTimeMillis();
 
-    onImportingStarted(correlationId, filepath, layer, timeStamp.getTime());
+    onImportingStarted(correlationId, filepath, layer, timestamp);
 
     FileSystem fs = vertx.fileSystem();
     OpenOptions openOptions = new OpenOptions().setCreate(false).setWrite(false);
     return fs.openObservable(filepath, openOptions)
-      .flatMap(f -> importFile(contentType, f, correlationId, filename, timeStamp, layer, tags)
+      .flatMap(f -> importFile(contentType, f, correlationId, filename, timestamp, layer, tags)
       .doAfterTerminate(() -> {
         // delete file from 'incoming' folder
         log.info("Deleting " + filepath + " from incoming folder");
@@ -123,11 +121,11 @@ public class ImporterVerticle extends AbstractVerticle {
       }))
       .doOnNext(chunkCount -> {
         onImportingFinished(correlationId, filepath, layer, chunkCount,
-           System.currentTimeMillis() - timeStamp.getTime(), null);
+           System.currentTimeMillis() - timestamp, null);
       })
       .doOnError(err -> {
         onImportingFinished(correlationId, filepath, layer, null,
-            System.currentTimeMillis() - timeStamp.getTime(), err);
+            System.currentTimeMillis() - timestamp, err);
       })
       .map(count -> null);
   }
@@ -200,20 +198,20 @@ public class ImporterVerticle extends AbstractVerticle {
    * @param f the file to import
    * @param correlationId a unique identifier for this import process
    * @param filename the name of the file currently being imported
-   * @param importTimeStamp denotes when the import process has started
+   * @param timestamp denotes when the import process has started
    * @param layer the layer where the file should be stored (may be null)
    * @param tags the list of tags to attach to the file (may be null)
    * @return an observable that will emit with the number if chunks imported
    * when the file has been imported
    */
   protected Observable<Integer> importFile(String contentType, ReadStream<Buffer> f,
-      String correlationId, String filename, Date importTimeStamp, String layer,
+      String correlationId, String filename, long timestamp, String layer,
       List<String> tags) {
     if (belongsTo(contentType, "application", "xml") ||
         belongsTo(contentType, "text", "xml")) {
-      return importXML(f, correlationId, filename, importTimeStamp, layer, tags);
+      return importXML(f, correlationId, filename, timestamp, layer, tags);
     } else if (belongsTo(contentType, "application", "json")) {
-      return importJSON(f, correlationId, filename, importTimeStamp, layer, tags);
+      return importJSON(f, correlationId, filename, timestamp, layer, tags);
     } else {
       return Observable.error(new NoStackTraceThrowable(String.format(
           "Received an unexpected content type '%s' while trying to import "
@@ -226,13 +224,13 @@ public class ImporterVerticle extends AbstractVerticle {
    * @param f the XML file to read
    * @param correlationId a unique identifier for this import process
    * @param filename the name of the file currently being imported
-   * @param importTimeStamp denotes when the import process has started
+   * @param timestamp denotes when the import process has started
    * @param layer the layer where the file should be stored (may be null)
    * @param tags the list of tags to attach to the file (may be null)
    * @return an observable that will emit when the file has been imported
    */
   private Observable<Integer> importXML(ReadStream<Buffer> f, String correlationId,
-      String filename, Date importTimeStamp, String layer, List<String> tags) {
+      String filename, long timestamp, String layer, List<String> tags) {
     Window window = new Window();
     XMLSplitter splitter = new FirstLevelSplitter(window);
     AtomicInteger processing = new AtomicInteger(0);
@@ -250,7 +248,7 @@ public class ImporterVerticle extends AbstractVerticle {
         .flatMap(splitter::onEventObservable)
         .flatMap(result -> {
           IndexMeta indexMeta = new IndexMeta(correlationId, filename,
-              importTimeStamp, tags, crsIndexer.getCRS());
+              timestamp, tags, crsIndexer.getCRS());
           return addToStoreWithPause(result, layer, indexMeta, f, processing);
         })
         .count();
@@ -261,13 +259,13 @@ public class ImporterVerticle extends AbstractVerticle {
    * @param f the JSON file to read
    * @param correlationId a unique identifier for this import process
    * @param filename the name of the file currently being imported
-   * @param importTimeStamp denotes when the import process has started
+   * @param timestamp denotes when the import process has started
    * @param layer the layer where the file should be stored (may be null)
    * @param tags the list of tags to attach to the file (may be null)
    * @return an observable that will emit when the file has been imported
    */
   private Observable<Integer> importJSON(ReadStream<Buffer> f, String correlationId,
-      String filename, Date importTimeStamp, String layer, List<String> tags) {
+      String filename, long timestamp, String layer, List<String> tags) {
     StringWindow window = new StringWindow();
     GeoJsonSplitter splitter = new GeoJsonSplitter(window);
     AtomicInteger processing = new AtomicInteger(0);
@@ -278,7 +276,7 @@ public class ImporterVerticle extends AbstractVerticle {
         .flatMap(splitter::onEventObservable)
         .flatMap(result -> {
           IndexMeta indexMeta = new IndexMeta(correlationId, filename,
-              importTimeStamp, tags, null);
+              timestamp, tags, null);
           return addToStoreWithPause(result, layer, indexMeta, f, processing);
         })
         .count();
