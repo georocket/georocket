@@ -62,14 +62,8 @@ public class DefaultQueryCompiler implements QueryCompiler {
       this.queryCompilers = queryCompilers;
     }
   }
-  
-  /**
-   * Compile a search string
-   * @param search the search string to compile
-   * @param path the path where to perform the search (may be null if the
-   * whole data store should be searched)
-   * @return the compiled query
-   */
+
+  @Override
   public JsonObject compileQuery(String search, String path) {
     JsonObject qb = compileQuery(search);
     if (path != null && !path.equals("/")) {
@@ -87,7 +81,7 @@ public class DefaultQueryCompiler implements QueryCompiler {
     }
     return qb;
   }
-  
+
   @Override
   public JsonObject compileQuery(String search) {
     if (search == null || search.isEmpty()) {
