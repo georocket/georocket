@@ -30,6 +30,7 @@ import io.georocket.query.parser.QueryParser.OrContext;
 import io.georocket.query.parser.QueryParser.QueryContext;
 import io.georocket.query.parser.QueryParser.StringContext;
 import io.georocket.util.PathUtils;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
 /**
@@ -118,16 +119,12 @@ public class DefaultQueryCompiler implements QueryCompiler {
   
   /**
    * Handle a string part of a query. Pass it to all query compilers and return
-   * a suitable QueryBuilder instance
+   * an Elasticsearch query
    * @param str a string part of a query
-   * @return a QueryBuilder
+   * @return the Elasticsearch query
    */
   protected JsonObject makeStringQuery(String str) {
-    // general query
-    JsonObject tagsQuery = termQuery("tags", str);
-    
-    // pass on string part to other query compilers
-    JsonObject bqb = null;
+    JsonObject bqb = boolQuery();
     for (QueryCompiler f : queryCompilers) {
       MatchPriority mp = f.getQueryPriority(str);
       if (mp == null) {
@@ -135,10 +132,6 @@ public class DefaultQueryCompiler implements QueryCompiler {
       }
       
       // combine queries
-      if (bqb == null && mp != MatchPriority.NONE) {
-        bqb = boolQuery();
-        boolAddShould(bqb, tagsQuery);
-      }
       switch (mp) {
       case ONLY:
         return f.compileQuery(str);
@@ -153,9 +146,24 @@ public class DefaultQueryCompiler implements QueryCompiler {
       }
     }
     
-    if (bqb == null) {
-      return tagsQuery;
+    // optimize query - return single query embedded inside a
+    // boolean expression
+    if (bqb.size() == 1) {
+      JsonObject bool = bqb.getJsonObject("bool");
+      if (bool != null && bool.size() == 1) {
+        String fieldName = bool.fieldNames().iterator().next();
+        Object expr = bool.getValue(fieldName);
+        if (expr instanceof JsonObject) {
+          bqb = (JsonObject)expr;
+        } else if (expr instanceof JsonArray) {
+          JsonArray arrexpr = (JsonArray)expr;
+          if (arrexpr.size() == 1) {
+            bqb = arrexpr.getJsonObject(0);
+          }
+        }
+      }
     }
+    
     return bqb;
   }
   

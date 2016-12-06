@@ -3,8 +3,6 @@ package io.georocket.index;
 import static io.georocket.util.MimeTypeUtils.belongsTo;
 import static io.georocket.util.ThrowableHelper.throwableToCode;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -14,18 +12,17 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.apache.commons.lang.StringUtils;
 import org.jooq.lambda.Seq;
 import org.jooq.lambda.tuple.Tuple;
 import org.jooq.lambda.tuple.Tuple2;
 import org.jooq.lambda.tuple.Tuple3;
-import org.yaml.snakeyaml.Yaml;
 
 import com.google.common.collect.ImmutableList;
 
 import io.georocket.constants.AddressConstants;
 import io.georocket.index.elasticsearch.ElasticsearchClient;
 import io.georocket.index.elasticsearch.ElasticsearchClientFactory;
+import io.georocket.index.generic.DefaultMetaIndexer;
 import io.georocket.index.xml.JsonIndexerFactory;
 import io.georocket.index.xml.MetaIndexer;
 import io.georocket.index.xml.MetaIndexerFactory;
@@ -292,21 +289,9 @@ public class IndexerVerticle extends AbstractVerticle {
     }
   }
   
-  @SuppressWarnings("unchecked")
   private Observable<Void> ensureMapping() {
-    // load default mapping
-    Yaml yaml = new Yaml();
-    Map<String, Object> mappings;
-    try (InputStream is = this.getClass().getResourceAsStream("index_defaults.yaml")) {
-      mappings = (Map<String, Object>)yaml.load(is);
-    } catch (IOException e) {
-      return Observable.error(e);
-    }
-
-    // remove unnecessary node
-    mappings.remove("variables");
-
-    // merge all properties from indexers
+    // merge mappings from all indexers
+    Map<String, Object> mappings = new HashMap<>();
     indexerFactories.forEach(factory ->
             MapUtils.deepMerge(mappings, factory.getMapping()));
 
@@ -491,60 +476,23 @@ public class IndexerVerticle extends AbstractVerticle {
         return doc;
       });
   }
-  
-  /**
-   * Add chunk metadata (as received via the event bus) to a Elasticsearch
-   * document. Insert all properties from the given JsonObject into the
-   * document but prepend the string "chunk" to all property names and
-   * convert the first character to upper case (or insert an underscore
-   * character if it already is upper case)
-   * @param doc the document
-   * @param meta the metadata to add to the document
-   */
-  private void addMeta(Map<String, Object> doc, JsonObject meta) {
-    for (String fieldName : meta.fieldNames()) {
-      String newFieldName = fieldName;
-      if (Character.isTitleCase(newFieldName.charAt(0))) {
-        newFieldName = "_" + newFieldName;
-      } else {
-        newFieldName = StringUtils.capitalize(newFieldName);
-      }
-      newFieldName = "chunk" + newFieldName;
-      doc.put(newFieldName, meta.getValue(fieldName));
-    }
-  }
 
   /**
-   * Get chunk metadata from Elasticsearch document
-   * @param source the document
-   * @return the metadata
+   * Convert a {@link JsonObject} to a {@link ChunkMeta} object
+   * @param source the JSON object to convert
+   * @return the converted object
    */
   private ChunkMeta getMeta(JsonObject source) {
-    JsonObject filteredSource = new JsonObject();
-    for (String fieldName : source.fieldNames()) {
-      if (fieldName.startsWith("chunk")) {
-        String newFieldName = fieldName.substring(5);
-        if (newFieldName.charAt(0) == '_') {
-          newFieldName = newFieldName.substring(1);
-        } else {
-          newFieldName = StringUtils.uncapitalize(newFieldName);
-        }
-        filteredSource.put(newFieldName, source.getValue(fieldName));
-      } else {
-        filteredSource.put(fieldName, source.getValue(fieldName));
-      }
-    }
-    
-    String mimeType = filteredSource.getString("mimeType", XMLChunkMeta.MIME_TYPE);
+    String mimeType = source.getString("mimeType", XMLChunkMeta.MIME_TYPE);
     if (belongsTo(mimeType, "application", "xml") ||
       belongsTo(mimeType, "text", "xml")) {
-      return new XMLChunkMeta(filteredSource);
+      return new XMLChunkMeta(source);
     } else if (belongsTo(mimeType, "application", "geo+json")) {
-      return new GeoJsonChunkMeta(filteredSource);
+      return new GeoJsonChunkMeta(source);
     } else if (belongsTo(mimeType, "application", "json")) {
-      return new JsonChunkMeta(filteredSource);
+      return new JsonChunkMeta(source);
     } else {
-      return new ChunkMeta(filteredSource);
+      return new ChunkMeta(source);
     }
   }
 
@@ -592,16 +540,6 @@ public class IndexerVerticle extends AbstractVerticle {
 
         // open chunk and create IndexRequest
         return openChunkToDocument(path, chunkMeta, indexMeta)
-          .doOnNext(doc -> {
-            doc.put("path", path);
-            doc.put("correlationId", correlationId);
-            doc.put("filename", filename);
-            doc.put("timestamp", timestamp);
-            addMeta(doc, meta);
-            if (tags != null) {
-              doc.put("tags", tags);
-            }
-          })
           .map(doc -> Tuple.tuple(path, new JsonObject(doc), msg))
           .onErrorResumeNext(err -> {
             msg.fail(throwableToCode(err), err.getMessage());
@@ -652,7 +590,7 @@ public class IndexerVerticle extends AbstractVerticle {
         JsonObject hit = (JsonObject)o;
         String id = hit.getString("_id");
         JsonObject source = hit.getJsonObject("_source");
-        ChunkMeta meta = getMeta(source);
+        ChunkMeta meta = getMeta(DefaultMetaIndexer.documentToChunkMeta(source));
         JsonObject obj = meta.toJsonObject()
           .put("id", id);
         resultHits.add(obj);
