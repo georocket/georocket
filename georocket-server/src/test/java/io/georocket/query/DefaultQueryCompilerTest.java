@@ -11,6 +11,7 @@ import java.util.List;
 import org.apache.commons.io.IOUtils;
 import org.junit.Test;
 
+import io.georocket.index.generic.DefaultMetaIndexerFactory;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -32,6 +33,7 @@ public class DefaultQueryCompilerTest {
     String query = fixtureObj.getString("query");
     JsonObject expected = fixtureObj.getJsonObject("expected");
     JsonArray queryCompilersArr = fixtureObj.getJsonArray("queryCompilers", new JsonArray());
+    queryCompilersArr.add(DefaultMetaIndexerFactory.class.getName());
     List<QueryCompiler> queryCompilers = new ArrayList<>();
     try {
       for (Object o : queryCompilersArr) {

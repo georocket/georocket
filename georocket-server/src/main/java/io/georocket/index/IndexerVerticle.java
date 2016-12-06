@@ -3,8 +3,6 @@ package io.georocket.index;
 import static io.georocket.util.MimeTypeUtils.belongsTo;
 import static io.georocket.util.ThrowableHelper.throwableToCode;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -18,7 +16,6 @@ import org.jooq.lambda.Seq;
 import org.jooq.lambda.tuple.Tuple;
 import org.jooq.lambda.tuple.Tuple2;
 import org.jooq.lambda.tuple.Tuple3;
-import org.yaml.snakeyaml.Yaml;
 
 import com.google.common.collect.ImmutableList;
 
@@ -291,21 +288,9 @@ public class IndexerVerticle extends AbstractVerticle {
     }
   }
   
-  @SuppressWarnings("unchecked")
   private Observable<Void> ensureMapping() {
-    // load default mapping
-    Yaml yaml = new Yaml();
-    Map<String, Object> mappings;
-    try (InputStream is = this.getClass().getResourceAsStream("index_defaults.yaml")) {
-      mappings = (Map<String, Object>)yaml.load(is);
-    } catch (IOException e) {
-      return Observable.error(e);
-    }
-
-    // remove unnecessary node
-    mappings.remove("variables");
-
-    // merge all properties from indexers
+    // merge mappings from all indexers
+    Map<String, Object> mappings = new HashMap<>();
     indexerFactories.forEach(factory ->
             MapUtils.deepMerge(mappings, factory.getMapping()));
 
@@ -492,9 +477,9 @@ public class IndexerVerticle extends AbstractVerticle {
   }
 
   /**
-   * Get chunk metadata from Elasticsearch document
-   * @param source the document
-   * @return the metadata
+   * Convert a {@link JsonObject} to a {@link ChunkMeta} object
+   * @param source the JSON object to convert
+   * @return the converted object
    */
   private ChunkMeta getMeta(JsonObject source) {
     String mimeType = source.getString("mimeType", XMLChunkMeta.MIME_TYPE);
@@ -554,16 +539,6 @@ public class IndexerVerticle extends AbstractVerticle {
 
         // open chunk and create IndexRequest
         return openChunkToDocument(path, chunkMeta, indexMeta)
-          .doOnNext(doc -> {
-            doc.put("path", path);
-            doc.put("correlationId", correlationId);
-            doc.put("filename", filename);
-            doc.put("timestamp", timestamp);
-            doc.put("chunkMeta", meta);
-            if (tags != null) {
-              doc.put("tags", tags);
-            }
-          })
           .map(doc -> Tuple.tuple(path, new JsonObject(doc), msg))
           .onErrorResumeNext(err -> {
             msg.fail(throwableToCode(err), err.getMessage());
