@@ -16,30 +16,28 @@ properties:
   tags:
     type: keyword  # array of keywords actually, auto-supported by Elasticsearch
   # metadata: don't index it
-  chunkStart: *integer_no_index
-  chunkEnd: *integer_no_index
-  chunkMimeType: *keyword_no_index
-  chunkParents:
+  chunkMeta:
     type: object
     properties:
-      prefix: *keyword_no_index
-      localName: *keyword_no_index
-      namespacePrefixes: *keyword_no_index
-      namespaceUris: *keyword_no_index
-      attributePrefixes: *keyword_no_index
-      attributeLocalNames: *keyword_no_index
-      attributeValues: *keyword_no_index
-  chunkParentName: *keyword_no_index
-  chunkType: *keyword_no_index
+      start: *integer_no_index
+      end: *integer_no_index
+      mimeType: *keyword_no_index
+      parents:
+        type: object
+        properties:
+          prefix: *keyword_no_index
+          localName: *keyword_no_index
+          namespacePrefixes: *keyword_no_index
+          namespaceUris: *keyword_no_index
+          attributePrefixes: *keyword_no_index
+          attributeLocalNames: *keyword_no_index
+          attributeValues: *keyword_no_index
+      parentName: *keyword_no_index
+      type: *keyword_no_index
 
 # Do not save the original indexed document to save space. only include metadata!
 # See https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-source-field.html
 # for the drawbacks of this approach!
 _source:
   includes:
-  - chunkStart
-  - chunkEnd
-  - chunkMimeType
-  - chunkParents
-  - chunkParentName
-  - chunkType
+  - chunkMeta

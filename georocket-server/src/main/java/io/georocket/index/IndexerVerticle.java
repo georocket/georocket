@@ -14,7 +14,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.apache.commons.lang.StringUtils;
 import org.jooq.lambda.Seq;
 import org.jooq.lambda.tuple.Tuple;
 import org.jooq.lambda.tuple.Tuple2;
@@ -491,28 +490,6 @@ public class IndexerVerticle extends AbstractVerticle {
         return doc;
       });
   }
-  
-  /**
-   * Add chunk metadata (as received via the event bus) to a Elasticsearch
-   * document. Insert all properties from the given JsonObject into the
-   * document but prepend the string "chunk" to all property names and
-   * convert the first character to upper case (or insert an underscore
-   * character if it already is upper case)
-   * @param doc the document
-   * @param meta the metadata to add to the document
-   */
-  private void addMeta(Map<String, Object> doc, JsonObject meta) {
-    for (String fieldName : meta.fieldNames()) {
-      String newFieldName = fieldName;
-      if (Character.isTitleCase(newFieldName.charAt(0))) {
-        newFieldName = "_" + newFieldName;
-      } else {
-        newFieldName = StringUtils.capitalize(newFieldName);
-      }
-      newFieldName = "chunk" + newFieldName;
-      doc.put(newFieldName, meta.getValue(fieldName));
-    }
-  }
 
   /**
    * Get chunk metadata from Elasticsearch document
@@ -520,31 +497,16 @@ public class IndexerVerticle extends AbstractVerticle {
    * @return the metadata
    */
   private ChunkMeta getMeta(JsonObject source) {
-    JsonObject filteredSource = new JsonObject();
-    for (String fieldName : source.fieldNames()) {
-      if (fieldName.startsWith("chunk")) {
-        String newFieldName = fieldName.substring(5);
-        if (newFieldName.charAt(0) == '_') {
-          newFieldName = newFieldName.substring(1);
-        } else {
-          newFieldName = StringUtils.uncapitalize(newFieldName);
-        }
-        filteredSource.put(newFieldName, source.getValue(fieldName));
-      } else {
-        filteredSource.put(fieldName, source.getValue(fieldName));
-      }
-    }
-    
-    String mimeType = filteredSource.getString("mimeType", XMLChunkMeta.MIME_TYPE);
+    String mimeType = source.getString("mimeType", XMLChunkMeta.MIME_TYPE);
     if (belongsTo(mimeType, "application", "xml") ||
       belongsTo(mimeType, "text", "xml")) {
-      return new XMLChunkMeta(filteredSource);
+      return new XMLChunkMeta(source);
     } else if (belongsTo(mimeType, "application", "geo+json")) {
-      return new GeoJsonChunkMeta(filteredSource);
+      return new GeoJsonChunkMeta(source);
     } else if (belongsTo(mimeType, "application", "json")) {
-      return new JsonChunkMeta(filteredSource);
+      return new JsonChunkMeta(source);
     } else {
-      return new ChunkMeta(filteredSource);
+      return new ChunkMeta(source);
     }
   }
 
@@ -597,7 +559,7 @@ public class IndexerVerticle extends AbstractVerticle {
             doc.put("correlationId", correlationId);
             doc.put("filename", filename);
             doc.put("timestamp", timestamp);
-            addMeta(doc, meta);
+            doc.put("chunkMeta", meta);
             if (tags != null) {
               doc.put("tags", tags);
             }
@@ -652,7 +614,8 @@ public class IndexerVerticle extends AbstractVerticle {
         JsonObject hit = (JsonObject)o;
         String id = hit.getString("_id");
         JsonObject source = hit.getJsonObject("_source");
-        ChunkMeta meta = getMeta(source);
+        JsonObject jsonMeta = source.getJsonObject("chunkMeta");
+        ChunkMeta meta = getMeta(jsonMeta);
         JsonObject obj = meta.toJsonObject()
           .put("id", id);
         resultHits.add(obj);
