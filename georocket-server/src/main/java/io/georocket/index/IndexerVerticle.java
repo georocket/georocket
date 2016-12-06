@@ -27,12 +27,15 @@ import io.georocket.constants.AddressConstants;
 import io.georocket.index.elasticsearch.ElasticsearchClient;
 import io.georocket.index.elasticsearch.ElasticsearchClientFactory;
 import io.georocket.index.xml.JsonIndexerFactory;
+import io.georocket.index.xml.MetaIndexer;
+import io.georocket.index.xml.MetaIndexerFactory;
 import io.georocket.index.xml.StreamIndexer;
 import io.georocket.index.xml.XMLIndexerFactory;
 import io.georocket.query.DefaultQueryCompiler;
 import io.georocket.storage.ChunkMeta;
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.GeoJsonChunkMeta;
+import io.georocket.storage.IndexMeta;
 import io.georocket.storage.JsonChunkMeta;
 import io.georocket.storage.RxStore;
 import io.georocket.storage.StoreFactory;
@@ -93,11 +96,29 @@ public class IndexerVerticle extends AbstractVerticle {
    * Compiles search strings to Elasticsearch documents
    */
   private DefaultQueryCompiler queryCompiler;
-  
+
   /**
    * A list of {@link IndexerFactory} objects
    */
   private List<? extends IndexerFactory> indexerFactories;
+
+  /**
+   * A view on {@link #indexerFactories} containing only
+   * {@link XMLIndexerFactory} objects
+   */
+  private List<XMLIndexerFactory> xmlIndexerFactories;
+
+  /**
+   * A view on {@link #indexerFactories} containing only
+   * {@link JsonIndexerFactory} objects
+   */
+  private List<JsonIndexerFactory> jsonIndexerFactories;
+
+  /**
+   * A view on {@link #indexerFactories} containing only
+   * {@link MetaIndexerFactory} objects
+   */
+  private List<MetaIndexerFactory> metaIndexerFactories;
   
   /**
    * True if the indexer should report activities to the Vert.x event bus
@@ -111,6 +132,15 @@ public class IndexerVerticle extends AbstractVerticle {
     // load and copy all indexer factories now and not lazily to avoid
     // concurrent modifications to the service loader's internal cache
     indexerFactories = ImmutableList.copyOf(ServiceLoader.load(IndexerFactory.class));
+    xmlIndexerFactories = ImmutableList.copyOf(Seq.seq(indexerFactories)
+      .filter(f -> f instanceof XMLIndexerFactory)
+      .cast(XMLIndexerFactory.class));
+    jsonIndexerFactories = ImmutableList.copyOf(Seq.seq(indexerFactories)
+      .filter(f -> f instanceof JsonIndexerFactory)
+      .cast(JsonIndexerFactory.class));
+    metaIndexerFactories = ImmutableList.copyOf(Seq.seq(indexerFactories)
+      .filter(f -> f instanceof MetaIndexerFactory)
+      .cast(MetaIndexerFactory.class));
     
     store = new RxStore(StoreFactory.createStore(getVertx()));
     queryCompiler = new DefaultQueryCompiler(indexerFactories);
@@ -379,28 +409,25 @@ public class IndexerVerticle extends AbstractVerticle {
    * Open a chunk and convert it to an Elasticsearch document. Retry operation
    * several times before failing.
    * @param path the path to the chunk to open
-   * @param mimeType the chunk's mime type
-   * @param fallbackCRSString a string representing the CRS that should be used
-   * to index the chunk if it does not specify a CRS itself (may be null if no
-   * CRS is available as fallback)
+   * @param chunkMeta metadata about the chunk
+   * @param indexMeta metadata used to index the chunk
    * @return an observable that emits the document
    */
-  private Observable<Map<String, Object>> openChunkToDocument(String path,
-      String mimeType, String fallbackCRSString) {
+  private Observable<Map<String, Object>> openChunkToDocument(
+      String path, ChunkMeta chunkMeta, IndexMeta indexMeta) {
     return Observable.defer(() -> store.getOneObservable(path)
       .flatMap(chunk -> {
-        Seq<? extends IndexerFactory> filteredFactories;
+        List<? extends IndexerFactory> factories;
         Operator<? extends StreamEvent, Buffer> parserOperator;
         
         // select indexers and parser depending on the mime type
+        String mimeType = chunkMeta.getMimeType();
         if (belongsTo(mimeType, "application", "xml") ||
           belongsTo(mimeType, "text", "xml")) {
-          filteredFactories = Seq.seq(indexerFactories)
-            .filter(f -> f instanceof XMLIndexerFactory);
+          factories = xmlIndexerFactories;
           parserOperator = new XMLParserOperator();
         } else if (belongsTo(mimeType, "application", "json")) {
-          filteredFactories = Seq.seq(indexerFactories)
-            .filter(f -> f instanceof JsonIndexerFactory);
+          factories = jsonIndexerFactories;
           parserOperator = new JsonParserOperator();
         } else {
           return Observable.error(new NoStackTraceThrowable(String.format(
@@ -408,9 +435,20 @@ public class IndexerVerticle extends AbstractVerticle {
               + "chunk '%s'", mimeType, path)));
         }
         
+        // call meta indexers
+        Map<String, Object> metaResults = new HashMap<>();
+        for (MetaIndexerFactory metaIndexerFactory : metaIndexerFactories) {
+          MetaIndexer metaIndexer = metaIndexerFactory.createIndexer();
+          metaIndexer.onIndexChunk(path, chunkMeta, indexMeta);
+          metaResults.putAll(metaIndexer.getResult());
+        }
+
         // convert chunk to document and close it
-        return chunkToDocument(chunk, fallbackCRSString, parserOperator,
-          filteredFactories).doAfterTerminate(chunk::close);
+        return chunkToDocument(chunk, indexMeta.getFallbackCRSString(),
+            parserOperator, factories)
+          .doAfterTerminate(chunk::close)
+          // add results from meta indexers to converted document
+          .doOnNext(doc -> doc.putAll(metaResults));
       }))
       .retryWhen(makeRetry());
   }
@@ -431,7 +469,7 @@ public class IndexerVerticle extends AbstractVerticle {
   private <T extends StreamEvent> Observable<Map<String, Object>> chunkToDocument(
       ChunkReadStream chunk, String fallbackCRSString,
       Operator<T, Buffer> parserOperator,
-      Seq<? extends IndexerFactory> indexerFactories) {
+      List<? extends IndexerFactory> indexerFactories) {
     List<StreamIndexer<T>> indexers = new ArrayList<>();
     indexerFactories.forEach(factory -> {
       @SuppressWarnings("unchecked")
@@ -492,6 +530,8 @@ public class IndexerVerticle extends AbstractVerticle {
           newFieldName = StringUtils.uncapitalize(newFieldName);
         }
         filteredSource.put(newFieldName, source.getValue(fieldName));
+      } else {
+        filteredSource.put(fieldName, source.getValue(fieldName));
       }
     }
     
@@ -546,10 +586,12 @@ public class IndexerVerticle extends AbstractVerticle {
         String filename = body.getString("filename");
         long timestamp = body.getLong("timestamp", System.currentTimeMillis());
 
-        String mimeType = meta.getString("mimeType", XMLChunkMeta.MIME_TYPE);
+        ChunkMeta chunkMeta = getMeta(meta);
+        IndexMeta indexMeta = new IndexMeta(correlationId, filename, timestamp,
+            tags, fallbackCRSString);
 
         // open chunk and create IndexRequest
-        return openChunkToDocument(path, mimeType, fallbackCRSString)
+        return openChunkToDocument(path, chunkMeta, indexMeta)
           .doOnNext(doc -> {
             doc.put("path", path);
             doc.put("correlationId", correlationId);
