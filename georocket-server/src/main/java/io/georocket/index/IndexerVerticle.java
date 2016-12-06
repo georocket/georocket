@@ -14,6 +14,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import io.georocket.query.QueryCompiler;
 import org.apache.commons.lang.StringUtils;
 import org.jooq.lambda.Seq;
 import org.jooq.lambda.tuple.Tuple;
@@ -92,7 +93,7 @@ public class IndexerVerticle extends AbstractVerticle {
   /**
    * Compiles search strings to Elasticsearch documents
    */
-  private DefaultQueryCompiler queryCompiler;
+  private QueryCompiler queryCompiler;
   
   /**
    * A list of {@link IndexerFactory} objects

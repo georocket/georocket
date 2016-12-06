@@ -51,4 +51,15 @@ public interface QueryCompiler {
    * @return the query (may be null)
    */
   JsonObject compileQuery(String search);
+
+  /**
+   * <p>Create an Elasticsearch query for the given search string.</p>
+   * <p>Heads up: implementors may use the helper methods from
+   * {@link ElasticsearchQueryHelper} to build the query.</p>
+   * @param search the search string to compile
+   * @param path the path where to perform the search (may be null if the
+   * whole data store should be searched)
+   * @return the query (may be null)
+   */
+  JsonObject compileQuery(String search, String path);
 }
