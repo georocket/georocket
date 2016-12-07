@@ -24,9 +24,6 @@ public class DefaultMetaIndexer implements MetaIndexer {
   public void onIndexChunk(String path, ChunkMeta chunkMeta,
       IndexMeta indexMeta) {
     result.put("path", path);
-    result.put("correlationId", indexMeta.getCorrelationId());
-    result.put("filename", indexMeta.getFilename());
-    result.put("timestamp", indexMeta.getTimestamp());
     result.put("chunkMeta", chunkMeta.toJsonObject());
     if (indexMeta.getTags() != null) {
       result.put("tags", indexMeta.getTags());
