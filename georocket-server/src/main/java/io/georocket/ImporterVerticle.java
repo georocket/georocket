@@ -151,6 +151,7 @@ public class ImporterVerticle extends AbstractVerticle {
     if (reportActivities) {
       JsonObject msg = new JsonObject()
           .put("activity", "importing")
+          .put("scope", "store")
           .put("owner", deploymentID())
           .put("action", "start")
           .put("correlationId", correlationId)
@@ -183,6 +184,7 @@ public class ImporterVerticle extends AbstractVerticle {
     if (reportActivities) {
       JsonObject msg = new JsonObject()
           .put("activity", "importing")
+          .put("scope", "store")
           .put("owner", deploymentID())
           .put("action", "stop")
           .put("correlationId", correlationId)
