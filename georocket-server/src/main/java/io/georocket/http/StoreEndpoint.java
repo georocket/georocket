@@ -1,7 +1,11 @@
 package io.georocket.http;
 
+import static io.georocket.util.ThrowableHelper.throwableToCode;
+import static io.georocket.util.ThrowableHelper.throwableToMessage;
+
 import io.georocket.storage.RxAsyncCursor;
 import io.georocket.storage.StoreCursor;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -64,10 +68,17 @@ public class StoreEndpoint extends AbstractEndpoint {
   private String storagePath;
 
   /**
+   * True if the store should report activities to the Vert.x event bus
+   */
+  private final boolean reportActivities;
+
+  /**
    * Create the endpoint
    * @param vertx the Vert.x instance
    */
   public StoreEndpoint(Vertx vertx) {
+    reportActivities = vertx.getOrCreateContext()
+        .config().getBoolean("georocket.reportActivities", false);
     this.vertx = vertx;
     store = new RxStore(StoreFactory.createStore(vertx));
     storagePath = vertx.getOrCreateContext().config()
@@ -382,8 +393,10 @@ public class StoreEndpoint extends AbstractEndpoint {
     String filename = new ObjectId().toString();
     String filepath = incoming + "/" + filename;
 
-    log.info("Receiving file ...");
-    
+    String correlationId = UUID.randomUUID().toString();
+    long startTime = System.currentTimeMillis();
+    this.onReceivingFileStarted(correlationId, layer, startTime);
+
     // create directory for incoming files
     FileSystem fs = vertx.fileSystem();
     ObservableFuture<Void> observable = RxHelper.observableFuture();
@@ -441,8 +454,16 @@ public class StoreEndpoint extends AbstractEndpoint {
         return Observable.just(mimeType);
       })
       .subscribe(detectedContentType -> {
+        request.response()
+          .setStatusCode(202) // Accepted
+          .putHeader("X-Correlation-Id", correlationId)
+          .setStatusMessage("Accepted file - importing in progress")
+          .end();
+
+        long duration = System.currentTimeMillis() - startTime;
+        this.onReceivingFileFinished(correlationId, duration, layer, null);
+
         // run importer
-        String correlationId = UUID.randomUUID().toString();
         JsonObject msg = new JsonObject()
             .put("filename", filename)
             .put("layer", layer)
@@ -470,12 +491,58 @@ public class StoreEndpoint extends AbstractEndpoint {
         // run importer
         vertx.eventBus().send(AddressConstants.IMPORTER_IMPORT, msg);
       }, err -> {
+        long duration = System.currentTimeMillis() - startTime;
+        this.onReceivingFileFinished(correlationId, duration, layer, err);
+        request.response()
+          .setStatusCode(throwableToCode(err))
+          .end("Could not import file: " + err.getMessage());
         fail(request.response(), err);
         err.printStackTrace();
         fs.delete(filepath, ar -> {});
       });
   }
-  
+
+  private void onReceivingFileStarted(String correlationId, String layer, long startTime) {
+    log.info(String.format("Receiving file [%s] to layer '%s'", correlationId, layer));
+
+    if (reportActivities) {
+      JsonObject msg = new JsonObject()
+          .put("activity", "importing")
+          .put("scope", "receive")
+          .put("action", "start")
+          .put("correlationId", correlationId)
+          .put("timestamp", startTime);
+
+      vertx.eventBus().send(AddressConstants.ACTIVITIES, msg);
+    }
+  }
+
+  private void onReceivingFileFinished(String correlationId, long duration, String layer, Throwable error) {
+
+    if (error == null) {
+      log.info(String.format("Finished receiving file [%s] to layer '%s' after '%d' ms",
+          correlationId, layer, duration));
+    } else {
+      log.error(String.format("Failed receiving file [%s] to layer '%s' after %d ms",
+          correlationId, layer, duration), error);
+    }
+
+    if (reportActivities) {
+      JsonObject msg = new JsonObject()
+          .put("activity", "importing")
+          .put("scope", "receive")
+          .put("action", "stop")
+          .put("correlationId", correlationId)
+          .put("duration", duration);
+
+      if (error != null) {
+        msg.put("error", error.getMessage());
+      }
+
+      vertx.eventBus().send(AddressConstants.ACTIVITIES, msg);
+    }
+  }
+
   /**
    * Handles the HTTP DELETE request
    * @param context the routing context
