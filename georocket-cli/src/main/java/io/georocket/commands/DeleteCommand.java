@@ -22,8 +22,8 @@ import io.vertx.core.logging.LoggerFactory;
 public class DeleteCommand extends AbstractQueryCommand {
   private static Logger log = LoggerFactory.getLogger(DeleteCommand.class);
   
-  private String query;
-  private String layer;
+  protected String query;
+  protected String layer;
   
   /**
    * Set the query parts
