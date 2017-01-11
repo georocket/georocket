@@ -12,6 +12,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import io.georocket.index.generic.DefaultMetaIndexerFactory;
 import org.jooq.lambda.Seq;
 import org.jooq.lambda.tuple.Tuple;
 import org.jooq.lambda.tuple.Tuple2;
@@ -291,8 +292,10 @@ public class IndexerVerticle extends AbstractVerticle {
   private Observable<Void> ensureMapping() {
     // merge mappings from all indexers
     Map<String, Object> mappings = new HashMap<>();
-    indexerFactories.forEach(factory ->
-            MapUtils.deepMerge(mappings, factory.getMapping()));
+    indexerFactories.stream().filter(f -> f instanceof DefaultMetaIndexerFactory)
+        .forEach(factory -> MapUtils.deepMerge(mappings, factory.getMapping()));
+    indexerFactories.stream().filter(f -> !(f instanceof DefaultMetaIndexerFactory))
+        .forEach(factory -> MapUtils.deepMerge(mappings, factory.getMapping()));
 
     return client.putMapping(TYPE_NAME, new JsonObject(mappings)).map(r -> null);
   }
