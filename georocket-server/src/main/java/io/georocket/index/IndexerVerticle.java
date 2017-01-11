@@ -22,6 +22,7 @@ import com.google.common.collect.ImmutableList;
 import io.georocket.constants.AddressConstants;
 import io.georocket.index.elasticsearch.ElasticsearchClient;
 import io.georocket.index.elasticsearch.ElasticsearchClientFactory;
+import io.georocket.index.generic.DefaultMetaIndexerFactory;
 import io.georocket.index.xml.JsonIndexerFactory;
 import io.georocket.index.xml.MetaIndexer;
 import io.georocket.index.xml.MetaIndexerFactory;
@@ -291,8 +292,10 @@ public class IndexerVerticle extends AbstractVerticle {
   private Observable<Void> ensureMapping() {
     // merge mappings from all indexers
     Map<String, Object> mappings = new HashMap<>();
-    indexerFactories.forEach(factory ->
-            MapUtils.deepMerge(mappings, factory.getMapping()));
+    indexerFactories.stream().filter(f -> f instanceof DefaultMetaIndexerFactory)
+        .forEach(factory -> MapUtils.deepMerge(mappings, factory.getMapping()));
+    indexerFactories.stream().filter(f -> !(f instanceof DefaultMetaIndexerFactory))
+        .forEach(factory -> MapUtils.deepMerge(mappings, factory.getMapping()));
 
     return client.putMapping(TYPE_NAME, new JsonObject(mappings)).map(r -> null);
   }
