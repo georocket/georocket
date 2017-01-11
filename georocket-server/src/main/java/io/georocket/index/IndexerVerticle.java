@@ -12,7 +12,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import io.georocket.index.generic.DefaultMetaIndexerFactory;
 import org.jooq.lambda.Seq;
 import org.jooq.lambda.tuple.Tuple;
 import org.jooq.lambda.tuple.Tuple2;
@@ -23,6 +22,7 @@ import com.google.common.collect.ImmutableList;
 import io.georocket.constants.AddressConstants;
 import io.georocket.index.elasticsearch.ElasticsearchClient;
 import io.georocket.index.elasticsearch.ElasticsearchClientFactory;
+import io.georocket.index.generic.DefaultMetaIndexerFactory;
 import io.georocket.index.xml.JsonIndexerFactory;
 import io.georocket.index.xml.MetaIndexer;
 import io.georocket.index.xml.MetaIndexerFactory;
