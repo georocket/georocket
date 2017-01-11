@@ -21,7 +21,7 @@ public class BoundingBoxIndexer implements Indexer {
    * True if {@link #addToBoundingBox(double, double)} has been called
    * at least once
    */
-  private boolean boundingBoxInitialized = false;
+  protected boolean boundingBoxInitialized = false;
 
   /**
    * The calculated bounding box of this chunk. Only contains valid values
