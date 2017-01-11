@@ -20,7 +20,7 @@ import org.antlr.v4.runtime.tree.ParseTreeWalker;
 
 import com.google.common.collect.ImmutableList;
 
-import io.georocket.index.xml.XMLIndexerFactory;
+import io.georocket.index.IndexerFactory;
 import io.georocket.query.parser.QueryBaseListener;
 import io.georocket.query.parser.QueryLexer;
 import io.georocket.query.parser.QueryParser;
@@ -49,7 +49,7 @@ public class DefaultQueryCompiler implements QueryCompiler {
   public DefaultQueryCompiler() {
     // load factories now and not lazily to avoid concurrent modifications to
     // the service loader's internal cache
-    this(ImmutableList.copyOf(ServiceLoader.load(XMLIndexerFactory.class)));
+    this(ImmutableList.copyOf(ServiceLoader.load(IndexerFactory.class)));
   }
   
   /**
