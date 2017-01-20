@@ -29,7 +29,9 @@ public final class ConfigConstants {
   public static final String INDEX_ELASTICSEARCH_PORT = "georocket.index.elasticsearch.port";
   public static final String INDEX_ELASTICSEARCH_DOWNLOAD_URL = "georocket.index.elasticsearch.downloadUrl";
   public static final String INDEX_ELASTICSEARCH_INSTALL_PATH = "georocket.index.elasticsearch.installPath";
-  
+
+  public static final String QUERY_COMPILER_CLASS = "georocket.query.defaultQueryCompiler";
+
   public static final int DEFAULT_PORT = 63020;
   
   private ConfigConstants() {

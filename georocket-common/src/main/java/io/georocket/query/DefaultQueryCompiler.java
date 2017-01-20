@@ -41,22 +41,13 @@ public class DefaultQueryCompiler implements QueryCompiler {
   /**
    * Query compilers for individual properties
    */
-  protected final Collection<? extends QueryCompiler> queryCompilers;
-  
+  protected Collection<? extends QueryCompiler> queryCompilers;
+
   /**
-   * Default constructor
-   */
-  public DefaultQueryCompiler() {
-    // load factories now and not lazily to avoid concurrent modifications to
-    // the service loader's internal cache
-    this(ImmutableList.copyOf(ServiceLoader.load(IndexerFactory.class)));
-  }
-  
-  /**
-   * Constructs the compiler
+   * Set the query compilers
    * @param queryCompilers query compilers for individual properties
    */
-  public DefaultQueryCompiler(Collection<? extends QueryCompiler> queryCompilers) {
+  public void setQueryCompilers(Collection<? extends QueryCompiler> queryCompilers) {
     if (queryCompilers == null) {
       this.queryCompilers = Collections.emptyList();
     } else {

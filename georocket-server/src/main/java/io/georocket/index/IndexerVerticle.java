@@ -12,6 +12,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import io.georocket.constants.ConfigConstants;
 import org.jooq.lambda.Seq;
 import org.jooq.lambda.tuple.Tuple;
 import org.jooq.lambda.tuple.Tuple2;
@@ -140,7 +141,9 @@ public class IndexerVerticle extends AbstractVerticle {
       .cast(MetaIndexerFactory.class));
     
     store = new RxStore(StoreFactory.createStore(getVertx()));
-    queryCompiler = new DefaultQueryCompiler(indexerFactories);
+
+    queryCompiler = createQueryCompiler();
+    queryCompiler.setQueryCompilers(indexerFactories);
     
     new ElasticsearchClientFactory(vertx).createElasticsearchClient(INDEX_NAME)
       .doOnNext(es -> {
@@ -154,6 +157,16 @@ public class IndexerVerticle extends AbstractVerticle {
       }, err -> {
         startFuture.fail(err);
       });
+  }
+
+  private DefaultQueryCompiler createQueryCompiler() {
+    JsonObject config = vertx.getOrCreateContext().config();
+    String cls = config.getString(ConfigConstants.QUERY_COMPILER_CLASS, DefaultQueryCompiler.class.getName());
+    try {
+      return (DefaultQueryCompiler)Class.forName(cls).newInstance();
+    } catch (ReflectiveOperationException e) {
+      throw new RuntimeException("Could not create a DefaultQueryCompiler", e);
+    }
   }
   
   @Override
