@@ -43,7 +43,8 @@ public class DefaultQueryCompilerTest {
       throw new RuntimeException(e);
     }
     
-    QueryCompiler compiler = new DefaultQueryCompiler(queryCompilers);
+    DefaultQueryCompiler compiler = new DefaultQueryCompiler();
+    compiler.setQueryCompilers(queryCompilers);
     JsonObject compiledQuery = compiler.compileQuery(query);
     if (!expected.equals(compiledQuery)) {
       System.out.println(Json.encodePrettily(compiledQuery));
