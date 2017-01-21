@@ -44,7 +44,14 @@ public class DefaultQueryCompiler implements QueryCompiler {
   protected Collection<? extends QueryCompiler> queryCompilers;
 
   /**
-   * Set the query compilers
+   * Default constructor
+   */
+  public DefaultQueryCompiler() {
+    this.queryCompilers = Collections.emptyList();
+  }
+
+  /**
+   * Constructs the compiler
    * @param queryCompilers query compilers for individual properties
    */
   public void setQueryCompilers(Collection<? extends QueryCompiler> queryCompilers) {
