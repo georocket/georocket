@@ -13,4 +13,4 @@ georocket_hdfs:
     - hdfs
 
 hdfs:
-  image: sequenceiq/hadoop-docker:2.7.1
+  image: georocket/hadoop-docker:2.7.3
