@@ -73,6 +73,7 @@ public class GeoRocket extends AbstractVerticle {
   }
 
   private Observable<HttpServer> deployHttpServer() {
+    String host = config().getString(ConfigConstants.HOST, ConfigConstants.DEFAULT_HOST);
     int port = config().getInteger(ConfigConstants.PORT, ConfigConstants.DEFAULT_PORT);
 
     Router router = createRouter();
@@ -80,7 +81,7 @@ public class GeoRocket extends AbstractVerticle {
     HttpServer server = vertx.createHttpServer(serverOptions);
 
     ObservableFuture<HttpServer> observable = RxHelper.observableFuture();
-    server.requestHandler(router::accept).listen(port, observable.toHandler());
+    server.requestHandler(router::accept).listen(port, host, observable.toHandler());
     return observable;
   }
   
