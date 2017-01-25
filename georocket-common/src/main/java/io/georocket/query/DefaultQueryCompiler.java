@@ -12,15 +12,11 @@ import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
-import java.util.ServiceLoader;
 
 import org.antlr.v4.runtime.ANTLRInputStream;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 
-import com.google.common.collect.ImmutableList;
-
-import io.georocket.index.IndexerFactory;
 import io.georocket.query.parser.QueryBaseListener;
 import io.georocket.query.parser.QueryLexer;
 import io.georocket.query.parser.QueryParser;
