@@ -33,7 +33,7 @@ georocket:
       bucket: georocket
       pathStyleAccess: true
       forceSignatureV2: false
-      requestExpirySeconds: false
+      requestExpirySeconds: 600
 
   # Index configuration
   index:
