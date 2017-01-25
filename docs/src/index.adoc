@@ -8,7 +8,7 @@ v1.0.0-alpha.1
 :icons: font
 :source-highlighter: highlight.js
 
-Copyright (C) 2015-2016 Fraunhofer Institute for Computer Graphics Research IGD
+Copyright (C) 2015-2017 Fraunhofer Institute for Computer Graphics Research IGD
 
 == Introduction
 
@@ -17,7 +17,7 @@ GeoRocket is a high-performance data store for geospatial files. It can store 3D
 * High performance data storage with multiple back-ends such as Amazon S3, MongoDB, distributed file systems (e.g. HDFS or Ceph), or your local hard drive (enabled by default)
 * Support for high-speed search features based on the popular Open-Source framework https://www.elastic.co/[Elasticsearch]. You can perform spatial queries and search for attributes, layers and tags.
 * GeoRocket is made for the Cloud. Based on the Open-Source toolkit http://vertx.io[Vert.x] it is reactive and can handle big files and a large number of parallel requests.
-* GeoRocket is Open-Source
+* GeoRocket exists in two editions--an Open-Source version and a Pro edition for enterprise applications
 
 === Architecture
 
@@ -414,7 +414,7 @@ Bounding boxes can be specified using four floating point numbers separated by a
 
 or
 
-  minimum longitude, minimum latitude, maximum longitude, maximum latitude
+  minimum_longitude,minimum_latitude,maximum_longitude,maximum_latitude
 
 NOTE: As of version 1.0.0-alpha.1 GeoRocket only supports spatial queries given in WGS84 coordinates (longitude/latitude). However, data stored in GeoRocket can have an arbitrary spatial reference system as long as it is specified in the original file.
 
@@ -472,11 +472,36 @@ Example:
 
 This example matches all chunks that are not within the bounding box `13.378,52.515,13.380,52.517` and that don't have a tag or indexed attribute with a value of `foobar`.
 
+== Client configuration
+
+You can configure GeoRocket's command-line application (CLI) by editing the file `conf/georocket.yaml` in the application directory. The file must be a valid YAML file. The following sections describe possible configuration keys and values.
+
+Keys are specified using the dot notation. You can use the keys in your file as they are specified here or use normal YAML notation instead. For example, the following configuration item
+
+  georocket.host: localhost
+
+is identical to:
+
+  georocket:
+    host: localhost
+
+=== Server connection
+
+[cols="1,2"]
+|===
+| *georocket.host* +
+  _(default: "localhost")_
+| The host where GeoRocket Server is running.
+| *georocket.port* +
+  _(default: 63020)_
+| The TCP port GeoRocket Server is listening on.
+|===
+
 == Server configuration
 
 You can configure GeoRocket Server by editing the file `conf/georocketd.yaml` in the application directory. The file must be a valid YAML file. The following sections describe possible configuration keys and values.
 
-Keys are specified using the dot notation. You can use the keys in your file as they are specified here or use normal YAML notation instead. For example, the following configuration file
+Keys are specified using the dot notation. You can use the keys in your file as they are specified here or use normal YAML notation instead. For example, the following configuration item
 
   georocket.storage.class: io.georocket.storage.file.FileStore
 
@@ -490,6 +515,9 @@ is identical to:
 
 [cols="1,2"]
 |===
+| *georocket.host* +
+  _(default: "127.0.0.1")_
+| The host GeoRocket should bind to. By default GeoRocket only listens to incoming connections from `127.0.0.1` (`localhost`). If you want it to listen to connections coming from arbitrary clients set this configuration item to `0.0.0.0`.
 | *georocket.port* +
   _(default: 63020)_
 | The TCP port GeoRocket should listen on.

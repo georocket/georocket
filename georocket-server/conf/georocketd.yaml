@@ -1,5 +1,5 @@
 georocket:
-  # The host the GeoRocket HTTP interface should bind to
+  # The host GeoRocket should bind to
   host: 127.0.0.1
 
   # The TCP port GeoRocket should listen on
