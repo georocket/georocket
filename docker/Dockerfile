@@ -6,16 +6,22 @@
 FROM java:openjdk-8-jre-alpine
 MAINTAINER Michel Kraemer <michel.kraemer@igd.fraunhofer.de>
 
+# add GeoRocket user
+RUN adduser -D -u 1000 -h /usr/local/georocket-server georocket
+
+# always add Elasticsearch first so we can keep it in the Docker cache
+ADD georocket-server/elasticsearch /usr/local/georocket-server/elasticsearch
+
 # install required packages
 RUN apk update && \
     apk add bash sed && \
     rm -rf /var/cache/apk/*
 
-# add GeoRocket user
-RUN adduser -D -u 1000 -h /usr/local/georocket-server georocket
-
-# add GeoRocket distribution
-ADD georocket-server /usr/local/georocket-server
+# add GeoRocket distribution (everything except Elasticsearch)
+ADD georocket-server/bin  /usr/local/georocket-server/bin
+ADD georocket-server/conf /usr/local/georocket-server/conf
+ADD georocket-server/docs /usr/local/georocket-server/docs
+ADD georocket-server/lib  /usr/local/georocket-server/lib
 
 # create required directories
 RUN mkdir -p /data/georocket/storage && \
