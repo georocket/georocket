@@ -90,8 +90,12 @@ subprojects {
                     password: this.hasProperty('sonatypePassword') ? sonatypePassword : '')
             }
 
+            // ensure correct artifact ID
+            pom.artifactId = project.name
+
             // pom file details
             pom.project {
+                name 'georocket'
                 packaging 'jar'
                 description 'GeoRocket is a high-performance data store for geospatial files'
                 url 'http://georocket.io'
