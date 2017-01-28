@@ -130,8 +130,10 @@ subprojects {
     }
 
     // print project version to console - used in CI
-    task getVersion << {
-        println version
+    task getVersion {
+        doLast {
+            println version
+        }
     }
 }
 
@@ -140,5 +142,5 @@ versioneye {
 }
 
 task wrapper(type: Wrapper) {
-    gradleVersion = '2.14.1'
+    gradleVersion = '3.3'
 }

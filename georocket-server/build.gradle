@@ -127,18 +127,20 @@ configurations.archives.with {
 /**
  * Download Elasticsearch to the build directory
  */
-task downloadElasticsearch << {
-    // if the destination file does not exist yet, download Elasticsearch
-    // to a temporary file and then rename it
-    def destFile = new File(buildDir, elasticsearchArchiveName)
-    if (!destFile.exists()) {
-        def tempFile = new File(buildDir, "${elasticsearchArchiveName}.part")
-        download {
-            src elasticsearchUrl
-            dest tempFile
-            overwrite true
+task downloadElasticsearch {
+    doLast {
+        // if the destination file does not exist yet, download Elasticsearch
+        // to a temporary file and then rename it
+        def destFile = new File(buildDir, elasticsearchArchiveName)
+        if (!destFile.exists()) {
+            def tempFile = new File(buildDir, "${elasticsearchArchiveName}.part")
+            download {
+                src elasticsearchUrl
+                dest tempFile
+                overwrite true
+            }
+            tempFile.renameTo(destFile)
         }
-        tempFile.renameTo(destFile)
     }
 }
 
@@ -158,13 +160,15 @@ task cleanExtractedElasticsearch(type: Delete) {
     delete 'elasticsearch'
 }
 
-task generateVersionFile << {
-    def dstRes = new File(project.projectDir, 'src-gen/main/resources')
-    def dst = new File(dstRes, 'io/georocket')
-    dst.mkdirs()
-    def versionFile = new File(dst, 'version.dat')
-    versionFile.withWriter { w ->
-        w << project.version
+task generateVersionFile {
+    doLast {
+        def dstRes = new File(project.projectDir, 'src-gen/main/resources')
+        def dst = new File(dstRes, 'io/georocket')
+        dst.mkdirs()
+        def versionFile = new File(dst, 'version.dat')
+        versionFile.withWriter { w ->
+            w << project.version
+        }
     }
 }
 
