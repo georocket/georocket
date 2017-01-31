@@ -271,17 +271,19 @@ public class IndexerVerticle extends AbstractVerticle {
   /**
    * Will be called before the indexer starts deleting chunks
    * @param timeStamp the time when the indexer has started deleting
-   * @param count the number of chunks to delete
+   * @param paths the chunks to delete
    */
-  private void onDeletingStarted(long timeStamp, int count) {
-    log.info("Deleting " + count + " chunks from index ...");
+  private void onDeletingStarted(long timeStamp, JsonArray paths) {
+    log.info("Deleting " + paths.size() + " chunks from index ...");
 
     if (reportActivities) {
       JsonObject msg = new JsonObject()
-          .put("activity", "deleting")
-          .put("scope", "index")
+          .put("activity", "delete")
+          .put("state", "index")
           .put("owner", deploymentID())
-          .put("action", "start")
+          .put("action", "enter")
+          .put("chunkCount", paths.size())
+          .put("paths", paths)
           .put("timestamp", timeStamp);
       vertx.eventBus().send(AddressConstants.ACTIVITIES, msg);
     }
@@ -290,25 +292,26 @@ public class IndexerVerticle extends AbstractVerticle {
   /**
    * Will be called after the indexer has finished deleting chunks
    * @param duration the time it took to delete the chunks
-   * @param count the number of deleted chunks
+   * @param paths the paths of the deleted chunks
    * @param errorMessage an error message if the process has failed
    * or <code>null</code> if everything was successful
    */
-  private void onDeletingFinished(long duration, int count, String errorMessage) {
+  private void onDeletingFinished(long duration, JsonArray paths, String errorMessage) {
     if (errorMessage != null) {
       log.error("Deleting chunks failed: " + errorMessage);
     } else {
-      log.info("Finished deleting " + count +
+      log.info("Finished deleting " + paths.size() +
           " chunks from index in " + duration + " ms");
     }
 
     if (reportActivities) {
       JsonObject msg = new JsonObject()
-          .put("activity", "deleting")
-          .put("scope", "index")
+          .put("activity", "delete")
+          .put("state", "index")
           .put("owner", deploymentID())
-          .put("action", "stop")
-          .put("chunkCount", count)
+          .put("action", "leave")
+          .put("chunkCount", paths.size())
+          .put("paths", paths)
           .put("duration", duration);
 
       if (errorMessage != null) {
@@ -386,10 +389,10 @@ public class IndexerVerticle extends AbstractVerticle {
     
     if (reportActivities) {
       JsonObject msg = new JsonObject()
-        .put("activity", "importing")
-        .put("scope", "index")
+        .put("activity", "import")
+        .put("state", "index")
         .put("owner", deploymentID())
-        .put("action", "start")
+        .put("action", "enter")
         .put("timestamp", timestamp);
       vertx.eventBus().send(AddressConstants.ACTIVITIES, msg);
     }
@@ -414,10 +417,10 @@ public class IndexerVerticle extends AbstractVerticle {
     
     if (reportActivities) {
       JsonObject msg = new JsonObject()
-        .put("activity", "importing")
-        .put("scope", "index")
+        .put("activity", "import")
+        .put("state", "index")
         .put("owner", deploymentID())
-        .put("action", "stop")
+        .put("action", "leave")
         .put("correlationIds", new JsonArray(correlationIds))
         .put("duration", duration);
       vertx.eventBus().send(AddressConstants.ACTIVITIES, msg);
@@ -662,7 +665,7 @@ public class IndexerVerticle extends AbstractVerticle {
 
     // execute bulk request
     long startTimeStamp = System.currentTimeMillis();
-    onDeletingStarted(startTimeStamp, paths.size());
+    onDeletingStarted(startTimeStamp, paths);
 
     return client.bulkDelete(TYPE_NAME, paths).flatMap(bres -> {
       long stopTimeStamp = System.currentTimeMillis();
@@ -670,11 +673,11 @@ public class IndexerVerticle extends AbstractVerticle {
         String error = client.bulkResponseGetErrorMessage(bres);
         log.error("One or more chunks could not be deleted");
         log.error(error);
-        onDeletingFinished(stopTimeStamp - startTimeStamp, paths.size(), error);
+        onDeletingFinished(stopTimeStamp - startTimeStamp, paths, error);
         return Observable.error(new NoStackTraceThrowable(
                 "One or more chunks could not be deleted"));
       } else {
-        onDeletingFinished(stopTimeStamp - startTimeStamp, paths.size(), null);
+        onDeletingFinished(stopTimeStamp - startTimeStamp, paths, null);
         return Observable.just(null);
       }
     });
