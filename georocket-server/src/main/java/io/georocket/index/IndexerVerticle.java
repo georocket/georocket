@@ -423,6 +423,11 @@ public class IndexerVerticle extends AbstractVerticle {
         .put("action", "leave")
         .put("correlationIds", new JsonArray(correlationIds))
         .put("duration", duration);
+
+      if (errorMessage != null) {
+        msg.put("error", errorMessage);
+      }
+
       vertx.eventBus().send(AddressConstants.ACTIVITIES, msg);
     }
   }
