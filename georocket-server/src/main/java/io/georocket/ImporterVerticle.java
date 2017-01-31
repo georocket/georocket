@@ -150,12 +150,13 @@ public class ImporterVerticle extends AbstractVerticle {
 
     if (reportActivities) {
       JsonObject msg = new JsonObject()
-          .put("activity", "importing")
-          .put("scope", "store")
+          .put("activity", "import")
+          .put("state", "store")
           .put("owner", deploymentID())
-          .put("action", "start")
+          .put("action", "enter")
           .put("correlationId", correlationId)
-          .put("timestamp", timestamp);
+          .put("timestamp", timestamp)
+          .put("layer", layer);
       vertx.eventBus().send(AddressConstants.ACTIVITIES, msg);
     }
   }
@@ -183,13 +184,14 @@ public class ImporterVerticle extends AbstractVerticle {
 
     if (reportActivities) {
       JsonObject msg = new JsonObject()
-          .put("activity", "importing")
-          .put("scope", "store")
+          .put("activity", "import")
+          .put("state", "store")
           .put("owner", deploymentID())
-          .put("action", "stop")
+          .put("action", "leave")
           .put("correlationId", correlationId)
           .put("chunkCount", chunkCount)
-          .put("duration", duration);
+          .put("duration", duration)
+          .put("layer", layer);
 
       if (error != null) {
         msg.put("error", error.getMessage());

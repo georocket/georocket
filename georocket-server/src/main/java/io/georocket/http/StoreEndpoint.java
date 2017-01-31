@@ -507,9 +507,9 @@ public class StoreEndpoint extends AbstractEndpoint {
 
     if (reportActivities) {
       JsonObject msg = new JsonObject()
-          .put("activity", "importing")
-          .put("scope", "receive")
-          .put("action", "start")
+          .put("activity", "import")
+          .put("state", "receive")
+          .put("action", "enter")
           .put("correlationId", correlationId)
           .put("timestamp", startTime);
 
@@ -529,9 +529,9 @@ public class StoreEndpoint extends AbstractEndpoint {
 
     if (reportActivities) {
       JsonObject msg = new JsonObject()
-          .put("activity", "importing")
-          .put("scope", "receive")
-          .put("action", "stop")
+          .put("activity", "import")
+          .put("state", "receive")
+          .put("action", "leave")
           .put("correlationId", correlationId)
           .put("duration", duration);
 
