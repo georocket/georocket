@@ -7,7 +7,7 @@ subprojects {
     apply plugin: 'idea'
     apply plugin: 'signing'
     
-    version = '1.0.0-SNAPSHOT'
+    version = '1.0.1-SNAPSHOT'
     group = 'io.georocket'
 
     ext {
@@ -90,8 +90,12 @@ subprojects {
                     password: this.hasProperty('sonatypePassword') ? sonatypePassword : '')
             }
 
+            // ensure correct artifact ID
+            pom.artifactId = project.name
+
             // pom file details
             pom.project {
+                name 'georocket'
                 packaging 'jar'
                 description 'GeoRocket is a high-performance data store for geospatial files'
                 url 'http://georocket.io'
@@ -126,8 +130,10 @@ subprojects {
     }
 
     // print project version to console - used in CI
-    task getVersion << {
-        println version
+    task getVersion {
+        doLast {
+            println version
+        }
     }
 }
 
@@ -136,5 +142,5 @@ versioneye {
 }
 
 task wrapper(type: Wrapper) {
-    gradleVersion = '2.14.1'
+    gradleVersion = '3.3'
 }
