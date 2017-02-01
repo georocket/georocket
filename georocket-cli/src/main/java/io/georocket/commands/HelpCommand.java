@@ -16,7 +16,7 @@ import io.vertx.core.Handler;
  * @author Michel Kraemer
  */
 public class HelpCommand extends AbstractGeoRocketCommand {
-  private List<String> commands = new ArrayList<String>();
+  protected List<String> commands = new ArrayList<String>();
 
   /**
    * Sets the commands to display the help for
