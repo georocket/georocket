@@ -137,6 +137,18 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
     
     return performRequestRetry(HttpMethod.GET, uri, source.encode());
   }
+
+  @Override
+  public Observable<Long> count(String type, JsonObject query) {
+    String uri = "/" + index + "/" + type + "/_count";
+
+    JsonObject source = new JsonObject();
+    if (query != null) {
+      source.put("query", query);
+    }
+    return performRequestRetry(HttpMethod.GET, uri, source.encode())
+      .map(sr -> sr.getLong("count", 0L));
+  }
   
   @Override
   public Observable<JsonObject> bulkDelete(String type, JsonArray ids) {

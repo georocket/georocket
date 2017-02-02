@@ -133,7 +133,17 @@ public interface ElasticsearchClient {
    */
   Observable<JsonObject> search(String type, JsonObject query,
     JsonObject postFilter, JsonObject aggregations, int size);
-  
+
+  /**
+   * Perform a count operation. The result is the number of documents
+   * matching the query (without the documents themselves). If no query
+   * is given, the total number of documents (of this type) is returned.
+   * @param type the type of the documents to count
+   * @param query the query to send (may be <code>null</code>)
+   * @return the number of documents matching the query
+   */
+  Observable<Long> count(String type, JsonObject query);
+
   /**
    * Delete a number of documents in one bulk request
    * @param type the type of the documents to delete
