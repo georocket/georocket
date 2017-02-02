@@ -146,8 +146,16 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
     if (query != null) {
       source.put("query", query);
     }
+
     return performRequestRetry(HttpMethod.GET, uri, source.encode())
-      .map(sr -> sr.getLong("count", 0L));
+      .flatMap(sr -> {
+        Long l = sr.getLong("count");
+        if (l == null) {
+          return Observable.error(new NoStackTraceThrowable(
+              "Could not count documents"));
+        }
+        return Observable.just(l);
+      });
   }
   
   @Override
