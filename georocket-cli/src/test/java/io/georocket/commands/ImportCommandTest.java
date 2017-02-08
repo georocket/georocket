@@ -66,6 +66,11 @@ public class ImportCommandTest extends CommandTestBase<ImportCommand> {
    */
   @Test
   public void noFilePattern(TestContext context) throws Exception {
+    Async async = context.async();
+    cmd.setEndHandler(exitCode -> {
+      context.assertEquals(1, exitCode);
+      async.complete();
+    });
     context.assertEquals(1, cmd.run(new String[] { }, in, out));
   }
   

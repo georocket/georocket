@@ -117,10 +117,12 @@ public abstract class AbstractGeoRocketCommand implements GeoRocketCommand {
     
     if (displayHelp) {
       usage();
+      endHandler.handle(0);
       return 0;
     }
     
     if (!checkArguments()) {
+      endHandler.handle(1);
       return 1;
     }
     
