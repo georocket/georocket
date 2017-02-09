@@ -30,6 +30,11 @@ public class ExportCommandTest extends CommandTestBase<ExportCommand> {
    */
   @Test
   public void noLayer(TestContext context) throws Exception {
+    Async async = context.async();
+    cmd.setEndHandler(exitCode -> {
+      context.assertEquals(1, exitCode);
+      async.complete();
+    });
     context.assertEquals(1, cmd.run(new String[] { }, in, out));
   }
   
@@ -40,6 +45,11 @@ public class ExportCommandTest extends CommandTestBase<ExportCommand> {
    */
   @Test
   public void emptyLayer(TestContext context) throws Exception {
+    Async async = context.async();
+    cmd.setEndHandler(exitCode -> {
+      context.assertEquals(1, exitCode);
+      async.complete();
+    });
     context.assertEquals(1, cmd.run(new String[] { "" }, in, out));
   }
   

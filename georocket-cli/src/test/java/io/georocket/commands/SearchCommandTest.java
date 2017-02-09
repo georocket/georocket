@@ -30,6 +30,11 @@ public class SearchCommandTest extends CommandTestBase<SearchCommand> {
    */
   @Test
   public void noQuery(TestContext context) throws Exception {
+    Async async = context.async();
+    cmd.setEndHandler(exitCode -> {
+      context.assertEquals(1, exitCode);
+      async.complete();
+    });
     context.assertEquals(1, cmd.run(new String[] { }, in, out));
   }
   
@@ -40,6 +45,11 @@ public class SearchCommandTest extends CommandTestBase<SearchCommand> {
    */
   @Test
   public void emptyQuery(TestContext context) throws Exception {
+    Async async = context.async();
+    cmd.setEndHandler(exitCode -> {
+      context.assertEquals(1, exitCode);
+      async.complete();
+    });
     context.assertEquals(1, cmd.run(new String[] { "" }, in, out));
   }
   
