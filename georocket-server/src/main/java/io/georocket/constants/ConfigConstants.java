@@ -25,6 +25,8 @@ public final class ConfigConstants {
   public static final String STORAGE_S3_FORCE_SIGNATURE_V2 = "georocket.storage.s3.forceSignatureV2";
   public static final String STORAGE_S3_REQUEST_EXPIRY_SECONDS = "georocket.storage.s3.requestExpirySeconds";
   
+  public static final String INDEX_MAX_BULK_SIZE = "georocket.index.maxBulkSize";
+  public static final String INDEX_MAX_PARALLEL_INSERTS = "georocket.index.maxParallelInserts";
   public static final String INDEX_ELASTICSEARCH_EMBEDDED = "georocket.index.elasticsearch.embedded";
   public static final String INDEX_ELASTICSEARCH_HOST = "georocket.index.elasticsearch.host";
   public static final String INDEX_ELASTICSEARCH_PORT = "georocket.index.elasticsearch.port";
@@ -35,6 +37,9 @@ public final class ConfigConstants {
 
   public static final String DEFAULT_HOST = "127.0.0.1";
   public static final int DEFAULT_PORT = 63020;
+  
+  public static final int DEFAULT_INDEX_MAX_BULK_SIZE = 200;
+  public static final int DEFAULT_INDEX_MAX_PARALLEL_INSERTS = 5;
   
   private ConfigConstants() {
     // hidden constructor

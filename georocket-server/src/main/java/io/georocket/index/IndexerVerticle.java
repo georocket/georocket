@@ -64,9 +64,7 @@ import rx.functions.Func1;
 public class IndexerVerticle extends AbstractVerticle {
   private static Logger log = LoggerFactory.getLogger(IndexerVerticle.class);
   
-  private static final int MAX_ADD_REQUESTS = 200;
   private static final long BUFFER_TIMESPAN = 5000;
-  private static final int MAX_INSERT_REQUESTS = 5;
   private static final int MAX_RETRIES = 5;
   private static final int RETRY_INTERVAL = 1000;
 
@@ -123,11 +121,27 @@ public class IndexerVerticle extends AbstractVerticle {
    */
   private boolean reportActivities;
   
+  /**
+   * The maximum number of chunks to index in one bulk
+   */
+  private int maxBulkSize;
+  
+  /**
+   * The maximum number of bulk processes to run in parallel. Also affects the
+   * number of parallel bulk inserts into Elasticsearch.
+   */
+  private int maxParallelInserts;
+  
   @Override
   public void start(Future<Void> startFuture) {
     // True if the indexer and other verticles should report their activities
     // to the Vert.x event bus (mostly useful for GeoRocket plug-ins)
     reportActivities = config().getBoolean("georocket.reportActivities", false);
+    
+    maxBulkSize = config().getInteger(ConfigConstants.INDEX_MAX_BULK_SIZE,
+        ConfigConstants.DEFAULT_INDEX_MAX_BULK_SIZE);
+    maxParallelInserts = config().getInteger(ConfigConstants.INDEX_MAX_PARALLEL_INSERTS,
+        ConfigConstants.DEFAULT_INDEX_MAX_PARALLEL_INSERTS);
     
     // load and copy all indexer factories now and not lazily to avoid
     // concurrent modifications to the service loader's internal cache
@@ -199,7 +213,7 @@ public class IndexerVerticle extends AbstractVerticle {
   private void registerAdd() {
     vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_ADD)
       .toObservable()
-      .buffer(BUFFER_TIMESPAN, TimeUnit.MILLISECONDS, MAX_ADD_REQUESTS)
+      .buffer(BUFFER_TIMESPAN, TimeUnit.MILLISECONDS, maxBulkSize)
       .onBackpressureBuffer() // unlimited buffer
       .flatMap(messages -> {
         return onAdd(messages)
@@ -210,7 +224,7 @@ public class IndexerVerticle extends AbstractVerticle {
             // ignore error
             return null;
           });
-      }, MAX_INSERT_REQUESTS)
+      }, maxParallelInserts)
       .subscribe(v -> {
         // ignore
       }, err -> {

@@ -40,6 +40,14 @@ georocket:
 
   # Index configuration
   index:
+    # The maximum number of chunks in insert in one bulk
+    maxBulkSize: 200
+
+    # The maximum number of bulk processes to run in parallel. Also affects the
+    # number of parallel bulk inserts into Elasticsearch.
+    maxParallelInserts: 5
+
+    # Configuration for the Elasticsearch client
     elasticsearch:
       embedded: true
       host: localhost
