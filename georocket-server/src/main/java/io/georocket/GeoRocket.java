@@ -279,6 +279,12 @@ public class GeoRocket extends AbstractVerticle {
       log.fatal("Failed to decode the GeoRocket (JSON) configuration", ex);
       System.exit(1);
     }
+    
+    boolean logConfig = options.getConfig().getBoolean(
+        ConfigConstants.LOG_CONFIG, false);
+    if (logConfig) {
+      log.info("Configuration:\n" + options.getConfig().encodePrettily());
+    }
 
     // deploy main verticle
     vertx.deployVerticle(GeoRocket.class.getName(), options, ar -> {
