@@ -2,7 +2,7 @@
 
 *GeoRocket is a high-performance data store for geospatial files.* It is schema
 agnostic and format preserving. This means it supports a wide range of
-geospatial formats and schemas. Any file you store in GeoRocket can be can be
+geospatial formats and schemas. Any file you store in GeoRocket can be
 completely restored later. No information is lost.
 
 GeoRocket is ready for the Cloud. It is event-driven and scalable. GeoRocket
