@@ -93,6 +93,14 @@ public class DefaultQueryCompilerTest {
   }
   
   /**
+   * Test query with key-value pair
+   */
+  @Test
+  public void eq() {
+    expectFixture("eq");
+  }
+  
+  /**
    * Test complex query
    */
   @Test

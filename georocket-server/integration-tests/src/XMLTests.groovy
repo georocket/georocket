@@ -107,6 +107,17 @@ class XMLTests extends StoreTests {
     }
 
     /**
+     * Search for a building by key-value pair. Check if GeoRocket really
+     * exports only one building and if it is the right one.
+     */
+    def testExportByKeyValue() {
+        def exportedContents = run("curl -sS -X GET http://${georocketHost}:63020/store/"
+            + "?search=" + URLEncoder.encode('EQ(TestBuildingName TestBuilding2)', 'UTF-8'),
+            null, true)
+        assertExportedBuilding(exportedContents, 'ID_146_D')
+    }
+
+    /**
      * Search for a building by gml:id. Check if GeoRocket really
      * exports only one building and if it is the right one.
      */

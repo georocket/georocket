@@ -1,0 +1,9 @@
+{
+  "query": "EQ(foo bar)",
+  "queryCompilers": ["io.georocket.index.xml.XMLGenericAttributeIndexerFactory"],
+  "expected": {
+    "term": {
+      "genAttrs.foo": "bar"
+    }
+  }
+}

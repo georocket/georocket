@@ -37,6 +37,15 @@ abstract class StoreTests {
     }
 
     /**
+     * Search for buildings by key-value pairs that do not exist
+     */
+    def testExportByKeyValueNone() {
+        def exportedContents = run("curl -sS -X GET http://${georocketHost}:63020/store/"
+            + "?search=" + URLEncoder.encode('EQ(foo bar)', 'UTF-8'), null, true)
+        assertEquals(exportedContents, "Not Found", "Response: $exportedContents")
+    }
+
+    /**
      * Search for a dummy string. Check if GeoRocket really returns no chunks.
      */
     def testExportNone() {

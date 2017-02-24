@@ -36,19 +36,53 @@ public interface QueryCompiler {
   }
   
   /**
-   * Get the priority with which the query returned by {@link #compileQuery(String)}
-   * should be applied for the given search string
+   * Get the priority with which the Elasticsearch query returned by
+   * {@link #compileQuery(String)} should be applied for the given search string
    * @param search the search string
    * @return the priority
    */
-  MatchPriority getQueryPriority(String search);
+  default MatchPriority getQueryPriority(String search) {
+    return MatchPriority.NONE;
+  }
+  
+  /**
+   * Get the priority with which the Elasticsearch query returned by
+   * {@link #compileQuery(QueryPart)} should be applied for the given
+   * GeoRocket query part
+   * @param queryPart the GeoRocket query part
+   * @return the priority
+   * @since 1.1.0
+   */
+  default MatchPriority getQueryPriority(QueryPart queryPart) {
+    if (queryPart instanceof StringQueryPart) {
+      return getQueryPriority(((StringQueryPart)queryPart).getSearchString());
+    }
+    return MatchPriority.NONE;
+  }
   
   /**
    * <p>Create an Elasticsearch query for the given search string.</p>
    * <p>Heads up: implementors may use the helper methods from
    * {@link ElasticsearchQueryHelper} to build the query.</p>
    * @param search the search string
-   * @return the query (may be null)
+   * @return the Elasticsearch query (may be null)
    */
-  JsonObject compileQuery(String search);
+  default JsonObject compileQuery(String search) {
+    return null;
+  }
+  
+  /**
+   * <p>Create an Elasticsearch query for the given GeoRocket query part.</p>
+   * <p>Heads up: implementors may use the helper methods from
+   * {@link ElasticsearchQueryHelper} to build the query.</p>
+   * @param queryPart the GeoRocket query part
+   * @return the Elasticsearch query (may be null)
+   * @since 1.1.0
+   */
+  default JsonObject compileQuery(QueryPart queryPart) {
+    if (queryPart instanceof StringQueryPart) {
+      return compileQuery(((StringQueryPart)queryPart).getSearchString());
+    }
+    return null;
+  }
 }

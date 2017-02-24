@@ -18,6 +18,8 @@ def runXMLTests(String georocketHost) {
     // chunks should have been indexed.
     xml.testExportByBoundingBox()
     xml.testExportByBoundingBoxNone()
+    xml.testExportByKeyValue()
+    xml.testExportByKeyValueNone()
     xml.testExportByGmlId()
     xml.testExportByGenericAttribute()
     xml.testExportNone()
@@ -44,6 +46,8 @@ def runGeoJsonTests(String georocketHost) {
     // chunks should have been indexed.
     json.testExportByBoundingBox()
     json.testExportByBoundingBoxNone()
+    json.testExportByKeyValue()
+    json.testExportByKeyValueNone()
     json.testExportByProperty()
     json.testExportNone()
 }

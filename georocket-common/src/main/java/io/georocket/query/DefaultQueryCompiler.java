@@ -21,6 +21,7 @@ import io.georocket.query.parser.QueryBaseListener;
 import io.georocket.query.parser.QueryLexer;
 import io.georocket.query.parser.QueryParser;
 import io.georocket.query.parser.QueryParser.AndContext;
+import io.georocket.query.parser.QueryParser.KeyvalueContext;
 import io.georocket.query.parser.QueryParser.NotContext;
 import io.georocket.query.parser.QueryParser.OrContext;
 import io.georocket.query.parser.QueryParser.QueryContext;
@@ -112,12 +113,12 @@ public class DefaultQueryCompiler implements QueryCompiler {
   }
   
   /**
-   * Handle a string part of a query. Pass it to all query compilers and return
+   * Handle a query part. Pass it to all query compilers and return
    * an Elasticsearch query
    * @param str a string part of a query
    * @return the Elasticsearch query
    */
-  protected JsonObject makeStringQuery(String str) {
+  protected JsonObject makeQuery(QueryPart str) {
     JsonObject bqb = boolQuery();
     for (QueryCompiler f : queryCompilers) {
       MatchPriority mp = f.getQueryPriority(str);
@@ -182,6 +183,12 @@ public class DefaultQueryCompiler implements QueryCompiler {
      */
     Deque<JsonObject> result = new ArrayDeque<>();
     
+    /**
+     * An object holding the current key-value pair (null if
+     * we are not parsing a key-value pair at the moment)
+     */
+    JsonObject currentKeyvalue = null;
+    
     QueryCompilerListener() {
       // at root level all terms a combined by logical OR
       currentLogical.push(Logical.OR);
@@ -240,10 +247,36 @@ public class DefaultQueryCompiler implements QueryCompiler {
     
     @Override
     public void enterString(StringContext ctx) {
-      JsonObject stringQuery = makeStringQuery(ctx.getText());
-      if (!combine(stringQuery)) {
-        result.push(stringQuery);
+      String str = ctx.getText();
+      if (currentKeyvalue != null) {
+        if (currentKeyvalue.containsKey("key")) {
+          currentKeyvalue.put("value", str);
+        } else {
+          currentKeyvalue.put("key", str);
+        }
+      } else {
+        StringQueryPart sqp = new StringQueryPart(str);
+        JsonObject q = makeQuery(sqp);
+        if (!combine(q)) {
+          result.push(q);
+        }
       }
+    }
+    
+    @Override
+    public void enterKeyvalue(KeyvalueContext ctx) {
+      currentKeyvalue = new JsonObject();
+    }
+    
+    @Override
+    public void exitKeyvalue(KeyvalueContext ctx) {
+      KeyValueQueryPart kvqp = new KeyValueQueryPart(
+        currentKeyvalue.getString("key"), currentKeyvalue.getString("value"));
+      JsonObject q = makeQuery(kvqp);
+      if (!combine(q)) {
+        result.push(q);
+      }
+      currentKeyvalue = null;
     }
     
     /**

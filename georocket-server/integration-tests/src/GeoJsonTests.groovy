@@ -120,4 +120,14 @@ class GeoJsonTests extends StoreTests {
             + "?search=Darmstadtium", null, true)
         assertExportedFeature(exportedContents, 'Darmstadtium')
     }
+
+    /**
+     * Search for a feature by key-value pair. Check if GeoRocket really
+     * exports only one feature and if it is the right one.
+     */
+    def testExportByKeyValue() {
+        def exportedContents = run("curl -sS -X GET http://${georocketHost}:63020/store/"
+            + "?search=" + URLEncoder.encode('EQ(name "Fraunhofer IGD")', 'UTF-8'), null, true)
+        assertExportedFeature(exportedContents, 'Fraunhofer IGD')
+    }
 }

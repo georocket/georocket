@@ -15,7 +15,8 @@ import org.apache.commons.io.IOUtils;
 import org.junit.Test;
 
 import io.georocket.query.parser.QueryParser.AndContext;
-import io.georocket.query.parser.QueryParser.ExprContext;
+import io.georocket.query.parser.QueryParser.EqContext;
+import io.georocket.query.parser.QueryParser.KeyvalueContext;
 import io.georocket.query.parser.QueryParser.NotContext;
 import io.georocket.query.parser.QueryParser.OrContext;
 import io.georocket.query.parser.QueryParser.QueryContext;
@@ -41,6 +42,8 @@ public class QueryParserTest {
     final static String OR = "or";
     final static String AND = "and";
     final static String NOT = "not";
+    final static String EQ = "eq";
+    final static String KEYVALUE = "keyvalue";
     final static String CHILDREN = "children";
     
     ToJsonTreeListener() {
@@ -68,13 +71,13 @@ public class QueryParserTest {
     }
     
     @Override
-    public void exitExpr(ExprContext ctx) {
-      tree.pop();
+    public void enterOr(OrContext ctx) {
+      push(OR);
     }
     
     @Override
-    public void enterOr(OrContext ctx) {
-      push(OR);
+    public void exitOr(OrContext ctx) {
+      tree.pop();
     }
     
     @Override
@@ -83,13 +86,48 @@ public class QueryParserTest {
     }
     
     @Override
+    public void exitAnd(AndContext ctx) {
+      tree.pop();
+    }
+    
+    @Override
     public void enterNot(NotContext ctx) {
       push(NOT);
     }
     
     @Override
+    public void exitNot(NotContext ctx) {
+      tree.pop();
+    }
+    
+    @Override
+    public void enterEq(EqContext ctx) {
+      push(EQ);
+    }
+    
+    @Override
+    public void exitEq(EqContext ctx) {
+      tree.pop();
+    }
+    
+    @Override
+    public void enterKeyvalue(KeyvalueContext ctx) {
+      push(KEYVALUE);
+    }
+    
+    @Override
+    public void exitKeyvalue(KeyvalueContext ctx) {
+      tree.pop();
+    }
+    
+    @Override
     public void enterString(StringContext ctx) {
       push(STRING, ctx.getText());
+    }
+    
+    @Override
+    public void exitString(StringContext ctx) {
+      tree.pop();
     }
   }
   
@@ -140,6 +178,14 @@ public class QueryParserTest {
   @Test
   public void strings() {
     expectFixture("strings");
+  }
+  
+  /**
+   * EQuals
+   */
+  @Test
+  public void eq() {
+    expectFixture("eq");
   }
   
   /**

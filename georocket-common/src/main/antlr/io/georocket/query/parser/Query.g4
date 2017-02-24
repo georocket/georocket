@@ -13,6 +13,7 @@ expr
   : or
   | and
   | not
+  | eq
   | string
   ;
 
@@ -26,6 +27,14 @@ and
 
 not
  : 'NOT' WS* '(' WS* query WS* ')'
+ ;
+
+eq
+ : 'EQ' WS* '(' WS* keyvalue WS* ')'
+ ;
+
+keyvalue
+ : string WS+ string
  ;
 
 string
