@@ -101,6 +101,32 @@ public final class ElasticsearchQueryHelper {
         .put("term", new JsonObject()
             .put(name, value));
   }
+
+  /**
+   * Create a term query to compare a field to a value using less than
+   * as comparator.
+   * @param name the field's name
+   * @param value the value to compare to
+   * @return the term query
+   */
+  public static JsonObject ltQuery(String name, Object value) {
+    return new JsonObject()
+      .put("range", new JsonObject()
+        .put(name, new JsonObject().put("lt", value)));
+  }
+
+  /**
+   * Create a term query to compare a field to a value using greater
+   * than as comparator.
+   * @param name the field's name
+   * @param value the value to compare to
+   * @return the term query
+   */
+  public static JsonObject gtQuery(String name, Object value) {
+    return new JsonObject()
+      .put("range", new JsonObject()
+        .put(name, new JsonObject().put("gt", value)));
+  }
   
   /**
    * Create a query that matches all documents
@@ -135,7 +161,7 @@ public final class ElasticsearchQueryHelper {
         .put("prefix", new JsonObject()
             .put(name, prefix));
   }
-  
+
   /**
    * Create a query that looks for documents matching a geo shape
    * @param name the field name containing the document's geo shape

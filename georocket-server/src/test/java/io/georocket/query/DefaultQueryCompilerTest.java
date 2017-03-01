@@ -93,11 +93,27 @@ public class DefaultQueryCompilerTest {
   }
   
   /**
-   * Test query with key-value pair
+   * Test query with key-value pair and comparator: equal
    */
   @Test
   public void eq() {
     expectFixture("eq");
+  }
+
+  /**
+   * Test query with key-value pair and comparator: greater than
+   */
+  @Test
+  public void gt() {
+    expectFixture("gt");
+  }
+
+  /**
+   * Test query with key-value pair and comparator: less than
+   */
+  @Test
+  public void lt() {
+    expectFixture("lt");
   }
   
   /**

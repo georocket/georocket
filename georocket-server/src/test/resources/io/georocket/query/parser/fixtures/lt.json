@@ -1,0 +1,19 @@
+{
+  "query": "LT(foo bar)",
+  "expected": {
+    "type": "query",
+    "children": [{
+      "type": "lt",
+      "children": [{
+        "type": "keyvalue",
+        "children": [{
+          "type": "string",
+          "text": "foo"
+        }, {
+          "type": "string",
+          "text": "bar"
+        }]
+      }]
+    }]
+  }
+}
