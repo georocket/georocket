@@ -556,6 +556,10 @@ public class IndexerVerticle extends AbstractVerticle {
         List<String> tags = tagsArr != null ? tagsArr.stream().flatMap(o -> o != null ?
                 Stream.of(o.toString()) : Stream.of()).collect(Collectors.toList()) : null;
 
+        // get properties
+        JsonObject propertiesObj = body.getJsonObject("properties");
+        Map<String, Object> properties = propertiesObj != null ? propertiesObj.getMap() : null;
+
         // get fallback CRS
         String fallbackCRSString = body.getString("fallbackCRSString");
 
@@ -567,7 +571,7 @@ public class IndexerVerticle extends AbstractVerticle {
 
         ChunkMeta chunkMeta = getMeta(meta);
         IndexMeta indexMeta = new IndexMeta(correlationId, filename, timestamp,
-            tags, fallbackCRSString);
+            tags, properties, fallbackCRSString);
 
         // open chunk and create IndexRequest
         return openChunkToDocument(path, chunkMeta, indexMeta)

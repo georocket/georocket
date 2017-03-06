@@ -2,7 +2,9 @@ package io.georocket.storage;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
+import com.google.common.collect.ImmutableMap;
 import org.bson.types.ObjectId;
 import org.junit.Rule;
 import org.junit.Test;
@@ -94,6 +96,11 @@ abstract public class StorageTest {
    * Test data: a sample tag list for an Store::add method
    */
   protected final static List<String> TAGS = Arrays.asList("a", "b", "c");
+
+  /**
+   * Test data: a sample property map for an Store::add method
+   */
+  protected final static Map<String, Object> PROPERTIES = ImmutableMap.of("k1", "v1", "k2", "v2", "k3", "v3");
 
   /**
    * Test data: a randomly generated id for all tests.
@@ -403,6 +410,7 @@ abstract public class StorageTest {
 
       context.assertEquals(META.toJsonObject(), index.getJsonObject("meta"));
       context.assertEquals(new JsonArray(TAGS), index.getJsonArray("tags"));
+      context.assertEquals(new JsonObject(PROPERTIES), index.getJsonObject("properties"));
       context.assertEquals(FALLBACK_CRS_STRING, index.getString("fallbackCRSString"));
 
       asyncIndexerAdd.complete();
@@ -418,7 +426,7 @@ abstract public class StorageTest {
       context.fail("Indexer should not be notified for a query event after"
           + "Store::add was called!"));
 
-    IndexMeta indexMeta = new IndexMeta(IMPORT_ID, ID, TIMESTAMP, TAGS, FALLBACK_CRS_STRING);
+    IndexMeta indexMeta = new IndexMeta(IMPORT_ID, ID, TIMESTAMP, TAGS, PROPERTIES, FALLBACK_CRS_STRING);
     store.add(CHUNK_CONTENT, META, path, indexMeta, context.asyncAssertSuccess(err -> {
       validateAfterStoreAdd(context, vertx, path, context.asyncAssertSuccess(v -> {
         asyncAdd.complete();

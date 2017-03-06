@@ -50,12 +50,17 @@ public abstract class IndexedStore implements Store {
             .put("filename", indexMeta.getFilename())
             .put("timestamp", indexMeta.getTimestamp());
 
-        if (indexMeta != null && indexMeta.getTags() != null) {
+        if (indexMeta.getTags() != null) {
           indexMsg.put("tags", new JsonArray(indexMeta.getTags()));
         }
-        if (indexMeta != null && indexMeta.getFallbackCRSString() != null) {
+        if (indexMeta.getFallbackCRSString() != null) {
           indexMsg.put("fallbackCRSString", indexMeta.getFallbackCRSString());
         }
+
+        if (indexMeta.getProperties() != null) {
+          indexMsg.put("properties", new JsonObject(indexMeta.getProperties()));
+        }
+
         vertx.eventBus().send(AddressConstants.INDEXER_ADD, indexMsg);
         
         // tell sender that writing was successful

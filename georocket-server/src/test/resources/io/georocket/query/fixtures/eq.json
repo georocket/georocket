@@ -2,8 +2,16 @@
   "query": "EQ(foo bar)",
   "queryCompilers": ["io.georocket.index.xml.XMLGenericAttributeIndexerFactory"],
   "expected": {
-    "term": {
-      "genAttrs.foo": "bar"
+    "bool" : {
+      "should" : [ {
+        "term" : {
+          "genAttrs.foo" : "bar"
+        }
+      }, {
+        "term" : {
+          "props.foo" : "bar"
+        }
+      } ]
     }
   }
 }

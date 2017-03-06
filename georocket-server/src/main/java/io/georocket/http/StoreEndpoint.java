@@ -6,9 +6,14 @@ import static io.georocket.util.ThrowableHelper.throwableToMessage;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
+import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.ParseException;
 import org.apache.http.entity.ContentType;
@@ -252,9 +257,19 @@ public class StoreEndpoint implements Endpoint {
 
     String layer = getStorePath(context);
     String tagsStr = request.getParam("tags");
+    String propertiesStr = request.getParam("props");
+
     List<String> tags = tagsStr != null ? Splitter.on(',')
         .trimResults().splitToList(tagsStr) : null;
-    
+
+    String regex = "(?<!" + Pattern.quote("\\") + ")" + Pattern.quote(":");
+    Map<String, Object> properties = new HashMap<>();
+    Stream.of(propertiesStr.split(","))
+      .map(String::trim)
+      .map(property -> property.split(regex))
+      .filter(parts -> parts.length == 2)
+      .forEach(property -> properties.put(StringEscapeUtils.unescapeJava(property[0].trim()), StringEscapeUtils.unescapeJava(property[1].trim())));
+
     // get temporary filename
     String incoming = storagePath + "/incoming";
     String filename = new ObjectId().toString();
@@ -329,6 +344,10 @@ public class StoreEndpoint implements Endpoint {
 
         if (tags != null) {
           msg.put("tags", new JsonArray(tags));
+        }
+
+        if (!properties.isEmpty()) {
+          msg.put("properties", new JsonObject(properties));
         }
 
         request.response()
