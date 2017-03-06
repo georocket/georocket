@@ -111,7 +111,7 @@ public class StoreClient {
     boolean hasTags = tags != null && !tags.isEmpty();
 
     if (hasTags) {
-      path += "?tags=" + String.join(",", tags);
+      path += "?tags=" + urlencode(String.join(",", tags));
     }
 
     if (properties != null && !properties.isEmpty()) {
