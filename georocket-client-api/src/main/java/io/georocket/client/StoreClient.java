@@ -429,6 +429,7 @@ public class StoreClient {
         "No search query and no layer given. "
         + "Do you really wish to update the tags of all chunks in the GeoRocket data store? If so, "
         + "provide an empty query and the root layer /.")));
+      return;
     }
 
     JsonObject body = new JsonObject()
