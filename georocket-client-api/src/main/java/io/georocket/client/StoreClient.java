@@ -286,7 +286,7 @@ public class StoreClient {
       handler.handle(Future.failedFuture(new IllegalArgumentException(
           "No search query and no layer given. "
           + "Do you really wish to export/query the whole data store? If so, "
-          + "provide an empty query and the root layer /.")));
+          + "set the root layer /.")));
       return;
     }
     String queryPath = prepareQuery(query, layer);
@@ -343,7 +343,7 @@ public class StoreClient {
       handler.handle(Future.failedFuture(new IllegalArgumentException(
           "No search query and no layer given. "
           + "Do you really wish to delete the whole data store? If so, "
-          + "provide an empty query and the root layer /.")));
+          + "set the root layer /.")));
       return;
     }
     String queryPath = prepareQuery(query, layer);
