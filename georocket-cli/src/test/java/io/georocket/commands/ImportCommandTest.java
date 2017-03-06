@@ -140,7 +140,7 @@ public class ImportCommandTest extends CommandTestBase<ImportCommand> {
    */
   @Test
   public void importTags(TestContext context) throws Exception {
-    String url = "/store?tags=hello,world";
+    String url = "/store?tags=hello%2Cworld";
     stubFor(post(urlEqualTo(url))
         .willReturn(aResponse()
             .withStatus(202)));
