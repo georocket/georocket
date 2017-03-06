@@ -156,7 +156,7 @@ public class StoreClientImportTest extends StoreClientTestBase {
    */
   @Test
   public void importTagsAndProperties(TestContext context) throws Exception {
-    String url = "/store?tags=testTag,testTag2&props=hello%3Awo%5C%3Arld%2Challo2%3Aworld2";
+    String url = "/store?tags=testTag%2CtestTag2&props=hello%3Awo%5C%3Arld%2Challo2%3Aworld2";
     stubFor(post(urlEqualTo(url))
         .willReturn(aResponse()
             .withStatus(202)));
