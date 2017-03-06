@@ -127,4 +127,47 @@ public class StoreClientImportTest extends StoreClientTestBase {
     }));
     w.end(Buffer.buffer(XML));
   }
+
+  /**
+   * Test importing properties
+   * @param context the test context
+   * @throws Exception if something goes wrong
+   */
+  @Test
+  public void importProperties(TestContext context) throws Exception {
+    String url = "/store?props=hello%3Aworld%2Ckey%3Avalue";
+    stubFor(post(urlEqualTo(url))
+        .willReturn(aResponse()
+            .withStatus(202)));
+
+    Async async = context.async();
+    WriteStream<Buffer> w = client.getStore().startImport(null, null,
+        Arrays.asList("hello:world", "key:value"), context.asyncAssertSuccess(v -> {
+      verifyPosted(url, XML, context);
+      async.complete();
+    }));
+    w.end(Buffer.buffer(XML));
+  }
+
+  /**
+   * Test importing tags and properties
+   * @param context the test context
+   * @throws Exception if something goes wrong
+   */
+  @Test
+  public void importTagsAndProperties(TestContext context) throws Exception {
+    String url = "/store?tags=testTag,testTag2&props=hello%3Awo%5C%3Arld%2Challo2%3Aworld2";
+    stubFor(post(urlEqualTo(url))
+        .willReturn(aResponse()
+            .withStatus(202)));
+
+    Async async = context.async();
+    WriteStream<Buffer> w = client.getStore().startImport(null,
+      Arrays.asList("testTag", "testTag2"), Arrays.asList("hello:wo\\:rld", "hallo2:world2"),
+    context.asyncAssertSuccess(v -> {
+      verifyPosted(url, XML, context);
+      async.complete();
+    }));
+    w.end(Buffer.buffer(XML));
+  }
 }

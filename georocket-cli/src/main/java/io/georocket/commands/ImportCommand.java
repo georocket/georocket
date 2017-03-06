@@ -14,6 +14,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.google.common.base.Splitter;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -49,6 +50,7 @@ import rx.Observable;
 public class ImportCommand extends AbstractGeoRocketCommand {
   protected List<String> patterns;
   protected List<String> tags;
+  protected List<String> properties;
   protected String layer;
   
   /**
@@ -74,6 +76,21 @@ public class ImportCommand extends AbstractGeoRocketCommand {
       this.tags = Stream.of(tags.split(","))
         .map(t -> t.trim())
         .collect(Collectors.toList());
+    }
+  }
+
+  /**
+   * Set the properties to attach to the imported file
+   * @param properties the properties
+   */
+  @OptionDesc(longName = "properties", shortName = "props",
+      description = "comma-separated list of properties (key:value) to attach to the file(s)",
+      argumentName = "PROPERTIES", argumentType = ArgumentType.STRING)
+  public void setProperties(String properties) {
+    if (properties == null || properties.isEmpty()) {
+      this.properties = null;
+    } else {
+      this.properties = Splitter.on(",").trimResults().splitToList(properties);
     }
   }
   
@@ -260,7 +277,7 @@ public class ImportCommand extends AbstractGeoRocketCommand {
         Handler<AsyncResult<Void>> handler = o.toHandler();
         AsyncFile file = (AsyncFile)f.getLeft().getDelegate();
 
-        WriteStream<Buffer> out = client.getStore().startImport(layer, tags,
+        WriteStream<Buffer> out = client.getStore().startImport(layer, tags, properties,
             Optional.of(f.getRight()), handler);
 
         AtomicBoolean fileClosed = new AtomicBoolean();
