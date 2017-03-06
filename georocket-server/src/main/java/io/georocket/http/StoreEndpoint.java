@@ -262,14 +262,16 @@ public class StoreEndpoint implements Endpoint {
     List<String> tags = tagsStr != null ? Splitter.on(',')
         .trimResults().splitToList(tagsStr) : null;
 
-    String regex = "(?<!" + Pattern.quote("\\") + ")" + Pattern.quote(":");
     Map<String, Object> properties = new HashMap<>();
-    Stream.of(propertiesStr.split(","))
-      .map(String::trim)
-      .map(property -> property.split(regex))
-      .filter(parts -> parts.length == 2)
-      .forEach(property -> properties.put(StringEscapeUtils.unescapeJava(property[0].trim()), StringEscapeUtils.unescapeJava(property[1].trim())));
 
+    if (propertiesStr != null && !propertiesStr.isEmpty()) {
+      String regex = "(?<!" + Pattern.quote("\\") + ")" + Pattern.quote(":");
+      Stream.of(propertiesStr.split(","))
+              .map(String::trim)
+              .map(property -> property.split(regex))
+              .filter(parts -> parts.length == 2)
+              .forEach(property -> properties.put(StringEscapeUtils.unescapeJava(property[0].trim()), StringEscapeUtils.unescapeJava(property[1].trim())));
+    }
     // get temporary filename
     String incoming = storagePath + "/incoming";
     String filename = new ObjectId().toString();
