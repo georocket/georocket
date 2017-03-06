@@ -407,12 +407,10 @@ public class StoreEndpoint implements Endpoint {
    */
   private static Single<JsonObject> bodyAsJsonObject(HttpServerRequest request) {
     return Single.create(singleSubscriber -> {
-      request.pause();
       Buffer buffer = Buffer.buffer();
       request.handler(buffer::appendBuffer);
       request.exceptionHandler(singleSubscriber::onError);
       request.endHandler(v -> singleSubscriber.onSuccess(new JsonObject(buffer.toString(StandardCharsets.UTF_8))));
-      request.resume();
     });
   }
 }
