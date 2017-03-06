@@ -56,15 +56,6 @@ public class DeleteCommand extends AbstractQueryCommand {
   }
   
   @Override
-  public boolean checkArguments() {
-    if ((query == null || query.isEmpty()) && (layer == null || layer.isEmpty())) {
-      error("no search query and no layer given; do you really wish to delete the whole data store?");
-      return false;
-    }
-    return super.checkArguments();
-  }
-
-  @Override
   public void doRun(String[] remainingArgs, InputReader in, PrintWriter out,
       Handler<Integer> handler) throws OptionParserException, IOException {
     GeoRocketClient client = createClient();

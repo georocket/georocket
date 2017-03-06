@@ -42,15 +42,6 @@ public class ExportCommand extends AbstractQueryCommand {
   public String getUsageDescription() {
     return "Export a layer or the whole data store";
   }
-  
-  @Override
-  public boolean checkArguments() {
-    if (layer == null || layer.isEmpty()) {
-      error("no layer given; do you really wish to export the whole data store?");
-      return false;
-    }
-    return super.checkArguments();
-  }
 
   @Override
   public void doRun(String[] remainingArgs, InputReader in, PrintWriter out, Handler<Integer> handler)

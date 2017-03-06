@@ -39,7 +39,7 @@ public class DeleteCommandTest extends CommandTestBase<DeleteCommand> {
       context.assertEquals(1, exitCode);
       async.complete();
     });
-    context.assertEquals(1, cmd.run(new String[] { }, in, out));
+    cmd.run(new String[] { }, in, out);
   }
   
   /**
@@ -54,7 +54,7 @@ public class DeleteCommandTest extends CommandTestBase<DeleteCommand> {
       context.assertEquals(1, exitCode);
       async.complete();
     });
-    context.assertEquals(1, cmd.run(new String[] { "" }, in, out));
+    cmd.run(new String[] { "" }, in, out);
   }
   
   /**
