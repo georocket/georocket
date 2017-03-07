@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -197,6 +198,7 @@ public class IndexerVerticle extends AbstractVerticle {
     registerAdd();
     registerDelete();
     registerQuery();
+    registerUpdate();
   }
 
   /**
@@ -246,6 +248,22 @@ public class IndexerVerticle extends AbstractVerticle {
           msg.reply(v);
         }, err -> {
           log.error("Could not delete document", err);
+          msg.fail(throwableToCode(err), err.getMessage());
+        });
+      });
+  }
+
+  /**
+   * Register consumer for update messages
+   */
+  private void registerUpdate() {
+    vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_UPDATE)
+      .toObservable()
+      .subscribe(msg -> {
+        onUpdate(msg.body()).subscribe(v -> {
+          msg.reply(v);
+        }, err -> {
+          log.error("Could not update document", err);
           msg.fail(throwableToCode(err), err.getMessage());
         });
       });
@@ -662,6 +680,82 @@ public class IndexerVerticle extends AbstractVerticle {
         onDeletingFinished(stopTimeStamp - startTimeStamp, paths.size(), null);
         return Observable.just(null);
       }
+    });
+  }
+
+  /**
+   * Remove or append tags to existing chunks in the index. The chunks are
+   * specified by a search query.
+   * @param body the message containing the query and tags to append or remove
+   * @return an observable that emits a single item when the chunks have
+   * been updated successfully
+   */
+  private Observable<Void> onUpdate(JsonObject body) {
+    String search = body.getString("search", "");
+    String path = body.getString("path", "");
+    JsonObject postFilter = queryCompiler.compileQuery(search, path);
+
+    String action = body.getString("action", "");
+    JsonArray tagsArr = body.getJsonArray("tags", new JsonArray());
+
+    if (tagsArr.isEmpty()) {
+      return Observable.error(new NoStackTraceThrowable(
+          "Missing tags to append or remove"));
+    }
+
+    List<String> tags = tagsArr.stream()
+        .map(object -> Objects.toString(object, ""))
+        .filter(entry -> !(entry.isEmpty()))
+        .distinct()
+        .collect(Collectors.toList());
+
+    String inline;
+
+    switch (action.trim().toLowerCase()) {
+      case "append" :
+        inline = "if (ctx._source.tags == null) {" +
+                  "ctx._source.tags = [];" +
+                "}" +
+                "for (int i = 0; i < params.tag.length; ++i) { " +
+                  "if (!ctx._source.tags.contains(params.tag[i])) { " +
+                    "ctx._source.tags.add(params.tag[i]); " +
+                  "} " +
+                "}";
+        break;
+      case "remove" :
+        inline = "if (ctx._source.tags != null) {" +
+                  "for (int i = 0; i < params.tag.length; ++i) { " +
+                    "def current = params.tag[i]; " +
+                    "for (int j = 0; j < ctx._source.tags.length; ++j) { " +
+                      "if (current == ctx._source.tags[j]) {" +
+                        "ctx._source.tags.remove(j);" +
+                      "}" +
+                    "}" +
+                  "} " +
+                  "if (ctx._source.tags.length == 0) {" +
+                    "ctx._source.remove(\"tags\");" +
+                  "}" +
+                "}";
+        break;
+      default:
+        return Observable.error(new NoStackTraceThrowable("Unknown update action"));
+    }
+
+    String lang = "painless";
+    JsonObject params = new JsonObject()
+        .put("tag", new JsonArray(tags));
+    JsonObject updateScript = new JsonObject()
+        .put("inline", inline)
+        .put("lang", lang)
+        .put("params", params);
+
+    return client.updateByQuery(TYPE_NAME, postFilter, updateScript).flatMap(sr -> {
+      boolean timed_out = sr.getBoolean("timed_out", true);
+      if (!timed_out) {
+        return Observable.just(null);
+      }
+      return Observable.error(new NoStackTraceThrowable(
+          "One or more tags could not be updated"));
     });
   }
 }

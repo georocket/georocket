@@ -157,6 +157,22 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
         return Observable.just(l);
       });
   }
+
+  @Override
+  public Observable<JsonObject> updateByQuery(String type, JsonObject postFilter,
+      JsonObject script) {
+    String uri = "/" + index + "/" + type + "/_update_by_query";
+
+    JsonObject source = new JsonObject();
+    if (postFilter != null) {
+      source.put("post_filter", postFilter);
+    }
+    if (script != null) {
+      source.put("script", script);
+    }
+
+    return performRequestRetry(HttpMethod.POST, uri, source.encode());
+  }
   
   @Override
   public Observable<JsonObject> bulkDelete(String type, JsonArray ids) {

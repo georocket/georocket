@@ -21,10 +21,12 @@ import de.undercouch.underline.OptionParserException;
 import de.undercouch.underline.StandardInputReader;
 import io.georocket.client.GeoRocketClient;
 import io.georocket.commands.AbstractGeoRocketCommand;
+import io.georocket.commands.AppendTagCommand;
 import io.georocket.commands.DeleteCommand;
 import io.georocket.commands.ExportCommand;
 import io.georocket.commands.HelpCommand;
 import io.georocket.commands.ImportCommand;
+import io.georocket.commands.RemoveTagCommand;
 import io.georocket.commands.SearchCommand;
 import io.georocket.util.JsonUtils;
 import io.vertx.core.Handler;
@@ -182,6 +184,12 @@ public class GeoRocketCli extends AbstractGeoRocketCommand {
     @CommandDesc(longName = "export",
         description = "export from GeoRocket",
         command = ExportCommand.class),
+    @CommandDesc(longName = "appendTag",
+            description = "append tags to existing chunks in GeoRocket",
+            command = AppendTagCommand.class),
+    @CommandDesc(longName = "removeTag",
+            description = "remove tags from existing chunks in GeoRocket",
+            command = RemoveTagCommand.class),
     @CommandDesc(longName = "search",
         description = "search the GeoRocket data store",
         command = SearchCommand.class),

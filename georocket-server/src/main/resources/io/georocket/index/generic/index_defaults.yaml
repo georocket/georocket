@@ -35,9 +35,5 @@ properties:
       parentName: *keyword_no_index
       type: *keyword_no_index
 
-# Do not save the original indexed document to save space. only include metadata!
-# See https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-source-field.html
-# for the drawbacks of this approach!
-_source:
-  includes:
-  - chunkMeta
+# All fields are part of _source as recommended by:
+# https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-source-field.html

@@ -145,6 +145,17 @@ public interface ElasticsearchClient {
   Observable<Long> count(String type, JsonObject query);
 
   /**
+   * Perform an update operation. The update script is applied to all
+   * documents that match the post filter.
+   * @param type the type of the documents to update
+   * @param postFilter a filter to apply (may be <code>null</code>)
+   * @param script the update script to apply
+   * @return an object containing the search result as returned from Elasticsearch
+   */
+  Observable<JsonObject> updateByQuery(String type, JsonObject postFilter,
+    JsonObject script);
+
+  /**
    * Delete a number of documents in one bulk request
    * @param type the type of the documents to delete
    * @param ids the IDs of the documents to delete

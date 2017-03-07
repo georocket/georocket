@@ -63,6 +63,12 @@ public class EmbeddedElasticsearchClient implements ElasticsearchClient {
   }
 
   @Override
+  public Observable<JsonObject> updateByQuery(String type, JsonObject postFilter,
+      JsonObject script) {
+    return delegate.updateByQuery(type, postFilter, script);
+  }
+
+  @Override
   public Observable<JsonObject> bulkDelete(String type, JsonArray ids) {
     return delegate.bulkDelete(type, ids);
   }
