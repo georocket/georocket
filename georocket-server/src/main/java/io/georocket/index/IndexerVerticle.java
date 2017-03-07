@@ -699,14 +699,15 @@ public class IndexerVerticle extends AbstractVerticle {
     JsonArray tagsArr = body.getJsonArray("tags", new JsonArray());
 
     if (tagsArr.isEmpty()) {
-      return Observable.error(new NoStackTraceThrowable("Missing tags to append or remove"));
+      return Observable.error(new NoStackTraceThrowable(
+          "Missing tags to append or remove"));
     }
 
     List<String> tags = tagsArr.stream()
-            .map(object -> Objects.toString(object, ""))
-            .filter(entry -> !(entry.isEmpty()))
-            .distinct()
-            .collect(Collectors.toList());
+        .map(object -> Objects.toString(object, ""))
+        .filter(entry -> !(entry.isEmpty()))
+        .distinct()
+        .collect(Collectors.toList());
 
     String inline;
 
@@ -741,17 +742,20 @@ public class IndexerVerticle extends AbstractVerticle {
     }
 
     String lang = "painless";
-    JsonObject params = new JsonObject().put("tag", new JsonArray(tags));
-    JsonObject updateScript = new JsonObject().put("inline", inline).put("lang", lang).put("params", params);
+    JsonObject params = new JsonObject()
+        .put("tag", new JsonArray(tags));
+    JsonObject updateScript = new JsonObject()
+        .put("inline", inline)
+        .put("lang", lang)
+        .put("params", params);
 
     return client.updateByQuery(TYPE_NAME, postFilter, updateScript).flatMap(sr -> {
-
       boolean timed_out = sr.getBoolean("timed_out", true);
       if (!timed_out) {
         return Observable.just(null);
       }
       return Observable.error(new NoStackTraceThrowable(
-              "One or more tags could not be updated"));
+          "One or more tags could not be updated"));
     });
   }
 }

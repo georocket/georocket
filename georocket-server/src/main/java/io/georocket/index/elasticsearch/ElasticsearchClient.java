@@ -152,7 +152,8 @@ public interface ElasticsearchClient {
    * @param script the update script to apply
    * @return an object containing the search result as returned from Elasticsearch
    */
-  Observable<JsonObject> updateByQuery(String type, JsonObject postFilter, JsonObject script);
+  Observable<JsonObject> updateByQuery(String type, JsonObject postFilter,
+    JsonObject script);
 
   /**
    * Delete a number of documents in one bulk request

@@ -1,5 +1,11 @@
 package io.georocket.commands;
 
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 import de.undercouch.underline.InputReader;
 import de.undercouch.underline.Option.ArgumentType;
 import de.undercouch.underline.OptionDesc;
@@ -10,12 +16,6 @@ import io.vertx.core.Handler;
 import io.vertx.core.impl.NoStackTraceThrowable;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Append tags to existing chunks in the GeoRocket data store
@@ -42,8 +42,8 @@ public class AppendTagCommand extends AbstractQueryCommand {
    * @param layer the layer
    */
   @OptionDesc(longName = "layer", shortName = "l",
-          description = "absolute path to the layer from which to append tags",
-          argumentName = "PATH", argumentType = ArgumentType.STRING)
+      description = "absolute path to the layer from which to append tags",
+      argumentName = "PATH", argumentType = ArgumentType.STRING)
   public void setLayer(String layer) {
     this.layer = layer;
   }
@@ -53,15 +53,15 @@ public class AppendTagCommand extends AbstractQueryCommand {
    * @param tags the tags
    */
   @OptionDesc(longName = "tags", shortName = "t",
-          description = "comma-separated list of tags to append to the chunks",
-          argumentName = "TAGS", argumentType = ArgumentType.STRING)
+      description = "comma-separated list of tags to append to the chunks",
+      argumentName = "TAGS", argumentType = ArgumentType.STRING)
   public void setTags(String tags) {
     if (tags == null || tags.isEmpty()) {
       this.tags = null;
     } else {
       this.tags = Stream.of(tags.split(","))
-                .map(String::trim)
-                .collect(Collectors.toList());
+          .map(String::trim)
+          .collect(Collectors.toList());
     }
   }
 
@@ -86,7 +86,7 @@ public class AppendTagCommand extends AbstractQueryCommand {
 
   @Override
   public void doRun(String[] remainingArgs, InputReader in, PrintWriter out,
-                    Handler<Integer> handler) throws OptionParserException, IOException {
+      Handler<Integer> handler) throws OptionParserException, IOException {
     GeoRocketClient client = createClient();
     client.getStore().appendTags(query, layer, tags, ar -> {
       if (ar.failed()) {

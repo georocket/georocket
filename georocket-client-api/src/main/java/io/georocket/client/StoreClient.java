@@ -27,7 +27,6 @@ import io.vertx.core.streams.WriteStream;
  * @author Michel Kraemer
  */
 public class StoreClient {
-
   /**
    * Actions to update tags of existing chunks in the data store.
    */
@@ -382,7 +381,8 @@ public class StoreClient {
    * @param handler a handler that will be called when the operation has
    * finished
    */
-  public void appendTags(String query, String layer, List<String> tags, Handler<AsyncResult<Void>> handler) {
+  public void appendTags(String query, String layer, List<String> tags,
+      Handler<AsyncResult<Void>> handler) {
     updateTags(UpdateTagsAction.APPEND, query, layer, tags, handler);
   }
 
@@ -401,7 +401,8 @@ public class StoreClient {
    * @param handler a handler that will be called when the operation has
    * finished
    */
-  public void removeTags(String query, String layer, List<String> tags, Handler<AsyncResult<Void>> handler) {
+  public void removeTags(String query, String layer, List<String> tags,
+      Handler<AsyncResult<Void>> handler) {
     updateTags(UpdateTagsAction.REMOVE, query, layer, tags, handler);
   }
 
@@ -422,13 +423,13 @@ public class StoreClient {
    * @param handler a handler that will be called when the operation has
    * finished
    */
-  private void updateTags(UpdateTagsAction action, String query, String layer, List<String> tags, Handler<AsyncResult<Void>> handler) {
-
+  private void updateTags(UpdateTagsAction action, String query, String layer,
+      List<String> tags, Handler<AsyncResult<Void>> handler) {
     if ((query == null || query.isEmpty()) && (layer == null || layer.isEmpty())) {
       handler.handle(Future.failedFuture(new IllegalArgumentException(
         "No search query and no layer given. "
-        + "Do you really wish to update the tags of all chunks in the GeoRocket data store? If so, "
-        + "provide an empty query and the root layer /.")));
+        + "Do you really wish to update the tags of all chunks in the GeoRocket "
+        + "data store? If so, provide an empty query and the root layer /.")));
       return;
     }
 

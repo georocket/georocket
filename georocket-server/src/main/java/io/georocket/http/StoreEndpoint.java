@@ -387,14 +387,14 @@ public class StoreEndpoint implements Endpoint {
     String search = request.getParam("search");
 
     bodyAsJsonObject(request).subscribe(body -> {
-
       body.put("path", path);
       body.put("search", search);
       vertx.eventBus().<JsonObject>send(AddressConstants.INDEXER_UPDATE, body, msg -> {
         if (msg.succeeded()) {
           response.setStatusCode(204).end();
         } else {
-          response.setStatusCode(throwableToCode(msg.cause())).end(throwableToMessage(msg.cause(), ""));
+          response.setStatusCode(throwableToCode(msg.cause()))
+            .end(throwableToMessage(msg.cause(), ""));
         }
       });
     }, err -> response.setStatusCode(500).end("Could not process request"));
@@ -410,7 +410,8 @@ public class StoreEndpoint implements Endpoint {
       Buffer buffer = Buffer.buffer();
       request.handler(buffer::appendBuffer);
       request.exceptionHandler(singleSubscriber::onError);
-      request.endHandler(v -> singleSubscriber.onSuccess(new JsonObject(buffer.toString(StandardCharsets.UTF_8))));
+      request.endHandler(v -> singleSubscriber.onSuccess(
+          new JsonObject(buffer.toString(StandardCharsets.UTF_8))));
     });
   }
 }

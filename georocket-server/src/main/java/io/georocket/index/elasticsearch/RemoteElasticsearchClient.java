@@ -159,7 +159,8 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
   }
 
   @Override
-  public Observable<JsonObject> updateByQuery(String type, JsonObject postFilter, JsonObject script) {
+  public Observable<JsonObject> updateByQuery(String type, JsonObject postFilter,
+      JsonObject script) {
     String uri = "/" + index + "/" + type + "/_update_by_query";
 
     JsonObject source = new JsonObject();

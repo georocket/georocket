@@ -63,7 +63,8 @@ public class EmbeddedElasticsearchClient implements ElasticsearchClient {
   }
 
   @Override
-  public Observable<JsonObject> updateByQuery(String type, JsonObject postFilter, JsonObject script) {
+  public Observable<JsonObject> updateByQuery(String type, JsonObject postFilter,
+      JsonObject script) {
     return delegate.updateByQuery(type, postFilter, script);
   }
 
