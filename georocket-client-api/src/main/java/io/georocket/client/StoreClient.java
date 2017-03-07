@@ -3,6 +3,7 @@ package io.georocket.client;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.Collection;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -14,6 +15,9 @@ import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientRequest;
+import io.vertx.core.http.HttpMethod;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 import io.vertx.core.streams.ReadStream;
 import io.vertx.core.streams.WriteStream;
 
@@ -23,6 +27,14 @@ import io.vertx.core.streams.WriteStream;
  * @author Michel Kraemer
  */
 public class StoreClient {
+
+  /**
+   * Actions to update tags of existing chunks in the data store.
+   */
+  private enum UpdateTagsAction {
+    REMOVE, APPEND
+  }
+
   /**
    * HTTP client used to connect to GeoRocket
    */
@@ -353,6 +365,89 @@ public class StoreClient {
       }
     });
     configureRequest(request).end();
+  }
+
+  /**
+   * <p>Append tags to chunks in the GeoRocket data store.</p>
+   * <p>The chunks are either specified by a <code>query</code> or
+   * <code>layer</code> information or both. If none is given, the given
+   * tags will be appended to all chunks in the data store.</p>
+   * @param query a search query specifying the chunks, whose tags should
+   * be updated (or <code>null</code> if the tags of all chunks in all
+   * sub-layers from the given <code>layer</code> should be updated)
+   * @param layer the absolute path to the layer from which to update tags
+   * (or <code>null</code> if the entire store should be queried to find
+   * the chunks, whose tags should be updated)
+   * @param tags a collection of tags to be removed from the queried chunks
+   * @param handler a handler that will be called when the operation has
+   * finished
+   */
+  public void appendTags(String query, String layer, List<String> tags, Handler<AsyncResult<Void>> handler) {
+    updateTags(UpdateTagsAction.APPEND, query, layer, tags, handler);
+  }
+
+  /**
+   * <p>Remove tags from chunks in the GeoRocket data store.</p>
+   * <p>The chunks are either specified by a <code>query</code> or
+   * <code>layer</code> information or both. If none is given, the given
+   * tags will be removed from all chunks in the data store.</p>
+   * @param query a search query specifying the chunks, whose tags should
+   * be updated (or <code>null</code> if the tags of all chunks in all
+   * sub-layers from the given <code>layer</code> should be updated)
+   * @param layer the absolute path to the layer from which to update tags
+   * (or <code>null</code> if the entire store should be queried to find
+   * the chunks, whose tags should be updated)
+   * @param tags a collection of tags to be removed from the queried chunks
+   * @param handler a handler that will be called when the operation has
+   * finished
+   */
+  public void removeTags(String query, String layer, List<String> tags, Handler<AsyncResult<Void>> handler) {
+    updateTags(UpdateTagsAction.REMOVE, query, layer, tags, handler);
+  }
+
+  /**
+   * <p>Update tags of chunks in the GeoRocket data store.</p>
+   * <p>The chunks are either specified by a <code>query</code> or
+   * <code>layer</code> information or both. If none is given, the tags
+   * of all chunks in the data store will be updated.</p>
+   * <p>Tags can either be removed or appended from/to existing chunks</p>
+   * @param action indicating whether tags are removed or append from/to the queried chunks
+   * @param query a search query specifying the chunks, whose tags should
+   * be updated (or <code>null</code> if the tags of all chunks in all
+   * sub-layers from the given <code>layer</code> should be updated)
+   * @param layer the absolute path to the layer from which to update tags
+   * (or <code>null</code> if the entire store should be queried to find
+   * the chunks, whose tags should be updated)
+   * @param tags a collection of tags to update within the GeoRocket data store
+   * @param handler a handler that will be called when the operation has
+   * finished
+   */
+  private void updateTags(UpdateTagsAction action, String query, String layer, List<String> tags, Handler<AsyncResult<Void>> handler) {
+
+    if ((query == null || query.isEmpty()) && (layer == null || layer.isEmpty())) {
+      handler.handle(Future.failedFuture(new IllegalArgumentException(
+        "No search query and no layer given. "
+        + "Do you really wish to update the tags of all chunks in the GeoRocket data store? If so, "
+        + "provide an empty query and the root layer /.")));
+      return;
+    }
+
+    JsonObject body = new JsonObject()
+      .put("action", action.toString())
+      .put("tags", new JsonArray(tags));
+
+    String queryPath = prepareQuery(query, layer);
+    HttpClientRequest request = client.request(HttpMethod.PATCH, getEndpoint() + queryPath);
+
+    request.exceptionHandler(t -> handler.handle(Future.failedFuture(t)));
+    request.handler(response -> {
+      if (response.statusCode() != 204) {
+        handler.handle(Future.failedFuture(response.statusMessage()));
+      } else {
+        response.endHandler(v -> handler.handle(Future.succeededFuture()));
+      }
+    });
+    configureRequest(request).end(body.encode());
   }
 
   /**
