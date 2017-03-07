@@ -6,6 +6,7 @@ import java.util.NoSuchElementException;
 
 import io.georocket.client.GeoRocketClient;
 import io.vertx.core.Handler;
+import io.vertx.core.impl.NoStackTraceThrowable;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
@@ -31,7 +32,8 @@ public abstract class AbstractQueryCommand extends AbstractGeoRocketCommand {
     client.getStore().search(query, layer, ar -> {
       if (ar.failed()) {
         error(ar.cause().getMessage());
-        if (!(ar.cause() instanceof NoSuchElementException)) {
+        if (!(ar.cause() instanceof NoSuchElementException)
+            && !(ar.cause() instanceof NoStackTraceThrowable)) {
           log.error("Could not query store", ar.cause());
         }
         handler.handle(1);

@@ -283,10 +283,9 @@ public class StoreClient {
   public void search(String query, String layer,
       Handler<AsyncResult<ReadStream<Buffer>>> handler) {
     if ((query == null || query.isEmpty()) && (layer == null || layer.isEmpty())) {
-      handler.handle(Future.failedFuture(new IllegalArgumentException(
-          "No search query and no layer given. "
+      handler.handle(Future.failedFuture("No search query and no layer given. "
           + "Do you really wish to export/query the whole data store? If so, "
-          + "set the root layer /.")));
+          + "set the root layer /."));
       return;
     }
     String queryPath = prepareQuery(query, layer);
@@ -340,10 +339,9 @@ public class StoreClient {
    */
   public void delete(String query, String layer, Handler<AsyncResult<Void>> handler) {
     if ((query == null || query.isEmpty()) && (layer == null || layer.isEmpty())) {
-      handler.handle(Future.failedFuture(new IllegalArgumentException(
-          "No search query and no layer given. "
+      handler.handle(Future.failedFuture("No search query and no layer given. "
           + "Do you really wish to delete the whole data store? If so, "
-          + "set the root layer /.")));
+          + "set the root layer /."));
       return;
     }
     String queryPath = prepareQuery(query, layer);
