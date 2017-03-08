@@ -6,6 +6,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
 import io.georocket.index.IndexerFactory;
+import io.georocket.query.Comparator;
 import io.georocket.query.ElasticsearchQueryHelper;
 import io.georocket.query.KeyValueQueryPart;
 import io.georocket.query.QueryPart;
@@ -50,7 +51,13 @@ public abstract class GenericAttributeIndexerFactory implements IndexerFactory {
       KeyValueQueryPart kvqp = (KeyValueQueryPart)queryPart;
       String key = kvqp.getKey();
       String value = kvqp.getValue();
-      return ElasticsearchQueryHelper.termQuery("genAttrs." + key, value);
+      Comparator comp = kvqp.getComparator();
+
+      switch (comp) {
+        case EQ: return ElasticsearchQueryHelper.termQuery("genAttrs." + key, value);
+        case GT: return ElasticsearchQueryHelper.gtQuery("genAttrs." + key, value);
+        case LT: return ElasticsearchQueryHelper.ltQuery("genAttrs." + key, value);
+      }
     }
     return null;
   }

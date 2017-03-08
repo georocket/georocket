@@ -21,7 +21,10 @@ import io.georocket.query.parser.QueryBaseListener;
 import io.georocket.query.parser.QueryLexer;
 import io.georocket.query.parser.QueryParser;
 import io.georocket.query.parser.QueryParser.AndContext;
+import io.georocket.query.parser.QueryParser.EqContext;
+import io.georocket.query.parser.QueryParser.GtContext;
 import io.georocket.query.parser.QueryParser.KeyvalueContext;
+import io.georocket.query.parser.QueryParser.LtContext;
 import io.georocket.query.parser.QueryParser.NotContext;
 import io.georocket.query.parser.QueryParser.OrContext;
 import io.georocket.query.parser.QueryParser.QueryContext;
@@ -184,8 +187,8 @@ public class DefaultQueryCompiler implements QueryCompiler {
     Deque<JsonObject> result = new ArrayDeque<>();
     
     /**
-     * An object holding the current key-value pair (null if
-     * we are not parsing a key-value pair at the moment)
+     * An object holding the current key-value pair and its comparator
+     * (null if we are not parsing a key-value pair at the moment)
      */
     JsonObject currentKeyvalue = null;
     
@@ -262,16 +265,31 @@ public class DefaultQueryCompiler implements QueryCompiler {
         }
       }
     }
-    
+
     @Override
-    public void enterKeyvalue(KeyvalueContext ctx) {
+    public void enterLt(LtContext ctx) {
       currentKeyvalue = new JsonObject();
+      currentKeyvalue.put("comp", Comparator.LT.name());
     }
-    
+
+    @Override
+    public void enterGt(GtContext ctx) {
+      currentKeyvalue = new JsonObject();
+      currentKeyvalue.put("comp", Comparator.GT.name());
+    }
+
+    @Override
+    public void enterEq(EqContext ctx) {
+      currentKeyvalue = new JsonObject();
+      currentKeyvalue.put("comp", Comparator.EQ.name());
+    }
+
     @Override
     public void exitKeyvalue(KeyvalueContext ctx) {
       KeyValueQueryPart kvqp = new KeyValueQueryPart(
-        currentKeyvalue.getString("key"), currentKeyvalue.getString("value"));
+        currentKeyvalue.getString("key"),
+        currentKeyvalue.getString("value"),
+        Comparator.valueOf(currentKeyvalue.getString("comp")));
       JsonObject q = makeQuery(kvqp);
       if (!combine(q)) {
         result.push(q);
