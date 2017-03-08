@@ -7,6 +7,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 
+import io.vertx.core.impl.NoStackTraceThrowable;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -43,7 +44,7 @@ public class StoreClientDeleteTest extends StoreClientTestBase {
   public void noLayer(TestContext context) {
     Async async = context.async();
     client.getStore().delete(null, null, context.asyncAssertFailure(t -> {
-      context.assertTrue(t instanceof IllegalArgumentException);
+      context.assertTrue(t instanceof NoStackTraceThrowable);
       async.complete();
     }));
   }
@@ -56,7 +57,7 @@ public class StoreClientDeleteTest extends StoreClientTestBase {
   public void emptyQuery(TestContext context) {
     Async async = context.async();
     client.getStore().delete("", null, context.asyncAssertFailure(t -> {
-      context.assertTrue(t instanceof IllegalArgumentException);
+      context.assertTrue(t instanceof NoStackTraceThrowable);
       async.complete();
     }));
   }
