@@ -483,6 +483,7 @@ public class StoreClient {
    * @param tags a collection of tags to be removed from the queried chunks
    * @param handler a handler that will be called when the operation has
    * finished
+   * @since 1.1.0
    */
   public void appendTags(String query, String layer, List<String> tags,
       Handler<AsyncResult<Void>> handler) {
@@ -503,6 +504,7 @@ public class StoreClient {
    * @param tags a collection of tags to be removed from the queried chunks
    * @param handler a handler that will be called when the operation has
    * finished
+   * @since 1.1.0
    */
   public void removeTags(String query, String layer, List<String> tags,
       Handler<AsyncResult<Void>> handler) {
@@ -525,6 +527,7 @@ public class StoreClient {
    * @param tags a collection of tags to update within the GeoRocket data store
    * @param handler a handler that will be called when the operation has
    * finished
+   * @since 1.1.0
    */
   private void updateTags(UpdateTagsAction action, String query, String layer,
       List<String> tags, Handler<AsyncResult<Void>> handler) {
