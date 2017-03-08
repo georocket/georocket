@@ -17,14 +17,17 @@ import org.antlr.v4.runtime.ANTLRInputStream;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 
+import io.georocket.query.KeyValueQueryPart.ComparisonOperator;
 import io.georocket.query.parser.QueryBaseListener;
 import io.georocket.query.parser.QueryLexer;
 import io.georocket.query.parser.QueryParser;
 import io.georocket.query.parser.QueryParser.AndContext;
 import io.georocket.query.parser.QueryParser.EqContext;
 import io.georocket.query.parser.QueryParser.GtContext;
+import io.georocket.query.parser.QueryParser.GteContext;
 import io.georocket.query.parser.QueryParser.KeyvalueContext;
 import io.georocket.query.parser.QueryParser.LtContext;
+import io.georocket.query.parser.QueryParser.LteContext;
 import io.georocket.query.parser.QueryParser.NotContext;
 import io.georocket.query.parser.QueryParser.OrContext;
 import io.georocket.query.parser.QueryParser.QueryContext;
@@ -269,19 +272,31 @@ public class DefaultQueryCompiler implements QueryCompiler {
     @Override
     public void enterLt(LtContext ctx) {
       currentKeyvalue = new JsonObject();
-      currentKeyvalue.put("comp", Comparator.LT.name());
+      currentKeyvalue.put("comp", ComparisonOperator.LT.name());
+    }
+
+    @Override
+    public void enterLte(LteContext ctx) {
+      currentKeyvalue = new JsonObject();
+      currentKeyvalue.put("comp", ComparisonOperator.LTE.name());
     }
 
     @Override
     public void enterGt(GtContext ctx) {
       currentKeyvalue = new JsonObject();
-      currentKeyvalue.put("comp", Comparator.GT.name());
+      currentKeyvalue.put("comp", ComparisonOperator.GT.name());
+    }
+
+    @Override
+    public void enterGte(GteContext ctx) {
+      currentKeyvalue = new JsonObject();
+      currentKeyvalue.put("comp", ComparisonOperator.GTE.name());
     }
 
     @Override
     public void enterEq(EqContext ctx) {
       currentKeyvalue = new JsonObject();
-      currentKeyvalue.put("comp", Comparator.EQ.name());
+      currentKeyvalue.put("comp", ComparisonOperator.EQ.name());
     }
 
     @Override
@@ -289,7 +304,7 @@ public class DefaultQueryCompiler implements QueryCompiler {
       KeyValueQueryPart kvqp = new KeyValueQueryPart(
         currentKeyvalue.getString("key"),
         currentKeyvalue.getString("value"),
-        Comparator.valueOf(currentKeyvalue.getString("comp")));
+        ComparisonOperator.valueOf(currentKeyvalue.getString("comp")));
       JsonObject q = makeQuery(kvqp);
       if (!combine(q)) {
         result.push(q);

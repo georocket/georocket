@@ -6,10 +6,41 @@ package io.georocket.query;
  * @since 1.1.0
  */
 public class KeyValueQueryPart implements QueryPart {
+  /**
+   * Specifies how two key-value pairs should be compared to each other
+   */
+  public enum ComparisonOperator {
+    /**
+     * The values must equal
+     */
+    EQ,
+
+    /**
+     * The value of this key-value pair must be greater than the other one
+     */
+    GT,
+
+    /**
+     * The value of this key-value pair must be greater than or equal to the
+     * other one
+     */
+    GTE,
+
+    /**
+     * The value of this key-value pair must be less than the other one
+     */
+    LT,
+
+    /**
+     * The value of this key-value pair must be less than or equal to the
+     * other one
+     */
+    LTE
+  }
 
   private final String key;
   private final String value;
-  private final Comparator comparator;
+  private final ComparisonOperator comparator;
 
   /**
    * Creates a new query part
@@ -17,7 +48,8 @@ public class KeyValueQueryPart implements QueryPart {
    * @param value the value to compare to
    * @param comparator the used comparator
    */
-  public KeyValueQueryPart(String key, String value, Comparator comparator) {
+  public KeyValueQueryPart(String key, String value,
+      ComparisonOperator comparator) {
     this.key = key;
     this.value = value;
     this.comparator = comparator;
@@ -40,10 +72,10 @@ public class KeyValueQueryPart implements QueryPart {
   }
 
   /**
-   * Get the comparator
-   * @return the comparator
+   * Get the comparison operator
+   * @return the operator
    */
-  public Comparator getComparator() {
+  public ComparisonOperator getComparisonOperator() {
     return comparator;
   }
 }

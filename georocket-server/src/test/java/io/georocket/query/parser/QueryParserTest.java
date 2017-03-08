@@ -17,8 +17,10 @@ import org.junit.Test;
 import io.georocket.query.parser.QueryParser.AndContext;
 import io.georocket.query.parser.QueryParser.EqContext;
 import io.georocket.query.parser.QueryParser.GtContext;
+import io.georocket.query.parser.QueryParser.GteContext;
 import io.georocket.query.parser.QueryParser.KeyvalueContext;
 import io.georocket.query.parser.QueryParser.LtContext;
+import io.georocket.query.parser.QueryParser.LteContext;
 import io.georocket.query.parser.QueryParser.NotContext;
 import io.georocket.query.parser.QueryParser.OrContext;
 import io.georocket.query.parser.QueryParser.QueryContext;
@@ -46,7 +48,9 @@ public class QueryParserTest {
     final static String NOT = "not";
     final static String EQ = "eq";
     final static String LT = "lt";
+    final static String LTE = "lte";
     final static String GT = "gt";
+    final static String GTE = "gte";
     final static String KEYVALUE = "keyvalue";
     final static String CHILDREN = "children";
     
@@ -125,6 +129,16 @@ public class QueryParserTest {
     }
 
     @Override
+    public void enterGte(GteContext ctx) {
+      push(GTE);
+    }
+
+    @Override
+    public void exitGte(GteContext ctx) {
+      tree.pop();
+    }
+
+    @Override
     public void enterLt(LtContext ctx) {
       push(LT);
     }
@@ -133,7 +147,17 @@ public class QueryParserTest {
     public void exitLt(LtContext ctx) {
       tree.pop();
     }
-    
+
+    @Override
+    public void enterLte(LteContext ctx) {
+      push(LTE);
+    }
+
+    @Override
+    public void exitLte(LteContext ctx) {
+      tree.pop();
+    }
+
     @Override
     public void enterKeyvalue(KeyvalueContext ctx) {
       push(KEYVALUE);
@@ -221,13 +245,29 @@ public class QueryParserTest {
   }
 
   /**
+   * Greater than or equal (GTE)
+   */
+  @Test
+  public void gte() {
+    expectFixture("gte");
+  }
+
+  /**
    * Less than (LT)
    */
   @Test
   public void lt() {
     expectFixture("lt");
   }
-  
+
+  /**
+   * Less than or equal (LTE)
+   */
+  @Test
+  public void lte() {
+    expectFixture("lte");
+  }
+
   /**
    * Explicit OR
    */
