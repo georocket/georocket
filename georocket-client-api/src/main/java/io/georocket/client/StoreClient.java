@@ -529,10 +529,9 @@ public class StoreClient {
   private void updateTags(UpdateTagsAction action, String query, String layer,
       List<String> tags, Handler<AsyncResult<Void>> handler) {
     if ((query == null || query.isEmpty()) && (layer == null || layer.isEmpty())) {
-      handler.handle(Future.failedFuture(new IllegalArgumentException(
-        "No search query and no layer given. "
-        + "Do you really wish to update the tags of all chunks in the GeoRocket "
-        + "data store? If so, provide an empty query and the root layer /.")));
+      handler.handle(Future.failedFuture("No search query and no layer given. "
+          + "Do you really wish to update the tags of all chunks in the GeoRocket "
+          + "data store? If so, set the root layer /."));
       return;
     }
 
