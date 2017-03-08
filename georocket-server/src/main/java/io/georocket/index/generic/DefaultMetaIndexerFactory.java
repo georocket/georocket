@@ -1,7 +1,5 @@
 package io.georocket.index.generic;
 
-import static io.georocket.query.ElasticsearchQueryHelper.termQuery;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
@@ -12,6 +10,11 @@ import com.google.common.collect.ImmutableMap;
 
 import io.georocket.index.xml.MetaIndexer;
 import io.georocket.index.xml.MetaIndexerFactory;
+import io.georocket.query.ElasticsearchQueryHelper;
+import io.georocket.query.KeyValueQueryPart;
+import io.georocket.query.QueryPart;
+import io.georocket.query.StringQueryPart;
+import io.georocket.query.KeyValueQueryPart.ComparisonOperator;
 import io.vertx.core.json.JsonObject;
 
 /**
@@ -48,13 +51,40 @@ public class DefaultMetaIndexerFactory implements MetaIndexerFactory {
   }
 
   @Override
-  public MatchPriority getQueryPriority(String search) {
-    return MatchPriority.SHOULD;
+  public MatchPriority getQueryPriority(QueryPart queryPart) {
+    if (queryPart instanceof StringQueryPart ||
+            queryPart instanceof KeyValueQueryPart) {
+      return MatchPriority.SHOULD;
+    }
+    return MatchPriority.NONE;
   }
 
   @Override
-  public JsonObject compileQuery(String search) {
-    return termQuery("tags", search);
+  public JsonObject compileQuery(QueryPart queryPart) {
+    if (queryPart instanceof StringQueryPart) {
+      // match values of all fields regardless of their name
+      String search = ((StringQueryPart)queryPart).getSearchString();
+      return ElasticsearchQueryHelper.termQuery("tags", search);
+    } else if (queryPart instanceof KeyValueQueryPart) {
+      KeyValueQueryPart kvqp = (KeyValueQueryPart)queryPart;
+      String key = kvqp.getKey();
+      String value = kvqp.getValue();
+      ComparisonOperator comp = kvqp.getComparisonOperator();
+
+      switch (comp) {
+        case EQ:
+          return ElasticsearchQueryHelper.termQuery("props." + key, value);
+        case GT:
+          return ElasticsearchQueryHelper.gtQuery("props." + key, value);
+        case GTE:
+          return ElasticsearchQueryHelper.gteQuery("props." + key, value);
+        case LT:
+          return ElasticsearchQueryHelper.ltQuery("props." + key, value);
+        case LTE:
+          return ElasticsearchQueryHelper.lteQuery("props." + key, value);
+      }
+    }
+    return null;
   }
 
   @Override

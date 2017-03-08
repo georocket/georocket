@@ -154,4 +154,48 @@ public class ImportCommandTest extends CommandTestBase<ImportCommand> {
     
     cmd.run(new String[] { "-t", "hello,world", testFile.getAbsolutePath() }, in, out);
   }
+
+  /**
+   * Test importing with properties
+   * @param context the test context
+   * @throws Exception if something goes wrong
+   */
+  @Test
+  public void importProperties(TestContext context) throws Exception {
+    String url = "/store?props=hello%3Aworld%2CmyKey%3AmyValue";
+    stubFor(post(urlEqualTo(url))
+        .willReturn(aResponse()
+            .withStatus(202)));
+
+    Async async = context.async();
+    cmd.setEndHandler(exitCode -> {
+      context.assertEquals(0, exitCode);
+      verifyPosted(url, XML, context);
+      async.complete();
+    });
+
+    cmd.run(new String[] { "-props", "hello:world,myKey:myValue", testFile.getAbsolutePath() }, in, out);
+  }
+
+  /**
+   * Test importing with properties including an escaped character
+   * @param context the test context
+   * @throws Exception if something goes wrong
+   */
+  @Test
+  public void importPropertiesEscaping(TestContext context) throws Exception {
+    String url = "/store?props=hello%3Aworld%2CmyKey%3Amy%5C%3AValue%2Cmy%5C%3AKey%3AmyValue";
+    stubFor(post(urlEqualTo(url))
+        .willReturn(aResponse()
+            .withStatus(202)));
+
+    Async async = context.async();
+    cmd.setEndHandler(exitCode -> {
+      context.assertEquals(0, exitCode);
+      verifyPosted(url, XML, context);
+      async.complete();
+    });
+
+    cmd.run(new String[] { "-props", "hello:world,myKey:my\\:Value,my\\:Key:myValue", testFile.getAbsolutePath() }, in, out);
+  }
 }

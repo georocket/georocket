@@ -28,5 +28,8 @@ public class DefaultMetaIndexer implements MetaIndexer {
     if (indexMeta.getTags() != null) {
       result.put("tags", indexMeta.getTags());
     }
+    if (indexMeta.getProperties() != null) {
+      result.put("props", indexMeta.getProperties());
+    }
   }
 }

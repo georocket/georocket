@@ -2,10 +2,20 @@
   "query": "LT(foo 12)",
   "queryCompilers": ["io.georocket.index.xml.XMLGenericAttributeIndexerFactory"],
   "expected": {
-    "range": {
-      "genAttrs.foo": {
-        "lt": "12"
-      }
+    "bool": {
+      "should": [{
+        "range": {
+          "genAttrs.foo": {
+            "lt": "12"
+          }
+        }
+      }, {
+        "range": {
+          "props.foo": {
+            "lt": "12"
+          }
+        }
+      }]
     }
   }
 }
