@@ -54,11 +54,16 @@ public abstract class GenericAttributeIndexerFactory implements IndexerFactory {
       ComparisonOperator comp = kvqp.getComparisonOperator();
 
       switch (comp) {
-        case EQ: return ElasticsearchQueryHelper.termQuery("genAttrs." + key, value);
-        case GT: return ElasticsearchQueryHelper.gtQuery("genAttrs." + key, value);
-        case GTE: return ElasticsearchQueryHelper.gteQuery("genAttrs." + key, value);
-        case LT: return ElasticsearchQueryHelper.ltQuery("genAttrs." + key, value);
-        case LTE: return ElasticsearchQueryHelper.lteQuery("genAttrs." + key, value);
+        case EQ:
+          return ElasticsearchQueryHelper.termQuery("genAttrs." + key, value);
+        case GT:
+          return ElasticsearchQueryHelper.gtQuery("genAttrs." + key, value);
+        case GTE:
+          return ElasticsearchQueryHelper.gteQuery("genAttrs." + key, value);
+        case LT:
+          return ElasticsearchQueryHelper.ltQuery("genAttrs." + key, value);
+        case LTE:
+          return ElasticsearchQueryHelper.lteQuery("genAttrs." + key, value);
       }
     }
     return null;

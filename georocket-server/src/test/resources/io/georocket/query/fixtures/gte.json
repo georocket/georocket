@@ -2,10 +2,20 @@
   "query": "GTE(foo 12)",
   "queryCompilers": ["io.georocket.index.xml.XMLGenericAttributeIndexerFactory"],
   "expected": {
-    "range": {
-      "genAttrs.foo": {
-        "gte": "12"
-      }
+    "bool": {
+      "should": [{
+        "range": {
+          "genAttrs.foo": {
+            "gte": "12"
+          }
+        }
+      }, {
+        "range": {
+          "props.foo": {
+            "gte": "12"
+          }
+        }
+      }]
     }
   }
 }

@@ -7,9 +7,13 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
+import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.ParseException;
 import org.apache.http.entity.ContentType;
@@ -255,9 +259,30 @@ public class StoreEndpoint implements Endpoint {
 
     String layer = getStorePath(context);
     String tagsStr = request.getParam("tags");
+    String propertiesStr = request.getParam("props");
+
     List<String> tags = tagsStr != null ? Splitter.on(',')
         .trimResults().splitToList(tagsStr) : null;
-    
+
+    Map<String, Object> properties = new HashMap<>();
+    if (propertiesStr != null && !propertiesStr.isEmpty()) {
+      String regex = "(?<!" + Pattern.quote("\\") + ")" + Pattern.quote(":");
+      String[] parts = propertiesStr.split(",");
+      for (String part : parts) {
+        part = part.trim();
+        String[] property = part.split(regex);
+        if (property.length != 2) {
+          request.response()
+            .setStatusCode(400)
+            .end("Invalid property syntax: " + part);
+          return;
+        }
+        String key = StringEscapeUtils.unescapeJava(property[0].trim());
+        String value = StringEscapeUtils.unescapeJava(property[1].trim());
+        properties.put(key, value);
+      }
+    }
+
     // get temporary filename
     String incoming = storagePath + "/incoming";
     String filename = new ObjectId().toString();
@@ -332,6 +357,10 @@ public class StoreEndpoint implements Endpoint {
 
         if (tags != null) {
           msg.put("tags", new JsonArray(tags));
+        }
+
+        if (!properties.isEmpty()) {
+          msg.put("properties", new JsonObject(properties));
         }
 
         request.response()

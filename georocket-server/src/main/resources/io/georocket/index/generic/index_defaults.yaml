@@ -7,6 +7,13 @@ variables:
     type: keyword
     index: "no"
 
+dynamic_templates:
+  # properties attached to chunks
+  - propsFields:
+      path_match: props.*
+      mapping:
+        type: keyword
+
 # Properties to index
 properties:
   # path to the chunk

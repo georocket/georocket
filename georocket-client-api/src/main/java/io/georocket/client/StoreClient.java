@@ -89,7 +89,7 @@ public class StoreClient {
     
     return layer + urlQuery;
   }
-
+  
   /**
    * Prepare an import. Generate an import path for the given layer and tags.
    * @param layer the layer to import to (may be <code>null</code> if data
@@ -99,6 +99,22 @@ public class StoreClient {
    * @return the import path
    */
   protected String prepareImport(String layer, Collection<String> tags) {
+    return prepareImport(layer, tags, null);
+  }
+
+  /**
+   * Prepare an import. Generate an import path for the given layer and tags.
+   * @param layer the layer to import to (may be <code>null</code> if data
+   * should be imported to the root layer)
+   * @param tags a collection of tags to attach to the imported data (may be
+   * <code>null</code> if no tags need to be attached)
+   * @param properties a collection of properties to attach to the imported
+   * data (may be <code>null</code> if no properties need to be attached)
+   * @return the import path
+   * @since 1.1.0
+   */
+  protected String prepareImport(String layer, Collection<String> tags,
+      Collection<String> properties) {
     String path = getEndpoint();
 
     if (layer != null && !layer.isEmpty()) {
@@ -116,8 +132,18 @@ public class StoreClient {
       path += layer;
     }
 
-    if (tags != null && !tags.isEmpty()) {
+    boolean hasTags = tags != null && !tags.isEmpty();
+    if (hasTags) {
       path += "?tags=" + urlencode(String.join(",", tags));
+    }
+
+    if (properties != null && !properties.isEmpty()) {
+      if (hasTags) {
+        path += "&props=";
+      } else {
+        path += "?props=";
+      }
+      path += urlencode(String.join(",", properties));
     }
 
     return path;
@@ -135,7 +161,7 @@ public class StoreClient {
    * @return a {@link WriteStream} that can be used to send data
    */
   public WriteStream<Buffer> startImport(Handler<AsyncResult<Void>> handler) {
-    return startImport(null, null, Optional.empty(), handler);
+    return startImport(null, null, null, Optional.empty(), handler);
   }
   
   /**
@@ -153,7 +179,7 @@ public class StoreClient {
    */
   public WriteStream<Buffer> startImport(String layer,
       Handler<AsyncResult<Void>> handler) {
-    return startImport(layer, null, Optional.empty(), handler);
+    return startImport(layer, null, null, Optional.empty(), handler);
   }
   
   /**
@@ -173,7 +199,30 @@ public class StoreClient {
    */
   public WriteStream<Buffer> startImport(String layer, Collection<String> tags,
       Handler<AsyncResult<Void>> handler) {
-    return startImport(layer, tags, Optional.empty(), handler);
+    return startImport(layer, tags, null, Optional.empty(), handler);
+  }
+
+  /**
+   * <p>Start importing data to GeoRocket. The method opens a connection to the
+   * GeoRocket server and returns a {@link WriteStream} that can be used to
+   * send data.</p>
+   * <p>The caller is responsible for closing the stream (and ending
+   * the import process) through {@link WriteStream#end()} and handling
+   * exceptions through {@link WriteStream#exceptionHandler(Handler)}.</p>
+   * @param layer the layer to import to (may be <code>null</code> if data
+   * should be imported to the root layer)
+   * @param tags a collection of tags to attach to the imported data (may be
+   * <code>null</code> if no tags need to be attached)
+   * @param properties a collection of properties to attach to the imported
+   * data (may be <code>null</code> if no properties need to be attached)
+   * @param handler a handler that will be called when the data has been
+   * imported by the GeoRocket server
+   * @return a {@link WriteStream} that can be used to send data
+   * @since 1.1.0
+   */
+  public WriteStream<Buffer> startImport(String layer, Collection<String> tags,
+      Collection<String> properties, Handler<AsyncResult<Void>> handler) {
+    return startImport(layer, tags, properties, Optional.empty(), handler);
   }
   
   /**
@@ -194,7 +243,31 @@ public class StoreClient {
    */
   public WriteStream<Buffer> startImport(String layer, Collection<String> tags,
       long size, Handler<AsyncResult<Void>> handler) {
-    return startImport(layer, tags, Optional.of(size), handler);
+    return startImport(layer, tags, null, size, handler);
+  }
+
+  /**
+   * <p>Start importing data to GeoRocket. The method opens a connection to the
+   * GeoRocket server and returns a {@link WriteStream} that can be used to
+   * send data.</p>
+   * <p>The caller is responsible for closing the stream (and ending
+   * the import process) through {@link WriteStream#end()} and handling
+   * exceptions through {@link WriteStream#exceptionHandler(Handler)}.</p>
+   * @param layer the layer to import to (may be <code>null</code> if data
+   * should be imported to the root layer)
+   * @param tags a collection of tags to attach to the imported data (may be
+   * <code>null</code> if no tags need to be attached)
+   * @param properties a collection of properties to attach to the imported
+   * data (may be <code>null</code> if no properties need to be attached)
+   * @param size size of the data to be sent in bytes
+   * @param handler a handler that will be called when the data has been
+   * imported by the GeoRocket server
+   * @return a {@link WriteStream} that can be used to send data
+   * @since 1.1.0
+   */
+  public WriteStream<Buffer> startImport(String layer, Collection<String> tags,
+      Collection<String> properties, long size, Handler<AsyncResult<Void>> handler) {
+    return startImport(layer, tags, properties, Optional.of(size), handler);
   }
   
   /**
@@ -215,7 +288,31 @@ public class StoreClient {
    */
   public WriteStream<Buffer> startImport(String layer, Collection<String> tags,
       Optional<Long> size, Handler<AsyncResult<Void>> handler) {
-    String path = prepareImport(layer, tags);
+    return startImport(layer, tags, null, size, handler);
+  }
+  
+  /**
+   * <p>Start importing data to GeoRocket. The method opens a connection to the
+   * GeoRocket server and returns a {@link WriteStream} that can be used to
+   * send data.</p>
+   * <p>The caller is responsible for closing the stream (and ending
+   * the import process) through {@link WriteStream#end()} and handling
+   * exceptions through {@link WriteStream#exceptionHandler(Handler)}.</p>
+   * @param layer the layer to import to (may be <code>null</code> if data
+   * should be imported to the root layer)
+   * @param tags a collection of tags to attach to the imported data (may be
+   * <code>null</code> if no tags need to be attached)
+   * @param properties a collection of properties to attach to the imported
+   * data (may be <code>null</code> if no properties need to be attached)
+   * @param size size of the data to be sent in bytes (optional)
+   * @param handler a handler that will be called when the data has been
+   * imported by the GeoRocket server
+   * @return a {@link WriteStream} that can be used to send data
+   * @since 1.1.0
+   */
+  public WriteStream<Buffer> startImport(String layer, Collection<String> tags,
+      Collection<String> properties, Optional<Long> size, Handler<AsyncResult<Void>> handler) {
+    String path = prepareImport(layer, tags, properties);
     HttpClientRequest request = client.post(path);
 
     if (size.isPresent() && size.get() != null) {

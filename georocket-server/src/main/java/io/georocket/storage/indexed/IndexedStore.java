@@ -45,17 +45,27 @@ public abstract class IndexedStore implements Store {
         // start indexing
         JsonObject indexMsg = new JsonObject()
             .put("path", ar.result())
-            .put("meta", chunkMeta.toJsonObject())
-            .put("correlationId", indexMeta.getCorrelationId())
-            .put("filename", indexMeta.getFilename())
-            .put("timestamp", indexMeta.getTimestamp());
+            .put("meta", chunkMeta.toJsonObject());
 
-        if (indexMeta != null && indexMeta.getTags() != null) {
-          indexMsg.put("tags", new JsonArray(indexMeta.getTags()));
+        if (indexMeta != null) {
+          if (indexMeta.getCorrelationId() != null) {
+            indexMsg.put("correlationId", indexMeta.getCorrelationId());
+          }
+          if (indexMeta.getFilename() != null) {
+            indexMsg.put("filename", indexMeta.getFilename());
+          }
+          indexMsg.put("timestamp", indexMeta.getTimestamp());
+          if (indexMeta.getTags() != null) {
+            indexMsg.put("tags", new JsonArray(indexMeta.getTags()));
+          }
+          if (indexMeta.getFallbackCRSString() != null) {
+            indexMsg.put("fallbackCRSString", indexMeta.getFallbackCRSString());
+          }
+          if (indexMeta.getProperties() != null) {
+            indexMsg.put("properties", new JsonObject(indexMeta.getProperties()));
+          }
         }
-        if (indexMeta != null && indexMeta.getFallbackCRSString() != null) {
-          indexMsg.put("fallbackCRSString", indexMeta.getFallbackCRSString());
-        }
+
         vertx.eventBus().send(AddressConstants.INDEXER_ADD, indexMsg);
         
         // tell sender that writing was successful

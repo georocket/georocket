@@ -21,6 +21,8 @@ import org.apache.tools.ant.DirectoryScanner;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.types.FileSet;
 
+import com.google.common.base.Splitter;
+
 import de.undercouch.underline.InputReader;
 import de.undercouch.underline.Option.ArgumentType;
 import de.undercouch.underline.OptionDesc;
@@ -49,6 +51,7 @@ import rx.Observable;
 public class ImportCommand extends AbstractGeoRocketCommand {
   protected List<String> patterns;
   protected List<String> tags;
+  protected List<String> properties;
   protected String layer;
   
   /**
@@ -74,6 +77,21 @@ public class ImportCommand extends AbstractGeoRocketCommand {
       this.tags = Stream.of(tags.split(","))
         .map(t -> t.trim())
         .collect(Collectors.toList());
+    }
+  }
+
+  /**
+   * Set the properties to attach to the imported file
+   * @param properties the properties
+   */
+  @OptionDesc(longName = "properties", shortName = "props",
+      description = "comma-separated list of properties (key:value) to attach to the file(s)",
+      argumentName = "PROPERTIES", argumentType = ArgumentType.STRING)
+  public void setProperties(String properties) {
+    if (properties == null || properties.isEmpty()) {
+      this.properties = null;
+    } else {
+      this.properties = Splitter.on(",").trimResults().splitToList(properties);
     }
   }
   
@@ -176,7 +194,7 @@ public class ImportCommand extends AbstractGeoRocketCommand {
         fs.setDir(new File(root));
         fs.setIncludes(glob);
         DirectoryScanner ds = fs.getDirectoryScanner(project);
-        Arrays.asList(ds.getIncludedFiles()).stream()
+        Arrays.stream(ds.getIncludedFiles())
           .map(path -> Paths.get(root, path).toString())
           .forEach(queue::add);
       }
@@ -260,7 +278,7 @@ public class ImportCommand extends AbstractGeoRocketCommand {
         Handler<AsyncResult<Void>> handler = o.toHandler();
         AsyncFile file = (AsyncFile)f.getLeft().getDelegate();
 
-        WriteStream<Buffer> out = client.getStore().startImport(layer, tags,
+        WriteStream<Buffer> out = client.getStore().startImport(layer, tags, properties,
             Optional.of(f.getRight()), handler);
 
         AtomicBoolean fileClosed = new AtomicBoolean();
