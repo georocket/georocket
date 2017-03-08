@@ -14,6 +14,10 @@ expr
   | and
   | not
   | eq
+  | gt
+  | gte
+  | lt
+  | lte
   | string
   ;
 
@@ -31,6 +35,22 @@ not
 
 eq
  : 'EQ' WS* '(' WS* keyvalue WS* ')'
+ ;
+
+gt
+ : 'GT' WS* '(' WS* keyvalue WS* ')'
+ ;
+
+gte
+ : 'GTE' WS* '(' WS* keyvalue WS* ')'
+ ;
+
+lt
+ : 'LT' WS* '(' WS* keyvalue WS* ')'
+ ;
+
+lte
+ : 'LTE' WS* '(' WS* keyvalue WS* ')'
  ;
 
 keyvalue

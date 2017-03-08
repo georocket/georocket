@@ -1,0 +1,11 @@
+{
+  "query": "LTE(foo 12)",
+  "queryCompilers": ["io.georocket.index.xml.XMLGenericAttributeIndexerFactory"],
+  "expected": {
+    "range": {
+      "genAttrs.foo": {
+        "lte": "12"
+      }
+    }
+  }
+}

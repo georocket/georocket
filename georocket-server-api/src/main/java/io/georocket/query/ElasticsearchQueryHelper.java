@@ -101,6 +101,62 @@ public final class ElasticsearchQueryHelper {
         .put("term", new JsonObject()
             .put(name, value));
   }
+
+  /**
+   * Create a term query to compare a field to a value using less than
+   * as operator.
+   * @param name the field's name
+   * @param value the value to compare to
+   * @return the term query
+   * @since 1.1.0
+   */
+  public static JsonObject ltQuery(String name, Object value) {
+    return new JsonObject()
+      .put("range", new JsonObject()
+        .put(name, new JsonObject().put("lt", value)));
+  }
+  
+  /**
+   * Create a term query to compare a field to a value using less than
+   * or equal to as operator.
+   * @param name the field's name
+   * @param value the value to compare to
+   * @return the term query
+   * @since 1.1.0
+   */
+  public static JsonObject lteQuery(String name, Object value) {
+    return new JsonObject()
+      .put("range", new JsonObject()
+        .put(name, new JsonObject().put("lte", value)));
+  }
+
+  /**
+   * Create a term query to compare a field to a value using greater
+   * than as operator.
+   * @param name the field's name
+   * @param value the value to compare to
+   * @return the term query
+   * @since 1.1.0
+   */
+  public static JsonObject gtQuery(String name, Object value) {
+    return new JsonObject()
+      .put("range", new JsonObject()
+        .put(name, new JsonObject().put("gt", value)));
+  }
+
+  /**
+   * Create a term query to compare a field to a value using greater
+   * than or equal to as operator.
+   * @param name the field's name
+   * @param value the value to compare to
+   * @return the term query
+   * @since 1.1.0
+   */
+  public static JsonObject gteQuery(String name, Object value) {
+    return new JsonObject()
+      .put("range", new JsonObject()
+        .put(name, new JsonObject().put("gte", value)));
+  }
   
   /**
    * Create a query that matches all documents
@@ -135,7 +191,7 @@ public final class ElasticsearchQueryHelper {
         .put("prefix", new JsonObject()
             .put(name, prefix));
   }
-  
+
   /**
    * Create a query that looks for documents matching a geo shape
    * @param name the field name containing the document's geo shape
