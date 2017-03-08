@@ -511,6 +511,61 @@ Example:
 
 This example matches all chunks that are not within the bounding box `13.378,52.515,13.380,52.517` and that don't have a tag or indexed attribute with a value of `foobar`.
 
+=== Comparison operators
+
+The operators <<EQ>>, <<LT>>, <<LTE>>, <<GT>> and <<GTE>> can be used to search for chunks with certain key:value pairs. They are applied using the following notation:
+
+  <operator>(<key> <value>)
+  
+Key and value are separated by a space character. 
+
+Examples:
+
+  EQ(construction-material wooden)
+  LT(year-of-construction 1990)
+  GT(building-height 50)
+
+Comparison operations cannot be nested. GeoRocket support the comparison of strings, numbers and dates. 
+
+==== EQ
+Use the equal comparison to search for chunks that includes a property equally to the search. Example:
+
+    EQ(foo bar)
+
+This example matches all chunks that have a property with key=foo and value=bar.
+
+==== LT
+Use the less than comparison to search for chunks that includes a property matching the key and a value less than the one given within the query. Example:
+    
+    LT(foo 12)
+
+This example matches all chunks that have a property with key=foo and those values are less than 12. Besides numbers, dates can be compared, too. Example:
+
+    LT(foo 2017-01-12)
+    
+This matches all chunks having a property with key=foo and those values are dates earlier than 2017-01-12. Additionally, a time can be specify such as `2017-01-12T09:15:59`.  
+
+==== LTE
+Use the less than or equal comparison to search for chunks that includes a property matching the key and a value less than or equal to the one given within the query. Example:
+    
+    LTE(foo 12)
+
+This example matches all chunks that have a property with key=foo and those values are less than or equal to 12. Besides numbers, dates can be compared, too.
+
+==== GT
+Use the greater than comparison to search for chunks that includes a property matching the key and a value greater than the one given within the query. Example:
+    
+    GT(foo 12)
+
+This example matches all chunks that have a property with key=foo and those values are greater than 12. Besides numbers, dates can be compared, too.
+
+==== GTE
+Use the greater than or equal than comparison to search for chunks that includes a property matching the key and a value greater than or equal to the one given within the query. Example:
+    
+    GTE(foo 12)
+
+This example matches all chunks that have a property with key=foo and those values are greater than or equal to 12. Besides numbers, dates can be compared, too.
+
 == Client configuration
 
 You can configure GeoRocket's command-line application (CLI) by editing the file `conf/georocket.yaml` in the application directory. The file must be a valid YAML file. The following sections describe possible configuration keys and values.
