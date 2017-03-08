@@ -143,6 +143,14 @@ Use slashes to import to sub-layers.
 You may attach tags to imported files. Tags are human-readable labels that you can use to search for files or chunks stored in GeoRocket. Use a comma to separate multiple tags.
 
   georocket import --tags city,district,lod1 myfile.xml
+  
+In addition to tags, you may attach properties to imported files. Properties are key:value pairs including arbitrary information that can be queried in later searches. Multiple properties are separated by comma, each pair is separated by a colon. GeoRocket supports dates as values, which are encoded as follows: 
+
+`yyyy-MM-ddTHH:mm:ss` (e.g. 2017-03-15[T13:40:25]). 
+
+An example for properties attached to an import is:
+
+  georocket import --properties creation-date:2017-03-15,author:mustermann myfile.xml
 
 === Export command
 
