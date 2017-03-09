@@ -144,13 +144,13 @@ You may attach tags to imported files. Tags are human-readable labels that you c
 
   georocket import --tags city,district,lod1 myfile.xml
   
-In addition to tags, you may attach properties to imported files. Properties are key:value pairs including arbitrary information that can be queried in later searches. Multiple properties are separated by comma, each pair is separated by a colon. GeoRocket supports dates as values, which are encoded as follows: 
+In addition to tags, GeoRocket supports attaching properties to imported files. Properties are key:value pairs including arbitrary information that can be queried in later searches. Multiple properties are separated by comma, each pair is separated by a colon. Values can be strings, numbers or dates, which are encoded as follows: 
 
-`yyyy-MM-ddTHH:mm:ss` (e.g. 2017-03-15[T13:40:25]). 
+`yyyy-MM-dd[THH:mm:ss]` (e.g. 2017-03-15[T13:40:25]). 
 
 An example for properties attached to an import is:
 
-  georocket import --properties creation-date:2017-03-15,author:mustermann myfile.xml
+  georocket import --properties author:smith,creation-date:2017-02-15 myfile.xml
 
 === Export command
 
@@ -522,49 +522,49 @@ Key and value are separated by a space character.
 Examples:
 
   EQ(construction-material wooden)
-  LT(year-of-construction 1990)
+  LT(year-of-construction 1990-01-01)
   GT(building-height 50)
 
-Comparison operations cannot be nested. GeoRocket support the comparison of strings, numbers and dates. 
+Comparison operations cannot be nested. GeoRocket supports the comparison of strings, numbers and dates. 
 
 ==== EQ
-Use the equal comparison to search for chunks that includes a property equally to the search. Example:
+Use the equal comparison to search for chunks that includes a key:value pair equally to the search.
 
     EQ(foo bar)
 
-This example matches all chunks that have a property with key=foo and value=bar.
+This example matches all chunks that have a key:value pair with key=foo and value=bar.
 
 ==== LT
-Use the less than comparison to search for chunks that includes a property matching the key and a value less than the one given within the query. Example:
+Use the less than comparison to search for chunks that includes a key:value pair matching the key and a value less than the one given within the query.
     
     LT(foo 12)
 
-This example matches all chunks that have a property with key=foo and those values are less than 12. Besides numbers, dates can be compared, too. Example:
+This example matches all chunks that have a key:value pair with key=foo and those values are less than 12. Besides numbers, dates can be compared, too.
 
     LT(foo 2017-01-12)
     
-This matches all chunks having a property with key=foo and those values are dates earlier than 2017-01-12. Additionally, a time can be specify such as `2017-01-12T09:15:59`.  
+This matches all chunks having a key:value pair with key=foo and those values are dates earlier than 2017-01-12. Additionally, a time can be specify such as `2017-01-12T09:15:59`.  
 
 ==== LTE
-Use the less than or equal comparison to search for chunks that includes a property matching the key and a value less than or equal to the one given within the query. Example:
+Use the less than or equal to comparison to search for chunks that includes a key:value pair matching the key and a value less than or equal to the one given within the query.
     
     LTE(foo 12)
 
-This example matches all chunks that have a property with key=foo and those values are less than or equal to 12. Besides numbers, dates can be compared, too.
+This example matches all chunks that have a key:value pair with key=foo and those values are less than or equal to 12. Besides numbers, dates can be compared, too.
 
 ==== GT
-Use the greater than comparison to search for chunks that includes a property matching the key and a value greater than the one given within the query. Example:
+Use the greater than comparison to search for chunks that includes a key:value pair matching the key and a value greater than the one given within the query.
     
     GT(foo 12)
 
-This example matches all chunks that have a property with key=foo and those values are greater than 12. Besides numbers, dates can be compared, too.
+This example matches all chunks that have a key:value pair with key=foo and those values are greater than 12. Besides numbers, dates can be compared, too.
 
 ==== GTE
-Use the greater than or equal than comparison to search for chunks that includes a property matching the key and a value greater than or equal to the one given within the query. Example:
+Use the greater than or equal to comparison to search for chunks that includes a key:value pair matching the key and a value greater than or equal to the one given within the query.
     
     GTE(foo 12)
 
-This example matches all chunks that have a property with key=foo and those values are greater than or equal to 12. Besides numbers, dates can be compared, too.
+This example matches all chunks that have a key:value pair with key=foo and those values are greater than or equal to 12. Besides numbers, dates can be compared, too.
 
 == Client configuration
 
