@@ -18,11 +18,11 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
 /**
- * Append tags to existing chunks in the GeoRocket data store
+ * Add tags to existing chunks in the GeoRocket data store
  * @author Benedikt Hiemenz
  */
-public class AppendTagCommand extends AbstractQueryCommand {
-  private static Logger log = LoggerFactory.getLogger(AppendTagCommand.class);
+public class AddTagCommand extends AbstractQueryCommand {
+  private static Logger log = LoggerFactory.getLogger(AddTagCommand.class);
 
   protected String query;
   protected String layer;
@@ -42,7 +42,7 @@ public class AppendTagCommand extends AbstractQueryCommand {
    * @param layer the layer
    */
   @OptionDesc(longName = "layer", shortName = "l",
-      description = "absolute path to the layer from which to append tags",
+      description = "absolute path to the layer from which to add tags",
       argumentName = "PATH", argumentType = ArgumentType.STRING)
   public void setLayer(String layer) {
     this.layer = layer;
@@ -53,7 +53,7 @@ public class AppendTagCommand extends AbstractQueryCommand {
    * @param tags the tags
    */
   @OptionDesc(longName = "tags", shortName = "t",
-      description = "comma-separated list of tags to append to the chunks",
+      description = "comma-separated list of tags to add to the chunks",
       argumentName = "TAGS", argumentType = ArgumentType.STRING)
   public void setTags(String tags) {
     if (tags == null || tags.isEmpty()) {
@@ -67,12 +67,12 @@ public class AppendTagCommand extends AbstractQueryCommand {
 
   @Override
   public String getUsageName() {
-    return "appendTag";
+    return "tag add";
   }
 
   @Override
   public String getUsageDescription() {
-    return "Append tags to existing chunks in the GeoRocket data store";
+    return "Add tags to existing chunks in the GeoRocket data store";
   }
 
   @Override
@@ -94,7 +94,7 @@ public class AppendTagCommand extends AbstractQueryCommand {
         Throwable t = ar.cause();
         error(t.getMessage());
         if (!(t instanceof NoStackTraceThrowable)) {
-          log.error("Could not append the tags", t);
+          log.error("Could not add the tags", t);
         }
         handler.handle(1);
       } else {

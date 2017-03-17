@@ -483,6 +483,7 @@ public class StoreClient {
    * @param tags a collection of tags to be removed from the queried chunks
    * @param handler a handler that will be called when the operation has
    * finished
+   * @since 1.1.0
    */
   public void appendTags(String query, String layer, List<String> tags,
       Handler<AsyncResult<Void>> handler) {
@@ -503,6 +504,7 @@ public class StoreClient {
    * @param tags a collection of tags to be removed from the queried chunks
    * @param handler a handler that will be called when the operation has
    * finished
+   * @since 1.1.0
    */
   public void removeTags(String query, String layer, List<String> tags,
       Handler<AsyncResult<Void>> handler) {
@@ -525,14 +527,14 @@ public class StoreClient {
    * @param tags a collection of tags to update within the GeoRocket data store
    * @param handler a handler that will be called when the operation has
    * finished
+   * @since 1.1.0
    */
   private void updateTags(UpdateTagsAction action, String query, String layer,
       List<String> tags, Handler<AsyncResult<Void>> handler) {
     if ((query == null || query.isEmpty()) && (layer == null || layer.isEmpty())) {
-      handler.handle(Future.failedFuture(new IllegalArgumentException(
-        "No search query and no layer given. "
-        + "Do you really wish to update the tags of all chunks in the GeoRocket "
-        + "data store? If so, provide an empty query and the root layer /.")));
+      handler.handle(Future.failedFuture("No search query and no layer given. "
+          + "Do you really wish to update the tags of all chunks in the GeoRocket "
+          + "data store? If so, set the root layer /."));
       return;
     }
 
