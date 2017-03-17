@@ -14,12 +14,15 @@ import java.io.PrintWriter;
  * @author Benedikt Hiemenz
  */
 public class TagCommand extends AbstractGeoRocketCommand {
-
   /**
    * The subcommand to run.
    */
   private AbstractGeoRocketCommand subcommand;
 
+  /**
+   * Set the actual command to execute
+   * @param subcommand the command
+   */
   @CommandDescList({
     @CommandDesc(longName = "add",
         description = "add tags to existing chunks in GeoRocket",
@@ -55,8 +58,7 @@ public class TagCommand extends AbstractGeoRocketCommand {
 
   @Override
   public void doRun(String[] remainingArgs, InputReader in, PrintWriter out,
-                    Handler<Integer> handler) throws OptionParserException, IOException {
-
+      Handler<Integer> handler) throws OptionParserException, IOException {
     subcommand.setEndHandler(handler);
     subcommand.run(remainingArgs, in, out);
   }
