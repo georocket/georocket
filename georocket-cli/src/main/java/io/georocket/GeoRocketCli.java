@@ -186,7 +186,7 @@ public class GeoRocketCli extends AbstractGeoRocketCommand {
         description = "export from GeoRocket",
         command = ExportCommand.class),
     @CommandDesc(longName = "tag",
-            description = "update tags from existing chunks in GeoRocket",
+            description = "update tags of existing chunks in GeoRocket",
             command = TagCommand.class),
     @CommandDesc(longName = "search",
         description = "search the GeoRocket data store",

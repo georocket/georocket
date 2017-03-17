@@ -10,7 +10,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 
 /**
- * Update tags from existing chunks in the GeoRocket data store
+ * Update tags of existing chunks in the GeoRocket data store
  * @author Benedikt Hiemenz
  */
 public class TagCommand extends AbstractGeoRocketCommand {
@@ -50,7 +50,7 @@ public class TagCommand extends AbstractGeoRocketCommand {
 
   @Override
   public String getUsageDescription() {
-    return "Update tags from existing chunks in the GeoRocket data store";
+    return "Update tags of existing chunks in the GeoRocket data store";
   }
 
   @Override
