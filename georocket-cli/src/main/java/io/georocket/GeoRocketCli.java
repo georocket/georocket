@@ -22,7 +22,7 @@ import de.undercouch.underline.OptionParserException;
 import de.undercouch.underline.StandardInputReader;
 import io.georocket.client.GeoRocketClient;
 import io.georocket.commands.AbstractGeoRocketCommand;
-import io.georocket.commands.AppendTagCommand;
+import io.georocket.commands.AddTagCommand;
 import io.georocket.commands.DeleteCommand;
 import io.georocket.commands.ExportCommand;
 import io.georocket.commands.HelpCommand;

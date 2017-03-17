@@ -26,7 +26,7 @@ public class TagCommand extends AbstractGeoRocketCommand {
   @CommandDescList({
     @CommandDesc(longName = "add",
         description = "add tags to existing chunks in GeoRocket",
-        command = AppendTagCommand.class),
+        command = AddTagCommand.class),
     @CommandDesc(longName = "rm",
         description = "remove tags from existing chunks in GeoRocket",
         command = RemoveTagCommand.class)

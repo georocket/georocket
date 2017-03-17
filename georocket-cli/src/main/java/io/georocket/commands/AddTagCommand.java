@@ -18,11 +18,11 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
 /**
- * Append tags to existing chunks in the GeoRocket data store
+ * Add tags to existing chunks in the GeoRocket data store
  * @author Benedikt Hiemenz
  */
-public class AppendTagCommand extends AbstractQueryCommand {
-  private static Logger log = LoggerFactory.getLogger(AppendTagCommand.class);
+public class AddTagCommand extends AbstractQueryCommand {
+  private static Logger log = LoggerFactory.getLogger(AddTagCommand.class);
 
   protected String query;
   protected String layer;
