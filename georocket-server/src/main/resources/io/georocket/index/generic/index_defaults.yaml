@@ -12,7 +12,8 @@ dynamic_templates:
   - propsFields:
       path_match: props.*
       mapping:
-        type: keyword
+        numeric_detection: true
+        dynamic_date_formats: ["yyyy-MM-ddTHH:mm:ss"]
 
 # Properties to index
 properties:
