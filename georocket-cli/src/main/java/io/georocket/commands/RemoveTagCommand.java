@@ -67,7 +67,7 @@ public class RemoveTagCommand extends AbstractQueryCommand {
 
   @Override
   public String getUsageName() {
-    return "removeTag";
+    return "tag rm";
   }
 
   @Override
