@@ -17,7 +17,7 @@ public class TagCommand extends AbstractGeoRocketCommand {
   /**
    * The subcommand to run.
    */
-  private AbstractGeoRocketCommand subcommand;
+  protected AbstractGeoRocketCommand subcommand;
 
   /**
    * Set the actual command to execute
