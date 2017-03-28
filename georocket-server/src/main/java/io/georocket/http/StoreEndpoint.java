@@ -139,7 +139,7 @@ public class StoreEndpoint implements Endpoint {
     return (paginated ? store.getObservablePaginated(search, path, scrollId) : store.getObservable(search, path))
       .map(RxStoreCursor::new)
       .map(p -> {
-        if(paginated) {
+        if (paginated) {
           PaginatedStoreCursor cursor = (PaginatedStoreCursor)p.getDelegate();
           JsonObject paginationInfo = cursor.getPaginationInfo();
           /**

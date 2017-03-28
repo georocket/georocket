@@ -64,10 +64,7 @@ public class StoreEndpointTest {
   
   private static String INVALID_SCROLL_ID = "THIS_IS_NOT_VALID";
   
-  private static List<String> EXPECTED_SCROLL_IDS = Arrays.asList(new String[] {
-    FIRST_RETURNED_SCROLL_ID,
-    INVALID_SCROLL_ID
-  });
+  private Subscription indexerQuerySubscription;
   
   /**
    * Removes the warnings about blocked threads.
@@ -90,10 +87,20 @@ public class StoreEndpointTest {
     
     vertx.deployVerticle(MockServer.class.getName(), new DeploymentOptions().setWorker(true), context.asyncAssertSuccess(id -> {
       setConfig(getVertxConfig());
-      mockIndexerQuery(context);
       setupMockEndpoint().subscribe(x -> async.complete());
     }));
   }
+
+  
+  
+  @After
+  public void teardown(TestContext context) {
+    if (indexerQuerySubscription != null) {
+      indexerQuerySubscription.unsubscribe();
+    }
+    indexerQuerySubscription = null;
+  }
+  
   
   /**
    * Tests that a paginated request can be done.
@@ -102,6 +109,7 @@ public class StoreEndpointTest {
   @Test
   public void testPagination(TestContext context) {
     Async async = context.async();
+    mockIndexerQuery(context, HITS_PER_PAGE, FIRST_RETURNED_SCROLL_ID, null);
     
     doPaginatedStorepointRequest(context, "/?search=DUMMY_QUERY&paginated=true", true, response -> {
       context.assertEquals(FIRST_RETURNED_SCROLL_ID, response.getHeader(HeaderConstants.SCROLL_ID));
@@ -117,9 +125,10 @@ public class StoreEndpointTest {
    * Tests whether a pagination can be continued with a given scrollId.
    * @param context
    */
-  //@Test
+  @Test
   public void testPaginationWithGivenScrollId(TestContext context) {
     Async async = context.async();
+    mockIndexerQuery(context, TOTAL_HITS - HITS_PER_PAGE, INVALID_SCROLL_ID, FIRST_RETURNED_SCROLL_ID);
     
     doPaginatedStorepointRequest(context, "/?search=DUMMY_QUERY&paginated=true&scrollId=" + FIRST_RETURNED_SCROLL_ID, true, response -> {
       context.assertEquals(INVALID_SCROLL_ID, response.getHeader(HeaderConstants.SCROLL_ID), "The second scrollId should be invalid if there a no elements left.");
@@ -136,6 +145,7 @@ public class StoreEndpointTest {
   @Test
   public void testPaginationWithInvalidScrollId(TestContext context) {
     Async async = context.async();
+    mockIndexerQuery(context, 0L, INVALID_SCROLL_ID, INVALID_SCROLL_ID);
     
     doPaginatedStorepointRequest(context, "/?search=DUMMY_QUERY&paginated=true&scrollId=" + INVALID_SCROLL_ID, false, response -> {
       context.assertEquals(INVALID_SCROLL_ID, response.getHeader(HeaderConstants.SCROLL_ID), "The returned scrollId should be invalid if an invalid scrollId is given.");
@@ -154,7 +164,7 @@ public class StoreEndpointTest {
     neededHeaders.add(HeaderConstants.HITS);
     neededHeaders.add(HeaderConstants.PAGE_SIZE);
     
-    if(checkScrollIdHeaderPresent) {
+    if (checkScrollIdHeaderPresent) {
       neededHeaders.add(HeaderConstants.SCROLL_ID);
     }
     
@@ -210,36 +220,15 @@ public class StoreEndpointTest {
     return MockServer.deployHttpServer((io.vertx.core.Vertx)vertx.getDelegate(), getVertxConfig(), getStoreEndpointRouter());
   }
 
-  private static Subscription mockIndexerQuery(TestContext context) {
-    return vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_QUERY).toObservable()
+  private void mockIndexerQuery(TestContext context, Long returnedElements, String returnedScrollId, String expectedScrollId) {
+    indexerQuerySubscription = vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_QUERY).toObservable()
         .subscribe(msg -> {
           JsonArray hits = new JsonArray();
           
           String givenScrollId = msg.body().getString("scrollId");
+          context.assertEquals(expectedScrollId, givenScrollId);
           
-          /**
-           * Check whether the scrollId is valid.
-           */
-          if(givenScrollId != null && !EXPECTED_SCROLL_IDS.contains(givenScrollId)) {
-            context.fail("Unexpected scrollId received at INDEXER_QUERY: '" + givenScrollId + "'");
-          }
-          /*
-           * The number of elements returned depends what scrollId is given.
-           */
-          Long numReturnHits;
-          String returnScrollId;
-          if(givenScrollId == null) {
-            numReturnHits = HITS_PER_PAGE;
-            returnScrollId = FIRST_RETURNED_SCROLL_ID;
-          } else if(givenScrollId == FIRST_RETURNED_SCROLL_ID) {
-            numReturnHits = TOTAL_HITS - HITS_PER_PAGE;
-            returnScrollId = INVALID_SCROLL_ID;
-          } else {
-            numReturnHits = 0L;
-            returnScrollId = INVALID_SCROLL_ID;
-          }
-          
-          for (int i = 0; i < numReturnHits; i++) {
+          for (int i = 0; i < returnedElements; i++) {
             hits.add(new JsonObject()
               .put("mimeType", "application/geo+json")
               .put("id", "some_id")
@@ -251,7 +240,7 @@ public class StoreEndpointTest {
           
           msg.reply(new JsonObject()
               .put("totalHits", TOTAL_HITS)
-              .put("scrollId", returnScrollId)
+              .put("scrollId", returnedScrollId)
               .put("hits", hits));
         });
   }
