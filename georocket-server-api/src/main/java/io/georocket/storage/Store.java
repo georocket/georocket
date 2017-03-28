@@ -43,4 +43,16 @@ public interface Store {
    * @param handler will be called when the chunks have been retrieved from the store
    */
   void get(String search, String path, Handler<AsyncResult<StoreCursor>> handler);
+  
+  /**
+   * Continue the scroll with the given scrollId.
+   * @param search the search query
+   * @param path the path where to search for the chunks (may be null)
+   * @param scrollId the token that gets used to return a specific page of retults.
+   *                        (may be null - in that case a new pagination is started)
+   * @param requestedPageSize The size a page should have (may be null)   
+   * @param handler will be called when the chunks have been retrieved from the store
+   */
+  void get(String search, String path, String scrollId,
+           Integer requestedPageSize, Handler<AsyncResult<StoreCursor>> handler);
 }

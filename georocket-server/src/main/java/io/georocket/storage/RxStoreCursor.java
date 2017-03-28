@@ -1,5 +1,6 @@
 package io.georocket.storage;
 
+import io.vertx.core.json.JsonObject;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.lang3.tuple.Pair;
@@ -46,7 +47,12 @@ public class RxStoreCursor implements StoreCursor {
   public String getChunkPath() {
     return delegate.getChunkPath();
   }
-  
+
+  @Override
+  public JsonObject getCurrentFrameInfo() {
+    return delegate.getCurrentFrameInfo();
+  }
+
   /**
    * Convert this cursor to an observable
    * @return an observable emitting the chunks from the cursor and their

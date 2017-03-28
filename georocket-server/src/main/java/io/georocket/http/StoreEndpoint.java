@@ -40,7 +40,6 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.core.streams.Pump;
-import io.vertx.core.streams.WriteStream;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.rx.java.ObservableFuture;
@@ -104,16 +103,37 @@ public class StoreEndpoint extends AbstractEndpoint {
    * @param merger the merger
    * @param search the search query
    * @param path the path where to perform the search
-   * @param out a write stream to write the merged chunks to
+   * @param scrollId The scroll id for pagination
+   * @param requestedPageSize The size the page should have
+   * @param paginated anable or disable pagination behavior
+   * @param response the response to write the merged chunks to
    * @return an observable that will emit one item when all chunks have been merged
    */
-  private Observable<Void> doMerge(MultiMerger merger, String search, String path,
-      WriteStream<Buffer> out) {
-    return store.getObservable(search, path)
-      .map(RxStoreCursor::new)
-      .flatMap(RxStoreCursor::toObservable)
+  private Observable<Void> doMergeIntoResponse(MultiMerger merger, String search, String path,
+      String scrollId, Integer requestedPageSize, Boolean paginated, HttpServerResponse response) {
+    return store.getObservable(search, path, scrollId, requestedPageSize).map(RxStoreCursor::new)
+      .flatMap(cursor -> {
+        if (paginated) {
+          JsonObject paginationInfo = cursor.getCurrentFrameInfo();
+          /**
+           * If this is the last page, no scrollId will be sent back to the client.
+           */
+          String returnedScrollId = paginationInfo.getString("scrollId");
+          if (returnedScrollId != null) {
+            response.putHeader("X-Scroll-Id", returnedScrollId);
+          }
+
+          String pageSize = paginationInfo.getLong("pageSize").toString();
+          response.putHeader("X-Page-Size", pageSize);
+          response.putHeader("X-Total-Hits", paginationInfo.getLong("totalHits").toString());
+          response.putHeader("X-Hits", paginationInfo.getLong("hits").toString());
+
+          return cursor.toObservable().take(new Integer(pageSize));
+        }
+        return cursor.toObservable();
+      })
       .flatMap(p -> store.getOneObservable(p.getRight())
-        .flatMap(crs -> merger.merge(crs, p.getLeft(), out)
+        .flatMap(crs -> merger.merge(crs, p.getLeft(), response)
           .map(v -> Pair.of(1L, 0L)) // left: count, right: not_accepted
           .onErrorResumeNext(t -> {
             if (t instanceof IllegalStateException) {
@@ -142,7 +162,7 @@ public class StoreEndpoint extends AbstractEndpoint {
               + "repeat the request.");
         }
         if (count > 0) {
-          merger.finish(out);
+          merger.finish(response);
           return Observable.just(null);
         } else {
           return Observable.error(new FileNotFoundException("Not Found"));
@@ -161,6 +181,20 @@ public class StoreEndpoint extends AbstractEndpoint {
     String path = getEndpointPath(context);
     String search = request.getParam("search");
 
+    /**
+     * Check whether the client wants pagination and getPaginated the scrollId (may be null)
+     * There are three cases:
+     * - the client wants no pagination
+     * - the client starts a pagination and has no scrollId
+     * - the client has already a scrollId from a previous request and resumes the scroll
+     */
+    String paginatedParam = request.getParam("paginated");
+    String scrollId = request.getParam("scrollId");
+    String pageSizeStr = request.getParam("pageSize");
+    Integer pageSize = pageSizeStr == null ? null : new Integer(pageSizeStr);
+
+    Boolean paginated = "true".equalsIgnoreCase(paginatedParam) || scrollId != null;
+
     // Our responses must always be chunked because we cannot calculate
     // the exact content-length beforehand. We perform two searches, one to
     // initialize the merger and one to do the actual merge. The problem is
@@ -173,7 +207,7 @@ public class StoreEndpoint extends AbstractEndpoint {
     // merge all retrieved chunks
     MultiMerger merger = new MultiMerger();
     initializeMerger(merger, search, path)
-      .flatMap(v -> doMerge(merger, search, path, response))
+      .flatMap(v -> doMergeIntoResponse(merger, search, path, scrollId, pageSize, paginated, response))
       .subscribe(v -> {
         response.end();
       }, err -> {

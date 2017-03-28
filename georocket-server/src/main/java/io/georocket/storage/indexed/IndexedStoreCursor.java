@@ -71,6 +71,12 @@ public class IndexedStoreCursor implements StoreCursor {
   private ChunkMeta[] metas;
   
   /**
+   * Number of total items retrieved
+   */
+  private int currentHitCount;
+  private int currentHitSize;
+
+  /**
    * Create a cursor
    * @param vertx the Vert.x instance
    * @param pageSize the number of items retrieved in one batch
@@ -79,10 +85,24 @@ public class IndexedStoreCursor implements StoreCursor {
    * whole store should be searched)
    */
   public IndexedStoreCursor(Vertx vertx, int pageSize, String search, String path) {
+    this(vertx, pageSize, search, path, null);
+  }
+
+  /**
+   * Create a cursor
+   * @param vertx the Vert.x instance
+   * @param pageSize the number of items retrieved in one batch
+   * @param search the search query
+   * @param path the path where to perform the search (may be null if the whole store should be searched)
+   * @param scrollId The id to continue the pagination over a dataset
+   */
+  public IndexedStoreCursor(Vertx vertx, int pageSize, String search, String path, String scrollId) {
     this.vertx = vertx;
     this.pageSize = pageSize;
     this.search = search;
     this.path = path;
+    this.scrollId = scrollId;
+    this.currentHitCount = 0;
   }
   
   /**
@@ -93,6 +113,11 @@ public class IndexedStoreCursor implements StoreCursor {
     JsonObject queryMsg = new JsonObject()
         .put("pageSize", pageSize)
         .put("search", search);
+
+    if (scrollId != null) {
+      queryMsg.put("scrollId", scrollId);
+    }
+    
     if (path != null) {
       queryMsg.put("path", path);
     }
@@ -115,6 +140,8 @@ public class IndexedStoreCursor implements StoreCursor {
     scrollId = body.getString("scrollId");
     JsonArray hits = body.getJsonArray("hits");
     int count = hits.size();
+    currentHitCount += count;
+    currentHitSize = count;
     ids = new String[count];
     metas = new ChunkMeta[count];
     for (int i = 0; i < count; ++i) {
@@ -126,7 +153,11 @@ public class IndexedStoreCursor implements StoreCursor {
 
   @Override
   public boolean hasNext() {
-    return count < size;
+    // if current hits (metas.length) is the rest of the size, it may be the last result.
+    // 400 % 200 == 0
+    return count < size
+      && (size % pageSize != metas.length || pos + 1 < metas.length)
+      && currentHitSize != 0;
   }
 
   @Override
@@ -180,5 +211,14 @@ public class IndexedStoreCursor implements StoreCursor {
       return new JsonChunkMeta(hit);
     }
     return new ChunkMeta(hit);
+  }
+  
+  @Override
+  public JsonObject getCurrentFrameInfo() {
+    return new JsonObject()
+        .put("scrollId", scrollId)
+        .put("totalHits", size)
+        .put("hits", currentHitCount)
+        .put("pageSize", pageSize);
   }
 }
