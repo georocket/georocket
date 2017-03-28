@@ -221,7 +221,7 @@ public class StoreEndpointTest {
 
 
   private static Observable<HttpServer> setupMockEndpoint() {
-    return MockServer.deployHttpServer((io.vertx.core.Vertx)vertx.getDelegate(), getVertxConfig(), getStoreEndpointRouter());
+    return MockServer.deployHttpServer(v, getVertxConfig(), getStoreEndpointRouter());
   }
 
   private void mockIndexerQuery(TestContext context, Long returnedElements, String returnedScrollId, String expectedScrollId, Boolean unsubscribeDirectly) {

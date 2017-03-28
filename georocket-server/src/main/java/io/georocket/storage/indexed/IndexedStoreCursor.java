@@ -140,6 +140,10 @@ public class IndexedStoreCursor implements PaginatedStoreCursor {
   @Override
   public boolean hasNext() {
     if (paginated) {
+      /**
+       * If this cursor is paginated, just get the first page.
+       * When pos <= metas.length, the next page gets retrieved, so stop before that.
+       **/
       return pos + 1 < metas.length;
     } else {
       return count < size;
