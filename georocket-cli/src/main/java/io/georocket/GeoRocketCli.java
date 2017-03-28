@@ -8,6 +8,7 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
+import io.georocket.commands.PropertyCommand;
 import io.georocket.commands.TagCommand;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
@@ -185,9 +186,12 @@ public class GeoRocketCli extends AbstractGeoRocketCommand {
     @CommandDesc(longName = "export",
         description = "export from GeoRocket",
         command = ExportCommand.class),
+    @CommandDesc(longName = "property",
+        description = "update properties of existing chunks in GeoRocket",
+        command = PropertyCommand.class),
     @CommandDesc(longName = "tag",
-            description = "update tags of existing chunks in GeoRocket",
-            command = TagCommand.class),
+        description = "update tags of existing chunks in GeoRocket",
+        command = TagCommand.class),
     @CommandDesc(longName = "search",
         description = "search the GeoRocket data store",
         command = SearchCommand.class),
