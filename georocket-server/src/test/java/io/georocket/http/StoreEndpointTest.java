@@ -12,6 +12,7 @@ import io.georocket.constants.AddressConstants;
 import io.georocket.constants.ConfigConstants;
 import io.georocket.constants.HeaderConstants;
 import io.georocket.mocks.MockServer;
+import io.georocket.mocks.MockStore;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
@@ -94,9 +95,10 @@ public class StoreEndpointTest {
     doPaginatedStorepointRequest(context, "/?search=DUMMY_QUERY&paginated=true", true, response -> {
       context.assertEquals(FIRST_RETURNED_SCROLL_ID, response.getHeader(HeaderConstants.SCROLL_ID));
       response.bodyHandler(body -> {
-          String returned = body.toString();
+          JsonObject returned = body.toJsonObject();
+          context.assertEquals(HITS_PER_PAGE, returned.getJsonArray("geometries").size(), "The size of the returned elements should be the page size.");
+          async.complete();
       });
-      async.complete();
     });
   }
   
@@ -110,7 +112,12 @@ public class StoreEndpointTest {
     
     doPaginatedStorepointRequest(context, "/?search=DUMMY_QUERY&paginated=true&scrollId=" + FIRST_RETURNED_SCROLL_ID, false, response -> {
       context.assertNull(response.getHeader(HeaderConstants.SCROLL_ID), HeaderConstants.SCROLL_ID + " header should not be returned when on the last page.");
-      async.complete();
+      
+      response.bodyHandler(body -> {
+        JsonObject returned = body.toJsonObject();
+        context.assertEquals(TOTAL_HITS - HITS_PER_PAGE, returned.getJsonArray("geometries").size(), "The size of the returned elements should be (TOTAL_HITS - HITS_PER_PAGE)");
+        async.complete();
+      });
     });
   }
   
@@ -190,10 +197,10 @@ public class StoreEndpointTest {
           
           for (int i = 0; i < numReturnHits; i++) {
             hits.add(new JsonObject()
-              .put("mimeType", "application/xml")
-              .put("id", "<child>Element1</child>")
+              .put("mimeType", "application/geo+json")
+              .put("id", "some_id")
               .put("start", 0)
-              .put("end", 1)
+              .put("end", MockStore.RETURNED_CHUNK.length())
               .put("parents", new JsonArray())
             );
           }

@@ -15,6 +15,8 @@ import io.vertx.core.buffer.Buffer;
 
 public class MockStore extends IndexedStore {
   Vertx vertx;
+  
+  public static String RETURNED_CHUNK = "{\"type\":\"Polygon\"}"; 
 
   public MockStore(Vertx vertx) {
     super(vertx);
@@ -22,8 +24,7 @@ public class MockStore extends IndexedStore {
 
   @Override
   public void getOne(String path, Handler<AsyncResult<ChunkReadStream>> handler) {
-    String XMLHEADER = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n";
-    Buffer chunk = Buffer.buffer(XMLHEADER + "<root><test chunk=\"1\"></test></root>");
+    Buffer chunk = Buffer.buffer(RETURNED_CHUNK);
     handler.handle(Future.succeededFuture(new DelegateChunkReadStream(chunk)));
   }
 
