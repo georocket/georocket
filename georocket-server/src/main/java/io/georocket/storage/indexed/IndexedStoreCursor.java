@@ -55,7 +55,7 @@ public class IndexedStoreCursor implements PaginatedStoreCursor {
   /**
    * The total number of items requested from the store
    */
-  protected long size;
+  private long size;
 
   /**
    * A scroll ID used by Elasticsearch for pagination
@@ -73,6 +73,8 @@ public class IndexedStoreCursor implements PaginatedStoreCursor {
   private ChunkMeta[] metas;
 
   private int isPaginated;
+
+  private Boolean paginated;
 
   /**
    * Create a cursor
@@ -97,8 +99,9 @@ public class IndexedStoreCursor implements PaginatedStoreCursor {
     this.search = search;
     this.path = path;
     this.scrollId = scrollId;
+    this.paginated = paginated;
     // TODO
-    this.isPaginated = paginated ? 999 : 1;
+    this.isPaginated = paginated ? 1 : 999;
   }
   
   /**
@@ -152,7 +155,11 @@ public class IndexedStoreCursor implements PaginatedStoreCursor {
 
   @Override
   public boolean hasNext() {
-    return count < size  && isPaginated > 0;
+    if(paginated) {
+      return pos + 1 < metas.length;
+    } else {
+      return count < size;
+    }
   }
 
   @Override
@@ -160,7 +167,6 @@ public class IndexedStoreCursor implements PaginatedStoreCursor {
     ++count;
     ++pos;
     if (pos >= metas.length) {
-      --isPaginated;
       JsonObject queryMsg = new JsonObject()
         .put("pageSize", pageSize)
         .put("search", search)

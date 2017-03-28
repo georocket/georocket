@@ -191,7 +191,7 @@ public class StoreEndpointTest {
            * The number of elements returned depends whether a scrollId is given.
            * Return the "rest" of elements when a scrollId is given.
            */
-          Long numReturnHits = msg.body().getString("scollId") == null ? HITS_PER_PAGE : TOTAL_HITS - HITS_PER_PAGE;
+          Long numReturnHits = givenScrollId == null ? HITS_PER_PAGE : TOTAL_HITS - HITS_PER_PAGE;
           
           String returnScrollId = givenScrollId == null ? FIRST_RETURNED_SCROLL_ID : null;
           
