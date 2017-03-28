@@ -96,7 +96,7 @@ public class StoreEndpointTest {
       context.assertEquals(FIRST_RETURNED_SCROLL_ID, response.getHeader(HeaderConstants.SCROLL_ID));
       response.bodyHandler(body -> {
           JsonObject returned = body.toJsonObject();
-          context.assertEquals(HITS_PER_PAGE, returned.getJsonArray("geometries").size(), "The size of the returned elements should be the page size.");
+          context.assertEquals(HITS_PER_PAGE, new Long(returned.getJsonArray("geometries").size()), "The size of the returned elements should be the page size.");
           async.complete();
       });
     });
@@ -115,7 +115,9 @@ public class StoreEndpointTest {
       
       response.bodyHandler(body -> {
         JsonObject returned = body.toJsonObject();
-        context.assertEquals(TOTAL_HITS - HITS_PER_PAGE, returned.getJsonArray("geometries").size(), "The size of the returned elements should be (TOTAL_HITS - HITS_PER_PAGE)");
+        context.assertNotNull(returned);
+        context.assertTrue(returned.containsKey("geometries"));
+        context.assertEquals(TOTAL_HITS - HITS_PER_PAGE, new Long(returned.getJsonArray("geometries").size()), "The size of the returned elements should be (TOTAL_HITS - HITS_PER_PAGE)");
         async.complete();
       });
     });

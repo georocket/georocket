@@ -72,8 +72,6 @@ public class IndexedStoreCursor implements PaginatedStoreCursor {
    */
   private ChunkMeta[] metas;
 
-  private int isPaginated;
-
   private Boolean paginated;
 
   /**
@@ -100,8 +98,6 @@ public class IndexedStoreCursor implements PaginatedStoreCursor {
     this.path = path;
     this.scrollId = scrollId;
     this.paginated = paginated;
-    // TODO
-    this.isPaginated = paginated ? 1 : 999;
   }
   
   /**

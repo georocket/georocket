@@ -202,7 +202,7 @@ public class StoreEndpoint implements Endpoint {
 
     String path = getStorePath(context);
     String search = request.getParam("search");
-    Boolean paginated = request.getParam("paginated") == "true" || request.getParam("scrollId") != null;
+    Boolean paginated = request.getParam("paginated").equals("true") || request.getParam("scrollId") != null;
     String scrollId = request.getParam("scrollId");
 
     // Our responses must always be chunked because we cannot calculate
