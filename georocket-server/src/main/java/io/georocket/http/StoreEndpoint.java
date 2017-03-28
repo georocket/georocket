@@ -139,18 +139,21 @@ public class StoreEndpoint implements Endpoint {
     return (paginated ? store.getObservablePaginated(search, path, scrollId) : store.getObservable(search, path))
       .map(RxStoreCursor::new)
       .map(p -> {
-        PaginatedStoreCursor cursor = (PaginatedStoreCursor)p.getDelegate();
-        JsonObject paginationInfo = cursor.getPaginationInfo();
-        /**
-         * If this is the last page, no scrollId will be sent back to the client.
-         */
-        String returnedScrollId = paginationInfo.getString("scrollId");
-        if (returnedScrollId != null) {
-          out.putHeader(HeaderConstants.SCROLL_ID, returnedScrollId);
+        if(paginated) {
+          PaginatedStoreCursor cursor = (PaginatedStoreCursor)p.getDelegate();
+          JsonObject paginationInfo = cursor.getPaginationInfo();
+          /**
+           * If this is the last page, no scrollId will be sent back to the client.
+           */
+          String returnedScrollId = paginationInfo.getString("scrollId");
+          if (returnedScrollId != null) {
+            out.putHeader(HeaderConstants.SCROLL_ID, returnedScrollId);
+          }
+          
+          out.putHeader(HeaderConstants.PAGE_SIZE, paginationInfo.getLong("pageSize").toString());
+          out.putHeader(HeaderConstants.TOTAL_HITS, paginationInfo.getLong("totalHits").toString());
+          out.putHeader(HeaderConstants.HITS, paginationInfo.getLong("hits").toString());
         }
-        
-        out.putHeader(HeaderConstants.TOTAL_HITS, paginationInfo.getLong("totalHits").toString());
-        out.putHeader(HeaderConstants.HITS, paginationInfo.getLong("hits").toString());
         return p;
       })
       .flatMap(RxStoreCursor::toObservable)

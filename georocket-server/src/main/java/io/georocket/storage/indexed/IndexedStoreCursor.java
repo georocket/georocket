@@ -151,7 +151,7 @@ public class IndexedStoreCursor implements PaginatedStoreCursor {
 
   @Override
   public boolean hasNext() {
-    if(paginated) {
+    if (paginated) {
       return pos + 1 < metas.length;
     } else {
       return count < size;
@@ -218,6 +218,7 @@ public class IndexedStoreCursor implements PaginatedStoreCursor {
     return new JsonObject()
         .put("scrollId", scrollId)
         .put("totalHits", size)
-        .put("hits", count);
+        .put("hits", count)
+        .put("pageSize", pageSize);
   }
 }
