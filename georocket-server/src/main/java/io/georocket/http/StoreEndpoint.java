@@ -65,6 +65,8 @@ public class StoreEndpoint implements Endpoint {
   private RxStore store;
   private String storagePath;
 
+  private Boolean paginationEnabled;
+
   /**
    * Create the endpoint
    * @param vertx the Vert.x instance
@@ -72,8 +74,10 @@ public class StoreEndpoint implements Endpoint {
   public StoreEndpoint(Vertx vertx) {
     this.vertx = vertx;
     store = new RxStore(StoreFactory.createStore(vertx));
-    storagePath = vertx.getOrCreateContext().config()
-        .getString(ConfigConstants.STORAGE_FILE_PATH);
+    JsonObject config = vertx.getOrCreateContext().config();
+    
+    storagePath = config.getString(ConfigConstants.STORAGE_FILE_PATH);
+    paginationEnabled = config.getBoolean(ConfigConstants.PAGINATION_ENABLED, ConfigConstants.DEFAULT_PAGINATION_ENABLED);
   }
 
   @Override
@@ -205,9 +209,30 @@ public class StoreEndpoint implements Endpoint {
 
     String path = getStorePath(context);
     String search = request.getParam("search");
-    Boolean paginated = request.getParam("paginated").equals("true") || request.getParam("scrollId") != null;
-    String scrollId = request.getParam("scrollId");
+    
 
+    
+    Boolean paginated;
+    String scrollId;
+    if (paginationEnabled) {
+      /**
+       * Check whether the client wants pagination and get the scrollId (may be null)
+       * There are three cases:
+       * - the client wants no pagination
+       * - the client starts a pagination and has no scrollId
+       * - the client has already a scrollId from a previous request and resumes the scroll  
+       */
+      paginated = request.getParam("paginated").equals("true") || request.getParam("scrollId") != null;
+      scrollId = request.getParam("scrollId");
+    } else {
+      /**
+       * The client requested a paginated result, but pagination is disabled.
+       * Ignore the clients request for pagination and return a normal result.
+       */
+      paginated = false;
+      scrollId = null;
+    }
+    
     // Our responses must always be chunked because we cannot calculate
     // the exact content-length beforehand. We perform two searches, one to
     // initialize the merger and one to do the actual merge. The problem is

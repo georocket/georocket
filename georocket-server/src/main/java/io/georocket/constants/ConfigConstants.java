@@ -12,6 +12,8 @@ public final class ConfigConstants {
   
   public static final String LOG_CONFIG = "georocket.logConfig";
   
+  public static final String PAGINATION_ENABLED = "georocket.storage.pagination";
+  
   public static final String STORAGE_CLASS = "georocket.storage.class";
   public static final String STORAGE_FILE_PATH = "georocket.storage.file.path";
   public static final String STORAGE_HDFS_DEFAULT_FS = "georocket.storage.hdfs.defaultFS";
@@ -43,6 +45,9 @@ public final class ConfigConstants {
   
   public static final int DEFAULT_INDEX_MAX_BULK_SIZE = 200;
   public static final int DEFAULT_INDEX_MAX_PARALLEL_INSERTS = 5;
+  public static final boolean DEFAULT_PAGINATION_ENABLED = false;
+  
+  
   
   private ConfigConstants() {
     // hidden constructor

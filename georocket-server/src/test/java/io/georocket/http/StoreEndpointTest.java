@@ -95,12 +95,16 @@ public class StoreEndpointTest {
   
   @After
   public void teardown(TestContext context) {
-    if (indexerQuerySubscription != null) {
+    unsubscribeIndexerQuery();
+  }
+  
+  
+  private void unsubscribeIndexerQuery() {
+    if (indexerQuerySubscription != null && !indexerQuerySubscription.isUnsubscribed()) {
       indexerQuerySubscription.unsubscribe();
     }
     indexerQuerySubscription = null;
   }
-  
   
   /**
    * Tests that a paginated request can be done.
@@ -109,7 +113,7 @@ public class StoreEndpointTest {
   @Test
   public void testPagination(TestContext context) {
     Async async = context.async();
-    mockIndexerQuery(context, HITS_PER_PAGE, FIRST_RETURNED_SCROLL_ID, null);
+    mockIndexerQuery(context, HITS_PER_PAGE, FIRST_RETURNED_SCROLL_ID, null, true);
     
     doPaginatedStorepointRequest(context, "/?search=DUMMY_QUERY&paginated=true", true, response -> {
       context.assertEquals(FIRST_RETURNED_SCROLL_ID, response.getHeader(HeaderConstants.SCROLL_ID));
@@ -128,7 +132,7 @@ public class StoreEndpointTest {
   @Test
   public void testPaginationWithGivenScrollId(TestContext context) {
     Async async = context.async();
-    mockIndexerQuery(context, TOTAL_HITS - HITS_PER_PAGE, INVALID_SCROLL_ID, FIRST_RETURNED_SCROLL_ID);
+    mockIndexerQuery(context, TOTAL_HITS - HITS_PER_PAGE, INVALID_SCROLL_ID, FIRST_RETURNED_SCROLL_ID, true);
     
     doPaginatedStorepointRequest(context, "/?search=DUMMY_QUERY&paginated=true&scrollId=" + FIRST_RETURNED_SCROLL_ID, true, response -> {
       context.assertEquals(INVALID_SCROLL_ID, response.getHeader(HeaderConstants.SCROLL_ID), "The second scrollId should be invalid if there a no elements left.");
@@ -145,7 +149,7 @@ public class StoreEndpointTest {
   @Test
   public void testPaginationWithInvalidScrollId(TestContext context) {
     Async async = context.async();
-    mockIndexerQuery(context, 0L, INVALID_SCROLL_ID, INVALID_SCROLL_ID);
+    mockIndexerQuery(context, 0L, INVALID_SCROLL_ID, INVALID_SCROLL_ID, true);
     
     doPaginatedStorepointRequest(context, "/?search=DUMMY_QUERY&paginated=true&scrollId=" + INVALID_SCROLL_ID, false, response -> {
       context.assertEquals(INVALID_SCROLL_ID, response.getHeader(HeaderConstants.SCROLL_ID), "The returned scrollId should be invalid if an invalid scrollId is given.");
@@ -220,7 +224,7 @@ public class StoreEndpointTest {
     return MockServer.deployHttpServer((io.vertx.core.Vertx)vertx.getDelegate(), getVertxConfig(), getStoreEndpointRouter());
   }
 
-  private void mockIndexerQuery(TestContext context, Long returnedElements, String returnedScrollId, String expectedScrollId) {
+  private void mockIndexerQuery(TestContext context, Long returnedElements, String returnedScrollId, String expectedScrollId, Boolean unsubscribeDirectly) {
     indexerQuerySubscription = vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_QUERY).toObservable()
         .subscribe(msg -> {
           JsonArray hits = new JsonArray();
@@ -254,5 +258,6 @@ public class StoreEndpointTest {
     config.put(ConfigConstants.STORAGE_CLASS, "io.georocket.mocks.MockStore");
     config.put(ConfigConstants.HOST, ConfigConstants.DEFAULT_HOST);
     config.put(ConfigConstants.PORT, ConfigConstants.DEFAULT_PORT);
+    config.put(ConfigConstants.PAGINATION_ENABLED, true);
   }
 }
