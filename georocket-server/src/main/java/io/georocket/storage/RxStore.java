@@ -87,7 +87,7 @@ public class RxStore implements Store {
   public void get(String search, String path, Handler<AsyncResult<StoreCursor>> handler) {
     delegate.get(search, path, handler);
   }
-  
+
   @Override
   public void getPaginated(String search, String path, String paginationToken, Handler<AsyncResult<PaginatedStoreCursor>> handler) {
     delegate.getPaginated(search, path, paginationToken, handler);

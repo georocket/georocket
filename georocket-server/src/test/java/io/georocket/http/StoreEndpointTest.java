@@ -10,9 +10,12 @@ import org.junit.runner.RunWith;
 
 import io.georocket.constants.AddressConstants;
 import io.georocket.constants.ConfigConstants;
+import io.georocket.constants.HeaderConstants;
 import io.georocket.mocks.MockServer;
+import io.vertx.core.AsyncResult;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
+import io.vertx.core.Handler;
 import io.vertx.core.VertxOptions;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientOptions;
@@ -39,73 +42,123 @@ public class StoreEndpointTest {
 
   static io.vertx.core.Vertx v;
   
-  public static Long TOTAL_HITS = 100L;
-  public static String RETURNED_SCROLL_ID = "NEW_SCROLL_ID";
+  /**
+   * The number of all hits to a given query
+   */
+  private static Long TOTAL_HITS = 80L;
   
+  /**
+   * The number of hits per page
+   */
+  private static Long HITS_PER_PAGE = 50L;
+
+  /**
+   * The scrollId that gets returned from the indexer after the first query
+   */
+  private static String FIRST_RETURNED_SCROLL_ID = "FIRST_SCROLL_ID";
+  
+  /**
+   * Removes the warnings about blocked threads.
+   * Otherwise vertx would log a lot of warnings, because the startup takes some time. 
+   */
   static VertxOptions vertxOptions = new VertxOptions().setBlockedThreadCheckInterval(999999L);
 
   @ClassRule
   public static RunTestOnContext rule = new RunTestOnContext(vertxOptions);
 
+  /**
+   * Starts a MockServer verticle with a StoreEndpoint to test against.
+   * @param context
+   */
   @BeforeClass
   public static void setupServer(TestContext context) {
     Async async = context.async();
     vertx = new Vertx(rule.vertx());
-    v = (io.vertx.core.Vertx) vertx.getDelegate();
+    v = (io.vertx.core.Vertx)vertx.getDelegate();
     
     vertx.deployVerticle(MockServer.class.getName(), new DeploymentOptions().setWorker(true), context.asyncAssertSuccess(id -> {
       setConfig(getVertxConfig());
       mockIndexerQuery();
-      setupMockEndpoint().subscribe(x-> async.complete());
+      setupMockEndpoint().subscribe(x -> async.complete());
     }));
   }
-
+  
+  /**
+   * Tests that a paginated request can be done.
+   * @param context
+   */
   @Test
   public void testPagination(TestContext context) {
-    System.out.println("testPagination");
     Async async = context.async();
     
-    
-    HttpClient client = createHttpClient();
-    HttpClientRequest request = client.get("/?search=DUMMY_QUERY&paginated=true", response -> {
-      checkPaginatedResponse(response, context);
-      context.assertEquals(RETURNED_SCROLL_ID, response.getHeader("X-Scroll-Id"));
+    doPaginatedStorepointRequest(context, "/?search=DUMMY_QUERY&paginated=true", true, response -> {
+      context.assertEquals(FIRST_RETURNED_SCROLL_ID, response.getHeader(HeaderConstants.SCROLL_ID));
+      response.bodyHandler(body -> {
+          String returned = body.toString();
+      });
       async.complete();
     });
-
-    request.exceptionHandler(x -> async.resolve(Future.failedFuture("Exception during query.")));
-    request.end();
   }
   
+  /**
+   * Tests whether a pagination can be continued with a given scrollId.
+   * @param context
+   */
   @Test
   public void testPaginationWithGivenScrollId(TestContext context) {
-    System.out.println("testPaginationWithGivenScrollId");
     Async async = context.async();
-
-    HttpClient client = createHttpClient();
-    HttpClientRequest request = client.get("/?search=DUMMY_QUERY&paginated=true&scrollId=" + RETURNED_SCROLL_ID, response -> {
-      checkPaginatedResponse(response, context);
-      context.assertEquals(RETURNED_SCROLL_ID, response.getHeader("X-Scroll-Id"));
+    
+    doPaginatedStorepointRequest(context, "/?search=DUMMY_QUERY&paginated=true&scrollId=" + FIRST_RETURNED_SCROLL_ID, false, response -> {
+      context.assertNull(response.getHeader(HeaderConstants.SCROLL_ID), HeaderConstants.SCROLL_ID + " header should not be returned when on the last page.");
       async.complete();
     });
-    
-    request.exceptionHandler(x -> async.resolve(Future.failedFuture("Exception during query.")));
+  }
+  
+  /**
+   * Checks for pagination-specific headers that are returned from the server 
+   * @param response
+   * @param context
+   */
+  private void checkPaginatedResponse(HttpClientResponse response, TestContext context, Boolean checkScrollIdHeaderPresent) {
+    if (checkScrollIdHeaderPresent) {
+      context.assertNotNull(response.getHeader(HeaderConstants.SCROLL_ID), HeaderConstants.SCROLL_ID + " header not set");
+    }
+    context.assertNotNull(response.getHeader(HeaderConstants.TOTAL_HITS), HeaderConstants.TOTAL_HITS + " header not set");
+    context.assertNotNull(response.getHeader(HeaderConstants.HITS), HeaderConstants.HITS + " header not set");
+  }
+  
+  /**
+   * Performs request against the server and checks for the pagination headers.
+   * Fails when the headers are not present or an error occured during the request.
+   *  
+   * @param context
+   * @param url
+   * @param handler
+   */
+  private void doPaginatedStorepointRequest(TestContext context, String url, Boolean checkScrollIdHeaderPresent, Handler<HttpClientResponse> handler) {
+    HttpClient client = createHttpClient();
+    HttpClientRequest request = client.get(url, response -> {
+      checkPaginatedResponse(response, context, checkScrollIdHeaderPresent);
+      handler.handle(response);
+    });
+    request.exceptionHandler(x -> context.fail("Exception during query."));
     request.end();
   }
   
-  private void checkPaginatedResponse(HttpClientResponse response, TestContext context) {
-    context.assertNotNull(response.getHeader("X-Scroll-Id"), "X-Scroll-Id header not set");
-    context.assertNotNull(response.getHeader("X-Total-Hits"), "X-Total-Hits header not set");
-    context.assertNotNull(response.getHeader("X-Hits"), "X-Hits header not set");
-  }
-  
-  private static Router createRouter() {
+  /**
+   * Creates a StoreEndpoint router
+   */
+  private static Router getStoreEndpointRouter() {
     Router router = Router.router(v);
     Endpoint storeEndpoint = new StoreEndpoint(v);
     router.mountSubRouter("/", storeEndpoint.createRouter());
     return router;
   }
 
+  /**
+   * Creates a HttpClient to do requests against the server. No SSL is used.
+   * @return a client that's preconfigured for requests to the server.
+   */
   private HttpClient createHttpClient() {
     HttpClientOptions options = new HttpClientOptions()
         .setDefaultHost(getVertxConfig().getString(ConfigConstants.HOST))
@@ -114,26 +167,49 @@ public class StoreEndpointTest {
     return v.createHttpClient(options);
   }
 
-  private static JsonObject getVertxConfig() {
-    return vertx.getOrCreateContext().config();
-  }
 
   private static Observable<HttpServer> setupMockEndpoint() {
-    return MockServer.deployHttpServer((io.vertx.core.Vertx) vertx.getDelegate(), getVertxConfig(), createRouter());
+    return MockServer.deployHttpServer((io.vertx.core.Vertx)vertx.getDelegate(), getVertxConfig(), getStoreEndpointRouter());
   }
 
   private static Subscription mockIndexerQuery() {
     return vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_QUERY).toObservable()
         .subscribe(msg -> {
-          System.out.println("mockIndexerQuery.comsumer");
+          JsonArray hits = new JsonArray();
+          
+          String givenScrollId = msg.body().getString("scrollId");
+          
+          
+          /*
+           * The number of elements returned depends whether a scrollId is given.
+           * Return the "rest" of elements when a scrollId is given.
+           */
+          Long numReturnHits = msg.body().getString("scollId") == null ? HITS_PER_PAGE : TOTAL_HITS - HITS_PER_PAGE;
+          
+          String returnScrollId = givenScrollId == null ? FIRST_RETURNED_SCROLL_ID : null;
+          
+          for (int i = 0; i < numReturnHits; i++) {
+            hits.add(new JsonObject()
+              .put("mimeType", "application/xml")
+              .put("id", "<child>Element1</child>")
+              .put("start", 0)
+              .put("end", 1)
+              .put("parents", new JsonArray())
+            );
+          }
           msg.reply(new JsonObject()
-              .put("totalHits", TOTAL_HITS * 1.5)
-              .put("scrollId", RETURNED_SCROLL_ID)
-              .put("hits", new JsonArray().add(new JsonObject().put("mimeType", "application/xml").put("id", "<child>Element1</child>").put("start", 0).put("end", 1).put("parents", new JsonArray()))));
+              .put("totalHits", TOTAL_HITS)
+              .put("scrollId", returnScrollId)
+              .put("hits", hits));
         });
   }
   
+  private static JsonObject getVertxConfig() {
+    return vertx.getOrCreateContext().config();
+  }
+  
   protected static void setConfig(JsonObject config) {
+    // Use mock store
     config.put(ConfigConstants.STORAGE_CLASS, "io.georocket.mocks.MockStore");
     config.put(ConfigConstants.HOST, ConfigConstants.DEFAULT_HOST);
     config.put(ConfigConstants.PORT, ConfigConstants.DEFAULT_PORT);

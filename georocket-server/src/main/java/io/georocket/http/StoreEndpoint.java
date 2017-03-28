@@ -23,6 +23,7 @@ import com.google.common.base.Splitter;
 
 import io.georocket.constants.AddressConstants;
 import io.georocket.constants.ConfigConstants;
+import io.georocket.constants.HeaderConstants;
 import io.georocket.output.MultiMerger;
 import io.georocket.storage.PaginatedStoreCursor;
 import io.georocket.storage.RxStore;
@@ -138,11 +139,18 @@ public class StoreEndpoint implements Endpoint {
     return (paginated ? store.getObservablePaginated(search, path, scrollId) : store.getObservable(search, path))
       .map(RxStoreCursor::new)
       .map(p -> {
-        PaginatedStoreCursor cursor = (PaginatedStoreCursor) p.getDelegate();
+        PaginatedStoreCursor cursor = (PaginatedStoreCursor)p.getDelegate();
         JsonObject paginationInfo = cursor.getPaginationInfo();
-        out.putHeader("X-Scroll-Id", paginationInfo.getString("scrollId"));
-        out.putHeader("X-Total-Hits", paginationInfo.getLong("totalHits").toString());
-        out.putHeader("X-Hits", paginationInfo.getLong("hits").toString());
+        /**
+         * If this is the last page, no scrollId will be sent back to the client.
+         */
+        String returnedScrollId = paginationInfo.getString("scrollId");
+        if (returnedScrollId != null) {
+          out.putHeader(HeaderConstants.SCROLL_ID, returnedScrollId);
+        }
+        
+        out.putHeader(HeaderConstants.TOTAL_HITS, paginationInfo.getLong("totalHits").toString());
+        out.putHeader(HeaderConstants.HITS, paginationInfo.getLong("hits").toString());
         return p;
       })
       .flatMap(RxStoreCursor::toObservable)

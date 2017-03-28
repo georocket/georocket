@@ -25,9 +25,9 @@ import io.vertx.core.json.JsonObject;
  */
 public abstract class IndexedStore implements Store {
   private static final int PAGE_SIZE = 100;
-  
+
   private final Vertx vertx;
-  
+
   /**
    * Constructs the chunk store
    * @param vertx the Vert.x instance
@@ -35,7 +35,7 @@ public abstract class IndexedStore implements Store {
   public IndexedStore(Vertx vertx) {
     this.vertx = vertx;
   }
-  
+
   @Override
   public void add(String chunk, ChunkMeta chunkMeta, String path,
       IndexMeta indexMeta, Handler<AsyncResult<Void>> handler) {
@@ -68,7 +68,7 @@ public abstract class IndexedStore implements Store {
         }
 
         vertx.eventBus().send(AddressConstants.INDEXER_ADD, indexMsg);
-        
+
         // tell sender that writing was successful
         handler.handle(Future.succeededFuture());
       }
@@ -105,9 +105,9 @@ public abstract class IndexedStore implements Store {
   
   @Override
   public void getPaginated(String search, String path, String scrollId, Handler<AsyncResult<PaginatedStoreCursor>> handler) {
-    new IndexedStoreCursor(vertx, PAGE_SIZE, search, path, scrollId, true).start(c -> handler.handle(Future.succeededFuture((PaginatedStoreCursor) c.result())));
+    new IndexedStoreCursor(vertx, PAGE_SIZE, search, path, scrollId, true).start(c -> handler.handle(Future.succeededFuture((PaginatedStoreCursor)c.result())));
   }
-  
+
   /**
    * Iterate over a cursor and delete all returned chunks from the index
    * and from the store.
@@ -125,7 +125,7 @@ public abstract class IndexedStore implements Store {
         doDelete(cursor, paths, handler);
       }
     };
-    
+
     // while cursor has items ...
     if (cursor.hasNext()) {
       cursor.next(ar -> {
@@ -134,7 +134,7 @@ public abstract class IndexedStore implements Store {
         } else {
           // add item to queue
           paths.add(cursor.getChunkPath());
-          
+
           if (paths.size() >= PAGE_SIZE) {
             // if there are enough items in the queue, bulk delete them
             doDeleteBulk(paths, handleBulk);
@@ -155,7 +155,7 @@ public abstract class IndexedStore implements Store {
       }
     }
   }
-  
+
   /**
    * Delete all chunks with the given paths from the index and from the store.
    * Remove all items from the given queue.
@@ -187,7 +187,7 @@ public abstract class IndexedStore implements Store {
   protected String generateChunkId() {
     return new ObjectId().toString();
   }
-  
+
   /**
    * Add a chunk to the store
    * @param chunk the chunk to add
@@ -195,7 +195,7 @@ public abstract class IndexedStore implements Store {
    * @param handler will be called when the operation has finished
    */
   protected abstract void doAddChunk(String chunk, String path, Handler<AsyncResult<String>> handler);
-  
+
   /**
    * Delete all chunks with the given paths from the store. Remove one item
    * from the given queue, delete the chunk, and then call recursively until

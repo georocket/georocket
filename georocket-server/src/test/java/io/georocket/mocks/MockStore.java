@@ -14,23 +14,23 @@ import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 
 public class MockStore extends IndexedStore {
-	Vertx vertx;
+  Vertx vertx;
 
-	public MockStore(Vertx vertx) {
-	  super(vertx);
-	}
+  public MockStore(Vertx vertx) {
+    super(vertx);
+  }
 
-	@Override
-	public void getOne(String path, Handler<AsyncResult<ChunkReadStream>> handler) {
-	  String XMLHEADER = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n";
-	  Buffer chunk = Buffer.buffer(XMLHEADER + "<root><test chunk=\"1\"></test></root>");
-		handler.handle(Future.succeededFuture(new DelegateChunkReadStream(chunk)));
-	}
+  @Override
+  public void getOne(String path, Handler<AsyncResult<ChunkReadStream>> handler) {
+    String XMLHEADER = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n";
+    Buffer chunk = Buffer.buffer(XMLHEADER + "<root><test chunk=\"1\"></test></root>");
+    handler.handle(Future.succeededFuture(new DelegateChunkReadStream(chunk)));
+  }
 
-	@Override
-	public void delete(String search, String path, Handler<AsyncResult<Void>> handler) {
-	  notImplemented(handler);
-	}
+  @Override
+  public void delete(String search, String path, Handler<AsyncResult<Void>> handler) {
+    notImplemented(handler);
+  }
 
   @Override
   protected void doAddChunk(String chunk, String path, Handler<AsyncResult<String>> handler) {
@@ -44,13 +44,13 @@ public class MockStore extends IndexedStore {
 
   @Override
   public void add(String chunk, ChunkMeta chunkMeta, String path, IndexMeta indexMeta,
-      Handler<AsyncResult<Void>> handler) {
+    Handler<AsyncResult<Void>> handler) {
     notImplemented(handler);
   }
-  
+
   @SuppressWarnings("unchecked")
   private void notImplemented(@SuppressWarnings("rawtypes") Handler handler) {
     handler.handle(Future.failedFuture("NOT IMPLEMENTED"));
   }
-  
+
 }
