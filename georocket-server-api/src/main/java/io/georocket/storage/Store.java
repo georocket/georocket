@@ -43,4 +43,14 @@ public interface Store {
    * @param handler will be called when the chunks have been retrieved from the store
    */
   void get(String search, String path, Handler<AsyncResult<StoreCursor>> handler);
+  
+  /**
+   * Get the first chunks from the store using quick-search
+   * @since 1.1.0
+   * @param search the search query
+   * @param path the path where to search for the chunks (may be null)
+   * @param paginationToken the token that gets used to return a specific page of retults. May be null - in that case a new pagination is started
+   * @param handler will be called when the chunks have been retrieved from the store
+   */
+  void getPaginated(String search, String path, String paginationToken, Handler<AsyncResult<PaginatedStoreCursor>> handler);
 }

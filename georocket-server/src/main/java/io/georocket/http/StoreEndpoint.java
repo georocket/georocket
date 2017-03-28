@@ -24,6 +24,7 @@ import com.google.common.base.Splitter;
 import io.georocket.constants.AddressConstants;
 import io.georocket.constants.ConfigConstants;
 import io.georocket.output.MultiMerger;
+import io.georocket.storage.PaginatedStoreCursor;
 import io.georocket.storage.RxStore;
 import io.georocket.storage.RxStoreCursor;
 import io.georocket.storage.StoreFactory;
@@ -44,7 +45,6 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.core.streams.Pump;
-import io.vertx.core.streams.WriteStream;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.rx.java.ObservableFuture;
@@ -116,8 +116,8 @@ public class StoreEndpoint implements Endpoint {
    * has been initialized with all results
    */
   private Observable<Void> initializeMerger(MultiMerger merger, String search,
-      String path) {
-    return store.getObservable(search, path)
+      String path, String scrollId, Boolean paginated) {
+    return (paginated ? store.getObservablePaginated(search, path, scrollId) : store.getObservable(search, path)) 
       .map(RxStoreCursor::new)
       .flatMap(RxStoreCursor::toObservable)
       .map(Pair::getLeft)
@@ -134,10 +134,17 @@ public class StoreEndpoint implements Endpoint {
    * @param out a write stream to write the merged chunks to
    * @return an observable that will emit one item when all chunks have been merged
    */
-  private Observable<Void> doMerge(MultiMerger merger, String search, String path,
-      WriteStream<Buffer> out) {
-    return store.getObservable(search, path)
+  private Observable<Void> doMerge(MultiMerger merger, String search, String path, String scrollId, Boolean paginated, HttpServerResponse out) {
+    return (paginated ? store.getObservablePaginated(search, path, scrollId) : store.getObservable(search, path))
       .map(RxStoreCursor::new)
+      .map(p -> {
+        PaginatedStoreCursor cursor = (PaginatedStoreCursor) p.getDelegate();
+        JsonObject paginationInfo = cursor.getPaginationInfo();
+        out.putHeader("X-Scroll-Id", paginationInfo.getString("scrollId"));
+        out.putHeader("X-Total-Hits", paginationInfo.getLong("totalHits").toString());
+        out.putHeader("X-Hits", paginationInfo.getLong("hits").toString());
+        return p;
+      })
       .flatMap(RxStoreCursor::toObservable)
       .flatMap(p -> store.getOneObservable(p.getRight())
         .flatMap(crs -> merger.merge(crs, p.getLeft(), out)
@@ -187,6 +194,8 @@ public class StoreEndpoint implements Endpoint {
 
     String path = getStorePath(context);
     String search = request.getParam("search");
+    Boolean paginated = request.getParam("paginated") == "true" || request.getParam("scrollId") != null;
+    String scrollId = request.getParam("scrollId");
 
     // Our responses must always be chunked because we cannot calculate
     // the exact content-length beforehand. We perform two searches, one to
@@ -199,8 +208,8 @@ public class StoreEndpoint implements Endpoint {
     // perform two searches: first initialize the merger and then
     // merge all retrieved chunks
     MultiMerger merger = new MultiMerger();
-    initializeMerger(merger, search, path)
-      .flatMap(v -> doMerge(merger, search, path, response))
+    initializeMerger(merger, search, path, scrollId, paginated)
+      .flatMap(v -> doMerge(merger, search, path, scrollId, paginated, response))
       .subscribe(v -> {
         response.end();
       }, err -> {

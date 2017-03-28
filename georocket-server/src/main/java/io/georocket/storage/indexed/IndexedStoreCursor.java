@@ -6,6 +6,7 @@ import io.georocket.constants.AddressConstants;
 import io.georocket.storage.ChunkMeta;
 import io.georocket.storage.GeoJsonChunkMeta;
 import io.georocket.storage.JsonChunkMeta;
+import io.georocket.storage.PaginatedStoreCursor;
 import io.georocket.storage.StoreCursor;
 import io.georocket.storage.XMLChunkMeta;
 import io.vertx.core.AsyncResult;
@@ -19,7 +20,7 @@ import io.vertx.core.json.JsonObject;
  * Implementation of {@link StoreCursor} for indexed chunk stores
  * @author Michel Kraemer
  */
-public class IndexedStoreCursor implements StoreCursor {
+public class IndexedStoreCursor implements PaginatedStoreCursor {
   /**
    * The Vert.x instance
    */
@@ -70,6 +71,10 @@ public class IndexedStoreCursor implements StoreCursor {
    */
   private ChunkMeta[] metas;
   
+  private int isPaginated;
+  
+  private boolean stopped;
+  
   /**
    * Create a cursor
    * @param vertx the Vert.x instance
@@ -79,10 +84,17 @@ public class IndexedStoreCursor implements StoreCursor {
    * whole store should be searched)
    */
   public IndexedStoreCursor(Vertx vertx, int pageSize, String search, String path) {
+    this(vertx, pageSize, search, path, null, false);
+  }
+  
+  public IndexedStoreCursor(Vertx vertx, int pageSize, String search, String path, String scrollId, Boolean paginated) {
     this.vertx = vertx;
     this.pageSize = pageSize;
     this.search = search;
     this.path = path;
+    this.scrollId = scrollId;
+    this.isPaginated = paginated;
+    this.stopped = false;
   }
   
   /**
@@ -93,6 +105,11 @@ public class IndexedStoreCursor implements StoreCursor {
     JsonObject queryMsg = new JsonObject()
         .put("pageSize", pageSize)
         .put("search", search);
+    
+    if (scrollId != null) {
+      queryMsg.put("scrollId", scrollId);
+    }
+    
     if (path != null) {
       queryMsg.put("path", path);
     }
@@ -180,5 +197,13 @@ public class IndexedStoreCursor implements StoreCursor {
       return new JsonChunkMeta(hit);
     }
     return new ChunkMeta(hit);
+  }
+  
+  @Override
+  public JsonObject getPaginationInfo() {
+    return new JsonObject()
+        .put("scrollId", scrollId)
+        .put("totalHits", size)
+        .put("hits", count);
   }
 }

@@ -88,6 +88,11 @@ public class RxStore implements Store {
     delegate.get(search, path, handler);
   }
   
+  @Override
+  public void getPaginated(String search, String path, String paginationToken, Handler<AsyncResult<PaginatedStoreCursor>> handler) {
+    delegate.getPaginated(search, path, paginationToken, handler);
+  }
+  
   /**
    * Observable version of {@link #get(String, String, Handler)}
    * @param search the search query
@@ -98,6 +103,12 @@ public class RxStore implements Store {
   public Observable<StoreCursor> getObservable(String search, String path) {
     ObservableFuture<StoreCursor> o = RxHelper.observableFuture();
     get(search, path, o.toHandler());
+    return o;
+  }
+  
+  public Observable<PaginatedStoreCursor> getObservablePaginated(String search, String path, String scrollId) {
+    ObservableFuture<PaginatedStoreCursor> o = RxHelper.observableFuture();
+    delegate.getPaginated(search, path, scrollId, o.toHandler());
     return o;
   }
 }

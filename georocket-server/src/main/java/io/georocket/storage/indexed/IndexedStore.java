@@ -8,6 +8,7 @@ import org.bson.types.ObjectId;
 import io.georocket.constants.AddressConstants;
 import io.georocket.storage.ChunkMeta;
 import io.georocket.storage.IndexMeta;
+import io.georocket.storage.PaginatedStoreCursor;
 import io.georocket.storage.Store;
 import io.georocket.storage.StoreCursor;
 import io.vertx.core.AsyncResult;
@@ -100,6 +101,11 @@ public abstract class IndexedStore implements Store {
   @Override
   public void get(String search, String path, Handler<AsyncResult<StoreCursor>> handler) {
     new IndexedStoreCursor(vertx, PAGE_SIZE, search, path).start(handler);
+  }
+  
+  @Override
+  public void getPaginated(String search, String path, String scrollId, Handler<AsyncResult<PaginatedStoreCursor>> handler) {
+    new IndexedStoreCursor(vertx, PAGE_SIZE, search, path, scrollId, true).start(c -> handler.handle(Future.succeededFuture((PaginatedStoreCursor) c.result())));
   }
   
   /**
