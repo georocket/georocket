@@ -59,7 +59,7 @@ import rx.Single;
 public class StoreEndpoint implements Endpoint {
   private static Logger log = LoggerFactory.getLogger(StoreEndpoint.class);
   
-  private final Vertx vertx;
+  protected final Vertx vertx;
   
   private RxStore store;
   private String storagePath;
@@ -181,7 +181,7 @@ public class StoreEndpoint implements Endpoint {
    * Handles the HTTP GET request for a bunch of chunks
    * @param context the routing context
    */
-  private void onGet(RoutingContext context) {
+  protected void onGet(RoutingContext context) {
     HttpServerRequest request = context.request();
     HttpServerResponse response = context.response();
 
@@ -253,7 +253,7 @@ public class StoreEndpoint implements Endpoint {
    * Handles the HTTP POST request
    * @param context the routing context
    */
-  private void onPost(RoutingContext context) {
+  protected void onPost(RoutingContext context) {
     HttpServerRequest request = context.request();
     request.pause();
 
@@ -384,7 +384,7 @@ public class StoreEndpoint implements Endpoint {
    * Handles the HTTP DELETE request
    * @param context the routing context
    */
-  private void onDelete(RoutingContext context) {
+  protected void onDelete(RoutingContext context) {
     String path = getStorePath(context);
     
     HttpServerResponse response = context.response();
@@ -408,7 +408,7 @@ public class StoreEndpoint implements Endpoint {
    * Handles the HTTP PATCH request
    * @param context the routing context
    */
-  private void onPatch(RoutingContext context) {
+  protected void onPatch(RoutingContext context) {
     String path = getStorePath(context);
 
     HttpServerResponse response = context.response();
