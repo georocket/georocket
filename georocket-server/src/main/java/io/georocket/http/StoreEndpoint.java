@@ -222,7 +222,8 @@ public class StoreEndpoint implements Endpoint {
        * - the client starts a pagination and has no scrollId
        * - the client has already a scrollId from a previous request and resumes the scroll  
        */
-      paginated = request.getParam("paginated").equals("true") || request.getParam("scrollId") != null;
+      String paginatedParam = request.getParam("paginated");
+      paginated = (paginatedParam != null && paginatedParam.equals("true")) || request.getParam("scrollId") != null;
       scrollId = request.getParam("scrollId");
     } else {
       /**

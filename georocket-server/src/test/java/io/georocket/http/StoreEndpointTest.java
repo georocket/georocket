@@ -139,6 +139,21 @@ public class StoreEndpointTest {
       });
     });
   }
+  /**
+   * Tests that a normal query returns all the elements.
+   * @param context
+   */
+  @Test
+  public void testNormalGetWithoutPaginatedParameterGiven(TestContext context) {
+    Async async = context.async();
+    MockIndexer.mockIndexerQuery(vertx);
+    doPaginatedStorepointRequest(context, "/?search=DUMMY_QUERY", false, false, response -> {
+      checkGeoJsonResponse(response, context, returned -> {
+        checkGeoJsonSize(context, response, returned, MockIndexer.TOTAL_HITS, false, "The size of the returned elements on a normal query should be TOTAL_HITS");
+        async.complete();
+      });
+    });
+  }
   
   /**
    * This should test that pagination is disabled by default in the config
