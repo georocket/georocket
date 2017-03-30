@@ -1,25 +1,19 @@
 package io.georocket.http;
 
-import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
 import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import io.georocket.constants.AddressConstants;
 import io.georocket.constants.ConfigConstants;
 import io.georocket.constants.HeaderConstants;
+import io.georocket.mocks.MockIndexer;
 import io.georocket.mocks.MockServer;
-import io.georocket.mocks.MockStore;
-import io.vertx.core.AsyncResult;
 import io.vertx.core.DeploymentOptions;
-import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.VertxOptions;
 import io.vertx.core.http.HttpClient;
@@ -27,7 +21,6 @@ import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.http.HttpServer;
-import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -36,7 +29,6 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.ext.web.Router;
 import io.vertx.rxjava.core.Vertx;
 import rx.Observable;
-import rx.Subscription;
 
 @RunWith(VertxUnitRunner.class)
 public class StoreEndpointTest {
@@ -47,24 +39,6 @@ public class StoreEndpointTest {
 
   static io.vertx.core.Vertx v;
   
-  /**
-   * The number of all hits to a given query
-   */
-  private static Long TOTAL_HITS = 80L;
-  
-  /**
-   * The number of hits per page
-   */
-  private static Long HITS_PER_PAGE = 50L;
-
-  /**
-   * The scrollId that gets returned from the indexer after the first query
-   */
-  private static String FIRST_RETURNED_SCROLL_ID = "FIRST_SCROLL_ID";
-  
-  private static String INVALID_SCROLL_ID = "THIS_IS_NOT_VALID";
-  
-  private Subscription indexerQuerySubscription;
   
   /**
    * Removes the warnings about blocked threads.
@@ -91,19 +65,9 @@ public class StoreEndpointTest {
     }));
   }
 
-  
-  
   @After
   public void teardown(TestContext context) {
-    unsubscribeIndexerQuery();
-  }
-  
-  
-  private void unsubscribeIndexerQuery() {
-    if (indexerQuerySubscription != null && !indexerQuerySubscription.isUnsubscribed()) {
-      indexerQuerySubscription.unsubscribe();
-    }
-    indexerQuerySubscription = null;
+    MockIndexer.unsubscribeIndexer();
   }
   
   /**
@@ -113,13 +77,13 @@ public class StoreEndpointTest {
   @Test
   public void testPagination(TestContext context) {
     Async async = context.async();
-    mockIndexerQuery(context, HITS_PER_PAGE, FIRST_RETURNED_SCROLL_ID, null, true);
+    MockIndexer.mockIndexerQuery(vertx);
     
     doPaginatedStorepointRequest(context, "/?search=DUMMY_QUERY&paginated=true", true, response -> {
-      context.assertEquals(FIRST_RETURNED_SCROLL_ID, response.getHeader(HeaderConstants.SCROLL_ID));
+      context.assertEquals(MockIndexer.FIRST_RETURNED_SCROLL_ID, response.getHeader(HeaderConstants.SCROLL_ID));
       response.bodyHandler(body -> {
           JsonObject returned = body.toJsonObject();
-          context.assertEquals(HITS_PER_PAGE, new Long(returned.getJsonArray("geometries").size()), "The size of the returned elements should be the page size.");
+          context.assertEquals(MockIndexer.HITS_PER_PAGE, new Long(returned.getJsonArray("geometries").size()), "The size of the returned elements should be the page size.");
           async.complete();
       });
     });
@@ -132,15 +96,14 @@ public class StoreEndpointTest {
   @Test
   public void testPaginationWithGivenScrollId(TestContext context) {
     Async async = context.async();
-    mockIndexerQuery(context, TOTAL_HITS - HITS_PER_PAGE, INVALID_SCROLL_ID, FIRST_RETURNED_SCROLL_ID, true);
-    
-    doPaginatedStorepointRequest(context, "/?search=DUMMY_QUERY&paginated=true&scrollId=" + FIRST_RETURNED_SCROLL_ID, true, response -> {
-      context.assertEquals(INVALID_SCROLL_ID, response.getHeader(HeaderConstants.SCROLL_ID), "The second scrollId should be invalid if there a no elements left.");
+    MockIndexer.mockIndexerQuery(vertx);
+    doPaginatedStorepointRequest(context, "/?search=DUMMY_QUERY&paginated=true&scrollId=" + MockIndexer.FIRST_RETURNED_SCROLL_ID, true, response -> {
+      context.assertEquals(MockIndexer.INVALID_SCROLLID, response.getHeader(HeaderConstants.SCROLL_ID), "The second scrollId should be invalid if there a no elements left.");
       response.bodyHandler(body -> {
         JsonObject returned = body.toJsonObject();
         context.assertNotNull(returned);
         context.assertTrue(returned.containsKey("geometries"));
-        context.assertEquals(TOTAL_HITS - HITS_PER_PAGE, new Long(returned.getJsonArray("geometries").size()), "The size of the returned elements should be (TOTAL_HITS - HITS_PER_PAGE)");
+        context.assertEquals(MockIndexer.TOTAL_HITS - MockIndexer.HITS_PER_PAGE, new Long(returned.getJsonArray("geometries").size()), "The size of the returned elements should be (TOTAL_HITS - HITS_PER_PAGE)");
         async.complete();
       });
     });
@@ -149,10 +112,10 @@ public class StoreEndpointTest {
   @Test
   public void testPaginationWithInvalidScrollId(TestContext context) {
     Async async = context.async();
-    mockIndexerQuery(context, 0L, INVALID_SCROLL_ID, INVALID_SCROLL_ID, true);
+    MockIndexer.mockIndexerQuery(vertx);
     
-    doPaginatedStorepointRequest(context, "/?search=DUMMY_QUERY&paginated=true&scrollId=" + INVALID_SCROLL_ID, false, response -> {
-      context.assertEquals(INVALID_SCROLL_ID, response.getHeader(HeaderConstants.SCROLL_ID), "The returned scrollId should be invalid if an invalid scrollId is given.");
+    doPaginatedStorepointRequest(context, "/?search=DUMMY_QUERY&paginated=true&scrollId=" + MockIndexer.INVALID_SCROLLID, false, response -> {
+      context.assertEquals(MockIndexer.INVALID_SCROLLID, response.getHeader(HeaderConstants.SCROLL_ID), "The returned scrollId should be invalid if an invalid scrollId is given.");
       async.complete();
     });
   }
@@ -222,31 +185,6 @@ public class StoreEndpointTest {
 
   private static Observable<HttpServer> setupMockEndpoint() {
     return MockServer.deployHttpServer(v, getVertxConfig(), getStoreEndpointRouter());
-  }
-
-  private void mockIndexerQuery(TestContext context, Long returnedElements, String returnedScrollId, String expectedScrollId, Boolean unsubscribeDirectly) {
-    indexerQuerySubscription = vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_QUERY).toObservable()
-        .subscribe(msg -> {
-          JsonArray hits = new JsonArray();
-          
-          String givenScrollId = msg.body().getString("scrollId");
-          context.assertEquals(expectedScrollId, givenScrollId);
-          
-          for (int i = 0; i < returnedElements; i++) {
-            hits.add(new JsonObject()
-              .put("mimeType", "application/geo+json")
-              .put("id", "some_id")
-              .put("start", 0)
-              .put("end", MockStore.RETURNED_CHUNK.length())
-              .put("parents", new JsonArray())
-            );
-          }
-          
-          msg.reply(new JsonObject()
-              .put("totalHits", TOTAL_HITS)
-              .put("scrollId", returnedScrollId)
-              .put("hits", hits));
-        });
   }
   
   private static JsonObject getVertxConfig() {
