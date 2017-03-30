@@ -237,6 +237,36 @@ You can also restrict the command to a certain layer.
 
 This example removes the tags `tag1` and `tag2` from chunks within the layer `CityModel/LOD1` matching the query `myquery`.
 
+[[props-set-command]]
+=== Set Property command
+
+Set one or multiple properties (separated by comma) to existing chunks in the GeoRocket data store. Provide a <<query-language, query>> to specify the chunks, whose properties should be updated. If a property with the same key is already attached to a particular chunk, its value will be overwritten.
+    
+    georocket property set --properties author:smith,creation-date:2017-02-15 myquery
+    
+This example sets the properties `author:smith` and `creation-date:2017-02-15` to chunks matching the query `myquery`.
+
+You can also restrict the command to a certain layer.
+
+    georocket property set --layer CityModel/LOD1 --properties author:smith myquery
+
+This example sets the property `author:smith` to chunks within the layer `CityModel/LOD1` matching the query `myquery`.
+
+[[props-remove-command]]
+=== Remove Property command
+
+Remove one or multiple properties (separated by comma) from existing chunks in the GeoRocket data store. To remove a properties, only its key must be set. Provide a <<query-language, query>> to specify the chunks, whose properties should be updated:
+    
+    georocket property rm --properties author,creation-date myquery
+    
+This example removes the properties with either the key `author` or `creation-date` from chunks matching the query `myquery`. If a property does not exist for a certain chunk, nothing changes.
+
+You can also restrict the command to a certain layer.
+
+    georocket property rm --layer CityModel/LOD1 --properties author,creation-date myquery
+
+This example removes the properties with either the key `author` or `creation-date` from chunks within the layer `CityModel/LOD1` matching the query `myquery`.
+
 == HTTP interface
 
 GeoRocket Server provides an (REST-like) HTTP interface that you can use to interact with the data store as well as to embed GeoRocket in your application. By default GeoRocket listens to incoming connections on port 63020.
