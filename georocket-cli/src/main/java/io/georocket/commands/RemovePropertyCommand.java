@@ -42,7 +42,7 @@ public class RemovePropertyCommand extends AbstractGeoRocketCommand {
    * @param layer the layer
    */
   @OptionDesc(longName = "layer", shortName = "l",
-      description = "absolute path to the layer from which to remove properties",
+      description = "absolute path to the layer in which to remove properties",
       argumentName = "PATH", argumentType = Option.ArgumentType.STRING)
   public void setLayer(String layer) {
     this.layer = layer;
@@ -94,7 +94,7 @@ public class RemovePropertyCommand extends AbstractGeoRocketCommand {
         Throwable t = ar.cause();
         error(t.getMessage());
         if (!(t instanceof NoStackTraceThrowable)) {
-          log.error("Could not remove the properties", t);
+          log.error("Could not remove properties", t);
         }
         handler.handle(1);
       } else {

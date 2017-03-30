@@ -690,7 +690,7 @@ public class IndexerVerticle extends AbstractVerticle {
   }
 
   /**
-   * Remove or append meta data to existing chunks in the index. The chunks are
+   * Remove or append meta data of existing chunks in the index. The chunks are
    * specified by a search query.
    * @param body the message containing the query and updates
    * @return an observable that emits a single item when the chunks have
@@ -721,7 +721,7 @@ public class IndexerVerticle extends AbstractVerticle {
   }
 
   /**
-   * Remove or append tags to existing chunks in the index. The chunks are
+   * Remove or append tags of existing chunks in the index. The chunks are
    * specified by a search query.
    * @param action indicating if tags should be appended or removed
    * @param updates values to update
@@ -730,7 +730,6 @@ public class IndexerVerticle extends AbstractVerticle {
    * been updated successfully
    */
   private Observable<Void> updateTags(String action, JsonArray updates, JsonObject postFilter) {
-
     List<String> tags = updates.stream()
         .map(object -> Objects.toString(object, ""))
         .filter(entry -> !(entry.isEmpty()))
@@ -771,11 +770,11 @@ public class IndexerVerticle extends AbstractVerticle {
 
     String lang = "painless";
     JsonObject params = new JsonObject()
-            .put("tag", new JsonArray(tags));
+        .put("tag", new JsonArray(tags));
     JsonObject updateScript = new JsonObject()
-            .put("inline", inline)
-            .put("lang", lang)
-            .put("params", params);
+        .put("inline", inline)
+        .put("lang", lang)
+        .put("params", params);
 
     return client.updateByQuery(TYPE_NAME, postFilter, updateScript).flatMap(sr -> {
       boolean timed_out = sr.getBoolean("timed_out", true);
@@ -797,7 +796,6 @@ public class IndexerVerticle extends AbstractVerticle {
    * been updated successfully
    */
   private Observable<Void> updateProperties(String action, JsonArray updates, JsonObject postFilter) {
-
     List<String> props = updates.stream()
       .map(object -> Objects.toString(object, ""))
       .filter(entry -> !(entry.isEmpty()))

@@ -542,7 +542,7 @@ public class StoreClient {
   }
 
   /**
-   * <p>Set properties to chunks in the GeoRocket data store. If a
+   * <p>Set properties of chunks in the GeoRocket data store. If a
    * property with the same key already exists, its value will be
    * overwritten.</p>.
    * <p>The chunks are either specified by a <code>query</code> or
@@ -552,11 +552,10 @@ public class StoreClient {
    * properties should be updated (or <code>null</code> if the
    * properties of all chunks in all sub-layers from the given
    * <code>layer</code> should be updated)
-   * @param layer the absolute path to the layer from which to update
+   * @param layer the absolute path to the layer in which to update
    * properties (or <code>null</code> if the entire store should be
    * queried to find the chunks, whose properties should be updated)
-   * @param properties a collection of properties to be removed from
-   * the queried chunks
+   * @param properties a collection of properties to set
    * @param handler a handler that will be called when the operation
    * has finished
    * @since 1.1.0
@@ -575,10 +574,10 @@ public class StoreClient {
    * properties should be updated (or <code>null</code> if the
    * properties of all chunks in all sub-layers from the given
    * <code>layer</code> should be updated)
-   * @param layer the absolute path to the layer from which to update
+   * @param layer the absolute path to the layer in which to update
    * properties (or <code>null</code> if the entire store should be
    * queried to find the chunks, whose properties should be updated)
-   * @param properties a collection of properties to be removed from
+   * @param properties a collection of properties to remove from
    * the queried chunks
    * @param handler a handler that will be called when the operation
    * has finished
@@ -594,15 +593,14 @@ public class StoreClient {
    * <p>The chunks are either specified by a <code>query</code> or
    * <code>layer</code> information or both. If none is given, the
    * properties of all chunks in the data store will be updated.</p>
-   * <p>Properties can either be removed or set from/to existing
-   * chunks</p>
+   * <p>Properties can either be removed or set.</p>
    * @param action indicating whether properties are removed or append
    * from/to the queried chunks
    * @param query a search query specifying the chunks, whose
    * properties should be updated (or <code>null</code> if the
    * properties of all chunks in all sub-layers from the given
    * <code>layer</code> should be updated)
-   * @param layer the absolute path to the layer from which to update
+   * @param layer the absolute path to the layer in which to update
    * properties (or <code>null</code> if the entire store should be
    * queried to find the chunks, whose properties should be updated)
    * @param properties a collection of properties to update within the

@@ -42,7 +42,7 @@ public class SetPropertyCommand extends AbstractGeoRocketCommand {
    * @param layer the layer
    */
   @OptionDesc(longName = "layer", shortName = "l",
-      description = "absolute path to the layer from which to set properties",
+      description = "absolute path to the layer in which to set properties",
       argumentName = "PATH", argumentType = Option.ArgumentType.STRING)
   public void setLayer(String layer) {
     this.layer = layer;
@@ -72,7 +72,7 @@ public class SetPropertyCommand extends AbstractGeoRocketCommand {
 
   @Override
   public String getUsageDescription() {
-    return "Set properties to existing chunks in the GeoRocket data store";
+    return "Set properties of existing chunks in the GeoRocket data store";
   }
 
   @Override
@@ -94,7 +94,7 @@ public class SetPropertyCommand extends AbstractGeoRocketCommand {
         Throwable t = ar.cause();
         error(t.getMessage());
         if (!(t instanceof NoStackTraceThrowable)) {
-          log.error("Could not set the properties", t);
+          log.error("Could not set properties", t);
         }
         handler.handle(1);
       } else {
