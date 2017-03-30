@@ -71,7 +71,15 @@ public class IndexedStoreCursor implements PaginatedStoreCursor {
    */
   private ChunkMeta[] metas;
   
+  /**
+   * Whether this cursor is paginated
+   */
   private Boolean paginated;
+
+  /**
+   * Number of total items retrieved
+   */
+  private int currentHitCount;
   
   /**
    * Create a cursor
@@ -91,6 +99,7 @@ public class IndexedStoreCursor implements PaginatedStoreCursor {
     this.path = path;
     this.scrollId = scrollId;
     this.paginated = paginated;
+    this.currentHitCount = 0;
   }
   
   /**
@@ -128,6 +137,7 @@ public class IndexedStoreCursor implements PaginatedStoreCursor {
     scrollId = body.getString("scrollId");
     JsonArray hits = body.getJsonArray("hits");
     int count = hits.size();
+    currentHitCount += count;
     ids = new String[count];
     metas = new ChunkMeta[count];
     for (int i = 0; i < count; ++i) {
@@ -208,7 +218,7 @@ public class IndexedStoreCursor implements PaginatedStoreCursor {
     return new JsonObject()
         .put("scrollId", scrollId)
         .put("totalHits", size)
-        .put("hits", count)
+        .put("hits", currentHitCount)
         .put("pageSize", pageSize);
   }
 }

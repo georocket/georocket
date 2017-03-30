@@ -24,7 +24,7 @@ import io.vertx.core.json.JsonObject;
  * @author Michel Kraemer
  */
 public abstract class IndexedStore implements Store {
-  private static final int PAGE_SIZE = 100;
+  public static final int PAGE_SIZE = 100;
   
   private final Vertx vertx;
   

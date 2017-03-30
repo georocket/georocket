@@ -3,9 +3,11 @@ package io.georocket.http;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.apache.directory.api.util.exception.NotImplementedException;
 import org.junit.After;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -50,7 +52,7 @@ public class StoreEndpointTest {
   public static RunTestOnContext rule = new RunTestOnContext(vertxOptions);
 
   /**
-   * Starts a MockServer verticle with a StoreEndpoint to test against.
+   * Starts a MockServer verticle with a StoreEndpoint to test against
    * @param context
    */
   @BeforeClass
@@ -82,7 +84,7 @@ public class StoreEndpointTest {
     doPaginatedStorepointRequest(context, "/?search=DUMMY_QUERY&paginated=true", true, true, response -> {
       context.assertEquals(MockIndexer.FIRST_RETURNED_SCROLL_ID, response.getHeader(HeaderConstants.SCROLL_ID));
       checkGeoJsonResponse(response, context, returned -> {
-        context.assertEquals(MockIndexer.HITS_PER_PAGE, new Long(returned.getJsonArray("geometries").size()), "The size of the returned elements on the first page should be the page size.");
+        checkGeoJsonSize(context, response, returned, MockIndexer.HITS_PER_PAGE, true, "The size of the returned elements on the first page should be the page size.");
         async.complete();
       });
     });
@@ -99,12 +101,16 @@ public class StoreEndpointTest {
     doPaginatedStorepointRequest(context, "/?search=DUMMY_QUERY&paginated=true&scrollId=" + MockIndexer.FIRST_RETURNED_SCROLL_ID, true, true, response -> {
       context.assertEquals(MockIndexer.INVALID_SCROLLID, response.getHeader(HeaderConstants.SCROLL_ID), "The second scrollId should be invalid if there a no elements left.");
       checkGeoJsonResponse(response, context, returned -> {
-        context.assertEquals(MockIndexer.TOTAL_HITS - MockIndexer.HITS_PER_PAGE, new Long(returned.getJsonArray("geometries").size()), "The size of the returned elements on the second page should be (TOTAL_HITS - HITS_PER_PAGE)");
+        checkGeoJsonSize(context, response, returned, MockIndexer.TOTAL_HITS - MockIndexer.HITS_PER_PAGE, true, "The size of the returned elements on the second page should be (TOTAL_HITS - HITS_PER_PAGE)");
         async.complete();
       });
     });
   }
   
+  /**
+   * Tests what happens when an invalid scrollId is returned.
+   * @param context
+   */
   @Test
   public void testPaginationWithInvalidScrollId(TestContext context) {
     Async async = context.async();
@@ -118,17 +124,42 @@ public class StoreEndpointTest {
   }
   
 
+  /**
+   * Tests that a normal query returns all the elements.
+   * @param context
+   */
   @Test
   public void testNormalGet(TestContext context) {
     Async async = context.async();
     MockIndexer.mockIndexerQuery(vertx);
     doPaginatedStorepointRequest(context, "/?search=DUMMY_QUERY&paginated=false", false, false, response -> {
       checkGeoJsonResponse(response, context, returned -> {
-        context.assertEquals(MockIndexer.TOTAL_HITS, new Long(returned.getJsonArray("geometries").size()), "The size of the returned elements on a normal query should be TOTAL_HITS");
+        checkGeoJsonSize(context, response, returned, MockIndexer.TOTAL_HITS, false, "The size of the returned elements on a normal query should be TOTAL_HITS");
         async.complete();
       });
     });
   }
+  
+  /**
+   * This should test that pagination is disabled by default in the config
+   * and that paginated requests get handled like normal request in that case.
+   * @param context
+   */
+  @Ignore
+  @Test
+  public void testPaginationDefaultDisabled(TestContext context) {
+    throw new NotImplementedException();
+  }
+  
+  private void checkGeoJsonSize(TestContext context, HttpClientResponse response, JsonObject returned, Long expectedSize, boolean checkPaginationHeaders, String msg) {
+    context.assertEquals(expectedSize, new Long(returned.getJsonArray("geometries").size()), msg == null ? "Response GeoJson had not the expected size!" : msg);
+    if (checkPaginationHeaders) {
+      context.assertEquals(MockIndexer.HITS_PER_PAGE.toString(), response.getHeader(HeaderConstants.PAGE_SIZE));
+      context.assertEquals(MockIndexer.TOTAL_HITS.toString(), response.getHeader(HeaderConstants.TOTAL_HITS));
+      context.assertEquals(expectedSize.toString(), response.getHeader(HeaderConstants.HITS));
+    }
+  }
+  
   
   private void checkGeoJsonResponse(HttpClientResponse response, TestContext context, Handler<JsonObject> handler) {
     response.bodyHandler(body -> {
