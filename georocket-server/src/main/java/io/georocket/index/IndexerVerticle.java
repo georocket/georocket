@@ -133,6 +133,12 @@ public class IndexerVerticle extends AbstractVerticle {
    */
   private int maxParallelInserts;
   
+  /**
+   * The time a scrollId is valid
+   * @see <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/search-request-scroll.html">ElasticSearch Scroll</a>
+   */
+  public static final String SCROLL_TIMEOUT = "1m"; // one minute
+  
   @Override
   public void start(Future<Void> startFuture) {
     // True if the indexer and other verticles should report their activities
@@ -618,7 +624,6 @@ public class IndexerVerticle extends AbstractVerticle {
     String path = body.getString("path");
     String scrollId = body.getString("scrollId");
     int pageSize = body.getInteger("pageSize", 100);
-    String timeout = "1m"; // one minute
 
     Observable<JsonObject> observable;
     if (scrollId == null) {
@@ -627,10 +632,10 @@ public class IndexerVerticle extends AbstractVerticle {
       // documents and not those that likely match). For the difference between
       // query and post_filter see the Elasticsearch documentation.
       JsonObject postFilter = queryCompiler.compileQuery(search, path);
-      observable = client.beginScroll(TYPE_NAME, null, postFilter, pageSize, timeout);
+      observable = client.beginScroll(TYPE_NAME, null, postFilter, pageSize, SCROLL_TIMEOUT);
     } else {
       // continue searching
-      observable = client.continueScroll(scrollId, timeout);
+      observable = client.continueScroll(scrollId, SCROLL_TIMEOUT);
     }
 
     return observable.map(sr -> {

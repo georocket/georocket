@@ -303,12 +303,12 @@ Transfer-Encoding: chunked
 [[pagination]]
 ==== Pagination
 
-Pagination is available to retrieve some portion of the results from a GET query.
-In this case the returned file contains a subset of elements of the complete results. The file is stand-alone, meaning that it has a root element and the same structure as a un-paginated file.
+Pagination is available to retrieve some portion of the results from a GET query at a time.
+With pagination the returned file is also stand-alone, meaning that it has a root element and the same structure as a un-paginated file.
 The response also contains a "X-Scroll-Id" header to retrieve the next elements.
 
 The next example request shows how to start a paginated GET request.
-Notice the response headers. When the "X-Hits" header is 0, there are no elements left or the scrollId is not valid (anymore).
+Notice the response headers. When the "X-Hits" header is less than the header "X-Page-Size", there are no elements left or the scrollId is not valid (anymore).
 
 ===== Example request
 
