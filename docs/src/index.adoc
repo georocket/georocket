@@ -208,33 +208,32 @@ You may even delete the whole data store by specifying the root layer `/`.
 CAUTION: This is a dangerous operation. It will remove everything that is stored in your GeoRocket instance. There is no safety net--no confirmation prompt and no recycle bin.
 
 [[tag-append-command]]
-=== Append Tag command
+=== Add Tag command
 
-Append one or multiple tags (separated by comma) to existing chunks in the GeoRocket data store. Provide a <<query-language, query>> to specify the chunks, whose tags should be updated:
+Add one or multiple tags (separated by comma) to existing chunks in the GeoRocket data store. Provide a <<query-language, query>> to specify the chunks, whose tags should be updated:
     
-    georocket appendTag --tags tag1,tag2 myquery
+    georocket tag add --tags tag1,tag2 myquery
     
-This example appends the tags `tag1` and `tag2` to chunks matching the query `myquery`.
+This example adds the tags `tag1` and `tag2` to chunks matching the query `myquery`.
 
 You can also restrict the command to a certain layer.
 
-    georocket appendTag --layer CityModel/LOD1 --tags tag1,tag2 myquery
+    georocket tag add --layer CityModel/LOD1 --tags tag1,tag2 myquery
 
-This example appends the tags `tag1` and `tag2` to chunks within the layer `CityModel/LOD1` matching the query `myquery`.
-
+This example adds the tags `tag1` and `tag2` to chunks within the layer `CityModel/LOD1` matching the query `myquery`.
 
 [[tag-remove-command]]
 === Remove Tag command
 
 Remove one or multiple tags (separated by comma) from existing chunks in the GeoRocket data store. Provide a <<query-language, query>> to specify the chunks, whose tags should be updated:
     
-    georocket removeTag --tags tag1,tag2 myquery
+    georocket tag rm --tags tag1,tag2 myquery
     
 This example removes the tags `tag1` and `tag2` from chunks matching the query `myquery`. If a tag does not exist for a certain chunk, nothing changes.
 
 You can also restrict the command to a certain layer.
 
-    georocket removeTag --layer CityModel/LOD1 --tags tag1,tag2 myquery
+    georocket tag rm --layer CityModel/LOD1 --tags tag1,tag2 myquery
 
 This example removes the tags `tag1` and `tag2` from chunks within the layer `CityModel/LOD1` matching the query `myquery`.
 
