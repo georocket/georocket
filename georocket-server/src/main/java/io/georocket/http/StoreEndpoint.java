@@ -121,8 +121,8 @@ public class StoreEndpoint implements Endpoint {
    * has been initialized with all results
    */
   private Observable<Void> initializeMerger(MultiMerger merger, String search,
-      String path, String scrollId, Boolean paginated) {
-    return (paginated ? store.getObservablePaginated(search, path, scrollId) : store.getObservable(search, path)) 
+      String path) {
+    return store.getObservable(search, path) 
       .map(RxStoreCursor::new)
       .flatMap(RxStoreCursor::toObservable)
       .map(Pair::getLeft)
@@ -244,7 +244,7 @@ public class StoreEndpoint implements Endpoint {
     // perform two searches: first initialize the merger and then
     // merge all retrieved chunks
     MultiMerger merger = new MultiMerger();
-    initializeMerger(merger, search, path, scrollId, paginated)
+    initializeMerger(merger, search, path)
       .flatMap(v -> doMerge(merger, search, path, scrollId, paginated, response))
       .subscribe(v -> {
         response.end();

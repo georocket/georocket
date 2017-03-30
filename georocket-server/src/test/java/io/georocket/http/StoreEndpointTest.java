@@ -81,10 +81,9 @@ public class StoreEndpointTest {
     
     doPaginatedStorepointRequest(context, "/?search=DUMMY_QUERY&paginated=true", true, response -> {
       context.assertEquals(MockIndexer.FIRST_RETURNED_SCROLL_ID, response.getHeader(HeaderConstants.SCROLL_ID));
-      response.bodyHandler(body -> {
-          JsonObject returned = body.toJsonObject();
-          context.assertEquals(MockIndexer.HITS_PER_PAGE, new Long(returned.getJsonArray("geometries").size()), "The size of the returned elements should be the page size.");
-          async.complete();
+      checkGeoJsonResponse(response, context, returned -> {
+        context.assertEquals(MockIndexer.HITS_PER_PAGE, new Long(returned.getJsonArray("geometries").size()), "The size of the returned elements on the first page should be the page size.");
+        async.complete();
       });
     });
   }
@@ -99,11 +98,8 @@ public class StoreEndpointTest {
     MockIndexer.mockIndexerQuery(vertx);
     doPaginatedStorepointRequest(context, "/?search=DUMMY_QUERY&paginated=true&scrollId=" + MockIndexer.FIRST_RETURNED_SCROLL_ID, true, response -> {
       context.assertEquals(MockIndexer.INVALID_SCROLLID, response.getHeader(HeaderConstants.SCROLL_ID), "The second scrollId should be invalid if there a no elements left.");
-      response.bodyHandler(body -> {
-        JsonObject returned = body.toJsonObject();
-        context.assertNotNull(returned);
-        context.assertTrue(returned.containsKey("geometries"));
-        context.assertEquals(MockIndexer.TOTAL_HITS - MockIndexer.HITS_PER_PAGE, new Long(returned.getJsonArray("geometries").size()), "The size of the returned elements should be (TOTAL_HITS - HITS_PER_PAGE)");
+      checkGeoJsonResponse(response, context, returned -> {
+        context.assertEquals(MockIndexer.TOTAL_HITS - MockIndexer.HITS_PER_PAGE, new Long(returned.getJsonArray("geometries").size()), "The size of the returned elements on the second page should be (TOTAL_HITS - HITS_PER_PAGE)");
         async.complete();
       });
     });
@@ -116,7 +112,17 @@ public class StoreEndpointTest {
     
     doPaginatedStorepointRequest(context, "/?search=DUMMY_QUERY&paginated=true&scrollId=" + MockIndexer.INVALID_SCROLLID, false, response -> {
       context.assertEquals(MockIndexer.INVALID_SCROLLID, response.getHeader(HeaderConstants.SCROLL_ID), "The returned scrollId should be invalid if an invalid scrollId is given.");
+      context.assertEquals(404, response.statusCode(), "Giving an invalid scrollId should return 404.");
       async.complete();
+    });
+  }
+  
+  private void checkGeoJsonResponse(HttpClientResponse response, TestContext context, Handler<JsonObject> handler) {
+    response.bodyHandler(body -> {
+      JsonObject returned = body.toJsonObject();
+      context.assertNotNull(returned);
+      context.assertTrue(returned.containsKey("geometries"));
+      handler.handle(returned);
     });
   }
   
