@@ -165,6 +165,17 @@ public class StoreEndpointTest {
   public void testPaginationDefaultDisabled(TestContext context) {
     throw new NotImplementedException();
   }
+
+  
+  /**
+   * This should test that the files returned from the paginated requests should be equal to the files returned from an un-paginated request.
+   * @param context
+   */
+  @Ignore
+  @Test
+  public void testPaginationReturnsSameAsNonPagination(TestContext context) {
+    throw new NotImplementedException();
+  }
   
   private void checkGeoJsonSize(TestContext context, HttpClientResponse response, JsonObject returned, Long expectedSize, boolean checkPaginationHeaders, String msg) {
     context.assertEquals(expectedSize, new Long(returned.getJsonArray("geometries").size()), msg == null ? "Response GeoJson had not the expected size!" : msg);
