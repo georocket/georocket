@@ -8,7 +8,6 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
-import io.georocket.commands.TagCommand;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.yaml.snakeyaml.Yaml;
@@ -22,13 +21,13 @@ import de.undercouch.underline.OptionParserException;
 import de.undercouch.underline.StandardInputReader;
 import io.georocket.client.GeoRocketClient;
 import io.georocket.commands.AbstractGeoRocketCommand;
-import io.georocket.commands.AddTagCommand;
 import io.georocket.commands.DeleteCommand;
 import io.georocket.commands.ExportCommand;
 import io.georocket.commands.HelpCommand;
 import io.georocket.commands.ImportCommand;
-import io.georocket.commands.RemoveTagCommand;
+import io.georocket.commands.PropertyCommand;
 import io.georocket.commands.SearchCommand;
+import io.georocket.commands.TagCommand;
 import io.georocket.util.JsonUtils;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
@@ -185,9 +184,12 @@ public class GeoRocketCli extends AbstractGeoRocketCommand {
     @CommandDesc(longName = "export",
         description = "export from GeoRocket",
         command = ExportCommand.class),
+    @CommandDesc(longName = "property",
+        description = "update properties of existing chunks in GeoRocket",
+        command = PropertyCommand.class),
     @CommandDesc(longName = "tag",
-            description = "update tags of existing chunks in GeoRocket",
-            command = TagCommand.class),
+        description = "update tags of existing chunks in GeoRocket",
+        command = TagCommand.class),
     @CommandDesc(longName = "search",
         description = "search the GeoRocket data store",
         command = SearchCommand.class),

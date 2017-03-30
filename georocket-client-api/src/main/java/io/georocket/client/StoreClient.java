@@ -28,10 +28,17 @@ import io.vertx.core.streams.WriteStream;
  */
 public class StoreClient {
   /**
-   * Actions to update tags of existing chunks in the data store.
+   * Actions to update meta data of existing chunks in the data store.
    */
-  private enum UpdateTagsAction {
+  private enum UpdateAction {
     REMOVE, APPEND
+  }
+
+  /**
+   * Target of updates (such as tags or properties).
+   */
+  private enum UpdateTarget {
+    TAG, PROPERTY
   }
 
   /**
@@ -487,7 +494,7 @@ public class StoreClient {
    */
   public void appendTags(String query, String layer, List<String> tags,
       Handler<AsyncResult<Void>> handler) {
-    updateTags(UpdateTagsAction.APPEND, query, layer, tags, handler);
+    updateTags(UpdateAction.APPEND, query, layer, tags, handler);
   }
 
   /**
@@ -508,7 +515,7 @@ public class StoreClient {
    */
   public void removeTags(String query, String layer, List<String> tags,
       Handler<AsyncResult<Void>> handler) {
-    updateTags(UpdateTagsAction.REMOVE, query, layer, tags, handler);
+    updateTags(UpdateAction.REMOVE, query, layer, tags, handler);
   }
 
   /**
@@ -529,18 +536,121 @@ public class StoreClient {
    * finished
    * @since 1.1.0
    */
-  private void updateTags(UpdateTagsAction action, String query, String layer,
+  private void updateTags(UpdateAction action, String query, String layer,
       List<String> tags, Handler<AsyncResult<Void>> handler) {
+    update(action, UpdateTarget.TAG, query, layer, tags, handler);
+  }
+
+  /**
+   * <p>Set properties of chunks in the GeoRocket data store. If a
+   * property with the same key already exists, its value will be
+   * overwritten.</p>.
+   * <p>The chunks are either specified by a <code>query</code> or
+   * <code>layer</code> information or both. If none is given, the given
+   * properties will be appended to all chunks in the data store.</p>
+   * @param query a search query specifying the chunks, whose
+   * properties should be updated (or <code>null</code> if the
+   * properties of all chunks in all sub-layers from the given
+   * <code>layer</code> should be updated)
+   * @param layer the absolute path to the layer in which to update
+   * properties (or <code>null</code> if the entire store should be
+   * queried to find the chunks, whose properties should be updated)
+   * @param properties a collection of properties to set
+   * @param handler a handler that will be called when the operation
+   * has finished
+   * @since 1.1.0
+   */
+  public void setProperties(String query, String layer, List<String> properties,
+      Handler<AsyncResult<Void>> handler) {
+    updateProperties(UpdateAction.APPEND, query, layer, properties, handler);
+  }
+
+  /**
+   * <p>Remove properties from chunks in the GeoRocket data store.</p>
+   * <p>The chunks are either specified by a <code>query</code> or
+   * <code>layer</code> information or both. If none is given, the given
+   * properties will be removed from all chunks in the data store.</p>
+   * @param query a search query specifying the chunks, whose
+   * properties should be updated (or <code>null</code> if the
+   * properties of all chunks in all sub-layers from the given
+   * <code>layer</code> should be updated)
+   * @param layer the absolute path to the layer in which to update
+   * properties (or <code>null</code> if the entire store should be
+   * queried to find the chunks, whose properties should be updated)
+   * @param properties a collection of properties to remove from
+   * the queried chunks
+   * @param handler a handler that will be called when the operation
+   * has finished
+   * @since 1.1.0
+   */
+  public void removeProperties(String query, String layer, List<String> properties,
+      Handler<AsyncResult<Void>> handler) {
+    updateProperties(UpdateAction.REMOVE, query, layer, properties, handler);
+  }
+
+  /**
+   * <p>Update properties of chunks in the GeoRocket data store.</p>
+   * <p>The chunks are either specified by a <code>query</code> or
+   * <code>layer</code> information or both. If none is given, the
+   * properties of all chunks in the data store will be updated.</p>
+   * <p>Properties can either be removed or set.</p>
+   * @param action indicating whether properties are removed or append
+   * from/to the queried chunks
+   * @param query a search query specifying the chunks, whose
+   * properties should be updated (or <code>null</code> if the
+   * properties of all chunks in all sub-layers from the given
+   * <code>layer</code> should be updated)
+   * @param layer the absolute path to the layer in which to update
+   * properties (or <code>null</code> if the entire store should be
+   * queried to find the chunks, whose properties should be updated)
+   * @param properties a collection of properties to update within the
+   * GeoRocket data store
+   * @param handler a handler that will be called when the operation
+   * has finished
+   * @since 1.1.0
+   */
+  private void updateProperties(UpdateAction action, String query, String layer,
+      List<String> properties, Handler<AsyncResult<Void>> handler) {
+    update(action, UpdateTarget.PROPERTY, query, layer, properties, handler);
+  }
+
+  /**
+   * <p>Update the meta data (such as properties or tags) of chunks in
+   * the GeoRocket data store.</p>
+   * <p>The chunks are either specified by a <code>query</code> or
+   * <code>layer</code> information or both. If none is given, the
+   * meta data of all chunks in the data store will be updated.</p>
+   * <p>Meta data can either be removed or appended from/to existing
+   * chunks</p>
+   * @param action indicating whether meta data are removed or append
+   * from/to the queried chunks
+   * @param target indicating which meta data to update
+   * @param query a search query specifying the chunks, whose
+   * properties should be updated (or <code>null</code> if the
+   * properties of all chunks in all sub-layers from the given
+   * <code>layer</code> should be updated)
+   * @param layer the absolute path to the layer from which to update
+   * properties (or <code>null</code> if the entire store should be
+   * queried to find the chunks, whose properties should be updated)
+   * @param updates a collection of values to update within the
+   * GeoRocket data store
+   * @param handler a handler that will be called when the operation
+   * has finished
+   * @since 1.1.0
+   */
+  private void update(UpdateAction action, UpdateTarget target, String query, String layer,
+      List<String> updates, Handler<AsyncResult<Void>> handler) {
     if ((query == null || query.isEmpty()) && (layer == null || layer.isEmpty())) {
       handler.handle(Future.failedFuture("No search query and no layer given. "
-          + "Do you really wish to update the tags of all chunks in the GeoRocket "
+          + "Do you really wish to update all chunks in the GeoRocket "
           + "data store? If so, set the root layer /."));
       return;
     }
 
     JsonObject body = new JsonObject()
       .put("action", action.toString())
-      .put("tags", new JsonArray(tags));
+      .put("target", target.toString())
+      .put("updates", new JsonArray(updates));
 
     String queryPath = prepareQuery(query, layer);
     HttpClientRequest request = client.request(HttpMethod.PATCH, getEndpoint() + queryPath);
