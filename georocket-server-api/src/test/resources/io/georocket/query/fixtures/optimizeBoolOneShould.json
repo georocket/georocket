@@ -1,0 +1,16 @@
+{
+  "query": {
+    "bool": {
+      "should": {
+        "term": {
+          "id": "foobar"
+        }
+      }
+    }
+  },
+  "expected": {
+    "term": {
+      "id": "foobar"
+    }
+  }
+}

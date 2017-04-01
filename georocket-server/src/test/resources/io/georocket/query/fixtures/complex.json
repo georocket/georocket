@@ -2,6 +2,7 @@
   "query": "AND(foo bar OR(test1 test2)) hello NOT(world \"you\")",
   "expected": {
     "bool": {
+      "minimum_should_match": 1,
       "must": [{
         "term": {
           "tags": "foo"

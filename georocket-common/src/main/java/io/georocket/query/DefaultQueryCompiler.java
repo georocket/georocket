@@ -33,7 +33,6 @@ import io.georocket.query.parser.QueryParser.OrContext;
 import io.georocket.query.parser.QueryParser.QueryContext;
 import io.georocket.query.parser.QueryParser.StringContext;
 import io.georocket.util.PathUtils;
-import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
 /**
@@ -64,7 +63,7 @@ public class DefaultQueryCompiler implements QueryCompiler {
       this.queryCompilers = queryCompilers;
     }
   }
-  
+
   /**
    * Compile a search string
    * @param search the search string to compile
@@ -73,7 +72,7 @@ public class DefaultQueryCompiler implements QueryCompiler {
    * @return the compiled query
    */
   public JsonObject compileQuery(String search, String path) {
-    JsonObject qb = compileQuery(search);
+    JsonObject qb = compileQueryNoOptimize(search);
     if (path != null && !path.equals("/")) {
       String prefix = PathUtils.addTrailingSlash(path);
       
@@ -85,13 +84,24 @@ public class DefaultQueryCompiler implements QueryCompiler {
       boolAddShould(qr, qb);
       boolAddMust(qr, qi);
       
-      return qr;
+      return ElasticsearchQueryOptimizer.optimize(qr);
     }
-    return qb;
+    return ElasticsearchQueryOptimizer.optimize(qb);
   }
-  
+
   @Override
   public JsonObject compileQuery(String search) {
+    JsonObject r = compileQueryNoOptimize(search);
+    return ElasticsearchQueryOptimizer.optimize(r);
+  }
+
+  /**
+   * <p>Create an Elasticsearch query for the given search string but does
+   * not apply the {@link ElasticsearchQueryOptimizer} to it.</p>
+   * @param search the search string
+   * @return the Elasticsearch query (may be null)
+   */
+  protected JsonObject compileQueryNoOptimize(String search) {
     if (search == null || search.isEmpty()) {
       // match everything by default
       return matchAllQuery();
@@ -144,24 +154,6 @@ public class DefaultQueryCompiler implements QueryCompiler {
         break;
       case NONE:
         break;
-      }
-    }
-    
-    // optimize query - return single query embedded inside a
-    // boolean expression
-    if (bqb.size() == 1) {
-      JsonObject bool = bqb.getJsonObject("bool");
-      if (bool != null && bool.size() == 1) {
-        String fieldName = bool.fieldNames().iterator().next();
-        Object expr = bool.getValue(fieldName);
-        if (expr instanceof JsonObject) {
-          bqb = (JsonObject)expr;
-        } else if (expr instanceof JsonArray) {
-          JsonArray arrexpr = (JsonArray)expr;
-          if (arrexpr.size() == 1) {
-            bqb = arrexpr.getJsonObject(0);
-          }
-        }
       }
     }
 

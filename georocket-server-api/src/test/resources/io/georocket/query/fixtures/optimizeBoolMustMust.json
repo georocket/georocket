@@ -1,0 +1,20 @@
+{
+  "query": {
+    "bool": {
+      "must": {
+        "bool": {
+          "must": {
+            "term": {
+              "id": "foobar"
+            }
+          }
+        }
+      }
+    }
+  },
+  "expected": {
+    "term": {
+      "id": "foobar"
+    }
+  }
+}

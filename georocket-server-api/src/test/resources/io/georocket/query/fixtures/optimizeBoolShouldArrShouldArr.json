@@ -1,0 +1,42 @@
+{
+  "query": {
+    "bool": {
+      "minimum_should_match": 1,
+      "should": [{
+        "bool": {
+          "minimum_should_match": 1,
+          "should": [{
+            "term": {
+              "id": "foobar"
+            }
+          }, {
+            "term": {
+              "name": "Elvis"
+            }
+          }]
+        }
+      }, {
+        "term": {
+          "city": "Vancouver"
+        }
+      }]
+    }
+  },
+  "expected": {
+    "bool": {
+      "should": [{
+        "term": {
+          "id": "foobar"
+        }
+      }, {
+        "term": {
+          "name": "Elvis"
+        }
+      }, {
+        "term": {
+          "city": "Vancouver"
+        }
+      }]
+    }
+  }
+}

@@ -9,5 +9,6 @@ repositories {
 dependencies {
     compile "io.vertx:vertx-core:$vertxVersion"
     
+    testCompile 'commons-io:commons-io:2.5'
     testCompile 'junit:junit:4.12'
 }
