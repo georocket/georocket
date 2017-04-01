@@ -25,6 +25,19 @@ public final class ElasticsearchQueryHelper {
   }
   
   /**
+   * Create a query that allows for boolean combinations of other queries
+   * @param minimumShouldMatch the minimum number of should clauses to match
+   * @return the query
+   * @since 1.1.0
+   */
+  public static JsonObject boolQuery(int minimumShouldMatch) {
+    JsonObject r = boolQuery();
+    r.getJsonObject("bool")
+        .put("minimum_should_match", 1);
+    return r;
+  }
+  
+  /**
    * Add a filter to a bool query. Do not add it if the clause already exists
    * in the query.
    * @param bool the bool query

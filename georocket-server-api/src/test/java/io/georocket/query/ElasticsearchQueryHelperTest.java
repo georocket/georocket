@@ -20,6 +20,8 @@ public class ElasticsearchQueryHelperTest {
   @Test
   public void testBoolQuery() {
     assertEquals(new JsonObject().put("bool", new JsonObject()), boolQuery());
+    assertEquals(new JsonObject().put("bool", new JsonObject()
+        .put("minimum_should_match", 1)), boolQuery(1));
   }
   
   /**

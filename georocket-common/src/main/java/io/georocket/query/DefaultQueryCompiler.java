@@ -77,11 +77,11 @@ public class DefaultQueryCompiler implements QueryCompiler {
     if (path != null && !path.equals("/")) {
       String prefix = PathUtils.addTrailingSlash(path);
       
-      JsonObject qi = boolQuery();
+      JsonObject qi = boolQuery(1);
       boolAddShould(qi, termQuery("path", path));
       boolAddShould(qi, prefixQuery("path", prefix));
       
-      JsonObject qr = boolQuery();
+      JsonObject qr = boolQuery(1);
       boolAddShould(qr, qb);
       boolAddMust(qr, qi);
       
@@ -125,7 +125,7 @@ public class DefaultQueryCompiler implements QueryCompiler {
    * @return the Elasticsearch query
    */
   protected JsonObject makeQuery(QueryPart str) {
-    JsonObject bqb = boolQuery();
+    JsonObject bqb = boolQuery(1);
     for (QueryCompiler f : queryCompilers) {
       MatchPriority mp = f.getQueryPriority(str);
       if (mp == null) {
@@ -205,7 +205,7 @@ public class DefaultQueryCompiler implements QueryCompiler {
      * @param l the logical operation
      */
     private void enterLogical(Logical l) {
-      JsonObject bqb = boolQuery();
+      JsonObject bqb = boolQuery(1);
       combine(bqb);
       result.push(bqb);
       currentLogical.push(l);
@@ -341,7 +341,7 @@ public class DefaultQueryCompiler implements QueryCompiler {
       } else {
         // create a new boolean query and replace top of the stack
         result.pop();
-        JsonObject bqb = boolQuery();
+        JsonObject bqb = boolQuery(1);
         Logical l = currentLogical.peek();
         switch (l) {
         case OR:
