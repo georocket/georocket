@@ -73,7 +73,7 @@ public class StringWindow {
     // convert Vert.x buffer to ByteBuffer (ugly!)
     ByteBuffer byteBuf = ByteBuffer.wrap(this.buf.getBytes());
 
-    // prepare the temporary CharBuffer
+    // prepare temporary CharBuffer
     ensureCharBuffer(buf.length());
     charBuf.position(0);
     charBuf.limit(charBuf.capacity());
@@ -89,7 +89,7 @@ public class StringWindow {
         new UnmappableCharacterException(result.length()));
     }
 
-    // reset CharBuffer and decoded remove bytes from byte buffer
+    // reset CharBuffer and remove decoded bytes from byte buffer
     charBuf.flip();
     this.buf = this.buf.getBuffer(byteBuf.position(), this.buf.length());
 
