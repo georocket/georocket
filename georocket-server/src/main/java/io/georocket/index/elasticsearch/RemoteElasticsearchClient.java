@@ -357,8 +357,9 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
     
     if (body != null) {
       req.setChunked(false);
-      req.putHeader("Content-Length", String.valueOf(body.length()));
-      req.end(body);
+      Buffer buf = Buffer.buffer(body);
+      req.putHeader("Content-Length", String.valueOf(buf.length()));
+      req.end(buf);
     } else {
       req.end();
     }
