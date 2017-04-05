@@ -5,7 +5,6 @@ import static org.junit.Assert.assertNull;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -40,7 +39,7 @@ public class GeoJsonSplitterTest {
     GeoJsonSplitter splitter = new GeoJsonSplitter(window);
     Observable.just(json)
       .map(Buffer::buffer)
-      .doOnNext(buf -> window.append(buf.toString(StandardCharsets.UTF_8)))
+      .doOnNext(window::append)
       .lift(new JsonParserOperator())
       .flatMap(splitter::onEventObservable)
       .toBlocking()

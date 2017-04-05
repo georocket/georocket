@@ -2,7 +2,6 @@ package io.georocket;
 
 import static io.georocket.util.MimeTypeUtils.belongsTo;
 
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -279,7 +278,7 @@ public class ImporterVerticle extends AbstractVerticle {
     AtomicInteger processing = new AtomicInteger(0);
     return f.toObservable()
         .map(buf -> (io.vertx.core.buffer.Buffer)buf.getDelegate())
-        .doOnNext(buf -> window.append(buf.toString(StandardCharsets.UTF_8)))
+        .doOnNext(window::append)
         .lift(new JsonParserOperator())
         .flatMap(splitter::onEventObservable)
         .flatMap(result -> {

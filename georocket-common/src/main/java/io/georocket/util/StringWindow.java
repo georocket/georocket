@@ -1,41 +1,123 @@
 package io.georocket.util;
 
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CoderResult;
+import java.nio.charset.MalformedInputException;
+import java.nio.charset.StandardCharsets;
+import java.nio.charset.UnmappableCharacterException;
+
+import io.vertx.core.buffer.Buffer;
+
 /**
  * A dynamically resizable buffer that acts like a window being moved over
  * a larger input stream
  * @author Michel Kraemer
  */
 public class StringWindow {
-  private StringBuilder buf = new StringBuilder();
+  /**
+   * Default size for {@link #charBuf}
+   */
+  private final int DEFAULT_CHAR_BUFFER_SIZE = 2048;
+
+  /**
+   * Decodes incoming byte buffers into strings
+   */
+  private final CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder();
+
+  /**
+   * A temporary character buffer used during string decoding
+   */
+  private CharBuffer charBuf = CharBuffer.allocate(DEFAULT_CHAR_BUFFER_SIZE);
+
+  /**
+   * A temporary buffer holding bytes that still need to be decoded
+   */
+  private Buffer buf = Buffer.buffer();
+
+  /**
+   * A buffer holding the decoded string
+   */
+  private StringBuilder decodedBuf = new StringBuilder();
+
+  /**
+   * The current position in the window (i.e. in the decoded string)
+   */
   private int pos = 0;
-  
+
+  /**
+   * Ensure the character buffer is large enough to hold a given number of
+   * decoded characters
+   * @param length the length of the encoded byte buffer
+   */
+  private void ensureCharBuffer(int length) {
+    int maxLength = (int)((double)length * decoder.maxCharsPerByte());
+    if (maxLength > charBuf.length()) {
+      charBuf = CharBuffer.allocate(maxLength);
+    }
+  }
+
   /**
    * Append data to the window (i.e. make it larger)
-   * @param str the data to append
+   * @param buf the data to append
    */
-  public void append(String str) {
-    this.buf.append(str);
+  public void append(Buffer buf) {
+    // append new bytes to buffered bytes or use them directly
+    if (this.buf.length() > 0) {
+      this.buf.appendBuffer(buf);
+    } else {
+      this.buf = buf;
+    }
+
+    // convert Vert.x buffer to ByteBuffer (ugly!)
+    ByteBuffer byteBuf = ByteBuffer.wrap(this.buf.getBytes());
+
+    // prepare the temporary CharBuffer
+    ensureCharBuffer(buf.length());
+    charBuf.position(0);
+    charBuf.limit(charBuf.capacity());
+
+    // decode ByteBuffer to temporary CharBuffer
+    CoderResult result = decoder.decode(byteBuf, charBuf, false);
+    if (result.isMalformed()) {
+      throw new IllegalStateException(
+        new MalformedInputException(result.length()));
+    }
+    if (result.isUnmappable()) {
+      throw new IllegalStateException(
+        new UnmappableCharacterException(result.length()));
+    }
+
+    // reset CharBuffer and decoded remove bytes from byte buffer
+    charBuf.flip();
+    this.buf = this.buf.getBuffer(byteBuf.position(), this.buf.length());
+
+    // append to decoded string buffer
+    this.decodedBuf.append(charBuf);
   }
   
   /**
    * Return a chunk from the window
-   * @param start the start position of the chunk. This value is absolute to
-   * the position in the larger input stream the window is being moved over.
-   * @param end the end position of the chunk. This value is absolute to
-   * the position in the larger input stream the window is being moved over.
+   * @param startCharacter the start position of the chunk (in characters and
+   * not bytes). This value is absolute to the position in the larger input
+   * stream the window is being moved over.
+   * @param endCharacter the end position of the chunk (in characters and not
+   * bytes). This value is absolute to the position in the larger input stream
+   * the window is being moved over.
    * @return the chunk
    */
-  public String getChars(int start, int end) {
-    return buf.substring(start - pos, end - pos);
+  public String getChars(int startCharacter, int endCharacter) {
+    return decodedBuf.substring(startCharacter - pos, endCharacter - pos);
   }
   
   /**
-   * Remove bytes from the beginning of the window (i.e. make it smaller)
-   * @param pos the number of bytes to remove (or in other words: the number
-   * of bytes to advance the window forward without changing its end)
+   * Remove characters from the beginning of the window (i.e. make it smaller)
+   * @param pos the number of characters to remove (or in other words: the number
+   * of characters to advance the window forward without changing its end)
    */
   public void advanceTo(int pos) {
-    buf = buf.delete(0, pos - this.pos);
+    decodedBuf = decodedBuf.delete(0, pos - this.pos);
     this.pos = pos;
   }
 }
