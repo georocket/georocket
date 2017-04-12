@@ -1,0 +1,13 @@
+if (ctx._source.tags != null) {
+    for (int i = 0; i < params.tags.length; ++i) {
+        def current = params.tags[i];
+        for (int j = 0; j < ctx._source.tags.length; ++j) {
+            if (current == ctx._source.tags[j]) {
+                ctx._source.tags.remove(j);
+            }
+        }
+    }
+    if (ctx._source.tags.length == 0) {
+        ctx._source.remove("tags");
+    }
+}

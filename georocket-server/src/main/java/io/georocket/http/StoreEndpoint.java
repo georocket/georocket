@@ -209,7 +209,7 @@ public class StoreEndpoint implements Endpoint {
         if (!(err instanceof FileNotFoundException)) {
           log.error("Could not perform query", err);
         }
-        fail(response, err);
+        Endpoint.fail(response, err);
       });
   }
   
@@ -374,7 +374,7 @@ public class StoreEndpoint implements Endpoint {
         // run importer
         vertx.eventBus().send(AddressConstants.IMPORTER_IMPORT, msg);
       }, err -> {
-        fail(request.response(), err);
+        Endpoint.fail(request.response(), err);
         err.printStackTrace();
         fs.delete(filepath, ar -> {});
       });
@@ -398,7 +398,7 @@ public class StoreEndpoint implements Endpoint {
           .end();
       }, err -> {
         log.error("Could not delete chunks", err);
-        fail(response, err);
+        Endpoint.fail(response, err);
       });
   }
 
@@ -420,48 +420,10 @@ public class StoreEndpoint implements Endpoint {
         if (msg.succeeded()) {
           response.setStatusCode(204).end();
         } else {
-          fail(response, msg.cause());
+          Endpoint.fail(response, msg.cause());
         }
       });
-    }, err -> fail(response, err));
-  }
-  
-  /**
-   * Let the request fail by setting the correct http error code and an error
-   * description in the body
-   * @param response the response object
-   * @param throwable the cause of the error
-   */
-  private static void fail(HttpServerResponse response, Throwable throwable) {
-    response
-      .setStatusCode(throwableToCode(throwable))
-      .end(errorResponse(throwable));
-  }
-
-  /**
-   * Generate the json error response for a failed request
-   * @param throwable the cause of the error
-   * @return the json string
-   */
-  private static String errorResponse(Throwable throwable) {
-    String msg = throwableToMessage(throwable, "");
-
-    try {
-      return new JsonObject(msg).toString();
-    } catch (Exception e) {
-      if (throwable instanceof ReplyException) {
-        return ServerAPIException.toJson(ServerAPIException.GENERIC_ERROR, msg)
-          .toString();
-      }
-
-      if (throwable instanceof HttpException) {
-        return ServerAPIException.toJson(ServerAPIException.HTTP_ERROR, msg)
-          .toString();
-      }
-
-      return ServerAPIException.toJson(ServerAPIException.GENERIC_ERROR, msg)
-        .toString();
-    }
+    }, err -> Endpoint.fail(response, err));
   }
 
   /**

@@ -4,6 +4,11 @@ import static io.georocket.util.MimeTypeUtils.belongsTo;
 import static io.georocket.util.ThrowableHelper.throwableToCode;
 import static io.georocket.util.ThrowableHelper.throwableToMessage;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -11,10 +16,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.google.common.io.Resources;
 import io.georocket.ServerAPIException;
 import io.georocket.constants.ConfigConstants;
 import org.apache.commons.lang3.StringEscapeUtils;
@@ -60,6 +67,7 @@ import io.vertx.rxjava.core.AbstractVerticle;
 import io.vertx.rxjava.core.eventbus.Message;
 import rx.Observable;
 import rx.Observable.Operator;
+import rx.Single;
 import rx.functions.Func1;
 
 /**
@@ -703,172 +711,91 @@ public class IndexerVerticle extends AbstractVerticle {
    * @return an observable that emits a single item when the chunks have
    * been updated successfully
    */
-  private Observable<Void> onUpdate(JsonObject body) {
+  private Single<Void> onUpdate(JsonObject body) {
     String search = body.getString("search", "");
     String path = body.getString("path", "");
     JsonObject postFilter = queryCompiler.compileQuery(search, path);
 
-    String action = body.getString("action", "");
-    String target = body.getString("target", "");
-    JsonArray updates = body.getJsonArray("updates", new JsonArray());
-
-    if (updates.isEmpty()) {
-      return Observable.error(new NoStackTraceThrowable(
-          "Missing values to append or remove"));
-    }
-
-    switch (target.trim().toLowerCase()) {
-      case "tag":
-        return updateTags(action, updates, postFilter);
-      case "property":
-        return updateProperties(action, updates, postFilter);
-      default:
-        return Observable.error(new NoStackTraceThrowable("Unknown update target"));
-    }
-  }
-
-  /**
-   * Remove or append tags of existing chunks in the index. The chunks are
-   * specified by a search query.
-   * @param action indicating if tags should be appended or removed
-   * @param updates values to update
-   * @param postFilter filter marking the chunks to updates
-   * @return an observable that emits a single item when the chunks have
-   * been updated successfully
-   */
-  private Observable<Void> updateTags(String action, JsonArray updates, JsonObject postFilter) {
-    List<String> tags = updates.stream()
-        .map(object -> Objects.toString(object, ""))
-        .filter(entry -> !(entry.isEmpty()))
-        .distinct()
-        .collect(Collectors.toList());
-
-    String inline;
-
-    switch (action.trim().toLowerCase()) {
-      case "append" :
-        inline = "if (ctx._source.tags == null) {" +
-                    "ctx._source.tags = [];" +
-                  "}" +
-                  "for (int i = 0; i < params.tag.length; ++i) {" +
-                    "if (!ctx._source.tags.contains(params.tag[i])) {" +
-                      "ctx._source.tags.add(params.tag[i]);" +
-                    "}" +
-                  "}";
-        break;
-      case "remove" :
-        inline = "if (ctx._source.tags != null) {" +
-                    "for (int i = 0; i < params.tag.length; ++i) {" +
-                      "def current = params.tag[i];" +
-                      "for (int j = 0; j < ctx._source.tags.length; ++j) {" +
-                        "if (current == ctx._source.tags[j]) {" +
-                          "ctx._source.tags.remove(j);" +
-                        "}" +
-                      "}" +
-                    "}" +
-                    "if (ctx._source.tags.length == 0) {" +
-                      "ctx._source.remove(\"tags\");" +
-                    "}" +
-                  "}";
-        break;
-      default:
-        return Observable.error(new NoStackTraceThrowable("Unknown update action"));
-    }
-
-    String lang = "painless";
-    JsonObject params = new JsonObject()
-        .put("tag", new JsonArray(tags));
-    JsonObject updateScript = new JsonObject()
-        .put("inline", inline)
-        .put("lang", lang)
-        .put("params", params);
-
-    return client.updateByQuery(TYPE_NAME, postFilter, updateScript).flatMap(sr -> {
-      boolean timed_out = sr.getBoolean("timed_out", true);
-      if (!timed_out) {
-        return Observable.just(null);
-      }
-      return Observable.error(new NoStackTraceThrowable(
-              "One or more tags could not be updated"));
-    });
-  }
-
-  /**
-   * Remove or set properties to existing chunks in the index. The chunks are
-   * specified by a search query.
-   * @param action indicating if properties should be set or removed
-   * @param updates values to update
-   * @param postFilter filter marking the chunks to updates
-   * @return an observable that emits a single item when the chunks have
-   * been updated successfully
-   */
-  private Observable<Void> updateProperties(String action, JsonArray updates, JsonObject postFilter) {
-    List<String> props = updates.stream()
-      .map(object -> Objects.toString(object, ""))
-      .filter(entry -> !(entry.isEmpty()))
-      .distinct()
+    String action = body.getString("action", "").trim().toLowerCase();
+    String target = body.getString("target", "").trim().toLowerCase();
+    List<String> updates = body.getJsonArray("updates", new JsonArray())
+      .stream()
+      .map(x -> Objects.toString(x, ""))
       .collect(Collectors.toList());
 
-    String inline;
-    JsonObject params = new JsonObject();
+    if (updates.isEmpty()) {
+      return Single.error(new NoStackTraceThrowable(
+          "Missing values to append or remove"));
+    }
+    
+    JsonObject updateScript = new JsonObject()
+      .put("lang", "painless");
+    String scriptName = action + "_" + target + ".ps";
 
-    switch (action.trim().toLowerCase()) {
-      case "append" :
+    try {
+      JsonObject params;
+      if (Objects.equals(scriptName, "set_properties.ps")) {
+        params = new JsonObject().put(target, parseProperties(updates));
+      } else {
+        params = new JsonObject().put(target, new JsonArray(updates));
+      }
+      updateScript.put("params", params);
+      
+      URL url = getClass().getResource(scriptName);
+      if (url == null) {
+        throw new FileNotFoundException("Script " + scriptName + " does not exist");
+      }
+      String script = Resources.toString(url, StandardCharsets.UTF_8);
+      updateScript.put("inline", script);
+      return update(postFilter, updateScript);
+    } catch (ServerAPIException | IOException e) {
+      return Single.error(e);
+    }
+  }
 
-        String regex = "(?<!" + Pattern.quote("\\") + ")" + Pattern.quote(":");
-        JsonObject properties = new JsonObject();
-        for (String part : props) {
-          part = part.trim();
-          String[] property = part.split(regex);
-          if (property.length != 2) {
-            return Observable.error(new ServerAPIException(
-              ServerAPIException.INVALID_PROPERTY_SYNTAX_ERROR,
-              "Invalid property syntax: " + part));
-          }
-          String key = StringEscapeUtils.unescapeJava(property[0].trim());
-          String value = StringEscapeUtils.unescapeJava(property[1].trim());
-          properties.put(key, value);
-        }
+  /**
+   * Parse list of properties in the form key:value
+   * @param updates the list of properties
+   * @return a json object with the property keys as object keys and the property
+   * values as corresponding object values
+   * @throws ServerAPIException if the syntax is not valid
+   */
+  private static JsonObject parseProperties(List<String> updates)
+    throws ServerAPIException {
+    JsonObject props = new JsonObject();
+    String regex = "(?<!" + Pattern.quote("\\") + ")" + Pattern.quote(":");
 
-        inline = "if (ctx._source.props == null) {" +
-                    "ctx._source.props = new HashMap();" +
-                  "}" +
-                  "for (current in params.props.keySet()) {" +
-                    "ctx._source.props.put(current, params.props.get(current));" +
-                  "}";
-
-        params.put("props", properties);
-        break;
-
-      case "remove" :
-        inline = "if (ctx._source.props != null) {" +
-                    "for (current in params.props) {" +
-                      "ctx._source.props.remove(current);" +
-                    "}" +
-                    "if (ctx._source.props.size() == 0) {" +
-                      "ctx._source.remove(\"props\");" +
-                    "}" +
-                  "}";
-
-        params.put("props", new JsonArray(props));
-        break;
-      default:
-        return Observable.error(new NoStackTraceThrowable("Unknown update action"));
+    for (String part : updates) {
+      part = part.trim();
+      String[] property = part.split(regex);
+      if (property.length != 2) {
+        throw new ServerAPIException(
+          ServerAPIException.INVALID_PROPERTY_SYNTAX_ERROR,
+          "Invalid property syntax: " + part);
+      }
+      String key = StringEscapeUtils.unescapeJava(property[0].trim());
+      String value = StringEscapeUtils.unescapeJava(property[1].trim());
+      props.put(key, value);
     }
 
-    String lang = "painless";
-    JsonObject updateScript = new JsonObject()
-        .put("inline", inline)
-        .put("lang", lang)
-        .put("params", params);
+    return props;
+  }
 
-    return client.updateByQuery(TYPE_NAME, postFilter, updateScript).flatMap(sr -> {
-      boolean timed_out = sr.getBoolean("timed_out", true);
-      if (!timed_out) {
-        return Observable.just(null);
-      }
-      return Observable.error(new NoStackTraceThrowable(
-          "One or more tags could not be updated"));
+  /**
+   * Update a document using a painscript
+   * @param postFilter the filter to select the documents
+   * @param updateScript the script which should be applied to the documents
+   * @return a Single which completes if the update is successful or fails if
+   * an error occurs
+   */
+  private Single<Void> update(JsonObject postFilter, JsonObject updateScript) {
+    return client.updateByQuery(TYPE_NAME, postFilter, updateScript)
+      .toSingle()
+      .flatMap(sr -> {
+        if (sr.getBoolean("timed_out", true)) {
+          return Single.error(new TimeoutException());
+        }
+        return Single.just(null);
     });
   }
 }

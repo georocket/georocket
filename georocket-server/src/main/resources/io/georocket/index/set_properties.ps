@@ -1,0 +1,6 @@
+if (ctx._source.props == null) {
+    ctx._source.props = new HashMap();
+}
+for (current in params.properties.keySet()) {
+    ctx._source.props.put(current, params.properties.get(current));
+}
