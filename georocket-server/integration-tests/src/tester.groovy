@@ -23,6 +23,8 @@ def runXMLTests(String georocketHost) {
     xml.testExportByGmlId()
     xml.testExportByGenericAttribute()
     xml.testExportNone()
+    xml.testTags()
+    xml.testProperties()
 }
 
 def finishXMLTests(String georocketHost) {
