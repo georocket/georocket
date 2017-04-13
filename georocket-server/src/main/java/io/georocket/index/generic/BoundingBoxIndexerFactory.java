@@ -33,6 +33,26 @@ public abstract class BoundingBoxIndexerFactory implements IndexerFactory {
   private static final String BBOX_REGEX = CODE_PREFIX + FLOAT_REGEX + COMMA_REGEX + FLOAT_REGEX +
     COMMA_REGEX + FLOAT_REGEX + COMMA_REGEX + FLOAT_REGEX;
   private static final Pattern BBOX_PATTERN = Pattern.compile(BBOX_REGEX);
+  private String defaultCrs;
+  
+  public BoundingBoxIndexerFactory() {
+    Context ctx = Vertx.currentContext();
+    if (ctx != null) {
+      JsonObject config = ctx.config();
+      if (config != null) {
+        setDefaultCrs(config.getString(ConfigConstants.QUERY_DEFAULT_CRS));
+      }
+    }
+  }
+
+  /**
+   * Set the default crs which is used to transform query bounding box coordinates
+   * to WGS84 coordinates
+   * @param defaultCrs the CRS string (see {@link CoordinateTransformer#decode(String)}).
+   */
+  public void setDefaultCrs(String defaultCrs) {
+    this.defaultCrs = defaultCrs;
+  }
 
   @Override
   public Map<String, Object> getMapping() {
@@ -82,6 +102,7 @@ public abstract class BoundingBoxIndexerFactory implements IndexerFactory {
 
   @Override
   public JsonObject compileQuery(String search) {
+    CoordinateReferenceSystem crs = null;
     String crsCode = null;
     String co;
     int index = search.lastIndexOf(':');
@@ -100,7 +121,26 @@ public abstract class BoundingBoxIndexerFactory implements IndexerFactory {
 
     if (crsCode != null) {
       try {
-        CoordinateReferenceSystem crs = CRS.decode(crsCode);
+        crs = CRS.decode(crsCode);
+      } catch (FactoryException e) {
+        throw new RuntimeException(
+          String.format("CRS %s could not be parsed: %s",
+            crsCode, e.getMessage()), e);
+      }
+    } else {
+      if (defaultCrs != null) {
+        try {
+          crs = CoordinateTransformer.decode(defaultCrs);
+        } catch (FactoryException e) {
+          throw new RuntimeException(
+            String.format("Default CRS %s could not be parsed: %s",
+              defaultCrs, e.getMessage()), e);
+        }
+      }
+    }
+
+    if (crs != null) {
+      try {
         CoordinateTransformer transformer = new CoordinateTransformer(crs);
         points = transformer.transform(points, -1);
       } catch (FactoryException e) {

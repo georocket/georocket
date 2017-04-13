@@ -8,6 +8,8 @@ import io.georocket.index.Indexer;
 import io.georocket.query.QueryCompiler.MatchPriority;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import org.geotools.referencing.CRS;
+import org.opengis.referencing.FactoryException;
 
 /**
  * Test the {@link BoundingBoxIndexerFactory}
@@ -62,6 +64,57 @@ public class BoundingBoxIndexerFactoryTest {
     };
     testQuery(factory.compileQuery(query), destination);
     testQuery(factory.compileQuery(query.toLowerCase()), destination);
+  }
+
+  /**
+   * Test if the factory uses the configured default CRS code
+   */
+  @Test
+  public void testEPSGDefault() {
+    String point = "3477534.683,5605739.857";
+    String query = point + "," + point;
+
+    BoundingBoxIndexerFactory factory = new BoundingBoxIndexerFactoryImpl();
+    factory.setDefaultCrs("EPSG:31467");
+    assertEquals(MatchPriority.ONLY, factory.getQueryPriority(query));
+    assertEquals(MatchPriority.ONLY, factory.getQueryPriority(query.toLowerCase()));
+    double[] destination = {
+      8.681739535269804, 50.58691850210496, 8.681739535269804, 50.58691850210496
+    };
+    testQuery(factory.compileQuery(query), destination);
+    testQuery(factory.compileQuery(query.toLowerCase()), destination);
+  }
+
+  /**
+   * Test if CRS codes in queries have priority over the configured default CRS
+   */
+  @Test
+  public void testEPSGDefaultQueryOverride() {
+    String point = "3477534.683,5605739.857";
+    String query = "EPSG:31467:" + point + "," + point;
+
+    BoundingBoxIndexerFactory factory = new BoundingBoxIndexerFactoryImpl();
+    factory.setDefaultCrs("invalid string");
+    assertEquals(MatchPriority.ONLY, factory.getQueryPriority(query));
+    double[] destination = {
+      8.681739535269804, 50.58691850210496, 8.681739535269804, 50.58691850210496
+    };
+    testQuery(factory.compileQuery(query), destination);
+  }
+
+  /**
+   * Test if the factory uses the configured default CRS WKT
+   */
+  @Test
+  public void testWKTDefault() throws FactoryException {
+    String wkt = CRS.decode("epsg:31467").toWKT();
+    String point = "3477534.683,5605739.857";
+    String query = point + "," + point;
+
+    BoundingBoxIndexerFactory factory = new BoundingBoxIndexerFactoryImpl();
+    factory.setDefaultCrs(wkt);
+    double[] destination = {8.681739535269804, 50.58691850210496, 8.681739535269804, 50.58691850210496};
+    testQuery(factory.compileQuery(query), destination);
   }
 
   /**
