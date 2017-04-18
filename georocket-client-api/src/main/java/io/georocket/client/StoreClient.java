@@ -6,6 +6,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -15,7 +16,9 @@ import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientRequest;
+import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.http.HttpMethod;
+import io.vertx.core.impl.NoStackTraceThrowable;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.streams.ReadStream;
@@ -331,8 +334,15 @@ public class StoreClient {
 
     request.handler(response -> {
       if (response.statusCode() != 202) {
-        handler.handle(Future.failedFuture("GeoRocket did not accept the file "
-            + "(status code " + response.statusCode() + ": " + response.statusMessage() + ")"));
+        fail(response, handler, message -> {
+          String msg = String.format(
+            "GeoRocket did not accept the file (status code %s: %s) %s",
+            response.statusCode(),
+            response.statusMessage(),
+            message);
+          
+          return new NoStackTraceThrowable(msg);
+        });
       } else {
         handler.handle(Future.succeededFuture());
       }
@@ -408,10 +418,9 @@ public class StoreClient {
     request.exceptionHandler(t -> handler.handle(Future.failedFuture(t)));
     request.handler(response -> {
       if (response.statusCode() == 404) {
-        handler.handle(Future.failedFuture(new NoSuchElementException(
-            response.statusMessage())));
+        fail(response, handler, NoSuchElementException::new);
       } else if (response.statusCode() != 200) {
-        handler.handle(Future.failedFuture(response.statusMessage()));
+        fail(response, handler);
       } else {
         handler.handle(Future.succeededFuture(response));
       }
@@ -466,7 +475,7 @@ public class StoreClient {
     });
     request.handler(response -> {
       if (response.statusCode() != 204) {
-        handler.handle(Future.failedFuture(response.statusMessage()));
+        fail(response, handler);
       } else {
         response.endHandler(v -> {
           handler.handle(Future.succeededFuture());
@@ -658,12 +667,21 @@ public class StoreClient {
     request.exceptionHandler(t -> handler.handle(Future.failedFuture(t)));
     request.handler(response -> {
       if (response.statusCode() != 204) {
-        handler.handle(Future.failedFuture(response.statusMessage()));
+        fail(response, handler);
       } else {
         response.endHandler(v -> handler.handle(Future.succeededFuture()));
       }
     });
     configureRequest(request).end(body.encode());
+  }
+
+  private static <T> void fail(HttpClientResponse response, Handler<AsyncResult<T>> handler) {
+    fail(response, handler, NoStackTraceThrowable::new);
+  }
+
+  private static <T> void fail(HttpClientResponse response, Handler<AsyncResult<T>> handler, Function<String, Throwable> exception) {
+    response.bodyHandler(buffer ->
+      handler.handle(Future.failedFuture(exception.apply(buffer.toString()))));
   }
 
   /**
