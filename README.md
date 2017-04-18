@@ -41,7 +41,7 @@ First follow the instructions on building the GeoRocket distribution above.
 
 Then start the GeoRocket server with the following command:
 
-    georocket-server/build/install/georocket/bin/georocketd
+    georocket-server/build/install/georocket-server/bin/georocketd
 
 Run the command-line application as follows:
 
