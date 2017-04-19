@@ -118,6 +118,14 @@ public class GeoRocket extends AbstractVerticle {
     
     Endpoint generalEndpoint = createGeneralEndpoint();
     router.mountSubRouter("/", generalEndpoint.createRouter());
+
+    router.route().handler(ctx -> {
+      String reason = "The endpoint " + ctx.request().path() + " does not exist";
+
+      ctx.response()
+        .setStatusCode(404)
+        .end(ApiErrorException.toJson("endpoint_not_found", reason).toString());
+    });
     
     return router;
   }
