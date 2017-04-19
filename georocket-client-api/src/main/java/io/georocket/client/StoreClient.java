@@ -18,7 +18,6 @@ import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.http.HttpMethod;
-import io.vertx.core.impl.NoStackTraceThrowable;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.streams.ReadStream;
@@ -335,13 +334,15 @@ public class StoreClient {
     request.handler(response -> {
       if (response.statusCode() != 202) {
         fail(response, handler, message -> {
+          ApiErrorException e = ApiErrorException.parse(message);
+          
           String msg = String.format(
             "GeoRocket did not accept the file (status code %s: %s) %s",
             response.statusCode(),
             response.statusMessage(),
-            message);
+            e.getMessage());
           
-          return new NoStackTraceThrowable(msg);
+          return new ApiErrorException(e.getType(), msg);
         });
       } else {
         handler.handle(Future.succeededFuture());
@@ -418,7 +419,7 @@ public class StoreClient {
     request.exceptionHandler(t -> handler.handle(Future.failedFuture(t)));
     request.handler(response -> {
       if (response.statusCode() == 404) {
-        fail(response, handler, NoSuchElementException::new);
+        fail(response, handler, message -> new NoSuchElementException(ApiErrorException.parse(message).getMessage()));
       } else if (response.statusCode() != 200) {
         fail(response, handler);
       } else {
@@ -676,7 +677,7 @@ public class StoreClient {
   }
 
   private static <T> void fail(HttpClientResponse response, Handler<AsyncResult<T>> handler) {
-    fail(response, handler, NoStackTraceThrowable::new);
+    fail(response, handler, ApiErrorException::parse);
   }
 
   private static <T> void fail(HttpClientResponse response, Handler<AsyncResult<T>> handler, Function<String, Throwable> exception) {

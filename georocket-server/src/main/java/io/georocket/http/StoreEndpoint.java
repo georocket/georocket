@@ -13,6 +13,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
+import io.georocket.ApiErrorException;
+import io.vertx.core.eventbus.ReplyException;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.ParseException;
@@ -207,7 +209,8 @@ public class StoreEndpoint implements Endpoint {
         if (!(err instanceof FileNotFoundException)) {
           log.error("Could not perform query", err);
         }
-        response.setStatusCode(throwableToCode(err)).end(throwableToMessage(err, ""));
+        
+        fail(response, err);
       });
   }
   
@@ -372,9 +375,7 @@ public class StoreEndpoint implements Endpoint {
         // run importer
         vertx.eventBus().send(AddressConstants.IMPORTER_IMPORT, msg);
       }, err -> {
-        request.response()
-          .setStatusCode(throwableToCode(err))
-          .end("Could not import file: " + err.getMessage());
+        fail(request.response(), err);
         err.printStackTrace();
         fs.delete(filepath, ar -> {});
       });
@@ -398,9 +399,7 @@ public class StoreEndpoint implements Endpoint {
           .end();
       }, err -> {
         log.error("Could not delete chunks", err);
-        response
-          .setStatusCode(throwableToCode(err))
-          .end(throwableToMessage(err, ""));
+        fail(response, err);
       });
   }
 
@@ -422,11 +421,44 @@ public class StoreEndpoint implements Endpoint {
         if (msg.succeeded()) {
           response.setStatusCode(204).end();
         } else {
-          response.setStatusCode(throwableToCode(msg.cause()))
-            .end(throwableToMessage(msg.cause(), ""));
+          fail(response, msg.cause());
         }
       });
-    }, err -> response.setStatusCode(500).end("Could not process request"));
+    }, err -> fail(response, err));
+  }
+  
+  /**
+   * Let the request fail by setting the correct http error code and an error description in the body
+   * @param response the response object
+   * @param throwable the cause of the error
+   */
+  private static void fail(HttpServerResponse response, Throwable throwable) {
+    response
+      .setStatusCode(throwableToCode(throwable))
+      .end(errorResponse(throwable));
+  }
+
+  /**
+   * Generate the json error response for a failed request
+   * @param throwable the cause of the error
+   * @return the json string
+   */
+  private static String errorResponse(Throwable throwable) {
+    String msg = throwableToMessage(throwable, "");
+
+    try {
+      return new JsonObject(msg).toString();
+    } catch (Exception e) {
+      if (throwable instanceof ReplyException) {
+        return ApiErrorException.toJson("processing_error", msg).toString();
+      }
+
+      if (throwable instanceof HttpException) {
+        return ApiErrorException.toJson("http_error", msg).toString();
+      }
+
+      return ApiErrorException.toJson("request_error", msg).toString();
+    }
   }
 
   /**
