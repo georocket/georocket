@@ -2,6 +2,7 @@ package io.georocket.index;
 
 import static io.georocket.util.MimeTypeUtils.belongsTo;
 import static io.georocket.util.ThrowableHelper.throwableToCode;
+import static io.georocket.util.ThrowableHelper.throwableToMessage;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -14,6 +15,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import io.georocket.ApiErrorException;
 import io.georocket.constants.ConfigConstants;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.jooq.lambda.Seq;
@@ -250,7 +252,7 @@ public class IndexerVerticle extends AbstractVerticle {
           msg.reply(v);
         }, err -> {
           log.error("Could not delete document", err);
-          msg.fail(throwableToCode(err), err.getMessage());
+          msg.fail(throwableToCode(err), throwableToMessage(err, ""));
         });
       });
   }
@@ -266,7 +268,7 @@ public class IndexerVerticle extends AbstractVerticle {
           msg.reply(v);
         }, err -> {
           log.error("Could not update document", err);
-          msg.fail(throwableToCode(err), err.getMessage());
+          msg.fail(throwableToCode(err), throwableToMessage(err, ""));
         });
       });
   }
@@ -282,7 +284,7 @@ public class IndexerVerticle extends AbstractVerticle {
           msg.reply(reply);
         }, err -> {
           log.error("Could not perform query", err);
-          msg.fail(throwableToCode(err), err.getMessage());
+          msg.fail(throwableToCode(err), throwableToMessage(err, ""));
         });
       });
   }
@@ -597,7 +599,7 @@ public class IndexerVerticle extends AbstractVerticle {
         return openChunkToDocument(path, chunkMeta, indexMeta)
           .map(doc -> Tuple.tuple(path, new JsonObject(doc), msg))
           .onErrorResumeNext(err -> {
-            msg.fail(throwableToCode(err), err.getMessage());
+            msg.fail(throwableToCode(err), throwableToMessage(err, ""));
             return Observable.empty();
           });
       })
@@ -814,8 +816,7 @@ public class IndexerVerticle extends AbstractVerticle {
           part = part.trim();
           String[] property = part.split(regex);
           if (property.length != 2) {
-            return Observable.error(new NoStackTraceThrowable(
-                    "Invalid property syntax: " + part));
+            return Observable.error(new ApiErrorException("invalid_property_syntax", "Invalid property syntax: " + part));
           }
           String key = StringEscapeUtils.unescapeJava(property[0].trim());
           String value = StringEscapeUtils.unescapeJava(property[1].trim());
