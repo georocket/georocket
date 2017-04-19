@@ -4,6 +4,7 @@ import java.io.FileNotFoundException;
 
 import javax.xml.ws.http.HTTPException;
 
+import io.georocket.ApiErrorException;
 import io.vertx.core.eventbus.ReplyException;
 
 /**
@@ -44,6 +45,10 @@ public final class ThrowableHelper {
    * @return the message
    */
   public static String throwableToMessage(Throwable t, String defaultMessage) {
+    if (t instanceof ApiErrorException) {
+      return ((ApiErrorException)t).toJson().toString();
+    }
+
     String m = t.getMessage();
     if (m == null) {
       return defaultMessage;
