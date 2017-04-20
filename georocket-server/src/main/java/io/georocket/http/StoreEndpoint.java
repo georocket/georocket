@@ -374,7 +374,8 @@ public class StoreEndpoint implements Endpoint {
       }, err -> {
         request.response()
           .setStatusCode(throwableToCode(err))
-          .end("Could not import file: " + err.getMessage());
+          .setStatusMessage("Could not import file: " + err.getMessage())
+          .end();
         err.printStackTrace();
         fs.delete(filepath, ar -> {});
       });
