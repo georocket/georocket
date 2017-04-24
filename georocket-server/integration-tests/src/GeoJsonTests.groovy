@@ -1,3 +1,5 @@
+import groovy.json.JsonException
+
 import static Utils.*
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
@@ -27,6 +29,16 @@ class GeoJsonTests extends StoreTests {
             "http://${georocketHost}:63020/store/", null, true)
         if (exportedContents.length() < 100) {
             logWarn("Response: $exportedContents")
+        }
+
+        try {
+            def result = new JsonSlurper().parseText(exportedContents)
+  
+            if(result.error && result.error.reason.trim().equals("Not Found")) {
+                logWarn("Got 0 chunks.")
+                return false
+            }
+        } catch (JsonException e) {
         }
 
         if (exportedContents.trim().equalsIgnoreCase("Not Found") ||
