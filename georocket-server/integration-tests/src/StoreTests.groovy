@@ -1,3 +1,6 @@
+import groovy.json.JsonException
+import groovy.json.JsonSlurper
+
 import static Utils.*
 
 abstract class StoreTests {
@@ -33,7 +36,8 @@ abstract class StoreTests {
     def testExportByBoundingBoxNone() {
         def exportedContents = run("curl -sS -X GET http://${georocketHost}:63020/store/"
             + "?search=12.0,51.0,12.1,51.1", null, true)
-        assertEquals(exportedContents, "Not Found", "Response: $exportedContents")
+        def result = new JsonSlurper().parseText(exportedContents)
+        assertEquals(result.error.reason, "Not Found", "Response: $exportedContents")
     }
 
     /**
@@ -42,7 +46,8 @@ abstract class StoreTests {
     def testExportByKeyValueNone() {
         def exportedContents = run("curl -sS -X GET http://${georocketHost}:63020/store/"
             + "?search=" + URLEncoder.encode('EQ(foo bar)', 'UTF-8'), null, true)
-        assertEquals(exportedContents, "Not Found", "Response: $exportedContents")
+        def result = new JsonSlurper().parseText(exportedContents)
+        assertEquals(result.error.reason, "Not Found", "Response: $exportedContents")
     }
 
     /**
@@ -51,7 +56,8 @@ abstract class StoreTests {
     def testExportNone() {
         def exportedContents = run("curl -sS -X GET http://${georocketHost}:63020/store/"
             + "?search=foobar", null, true)
-        assertEquals(exportedContents, "Not Found", "Response: $exportedContents")
+        def result = new JsonSlurper().parseText(exportedContents)
+        assertEquals(result.error.reason, "Not Found", "Response: $exportedContents")
     }
 
     /**
@@ -70,7 +76,10 @@ abstract class StoreTests {
             // export whole data store
             def exportedContents = run("curl -sS -X GET "
                 + "http://${georocketHost}:63020/store/", null, true)
-            if (exportedContents != "Not Found") {
+
+            def result = new JsonSlurper().parseText(exportedContents)
+          
+            if (result.error && result.error.reason != "Not Found") {
                 logWarn("Response: $exportedContents")
             } else {
                 deleteOk = true
