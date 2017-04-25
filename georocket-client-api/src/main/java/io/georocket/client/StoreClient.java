@@ -334,7 +334,7 @@ public class StoreClient {
     request.handler(response -> {
       if (response.statusCode() != 202) {
         fail(response, handler, message -> {
-          ApiErrorException e = ApiErrorException.parse(message);
+          ClientAPIException e = ClientAPIException.parse(message);
           
           String msg = String.format(
             "GeoRocket did not accept the file (status code %s: %s) %s",
@@ -342,7 +342,7 @@ public class StoreClient {
             response.statusMessage(),
             e.getMessage());
           
-          return new ApiErrorException(e.getType(), msg);
+          return new ClientAPIException(e.getType(), msg);
         });
       } else {
         handler.handle(Future.succeededFuture());
@@ -419,7 +419,7 @@ public class StoreClient {
     request.exceptionHandler(t -> handler.handle(Future.failedFuture(t)));
     request.handler(response -> {
       if (response.statusCode() == 404) {
-        fail(response, handler, message -> new NoSuchElementException(ApiErrorException.parse(message).getMessage()));
+        fail(response, handler, message -> new NoSuchElementException(ClientAPIException.parse(message).getMessage()));
       } else if (response.statusCode() != 200) {
         fail(response, handler);
       } else {
@@ -676,13 +676,30 @@ public class StoreClient {
     configureRequest(request).end(body.encode());
   }
 
-  private static <T> void fail(HttpClientResponse response, Handler<AsyncResult<T>> handler) {
-    fail(response, handler, ApiErrorException::parse);
+  /**
+   * Parses an HTTP response and calls the given handler with the
+   * parsed error message
+   * @param <T> the type of the handler's result
+   * @param response the HTTP response
+   * @param handler the handler to call
+   */
+  private static <T> void fail(HttpClientResponse response,
+      Handler<AsyncResult<T>> handler) {
+    fail(response, handler, ClientAPIException::parse);
   }
 
-  private static <T> void fail(HttpClientResponse response, Handler<AsyncResult<T>> handler, Function<String, Throwable> exception) {
+  /**
+   * Parses an HTTP response, maps it to an exception and then calls the
+   * given handler
+   * @param <T> the type of the handler's result
+   * @param response the HTTP response
+   * @param handler the handler to call
+   * @param map a function that maps the parsed error message to an exception
+   */
+  private static <T> void fail(HttpClientResponse response,
+      Handler<AsyncResult<T>> handler, Function<String, Throwable> map) {
     response.bodyHandler(buffer ->
-      handler.handle(Future.failedFuture(exception.apply(buffer.toString()))));
+      handler.handle(Future.failedFuture(map.apply(buffer.toString()))));
   }
 
   /**

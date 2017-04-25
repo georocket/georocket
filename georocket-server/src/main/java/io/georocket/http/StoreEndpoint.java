@@ -13,7 +13,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
-import io.georocket.ApiErrorException;
+import io.georocket.ServerAPIException;
 import io.vertx.core.eventbus.ReplyException;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -209,7 +209,6 @@ public class StoreEndpoint implements Endpoint {
         if (!(err instanceof FileNotFoundException)) {
           log.error("Could not perform query", err);
         }
-        
         fail(response, err);
       });
   }
@@ -450,14 +449,14 @@ public class StoreEndpoint implements Endpoint {
       return new JsonObject(msg).toString();
     } catch (Exception e) {
       if (throwable instanceof ReplyException) {
-        return ApiErrorException.toJson("processing_error", msg).toString();
+        return ServerAPIException.toJson("processing_error", msg).toString();
       }
 
       if (throwable instanceof HttpException) {
-        return ApiErrorException.toJson("http_error", msg).toString();
+        return ServerAPIException.toJson("http_error", msg).toString();
       }
 
-      return ApiErrorException.toJson("request_error", msg).toString();
+      return ServerAPIException.toJson("request_error", msg).toString();
     }
   }
 
