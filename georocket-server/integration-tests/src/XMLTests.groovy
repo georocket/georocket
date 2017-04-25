@@ -31,15 +31,19 @@ class XMLTests extends StoreTests {
             logWarn("Response: $exportedContents")
         }
 
+        try {
+          def result = new JsonSlurper().parseText(exportedContents)
+  
+          if(result.error && result.error.reason.trim().equals("Not Found")) {
+              logWarn("Got 0 chunks.")
+              return false
+          }
+        } catch (JsonException e) {
+        }
+
         if (exportedContents.trim().equalsIgnoreCase("Not Found") ||
                 exportedContents.trim().equalsIgnoreCase("404") ||
                 exportedContents.trim().equalsIgnoreCase("503")) {
-            logWarn("Got 0 chunks.")
-            return false
-        }
-
-        def result = new JsonSlurper().parseText(exportedContents)
-        if (result.error && result.error.reason.trim().equals("Not Found")) {
             logWarn("Got 0 chunks.")
             return false
         }
