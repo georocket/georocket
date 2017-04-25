@@ -15,7 +15,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import io.georocket.ApiErrorException;
+import io.georocket.ServerAPIException;
 import io.georocket.constants.ConfigConstants;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.jooq.lambda.Seq;
@@ -816,7 +816,8 @@ public class IndexerVerticle extends AbstractVerticle {
           part = part.trim();
           String[] property = part.split(regex);
           if (property.length != 2) {
-            return Observable.error(new ApiErrorException("invalid_property_syntax", "Invalid property syntax: " + part));
+            return Observable.error(new ServerAPIException("invalid_property_syntax",
+                "Invalid property syntax: " + part));
           }
           String key = StringEscapeUtils.unescapeJava(property[0].trim());
           String value = StringEscapeUtils.unescapeJava(property[1].trim());
