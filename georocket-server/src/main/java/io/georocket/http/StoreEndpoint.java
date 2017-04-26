@@ -25,7 +25,9 @@ import com.google.common.base.Splitter;
 
 import io.georocket.constants.AddressConstants;
 import io.georocket.constants.ConfigConstants;
+import io.georocket.constants.HeaderConstants;
 import io.georocket.output.MultiMerger;
+import io.georocket.storage.PaginatedStoreCursor;
 import io.georocket.storage.RxStore;
 import io.georocket.storage.RxStoreCursor;
 import io.georocket.storage.StoreFactory;
@@ -46,7 +48,6 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.core.streams.Pump;
-import io.vertx.core.streams.WriteStream;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.rx.java.ObservableFuture;
@@ -66,6 +67,8 @@ public class StoreEndpoint implements Endpoint {
   private RxStore store;
   private String storagePath;
 
+  private Boolean paginationEnabled;
+
   /**
    * Create the endpoint
    * @param vertx the Vert.x instance
@@ -73,8 +76,10 @@ public class StoreEndpoint implements Endpoint {
   public StoreEndpoint(Vertx vertx) {
     this.vertx = vertx;
     store = new RxStore(StoreFactory.createStore(vertx));
-    storagePath = vertx.getOrCreateContext().config()
-        .getString(ConfigConstants.STORAGE_FILE_PATH);
+    JsonObject config = vertx.getOrCreateContext().config();
+    
+    storagePath = config.getString(ConfigConstants.STORAGE_FILE_PATH);
+    paginationEnabled = config.getBoolean(ConfigConstants.PAGINATION_ENABLED, ConfigConstants.DEFAULT_PAGINATION_ENABLED);
   }
 
   @Override
@@ -119,7 +124,7 @@ public class StoreEndpoint implements Endpoint {
    */
   private Observable<Void> initializeMerger(MultiMerger merger, String search,
       String path) {
-    return store.getObservable(search, path)
+    return store.getObservable(search, path) 
       .map(RxStoreCursor::new)
       .flatMap(RxStoreCursor::toObservable)
       .map(Pair::getLeft)
@@ -136,10 +141,27 @@ public class StoreEndpoint implements Endpoint {
    * @param out a write stream to write the merged chunks to
    * @return an observable that will emit one item when all chunks have been merged
    */
-  private Observable<Void> doMerge(MultiMerger merger, String search, String path,
-      WriteStream<Buffer> out) {
-    return store.getObservable(search, path)
+  private Observable<Void> doMerge(MultiMerger merger, String search, String path, String scrollId, Boolean paginated, HttpServerResponse out) {
+    return (paginated ? store.getObservablePaginated(search, path, scrollId) : store.getObservable(search, path))
       .map(RxStoreCursor::new)
+      .map(p -> {
+        if (paginated) {
+          PaginatedStoreCursor cursor = (PaginatedStoreCursor)p.getDelegate();
+          JsonObject paginationInfo = cursor.getPaginationInfo();
+          /**
+           * If this is the last page, no scrollId will be sent back to the client.
+           */
+          String returnedScrollId = paginationInfo.getString("scrollId");
+          if (returnedScrollId != null) {
+            out.putHeader(HeaderConstants.SCROLL_ID, returnedScrollId);
+          }
+          
+          out.putHeader(HeaderConstants.PAGE_SIZE, paginationInfo.getLong("pageSize").toString());
+          out.putHeader(HeaderConstants.TOTAL_HITS, paginationInfo.getLong("totalHits").toString());
+          out.putHeader(HeaderConstants.HITS, paginationInfo.getLong("hits").toString());
+        }
+        return p;
+      })
       .flatMap(RxStoreCursor::toObservable)
       .flatMap(p -> store.getOneObservable(p.getRight())
         .flatMap(crs -> merger.merge(crs, p.getLeft(), out)
@@ -189,7 +211,31 @@ public class StoreEndpoint implements Endpoint {
 
     String path = getStorePath(context);
     String search = request.getParam("search");
+    
 
+    
+    Boolean paginated;
+    String scrollId;
+    if (paginationEnabled) {
+      /**
+       * Check whether the client wants pagination and get the scrollId (may be null)
+       * There are three cases:
+       * - the client wants no pagination
+       * - the client starts a pagination and has no scrollId
+       * - the client has already a scrollId from a previous request and resumes the scroll  
+       */
+      String paginatedParam = request.getParam("paginated");
+      paginated = (paginatedParam != null && paginatedParam.equals("true")) || request.getParam("scrollId") != null;
+      scrollId = request.getParam("scrollId");
+    } else {
+      /**
+       * The client requested a paginated result, but pagination is disabled.
+       * Ignore the clients request for pagination and return a normal result.
+       */
+      paginated = false;
+      scrollId = null;
+    }
+    
     // Our responses must always be chunked because we cannot calculate
     // the exact content-length beforehand. We perform two searches, one to
     // initialize the merger and one to do the actual merge. The problem is
@@ -202,7 +248,7 @@ public class StoreEndpoint implements Endpoint {
     // merge all retrieved chunks
     MultiMerger merger = new MultiMerger();
     initializeMerger(merger, search, path)
-      .flatMap(v -> doMerge(merger, search, path, response))
+      .flatMap(v -> doMerge(merger, search, path, scrollId, paginated, response))
       .subscribe(v -> {
         response.end();
       }, err -> {

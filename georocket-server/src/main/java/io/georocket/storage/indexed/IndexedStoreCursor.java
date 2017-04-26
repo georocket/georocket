@@ -6,6 +6,7 @@ import io.georocket.constants.AddressConstants;
 import io.georocket.storage.ChunkMeta;
 import io.georocket.storage.GeoJsonChunkMeta;
 import io.georocket.storage.JsonChunkMeta;
+import io.georocket.storage.PaginatedStoreCursor;
 import io.georocket.storage.StoreCursor;
 import io.georocket.storage.XMLChunkMeta;
 import io.vertx.core.AsyncResult;
@@ -19,7 +20,7 @@ import io.vertx.core.json.JsonObject;
  * Implementation of {@link StoreCursor} for indexed chunk stores
  * @author Michel Kraemer
  */
-public class IndexedStoreCursor implements StoreCursor {
+public class IndexedStoreCursor implements PaginatedStoreCursor {
   /**
    * The Vert.x instance
    */
@@ -71,18 +72,34 @@ public class IndexedStoreCursor implements StoreCursor {
   private ChunkMeta[] metas;
   
   /**
+   * Whether this cursor is paginated
+   */
+  private Boolean paginated;
+
+  /**
+   * Number of total items retrieved
+   */
+  private int currentHitCount;
+  
+  /**
    * Create a cursor
    * @param vertx the Vert.x instance
    * @param pageSize the number of items retrieved in one batch
    * @param search the search query
-   * @param path the path where to perform the search (may be null if the
-   * whole store should be searched)
+   * @param path the path where to perform the search (may be null if the whole store should be searched)
    */
   public IndexedStoreCursor(Vertx vertx, int pageSize, String search, String path) {
+    this(vertx, pageSize, search, path, null, false);
+  }
+  
+  public IndexedStoreCursor(Vertx vertx, int pageSize, String search, String path, String scrollId, Boolean paginated) {
     this.vertx = vertx;
     this.pageSize = pageSize;
     this.search = search;
     this.path = path;
+    this.scrollId = scrollId;
+    this.paginated = paginated;
+    this.currentHitCount = 0;
   }
   
   /**
@@ -93,6 +110,11 @@ public class IndexedStoreCursor implements StoreCursor {
     JsonObject queryMsg = new JsonObject()
         .put("pageSize", pageSize)
         .put("search", search);
+
+    if (scrollId != null) {
+      queryMsg.put("scrollId", scrollId);
+    }
+    
     if (path != null) {
       queryMsg.put("path", path);
     }
@@ -115,6 +137,7 @@ public class IndexedStoreCursor implements StoreCursor {
     scrollId = body.getString("scrollId");
     JsonArray hits = body.getJsonArray("hits");
     int count = hits.size();
+    currentHitCount += count;
     ids = new String[count];
     metas = new ChunkMeta[count];
     for (int i = 0; i < count; ++i) {
@@ -123,12 +146,20 @@ public class IndexedStoreCursor implements StoreCursor {
       metas[i] = createChunkMeta(hit);
     }
   }
-
+  
   @Override
   public boolean hasNext() {
-    return count < size;
+    if (paginated) {
+      /**
+       * If this cursor is paginated, just get the first page.
+       * When pos <= metas.length, the next page gets retrieved, so stop before that.
+       **/
+      return pos + 1 < metas.length;
+    } else {
+      return count < size;
+    }
   }
-
+  
   @Override
   public void next(Handler<AsyncResult<ChunkMeta>> handler) {
     ++count;
@@ -180,5 +211,14 @@ public class IndexedStoreCursor implements StoreCursor {
       return new JsonChunkMeta(hit);
     }
     return new ChunkMeta(hit);
+  }
+  
+  @Override
+  public JsonObject getPaginationInfo() {
+    return new JsonObject()
+        .put("scrollId", scrollId)
+        .put("totalHits", size)
+        .put("hits", currentHitCount)
+        .put("pageSize", pageSize);
   }
 }

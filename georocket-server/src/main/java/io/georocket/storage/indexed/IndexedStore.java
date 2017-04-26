@@ -8,6 +8,7 @@ import org.bson.types.ObjectId;
 import io.georocket.constants.AddressConstants;
 import io.georocket.storage.ChunkMeta;
 import io.georocket.storage.IndexMeta;
+import io.georocket.storage.PaginatedStoreCursor;
 import io.georocket.storage.Store;
 import io.georocket.storage.StoreCursor;
 import io.vertx.core.AsyncResult;
@@ -23,7 +24,7 @@ import io.vertx.core.json.JsonObject;
  * @author Michel Kraemer
  */
 public abstract class IndexedStore implements Store {
-  private static final int PAGE_SIZE = 100;
+  public static final int PAGE_SIZE = 100;
   
   private final Vertx vertx;
   
@@ -46,7 +47,7 @@ public abstract class IndexedStore implements Store {
         JsonObject indexMsg = new JsonObject()
             .put("path", ar.result())
             .put("meta", chunkMeta.toJsonObject());
-
+        
         if (indexMeta != null) {
           if (indexMeta.getCorrelationId() != null) {
             indexMsg.put("correlationId", indexMeta.getCorrelationId());
@@ -65,7 +66,7 @@ public abstract class IndexedStore implements Store {
             indexMsg.put("properties", new JsonObject(indexMeta.getProperties()));
           }
         }
-
+        
         vertx.eventBus().send(AddressConstants.INDEXER_ADD, indexMsg);
         
         // tell sender that writing was successful
@@ -73,7 +74,7 @@ public abstract class IndexedStore implements Store {
       }
     });
   }
-
+  
   @Override
   public void delete(String search, String path, Handler<AsyncResult<Void>> handler) {
     new IndexedStoreCursor(vertx, PAGE_SIZE, search, path).start(ar -> {
@@ -82,7 +83,7 @@ public abstract class IndexedStore implements Store {
         if (cause instanceof ReplyException) {
           // Cast to get access to the failure code
           ReplyException ex = (ReplyException)cause;
-
+          
           if (ex.failureCode() == 404) {
             handler.handle(Future.succeededFuture());
             return;
@@ -96,10 +97,15 @@ public abstract class IndexedStore implements Store {
       }
     });
   }
-
+  
   @Override
   public void get(String search, String path, Handler<AsyncResult<StoreCursor>> handler) {
     new IndexedStoreCursor(vertx, PAGE_SIZE, search, path).start(handler);
+  }
+  
+  @Override
+  public void getPaginated(String search, String path, String scrollId, Handler<AsyncResult<PaginatedStoreCursor>> handler) {
+    new IndexedStoreCursor(vertx, PAGE_SIZE, search, path, scrollId, true).start(c -> handler.handle(Future.succeededFuture((PaginatedStoreCursor)c.result())));
   }
   
   /**
@@ -172,7 +178,7 @@ public abstract class IndexedStore implements Store {
       }
     });
   }
-
+  
   /**
    * Generate or get an unique identifier. This method generates an
    * identifier independently of the chunk itself.
