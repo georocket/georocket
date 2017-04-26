@@ -3,20 +3,24 @@ package io.georocket.index.generic;
 import static io.georocket.query.ElasticsearchQueryHelper.geoShapeQuery;
 import static io.georocket.query.ElasticsearchQueryHelper.shape;
 
-import java.util.Iterator;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableMap;
 
 import io.georocket.constants.ConfigConstants;
 import io.georocket.index.IndexerFactory;
+import io.georocket.util.CoordinateTransformer;
 import io.vertx.core.Context;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import org.geotools.referencing.CRS;
+import org.opengis.referencing.FactoryException;
+import org.opengis.referencing.crs.CoordinateReferenceSystem;
+import org.opengis.referencing.operation.TransformException;
 
 /**
  * Base class for factories creating indexers that manage bounding boxes
@@ -25,8 +29,9 @@ import io.vertx.core.json.JsonObject;
 public abstract class BoundingBoxIndexerFactory implements IndexerFactory {
   private static final String FLOAT_REGEX = "[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?";
   private static final String COMMA_REGEX = "\\s*,\\s*";
-  private static final String BBOX_REGEX = FLOAT_REGEX + COMMA_REGEX + FLOAT_REGEX +
-      COMMA_REGEX + FLOAT_REGEX + COMMA_REGEX + FLOAT_REGEX;
+  private static final String CODE_PREFIX = "([a-zA-Z]+:\\d+:)?";
+  private static final String BBOX_REGEX = CODE_PREFIX + FLOAT_REGEX + COMMA_REGEX + FLOAT_REGEX +
+    COMMA_REGEX + FLOAT_REGEX + COMMA_REGEX + FLOAT_REGEX;
   private static final Pattern BBOX_PATTERN = Pattern.compile(BBOX_REGEX);
 
   @Override
@@ -77,12 +82,39 @@ public abstract class BoundingBoxIndexerFactory implements IndexerFactory {
 
   @Override
   public JsonObject compileQuery(String search) {
-    Iterable<String> coords = Splitter.on(',').trimResults().split(search);
-    Iterator<String> coordsIter = coords.iterator();
-    double minX = Double.parseDouble(coordsIter.next());
-    double minY = Double.parseDouble(coordsIter.next());
-    double maxX = Double.parseDouble(coordsIter.next());
-    double maxY = Double.parseDouble(coordsIter.next());
+    String crsCode = null;
+    String co;
+    int index = search.lastIndexOf(':');
+
+    if (index > 0) {
+      crsCode = search.substring(0, index);
+      co = search.substring(index + 1);
+    } else {
+      co = search;
+    }
+
+    double[] points = Arrays.stream(co.split(","))
+      .map(String::trim)
+      .mapToDouble(Double::parseDouble)
+      .toArray();
+
+    if (crsCode != null) {
+      try {
+        CoordinateReferenceSystem crs = CRS.decode(crsCode);
+        CoordinateTransformer transformer = new CoordinateTransformer(crs);
+        points = transformer.transform(points, -1);
+      } catch (FactoryException e) {
+        throw new RuntimeException(String.format("CRS %s could not be parsed: %s", crsCode, e.getMessage()), e);
+      } catch (TransformException e) {
+        throw new RuntimeException(
+          String.format("Coordinates %s could not be transformed to %s: %s", co, crsCode, e.getMessage()), e);
+      }
+    }
+
+    double minX = points[0];
+    double minY = points[1];
+    double maxX = points[2];
+    double maxY = points[3];
     JsonArray coordinates = new JsonArray();
     coordinates.add(new JsonArray().add(minX).add(maxY));
     coordinates.add(new JsonArray().add(maxX).add(minY));
