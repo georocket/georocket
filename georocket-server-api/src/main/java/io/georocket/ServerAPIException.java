@@ -10,13 +10,36 @@ import io.vertx.core.json.JsonObject;
  * @since 1.1.0
  */
 public class ServerAPIException extends NoStackTraceThrowable {
+  /**
+   * The syntax of a property command is not valid
+   * @since 1.1.0
+   */
+  public static final String INVALID_PROPERTY_SYNTAX_ERROR = "invalid_property_syntax_error";
+
+  /**
+   * The server issued an HTTP request (e.g. store API or Elasticsearch query)
+   * which failed
+   * @since 1.1.0
+   */
+  public static final String HTTP_ERROR = "http_error";
+
+  /**
+   * A generic error occurred, see reason for details
+   * @since 1.1.0
+   */
+  public static final String GENERIC_ERROR = "generic_error";
+
   private static final long serialVersionUID = -4139618811295918617L;
+
+  /**
+   * A unique machine readable type for the API exception
+   */
   private String type;
 
   /**
    * Create a new exception
-   * @param type the type of the error
-   * @param reason the reason for the error
+   * @param type the exception type
+   * @param reason the reason for the exception
    */
   public ServerAPIException(String type, String reason) {
     super(reason);
@@ -24,7 +47,7 @@ public class ServerAPIException extends NoStackTraceThrowable {
   }
 
   /**
-   * Get the type of the error
+   * Get the exception type
    * @return the type
    */
   public String getType() {

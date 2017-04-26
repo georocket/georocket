@@ -427,7 +427,8 @@ public class StoreEndpoint implements Endpoint {
   }
   
   /**
-   * Let the request fail by setting the correct http error code and an error description in the body
+   * Let the request fail by setting the correct http error code and an error
+   * description in the body
    * @param response the response object
    * @param throwable the cause of the error
    */
@@ -449,14 +450,17 @@ public class StoreEndpoint implements Endpoint {
       return new JsonObject(msg).toString();
     } catch (Exception e) {
       if (throwable instanceof ReplyException) {
-        return ServerAPIException.toJson("processing_error", msg).toString();
+        return ServerAPIException.toJson(ServerAPIException.GENERIC_ERROR, msg)
+          .toString();
       }
 
       if (throwable instanceof HttpException) {
-        return ServerAPIException.toJson("http_error", msg).toString();
+        return ServerAPIException.toJson(ServerAPIException.HTTP_ERROR, msg)
+          .toString();
       }
 
-      return ServerAPIException.toJson("request_error", msg).toString();
+      return ServerAPIException.toJson(ServerAPIException.GENERIC_ERROR, msg)
+        .toString();
     }
   }
 
