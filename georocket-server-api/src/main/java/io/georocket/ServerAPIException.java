@@ -10,7 +10,27 @@ import io.vertx.core.json.JsonObject;
  * @since 1.1.0
  */
 public class ServerAPIException extends NoStackTraceThrowable {
+  /**
+   * The syntax of a property command is not valid
+   */
+  public static final String INVALID_PROPERTY_SYNTAX = "invalid_property_syntax";
+  /**
+   * The verticle replied with a simple error message, see reason for details
+   */
+  public static final String PROCESSING_ERROR = "processing_error";
+  /**
+   * The server issued a http request (e.g. store api or elasticsearch download)
+   * which failed
+   */
+  public static final String HTTP_ERROR = "http_error";
+  /**
+   * A general error occurred during the client request, see reason for details
+   */
+  public static final String REQUEST_ERROR = "request_error";
   private static final long serialVersionUID = -4139618811295918617L;
+  /**
+   * A unique machine readable name for the api exception
+   */
   private String type;
 
   /**
