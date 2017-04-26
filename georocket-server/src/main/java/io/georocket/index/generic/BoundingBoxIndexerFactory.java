@@ -104,10 +104,11 @@ public abstract class BoundingBoxIndexerFactory implements IndexerFactory {
         CoordinateTransformer transformer = new CoordinateTransformer(crs);
         points = transformer.transform(points, -1);
       } catch (FactoryException e) {
-        throw new RuntimeException(String.format("CRS %s could not be parsed: %s", crsCode, e.getMessage()), e);
+        throw new RuntimeException(String.format("CRS %s could not be parsed: %s",
+          crsCode, e.getMessage()), e);
       } catch (TransformException e) {
-        throw new RuntimeException(
-          String.format("Coordinates %s could not be transformed to %s: %s", co, crsCode, e.getMessage()), e);
+        throw new RuntimeException(String.format("Coordinates %s could not be "
+          + "transformed to %s: %s", co, crsCode, e.getMessage()), e);
       }
     }
 

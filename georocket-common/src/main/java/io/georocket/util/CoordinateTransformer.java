@@ -22,7 +22,7 @@ public class CoordinateTransformer {
    * Create transformer from CRS
    * @param code the CRS code
    * @throws FactoryException if the CRS code is unknown or no transformation
-   *                          for the CRS could be found
+   * for the CRS could be found
    */
   public CoordinateTransformer(String code) throws FactoryException {
     this(CRS.decode(code));
@@ -42,10 +42,10 @@ public class CoordinateTransformer {
    * Transform an array of coordinates to {@link DefaultGeographicCRS#WGS84}
    * @param from the source array of coordinates
    * @param dimension the dimension of the source coordinates. Allowed values
-   *                  are &lt;= 0, 2 and 3. If the value is &lt;= 0 the dimension
-   *                  will be guessed (see {@link #guessDimension(double[])}).
+   * are &lt;= 0, 2 and 3. If the value is &lt;= 0 the dimension will be
+   * guessed (see {@link #guessDimension(double[])}).
    * @return a new array with the destination coordinates of null if the dimension
-   *         in unknown or the source coordinates could not be transformed
+   * in unknown or the source coordinates could not be transformed
    * @throws TransformException if the coordinates could not be transformed
    */
   public double[] transform(double[] from, int dimension) throws TransformException {

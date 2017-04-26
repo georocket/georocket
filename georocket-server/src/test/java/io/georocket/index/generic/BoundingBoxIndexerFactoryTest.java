@@ -1,13 +1,13 @@
 package io.georocket.index.generic;
 
+import static org.junit.Assert.assertEquals;
+
+import org.junit.Test;
+
 import io.georocket.index.Indexer;
 import io.georocket.query.QueryCompiler.MatchPriority;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import org.junit.Test;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 /**
  * Test the {@link BoundingBoxIndexerFactory}
@@ -66,7 +66,7 @@ public class BoundingBoxIndexerFactoryTest {
 
   /**
    * Test if query contains correct coordinates
-   * @param jsonQuery   the query
+   * @param jsonQuery the query
    * @param destination the expected coordinates
    */
   private static void testQuery(JsonObject jsonQuery, double[] destination) {
@@ -77,10 +77,10 @@ public class BoundingBoxIndexerFactoryTest {
       .getJsonArray("coordinates");
 
     JsonArray first = coordinates.getJsonArray(0);
-    assertTrue(first.getDouble(0) - destination[0] < 0.01);
-    assertTrue(first.getDouble(1) - destination[1] < 0.01);
+    assertEquals(destination[0], first.getDouble(0), 0.0001);
+    assertEquals(destination[1], first.getDouble(1), 0.0001);
     JsonArray second = coordinates.getJsonArray(1);
-    assertTrue(second.getDouble(0) - destination[2] < 0.01);
-    assertTrue(second.getDouble(1) - destination[3] < 0.01);
+    assertEquals(destination[2], second.getDouble(0), 0.0001);
+    assertEquals(destination[3], second.getDouble(1), 0.0001);
   }
 }
