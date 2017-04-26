@@ -817,7 +817,7 @@ public class IndexerVerticle extends AbstractVerticle {
           String[] property = part.split(regex);
           if (property.length != 2) {
             return Observable.error(new ServerAPIException(
-              ServerAPIException.INVALID_PROPERTY_SYNTAX, 
+              ServerAPIException.INVALID_PROPERTY_SYNTAX_ERROR,
               "Invalid property syntax: " + part));
           }
           String key = StringEscapeUtils.unescapeJava(property[0].trim());

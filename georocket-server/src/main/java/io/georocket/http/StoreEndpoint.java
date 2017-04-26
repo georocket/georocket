@@ -450,7 +450,7 @@ public class StoreEndpoint implements Endpoint {
       return new JsonObject(msg).toString();
     } catch (Exception e) {
       if (throwable instanceof ReplyException) {
-        return ServerAPIException.toJson(ServerAPIException.PROCESSING_ERROR, msg)
+        return ServerAPIException.toJson(ServerAPIException.GENERIC_ERROR, msg)
           .toString();
       }
 
@@ -459,7 +459,7 @@ public class StoreEndpoint implements Endpoint {
           .toString();
       }
 
-      return ServerAPIException.toJson(ServerAPIException.REQUEST_ERROR, msg)
+      return ServerAPIException.toJson(ServerAPIException.GENERIC_ERROR, msg)
         .toString();
     }
   }

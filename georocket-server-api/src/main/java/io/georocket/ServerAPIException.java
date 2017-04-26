@@ -12,31 +12,34 @@ import io.vertx.core.json.JsonObject;
 public class ServerAPIException extends NoStackTraceThrowable {
   /**
    * The syntax of a property command is not valid
+   * @since 1.1.0
    */
-  public static final String INVALID_PROPERTY_SYNTAX = "invalid_property_syntax";
+  public static final String INVALID_PROPERTY_SYNTAX_ERROR = "invalid_property_syntax_error";
+
   /**
-   * The verticle replied with a simple error message, see reason for details
-   */
-  public static final String PROCESSING_ERROR = "processing_error";
-  /**
-   * The server issued a http request (e.g. store api or elasticsearch download)
+   * The server issued an HTTP request (e.g. store API or Elasticsearch query)
    * which failed
+   * @since 1.1.0
    */
   public static final String HTTP_ERROR = "http_error";
+
   /**
-   * A general error occurred during the client request, see reason for details
+   * A generic error occurred, see reason for details
+   * @since 1.1.0
    */
-  public static final String REQUEST_ERROR = "request_error";
+  public static final String GENERIC_ERROR = "generic_error";
+
   private static final long serialVersionUID = -4139618811295918617L;
+
   /**
-   * A unique machine readable name for the api exception
+   * A unique machine readable type for the API exception
    */
   private String type;
 
   /**
    * Create a new exception
-   * @param type the type of the error
-   * @param reason the reason for the error
+   * @param type the exception type
+   * @param reason the reason for the exception
    */
   public ServerAPIException(String type, String reason) {
     super(reason);
@@ -44,7 +47,7 @@ public class ServerAPIException extends NoStackTraceThrowable {
   }
 
   /**
-   * Get the type of the error
+   * Get the exception type
    * @return the type
    */
   public String getType() {
