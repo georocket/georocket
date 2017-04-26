@@ -630,7 +630,12 @@ public class IndexerVerticle extends AbstractVerticle {
       // a yes/no answer and no scoring (i.e. we only want to get matching
       // documents and not those that likely match). For the difference between
       // query and post_filter see the Elasticsearch documentation.
-      JsonObject postFilter = queryCompiler.compileQuery(search, path);
+      JsonObject postFilter;
+      try {
+        postFilter = queryCompiler.compileQuery(search, path);
+      } catch (Throwable t) {
+        return Observable.error(t);
+      }
       observable = client.beginScroll(TYPE_NAME, null, postFilter, pageSize, timeout);
     } else {
       // continue searching
