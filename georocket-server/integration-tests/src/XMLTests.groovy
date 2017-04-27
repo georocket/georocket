@@ -31,14 +31,16 @@ class XMLTests extends StoreTests {
             logWarn("Response: $exportedContents")
         }
 
+        // try to parse error response
         try {
-          def result = new JsonSlurper().parseText(exportedContents)
-  
-          if(result.error && result.error.reason.trim().equals("Not Found")) {
-              logWarn("Got 0 chunks.")
-              return false
-          }
+            def result = new JsonSlurper().parseText(exportedContents)
+            if (result.error && result.error.reason.trim().equals("Not Found")) {
+                logWarn("Got 0 chunks.")
+                return false
+            }
         } catch (JsonException e) {
+            // Ignore exception if the error could not be parsed. Either this
+            // was no error or we will fail later.
         }
 
         if (exportedContents.trim().equalsIgnoreCase("Not Found") ||
