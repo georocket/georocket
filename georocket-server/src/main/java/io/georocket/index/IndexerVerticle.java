@@ -4,7 +4,6 @@ import static io.georocket.util.MimeTypeUtils.belongsTo;
 import static io.georocket.util.ThrowableHelper.throwableToCode;
 import static io.georocket.util.ThrowableHelper.throwableToMessage;
 
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URL;
@@ -747,7 +746,7 @@ public class IndexerVerticle extends AbstractVerticle {
       }
       String script = Resources.toString(url, StandardCharsets.UTF_8);
       updateScript.put("inline", script);
-      return update(postFilter, updateScript);
+      return updateDocuments(postFilter, updateScript);
     } catch (ServerAPIException | IOException e) {
       return Single.error(e);
     }
@@ -788,7 +787,7 @@ public class IndexerVerticle extends AbstractVerticle {
    * @return a Single which completes if the update is successful or fails if
    * an error occurs
    */
-  private Single<Void> update(JsonObject postFilter, JsonObject updateScript) {
+  private Single<Void> updateDocuments(JsonObject postFilter, JsonObject updateScript) {
     return client.updateByQuery(TYPE_NAME, postFilter, updateScript)
       .toSingle()
       .flatMap(sr -> {
