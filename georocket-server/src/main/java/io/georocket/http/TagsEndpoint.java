@@ -15,7 +15,7 @@ import java.util.Arrays;
  * An HTTP endpoint handling requests related to the chunk tags
  * @author Tim Hellhake
  */
-public class TagsEndpoint implements Endpoint {
+public class TagsEndpoint extends AbstractEndpoint {
   private final Vertx vertx;
 
   /**
@@ -58,7 +58,7 @@ public class TagsEndpoint implements Endpoint {
   private void onUpdate(RoutingContext context, String action) {
     HttpServerResponse response = context.response();
     HttpServerRequest request = context.request();
-    String path = Endpoint.getEndpointPath(context);
+    String path = getEndpointPath(context);
     String search = request.getParam("search");
     String tags = request.getParam("tags");
     JsonArray updates;
@@ -80,7 +80,7 @@ public class TagsEndpoint implements Endpoint {
       if (ar.succeeded()) {
         response.setStatusCode(204).end();
       } else {
-        Endpoint.fail(response, ar.cause());
+        fail(response, ar.cause());
       }
     });
   }

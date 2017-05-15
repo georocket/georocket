@@ -16,7 +16,7 @@ import io.vertx.ext.web.RoutingContext;
  * An HTTP endpoint for general requests
  * @author Michel Kraemer
  */
-public class GeneralEndpoint implements Endpoint {
+public class GeneralEndpoint extends AbstractEndpoint {
   private final Vertx vertx;
   private final String version;
 

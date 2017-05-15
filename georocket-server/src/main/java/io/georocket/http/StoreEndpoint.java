@@ -1,8 +1,5 @@
 package io.georocket.http;
 
-import static io.georocket.util.ThrowableHelper.throwableToCode;
-import static io.georocket.util.ThrowableHelper.throwableToMessage;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -13,8 +10,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
-import io.georocket.ServerAPIException;
-import io.vertx.core.eventbus.ReplyException;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.ParseException;
@@ -58,7 +53,7 @@ import rx.Single;
  * An HTTP endpoint handling requests related to the GeoRocket data store
  * @author Michel Kraemer
  */
-public class StoreEndpoint implements Endpoint {
+public class StoreEndpoint extends AbstractEndpoint {
   private static Logger log = LoggerFactory.getLogger(StoreEndpoint.class);
   
   private final Vertx vertx;
@@ -85,27 +80,6 @@ public class StoreEndpoint implements Endpoint {
     router.delete("/*").handler(this::onDelete);
     router.patch("/*").handler(this::onPatch);
     return router;
-  }
-
-  /**
-   * Get absolute data store path from request
-   * @param context the current routing context
-   * @return the absolute path (never null, default: "/")
-   */
-  private String getStorePath(RoutingContext context) {
-    String path = context.normalisedPath();
-    String routePath = context.mountPoint();
-    String result = null;
-    if (routePath.length() < path.length()) {
-      result = path.substring(routePath.length());
-    }
-    if (result == null || result.isEmpty()) {
-      return "/";
-    }
-    if (result.charAt(0) != '/') {
-      result = "/" + result;
-    }
-    return result;
   }
   
   /**
@@ -187,7 +161,7 @@ public class StoreEndpoint implements Endpoint {
     HttpServerRequest request = context.request();
     HttpServerResponse response = context.response();
 
-    String path = getStorePath(context);
+    String path = getEndpointPath(context);
     String search = request.getParam("search");
 
     // Our responses must always be chunked because we cannot calculate
@@ -209,7 +183,7 @@ public class StoreEndpoint implements Endpoint {
         if (!(err instanceof FileNotFoundException)) {
           log.error("Could not perform query", err);
         }
-        Endpoint.fail(response, err);
+        fail(response, err);
       });
   }
   
@@ -259,7 +233,7 @@ public class StoreEndpoint implements Endpoint {
     HttpServerRequest request = context.request();
     request.pause();
 
-    String layer = getStorePath(context);
+    String layer = getEndpointPath(context);
     String tagsStr = request.getParam("tags");
     String propertiesStr = request.getParam("props");
 
@@ -374,7 +348,7 @@ public class StoreEndpoint implements Endpoint {
         // run importer
         vertx.eventBus().send(AddressConstants.IMPORTER_IMPORT, msg);
       }, err -> {
-        Endpoint.fail(request.response(), err);
+        fail(request.response(), err);
         err.printStackTrace();
         fs.delete(filepath, ar -> {});
       });
@@ -385,7 +359,7 @@ public class StoreEndpoint implements Endpoint {
    * @param context the routing context
    */
   private void onDelete(RoutingContext context) {
-    String path = getStorePath(context);
+    String path = getEndpointPath(context);
     
     HttpServerResponse response = context.response();
     HttpServerRequest request = context.request();
@@ -398,7 +372,7 @@ public class StoreEndpoint implements Endpoint {
           .end();
       }, err -> {
         log.error("Could not delete chunks", err);
-        Endpoint.fail(response, err);
+        fail(response, err);
       });
   }
 
@@ -407,7 +381,7 @@ public class StoreEndpoint implements Endpoint {
    * @param context the routing context
    */
   private void onPatch(RoutingContext context) {
-    String path = getStorePath(context);
+    String path = getEndpointPath(context);
 
     HttpServerResponse response = context.response();
     HttpServerRequest request = context.request();
@@ -420,10 +394,10 @@ public class StoreEndpoint implements Endpoint {
         if (msg.succeeded()) {
           response.setStatusCode(204).end();
         } else {
-          Endpoint.fail(response, msg.cause());
+          fail(response, msg.cause());
         }
       });
-    }, err -> Endpoint.fail(response, err));
+    }, err -> fail(response, err));
   }
 
   /**
