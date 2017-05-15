@@ -37,6 +37,7 @@ public final class ConfigConstants {
   public static final String INDEX_SPATIAL_PRECISION = "georocket.index.spatial.precision";
 
   public static final String QUERY_COMPILER_CLASS = "georocket.query.defaultQueryCompiler";
+  public static final String QUERY_DEFAULT_CRS = "georocket.query.defaultCRS";
 
   public static final String DEFAULT_HOST = "127.0.0.1";
   public static final int DEFAULT_PORT = 63020;

@@ -20,16 +20,6 @@ public class CoordinateTransformer {
 
   /**
    * Create transformer from CRS
-   * @param code the CRS code
-   * @throws FactoryException if the CRS code is unknown or no transformation
-   * for the CRS could be found
-   */
-  public CoordinateTransformer(String code) throws FactoryException {
-    this(CRS.decode(code));
-  }
-
-  /**
-   * Create transformer from CRS
    * @param crs the CRS
    * @throws FactoryException if no transformation for the CRS could be found
    */
@@ -110,5 +100,28 @@ public class CoordinateTransformer {
     }
 
     return false;
+  }
+
+  /**
+   * Decode CRS from a string. This might be:
+   * <ul>
+   *   <li>a simple CRS (see {@link CRS#decode(String)})</li>
+   *   <li>a compound CRS (see {@link CompoundCRSDecoder#decode(String)})</li>
+   *   <li>a WKT string (see {@link WKTCRSDecoder#decode(String)})</li>
+   * </ul>
+   * @param s the string
+   * @return the parsed CRS
+   * @throws FactoryException if the CRS could not be parsed
+   */
+  public static CoordinateReferenceSystem decode(String s) throws FactoryException {
+    if (CompoundCRSDecoder.isCompound(s)) {
+      return CompoundCRSDecoder.decode(s);
+    }
+
+    if (WKTCRSDecoder.isWKT(s)) {
+      return WKTCRSDecoder.decode(s);
+    }
+
+    return CRS.decode(s);
   }
 }
