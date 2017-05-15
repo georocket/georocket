@@ -730,11 +730,11 @@ public class IndexerVerticle extends AbstractVerticle {
     
     JsonObject updateScript = new JsonObject()
       .put("lang", "painless");
-    String scriptName = action + "_" + target + ".ps";
+    String scriptName = action + "_" + target + ".txt";
 
     try {
       JsonObject params;
-      if (Objects.equals(scriptName, "set_properties.ps")) {
+      if (Objects.equals(scriptName, "set_properties.txt")) {
         params = new JsonObject().put(target, parseProperties(updates));
       } else {
         params = new JsonObject().put(target, new JsonArray(updates));
