@@ -37,8 +37,6 @@ public class WKTCRSDecoder {
    * @throws FactoryException if the WKT string is not valid
    */
   public static CoordinateReferenceSystem decode(String wkt) throws FactoryException {
-    wkt = wkt.trim();
-
-    return CRS.parseWKT(wkt);
+    return CRS.parseWKT(wkt.trim());
   }
 }

@@ -5,9 +5,7 @@ import static org.junit.Assert.assertEquals;
 import org.geotools.referencing.CRS;
 import org.geotools.referencing.crs.DefaultGeographicCRS;
 import org.junit.Test;
-import org.opengis.referencing.FactoryException;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
-import org.opengis.referencing.operation.TransformException;
 
 /**
  * Test the {@link CoordinateTransformer}
@@ -29,9 +27,10 @@ public class CoordinateTransformerTest {
 
   /**
    * Test transformation with WKT code
+   * @throws Exception if something has happened
    */
   @Test
-  public void testWKT() throws FactoryException, TransformException {
+  public void testWKT() throws Exception {
     CoordinateReferenceSystem crs = CRS.decode("EPSG:31467");
     CoordinateReferenceSystem wktCrs = CoordinateTransformer.decode(crs.toWKT());
     CoordinateTransformer transformer = new CoordinateTransformer(wktCrs);
@@ -49,7 +48,7 @@ public class CoordinateTransformerTest {
    * @throws Exception if something has happened
    */
   public void testTransformation(CoordinateTransformer transformer,
-      double[] source, double[] destination) throws TransformException {
+      double[] source, double[] destination) throws Exception {
     double[] transformed = transformer.transform(source, 2);
     assertEquals(destination[0], transformed[0], 0.00001);
     assertEquals(destination[1], transformed[1], 0.00001);

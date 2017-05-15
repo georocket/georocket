@@ -34,7 +34,10 @@ public abstract class BoundingBoxIndexerFactory implements IndexerFactory {
     COMMA_REGEX + FLOAT_REGEX + COMMA_REGEX + FLOAT_REGEX;
   private static final Pattern BBOX_PATTERN = Pattern.compile(BBOX_REGEX);
   private String defaultCrs;
-  
+
+  /**
+   * Default constructor
+   */
   public BoundingBoxIndexerFactory() {
     Context ctx = Vertx.currentContext();
     if (ctx != null) {
@@ -46,7 +49,7 @@ public abstract class BoundingBoxIndexerFactory implements IndexerFactory {
   }
 
   /**
-   * Set the default crs which is used to transform query bounding box coordinates
+   * Set the default CRS which is used to transform query bounding box coordinates
    * to WGS84 coordinates
    * @param defaultCrs the CRS string (see {@link CoordinateTransformer#decode(String)}).
    */
@@ -127,15 +130,13 @@ public abstract class BoundingBoxIndexerFactory implements IndexerFactory {
           String.format("CRS %s could not be parsed: %s",
             crsCode, e.getMessage()), e);
       }
-    } else {
-      if (defaultCrs != null) {
-        try {
-          crs = CoordinateTransformer.decode(defaultCrs);
-        } catch (FactoryException e) {
-          throw new RuntimeException(
-            String.format("Default CRS %s could not be parsed: %s",
-              defaultCrs, e.getMessage()), e);
-        }
+    } else if (defaultCrs != null) {
+      try {
+        crs = CoordinateTransformer.decode(defaultCrs);
+      } catch (FactoryException e) {
+        throw new RuntimeException(
+          String.format("Default CRS %s could not be parsed: %s",
+            defaultCrs, e.getMessage()), e);
       }
     }
 
