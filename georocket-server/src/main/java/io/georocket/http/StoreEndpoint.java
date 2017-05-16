@@ -78,7 +78,6 @@ public class StoreEndpoint extends AbstractEndpoint {
     router.get("/*").handler(this::onGet);
     router.post("/*").handler(this::onPost);
     router.delete("/*").handler(this::onDelete);
-    router.patch("/*").handler(this::onPatch);
     return router;
   }
   
@@ -374,44 +373,5 @@ public class StoreEndpoint extends AbstractEndpoint {
         log.error("Could not delete chunks", err);
         fail(response, err);
       });
-  }
-
-  /**
-   * Handles the HTTP PATCH request
-   * @param context the routing context
-   */
-  private void onPatch(RoutingContext context) {
-    String path = getEndpointPath(context);
-
-    HttpServerResponse response = context.response();
-    HttpServerRequest request = context.request();
-    String search = request.getParam("search");
-
-    bodyAsJsonObject(request).subscribe(body -> {
-      body.put("path", path);
-      body.put("search", search);
-      vertx.eventBus().<JsonObject>send(AddressConstants.INDEXER_UPDATE, body, msg -> {
-        if (msg.succeeded()) {
-          response.setStatusCode(204).end();
-        } else {
-          fail(response, msg.cause());
-        }
-      });
-    }, err -> fail(response, err));
-  }
-
-  /**
-   * Get request body as JSON object.
-   * @param request the request to extract to body from
-   * @return Single holding the JSON as soon as the request is processed
-   */
-  private static Single<JsonObject> bodyAsJsonObject(HttpServerRequest request) {
-    return Single.create(singleSubscriber -> {
-      Buffer buffer = Buffer.buffer();
-      request.handler(buffer::appendBuffer);
-      request.exceptionHandler(singleSubscriber::onError);
-      request.endHandler(v -> singleSubscriber.onSuccess(
-          new JsonObject(buffer.toString(StandardCharsets.UTF_8))));
-    });
   }
 }
