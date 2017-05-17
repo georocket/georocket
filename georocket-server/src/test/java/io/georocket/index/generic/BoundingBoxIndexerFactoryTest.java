@@ -2,14 +2,13 @@ package io.georocket.index.generic;
 
 import static org.junit.Assert.assertEquals;
 
+import org.geotools.referencing.CRS;
 import org.junit.Test;
 
 import io.georocket.index.Indexer;
 import io.georocket.query.QueryCompiler.MatchPriority;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import org.geotools.referencing.CRS;
-import org.opengis.referencing.FactoryException;
 
 /**
  * Test the {@link BoundingBoxIndexerFactory}
@@ -104,9 +103,10 @@ public class BoundingBoxIndexerFactoryTest {
 
   /**
    * Test if the factory uses the configured default CRS WKT
+   * @throws Exception if the test fails
    */
   @Test
-  public void testWKTDefault() throws FactoryException {
+  public void testWKTDefault() throws Exception {
     String wkt = CRS.decode("epsg:31467").toWKT();
     String point = "3477534.683,5605739.857";
     String query = point + "," + point;

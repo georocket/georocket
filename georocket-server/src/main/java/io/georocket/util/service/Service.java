@@ -5,6 +5,7 @@ import io.vertx.rxjava.core.Vertx;
 import io.vertx.rxjava.servicediscovery.ServiceDiscovery;
 import io.vertx.servicediscovery.Record;
 import rx.Observable;
+import rx.Single;
 
 /**
  * Can be used to register a service by name and address, discover
@@ -29,8 +30,8 @@ public interface Service {
    */
   static Observable<Service> discover(String name, ServiceDiscovery discovery,
       Vertx vertx) {
-    return discovery.getRecordsObservable(r -> r.getName().equals(name))
-        .flatMap(Observable::from)
+    return discovery.rxGetRecords(r -> r.getName().equals(name))
+        .flatMapObservable(Observable::from)
         .map(record -> {
           String endpoint = record.getLocation().getString(Record.ENDPOINT);
           Service s = new DefaultService(name, endpoint,
@@ -51,19 +52,19 @@ public interface Service {
    * service
    * @param vertx the Vert.x instance
    * @param address the service address on the event bus
-   * @return an observable emitting one item when the service has been registered
+   * @return an single emitting one item when the service has been registered
    */
-  static Observable<Void> publishOnce(String name, String address,
+  static Single<Void> publishOnce(String name, String address,
       ServiceDiscovery discovery, Vertx vertx) {
     Record record = new Record()
         .setName(name)
         .setLocation(new JsonObject().put(Record.ENDPOINT, address));
 
     if (name == null || name.trim().isEmpty()) {
-      return Observable.error(new IllegalArgumentException("Missing service name"));
+      return Single.error(new IllegalArgumentException("Missing service name"));
     }
     if (address == null || address.trim().isEmpty()) {
-      return Observable.error(new IllegalArgumentException("Missing endpoint address"));
+      return Single.error(new IllegalArgumentException("Missing endpoint address"));
     }
 
     return publishOnce(record, discovery, vertx);
@@ -81,34 +82,32 @@ public interface Service {
    * @param vertx the Vert.x instance
    * @return an observable emitting one item when the service has been registered
    */
-  static Observable<Void> publishOnce(Record record, ServiceDiscovery discovery,
+  static Single<Void> publishOnce(Record record, ServiceDiscovery discovery,
       Vertx vertx) {
     String address = record.getLocation().getString(Record.ENDPOINT);
     String name = record.getName();
 
     if (name == null || name.trim().isEmpty()) {
-      return Observable.error(new IllegalArgumentException("Missing name in "
+      return Single.error(new IllegalArgumentException("Missing name in "
           + "service record"));
     }
     if (address == null || address.trim().isEmpty()) {
-      return Observable.error(new IllegalArgumentException("Missing endpoint "
+      return Single.error(new IllegalArgumentException("Missing endpoint "
           + "address in service record"));
     }
 
     String key = COUNTER_PREFIX + name + ":" + address;
 
-    return vertx.sharedData().getCounterObservable(key)
-        .flatMap(counter -> {
-          return counter.compareAndSetObservable(0, 1)
-              .flatMap(success -> {
-                if (success) {
-                  // we're the first one to increment the counter
-                  // service can be registered
-                  return discovery.publishObservable(record).map(r -> null);
-                }
-                // service already published
-                return Observable.just(null);
-              });
+    return vertx.sharedData().rxGetCounter(key)
+        .flatMap(counter -> counter.rxCompareAndSet(0, 1))
+        .flatMap(success -> {
+          if (success) {
+            // we're the first one to increment the counter
+            // service can be registered
+              return discovery.rxPublish(record).map(r -> null);
+          }
+          // service already published
+          return Single.just(null);
         });
   }
 
@@ -141,7 +140,7 @@ public interface Service {
   /**
    * Unpublish this service
    * @param discovery the service discovery where this service is registered
-   * @return an observable that emits one item when the operation has finished
+   * @return an single that emits one item when the operation has finished
    */
-  Observable<Void> unpublish(ServiceDiscovery discovery);
+  Single<Void> unpublish(ServiceDiscovery discovery);
 }

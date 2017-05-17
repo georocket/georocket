@@ -1,20 +1,14 @@
 package io.georocket.http;
 
-import static io.georocket.util.ThrowableHelper.throwableToCode;
-import static io.georocket.util.ThrowableHelper.throwableToMessage;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
-import io.georocket.ServerAPIException;
-import io.vertx.core.eventbus.ReplyException;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.ParseException;
@@ -52,13 +46,12 @@ import io.vertx.ext.web.RoutingContext;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
 import rx.Observable;
-import rx.Single;
 
 /**
  * An HTTP endpoint handling requests related to the GeoRocket data store
  * @author Michel Kraemer
  */
-public class StoreEndpoint implements Endpoint {
+public class StoreEndpoint extends AbstractEndpoint {
   private static Logger log = LoggerFactory.getLogger(StoreEndpoint.class);
   
   private final Vertx vertx;
@@ -83,29 +76,7 @@ public class StoreEndpoint implements Endpoint {
     router.get("/*").handler(this::onGet);
     router.post("/*").handler(this::onPost);
     router.delete("/*").handler(this::onDelete);
-    router.patch("/*").handler(this::onPatch);
     return router;
-  }
-
-  /**
-   * Get absolute data store path from request
-   * @param context the current routing context
-   * @return the absolute path (never null, default: "/")
-   */
-  private String getStorePath(RoutingContext context) {
-    String path = context.normalisedPath();
-    String routePath = context.mountPoint();
-    String result = null;
-    if (routePath.length() < path.length()) {
-      result = path.substring(routePath.length());
-    }
-    if (result == null || result.isEmpty()) {
-      return "/";
-    }
-    if (result.charAt(0) != '/') {
-      result = "/" + result;
-    }
-    return result;
   }
   
   /**
@@ -187,7 +158,7 @@ public class StoreEndpoint implements Endpoint {
     HttpServerRequest request = context.request();
     HttpServerResponse response = context.response();
 
-    String path = getStorePath(context);
+    String path = getEndpointPath(context);
     String search = request.getParam("search");
 
     // Our responses must always be chunked because we cannot calculate
@@ -259,7 +230,7 @@ public class StoreEndpoint implements Endpoint {
     HttpServerRequest request = context.request();
     request.pause();
 
-    String layer = getStorePath(context);
+    String layer = getEndpointPath(context);
     String tagsStr = request.getParam("tags");
     String propertiesStr = request.getParam("props");
 
@@ -385,7 +356,7 @@ public class StoreEndpoint implements Endpoint {
    * @param context the routing context
    */
   private void onDelete(RoutingContext context) {
-    String path = getStorePath(context);
+    String path = getEndpointPath(context);
     
     HttpServerResponse response = context.response();
     HttpServerRequest request = context.request();
@@ -400,82 +371,5 @@ public class StoreEndpoint implements Endpoint {
         log.error("Could not delete chunks", err);
         fail(response, err);
       });
-  }
-
-  /**
-   * Handles the HTTP PATCH request
-   * @param context the routing context
-   */
-  private void onPatch(RoutingContext context) {
-    String path = getStorePath(context);
-
-    HttpServerResponse response = context.response();
-    HttpServerRequest request = context.request();
-    String search = request.getParam("search");
-
-    bodyAsJsonObject(request).subscribe(body -> {
-      body.put("path", path);
-      body.put("search", search);
-      vertx.eventBus().<JsonObject>send(AddressConstants.INDEXER_UPDATE, body, msg -> {
-        if (msg.succeeded()) {
-          response.setStatusCode(204).end();
-        } else {
-          fail(response, msg.cause());
-        }
-      });
-    }, err -> fail(response, err));
-  }
-  
-  /**
-   * Let the request fail by setting the correct http error code and an error
-   * description in the body
-   * @param response the response object
-   * @param throwable the cause of the error
-   */
-  private static void fail(HttpServerResponse response, Throwable throwable) {
-    response
-      .setStatusCode(throwableToCode(throwable))
-      .end(errorResponse(throwable));
-  }
-
-  /**
-   * Generate the json error response for a failed request
-   * @param throwable the cause of the error
-   * @return the json string
-   */
-  private static String errorResponse(Throwable throwable) {
-    String msg = throwableToMessage(throwable, "");
-
-    try {
-      return new JsonObject(msg).toString();
-    } catch (Exception e) {
-      if (throwable instanceof ReplyException) {
-        return ServerAPIException.toJson(ServerAPIException.GENERIC_ERROR, msg)
-          .toString();
-      }
-
-      if (throwable instanceof HttpException) {
-        return ServerAPIException.toJson(ServerAPIException.HTTP_ERROR, msg)
-          .toString();
-      }
-
-      return ServerAPIException.toJson(ServerAPIException.GENERIC_ERROR, msg)
-        .toString();
-    }
-  }
-
-  /**
-   * Get request body as JSON object.
-   * @param request the request to extract to body from
-   * @return Single holding the JSON as soon as the request is processed
-   */
-  private static Single<JsonObject> bodyAsJsonObject(HttpServerRequest request) {
-    return Single.create(singleSubscriber -> {
-      Buffer buffer = Buffer.buffer();
-      request.handler(buffer::appendBuffer);
-      request.exceptionHandler(singleSubscriber::onError);
-      request.endHandler(v -> singleSubscriber.onSuccess(
-          new JsonObject(buffer.toString(StandardCharsets.UTF_8))));
-    });
   }
 }

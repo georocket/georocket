@@ -18,8 +18,6 @@ import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.http.HttpMethod;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
 import io.vertx.core.streams.ReadStream;
 import io.vertx.core.streams.WriteStream;
 
@@ -657,13 +655,46 @@ public class StoreClient {
       return;
     }
 
-    JsonObject body = new JsonObject()
-      .put("action", action.toString())
-      .put("target", target.toString())
-      .put("updates", new JsonArray(updates));
+    HttpMethod method;
+
+    switch (action) {
+      case REMOVE:
+        method = HttpMethod.DELETE;
+        break;
+      case APPEND:
+        method = HttpMethod.PUT;
+        break;
+      default:
+        throw new RuntimeException("Unknown action type " + action);
+    }
+
+    String targetPath;
+    String targetName;
+    
+    switch (target) {
+      case TAG:
+        targetPath = "/tags";
+        targetName = "tags";
+        break;
+      case PROPERTY:
+        targetPath = "/properties";
+        targetName = "properties";
+        break;
+      default:
+        throw new RuntimeException("Unknown target type " + target);
+    }
 
     String queryPath = prepareQuery(query, layer);
-    HttpClientRequest request = client.request(HttpMethod.PATCH, getEndpoint() + queryPath);
+    if (query == null || query.isEmpty()) {
+      queryPath += "?";
+    } else {
+      queryPath += "&";
+    }
+    String values = updates.stream()
+      .map(this::urlencode)
+      .collect(Collectors.joining(","));
+    String path = targetPath + queryPath + targetName + "=" + values;
+    HttpClientRequest request = client.request(method, path);
 
     request.exceptionHandler(t -> handler.handle(Future.failedFuture(t)));
     request.handler(response -> {
@@ -673,7 +704,7 @@ public class StoreClient {
         response.endHandler(v -> handler.handle(Future.succeededFuture()));
       }
     });
-    configureRequest(request).end(body.encode());
+    configureRequest(request).end();
   }
 
   /**

@@ -6,13 +6,15 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import io.georocket.http.Endpoint;
+import io.georocket.http.GeneralEndpoint;
+import io.georocket.http.PropertiesEndpoint;
+import io.georocket.http.StoreEndpoint;
+import io.georocket.http.TagsEndpoint;
 import org.apache.commons.io.FileUtils;
 import org.yaml.snakeyaml.Yaml;
 
 import io.georocket.constants.ConfigConstants;
-import io.georocket.http.Endpoint;
-import io.georocket.http.GeneralEndpoint;
-import io.georocket.http.StoreEndpoint;
 import io.georocket.index.IndexerVerticle;
 import io.georocket.util.JsonUtils;
 import io.vertx.core.AbstractVerticle;
@@ -94,6 +96,26 @@ public class GeoRocket extends AbstractVerticle {
   protected Endpoint createStoreEndpoint() {
     return new StoreEndpoint(vertx);
   }
+
+  /**
+   * Creates the HTTP endpoint handling requests related to the chunk properties.
+   * Returns {@link PropertiesEndpoint} by default. Subclasses may override if
+   * they want to return another implementation.
+   * @return the endpoint
+   */
+  protected Endpoint createPropertiesEndpoint() {
+    return new PropertiesEndpoint(vertx);
+  }
+
+  /**
+   * Creates the HTTP endpoint handling requests related to the chunk tags.
+   * Returns {@link TagsEndpoint} by default. Subclasses may override if
+   * they want to return another implementation.
+   * @return the endpoint
+   */
+  protected Endpoint createTagsEndpoint() {
+    return new TagsEndpoint(vertx);
+  }
   
   /**
    * Creates the HTTP endpoint handling general requests
@@ -115,6 +137,12 @@ public class GeoRocket extends AbstractVerticle {
     
     Endpoint storeEndpoint = createStoreEndpoint();
     router.mountSubRouter("/store", storeEndpoint.createRouter());
+
+    Endpoint propertiesEndpoint = createPropertiesEndpoint();
+    router.mountSubRouter("/properties", propertiesEndpoint.createRouter());
+
+    Endpoint tagsEndpoint = createTagsEndpoint();
+    router.mountSubRouter("/tags", tagsEndpoint.createRouter());
     
     Endpoint generalEndpoint = createGeneralEndpoint();
     router.mountSubRouter("/", generalEndpoint.createRouter());

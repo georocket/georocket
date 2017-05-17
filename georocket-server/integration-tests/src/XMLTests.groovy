@@ -93,19 +93,36 @@ class XMLTests extends StoreTests {
      * @param expectedId the expected building ID
      */
     private void assertExportedBuilding(exportedContents, expectedId) {
-        assertTrue(exportedContents.length() >= 100, "Response: $exportedContents")
+        String error = checkExportedBuilding(exportedContents, expectedId)
+        if (error) {
+            fail(error)
+        }
+    }
+
+    /**
+     * Check if the given string contains exactly one Building with the given ID
+     * @param exportedContents the string to parse
+     * @param expectedId the expected building ID
+     */
+    private String checkExportedBuilding(exportedContents, expectedId) {
+        if (exportedContents.length() < 100) {
+            return "Response: $exportedContents"
+        }
 
         // parse exported file
         def exportedNode = new XmlSlurper().parseText(exportedContents)
 
         // check if we have only exported one chunk
-        assertEquals(exportedNode.children().size(), 1,
-            "Expected 1 chunks. Got ${exportedNode.children().size()}.")
+        if (exportedNode.children().size() != 1) {
+            return "Expected 1 chunks. Got ${exportedNode.children().size()}."
+        }
 
         // check if we found the right building
         def child = exportedNode.children().getAt(0)
         def gmlId = child.Building.'@gml:id'
-        assertEquals(gmlId, expectedId, "Expected gml:id ${expectedId}. Got ${gmlId}.")
+        if (!Objects.equals(gmlId, expectedId)) {
+            return "Expected gml:id ${expectedId}. Got ${gmlId}."
+        }
     }
 
     /**
@@ -151,5 +168,103 @@ class XMLTests extends StoreTests {
         def exportedContents = run("curl -sS -X GET http://${georocketHost}:63020/store/"
             + "?search=TestBuilding2", null, true)
         assertExportedBuilding(exportedContents, 'ID_146_D')
+    }
+
+    /**
+     * Add and delete tags
+     */
+    def testTags() {
+        // ensure that no chunk with the test tags is found
+        assertNotFound("test1")
+        assertNotFound("test2")
+        assertNotFound("test3")
+
+        // append single test tag to the chunk
+        run("curl -sS -X PUT http://${georocketHost}:63020/tags/"
+                + "?search=ID_146_D&tags=test1", null, true)
+
+        // check if chunk is found by the added tag
+        assertFound("test1", "ID_146_D")
+
+        // append multiple test tags to the chunk
+        run("curl -sS -X PUT http://${georocketHost}:63020/tags/"
+                + "?search=ID_146_D&tags=test2,test3", null, true)
+
+        // check if the new tags are appended and the previous tag is still present
+        assertFound("test1", "ID_146_D")
+        assertFound("test2", "ID_146_D")
+        assertFound("test3", "ID_146_D")
+
+        // remove first tag
+        run("curl -sS -X DELETE http://${georocketHost}:63020/tags/"
+                + "?search=ID_146_D&tags=test1", null, true)
+
+        // check if all tags but the first are present
+        assertNotFound("test1")
+        assertFound("test2", "ID_146_D")
+        assertFound("test3", "ID_146_D")
+
+        // remove multiple tags
+        run("curl -sS -X DELETE http://${georocketHost}:63020/tags/"
+                + "?search=ID_146_D&tags=test2,test3", null, true)
+
+        // check if the tags are removed
+        assertNotFound("test1")
+        assertNotFound("test2")
+        assertNotFound("test3")
+    }
+
+    /**
+     * Set and delete properties
+     */
+    def testProperties() {
+        // set test property
+        run("curl -sS -X PUT http://${georocketHost}:63020/properties/"
+                + "?search=ID_146_D&properties="
+                + URLEncoder.encode('test1:1', 'UTF-8'), null, true)
+
+        // check if chunk is found by the set property
+        assertFound("EQ(test1 1)", "ID_146_D")
+        assertNotFound("EQ(test1 2)")
+        
+        // update property value
+        run("curl -sS -X PUT http://${georocketHost}:63020/properties/"
+                + "?search=ID_146_D&properties="
+                + URLEncoder.encode('test1:2', 'UTF-8'), null, true)
+
+        // check if chunk is found by the updated property
+        assertFound("EQ(test1 2)", "ID_146_D")
+        assertNotFound("EQ(test1 1)")
+    }
+
+    /**
+     * Assert that no chunk is found for the specified query
+     * @param query the query to search for
+     */
+    def assertNotFound(def query) {
+        testUntilOK({
+            def exportedContents = run("curl -sS -X GET http://${georocketHost}:63020/store/"
+                    + "?search=" + URLEncoder.encode(query, 'UTF-8'), null, true)
+            try {
+                def result = new JsonSlurper().parseText(exportedContents)
+                Objects.equals(result.error.reason, "Not Found")
+            } catch (ignored) {
+                return false
+            }
+        }, "GeoRocket indexer", "Unexpected chunks for query $query found")
+    }
+
+    /**
+     * Assert that a chunk with the specified id is found for the specified query
+     * @param query the query to search for
+     * @param id the id of the chunk which should be found
+     */
+    def assertFound(def query, def id) {
+        testUntilOK({
+            def exportedContents = run("curl -sS -X GET http://${georocketHost}:63020/store/"
+                    + "?search=" + URLEncoder.encode(query, 'UTF-8'), null, true)
+            def res = checkExportedBuilding(exportedContents, id)
+            res == null
+        }, "GeoRocket indexer", "No chunk with id $id for query $query")
     }
 }

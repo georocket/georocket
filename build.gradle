@@ -126,7 +126,7 @@ subprojects {
     }
 
     ext {
-        vertxVersion = '3.3.3'
+        vertxVersion = '3.4.1'
     }
 
     // print project version to console - used in CI

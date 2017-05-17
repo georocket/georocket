@@ -14,19 +14,30 @@ abstract class StoreTests {
      * Call #testExport() until it succeeds or fail after several tries
      */
     protected def testExportUntilOK() {
-        boolean exportOk = false
-        for (int i = 0; i < 20; ++i) {
-            // wait until GeoRocket has indexed the file
-            logWait("GeoRocket indexer")
-            Thread.sleep(1000)
+        testUntilOK({ testExport() }, "GeoRocket indexer", "Export failed")
+    }
 
-            if (testExport()) {
-                exportOk = true
-                break
+    /**
+     * Call a test method until it succeeds or fails after several tries
+     * @param test the test method, returns true if test test succeeds,
+     * false otherwise
+     * @param waitFor the name of the component to wait for
+     * @param errorMessage the error message if the test does not succeed
+     * @param waitTime the time to wait before retry 
+     * @param waitIterations the number times the test should be tried
+     */
+    protected def testUntilOK(test, String waitFor, String errorMessage,
+                              int waitTime = 1000, int waitIterations = 20) {
+        for (int i = 0; i < waitIterations; ++i) {
+            if (test()) {
+                return
             }
+            
+            logWait(waitFor)
+            Thread.sleep(waitTime)
         }
-
-        assertTrue(exportOk, "Export failed")
+        
+        fail(errorMessage)
     }
 
     /**
