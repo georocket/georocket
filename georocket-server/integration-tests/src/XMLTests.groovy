@@ -94,7 +94,7 @@ class XMLTests extends StoreTests {
      */
     private void assertExportedBuilding(exportedContents, expectedId) {
         String error = checkExportedBuilding(exportedContents, expectedId)
-        if(error) {
+        if (error) {
             fail(error)
         }
     }
@@ -105,7 +105,7 @@ class XMLTests extends StoreTests {
      * @param expectedId the expected building ID
      */
     private String checkExportedBuilding(exportedContents, expectedId) {
-        if(exportedContents.length() < 100) {
+        if (exportedContents.length() < 100) {
             return "Response: $exportedContents"
         }
 
@@ -113,14 +113,14 @@ class XMLTests extends StoreTests {
         def exportedNode = new XmlSlurper().parseText(exportedContents)
 
         // check if we have only exported one chunk
-        if(exportedNode.children().size()!= 1) {
+        if (exportedNode.children().size() != 1) {
             return "Expected 1 chunks. Got ${exportedNode.children().size()}."
         }
 
         // check if we found the right building
         def child = exportedNode.children().getAt(0)
         def gmlId = child.Building.'@gml:id'
-        if(!Objects.equals(gmlId, expectedId)) {
+        if (!Objects.equals(gmlId, expectedId)) {
             return "Expected gml:id ${expectedId}. Got ${gmlId}."
         }
     }

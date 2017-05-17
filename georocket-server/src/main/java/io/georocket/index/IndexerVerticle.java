@@ -769,8 +769,8 @@ public class IndexerVerticle extends AbstractVerticle {
       String[] property = part.split(regex);
       if (property.length != 2) {
         throw new ServerAPIException(
-          ServerAPIException.INVALID_PROPERTY_SYNTAX_ERROR,
-          "Invalid property syntax: " + part);
+            ServerAPIException.INVALID_PROPERTY_SYNTAX_ERROR,
+            "Invalid property syntax: " + part);
       }
       String key = StringEscapeUtils.unescapeJava(property[0].trim());
       String value = StringEscapeUtils.unescapeJava(property[1].trim());
@@ -781,7 +781,7 @@ public class IndexerVerticle extends AbstractVerticle {
   }
 
   /**
-   * Update a document using a painscript
+   * Update a document using a painless script
    * @param postFilter the filter to select the documents
    * @param updateScript the script which should be applied to the documents
    * @return a Single which completes if the update is successful or fails if

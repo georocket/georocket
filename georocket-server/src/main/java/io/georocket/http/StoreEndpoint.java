@@ -3,7 +3,6 @@ package io.georocket.http;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,7 +46,6 @@ import io.vertx.ext.web.RoutingContext;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
 import rx.Observable;
-import rx.Single;
 
 /**
  * An HTTP endpoint handling requests related to the GeoRocket data store
