@@ -10,6 +10,7 @@ build/
 node_modules/
 src-gen/
 gradle.properties
+.gradletasknamecache
 # IntelliJ  project structure
 .idea/
 *.iml

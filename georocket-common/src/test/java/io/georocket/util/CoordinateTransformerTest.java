@@ -2,8 +2,10 @@ package io.georocket.util;
 
 import static org.junit.Assert.assertEquals;
 
+import org.geotools.referencing.CRS;
 import org.geotools.referencing.crs.DefaultGeographicCRS;
 import org.junit.Test;
+import org.opengis.referencing.crs.CoordinateReferenceSystem;
 
 /**
  * Test the {@link CoordinateTransformer}
@@ -16,7 +18,22 @@ public class CoordinateTransformerTest {
    */
   @Test
   public void testEPSG() throws Exception {
-    CoordinateTransformer transformer = new CoordinateTransformer("EPSG:31467");
+    CoordinateReferenceSystem crs = CRS.decode("EPSG:31467");
+    CoordinateTransformer transformer = new CoordinateTransformer(crs);
+    double[] source = {3477534.683, 5605739.857};
+    double[] destination = {8.681739535269804, 50.58691850210496};
+    testTransformation(transformer, source, destination);
+  }
+
+  /**
+   * Test transformation with WKT code
+   * @throws Exception if something has happened
+   */
+  @Test
+  public void testWKT() throws Exception {
+    CoordinateReferenceSystem crs = CRS.decode("EPSG:31467");
+    CoordinateReferenceSystem wktCrs = CoordinateTransformer.decode(crs.toWKT());
+    CoordinateTransformer transformer = new CoordinateTransformer(wktCrs);
     double[] source = {3477534.683, 5605739.857};
     double[] destination = {8.681739535269804, 50.58691850210496};
     testTransformation(transformer, source, destination);
