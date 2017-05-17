@@ -35,7 +35,7 @@ import io.vertx.rxjava.core.buffer.Buffer;
 import io.vertx.rxjava.core.eventbus.Message;
 import io.vertx.rxjava.core.file.FileSystem;
 import io.vertx.rxjava.core.streams.ReadStream;
-import rx.Observable;
+import rx.Single;
 
 /**
  * Imports file in the background
@@ -68,10 +68,10 @@ public class ImporterVerticle extends AbstractVerticle {
     vertx.eventBus().<JsonObject>localConsumer(AddressConstants.IMPORTER_IMPORT)
       .toObservable()
       .onBackpressureBuffer() // unlimited buffer
-      .flatMap(msg -> {
+      .flatMapSingle(msg -> {
         // call onImport() but ignore errors. onImport() will handle errors for us.
         return onImport(msg).onErrorReturn(err -> null);
-      }, MAX_PARALLEL_IMPORTS)
+      }, false /* delay errros */, MAX_PARALLEL_IMPORTS)
       .subscribe(v -> {
         // ignore
       }, err -> {
@@ -85,10 +85,10 @@ public class ImporterVerticle extends AbstractVerticle {
   /**
    * Receives a name of a file to import
    * @param msg the event bus message containing the filename
-   * @return an observable that will emit exactly one item when the file has
+   * @return a single that will emit an item when the file has
    * been imported
    */
-  protected Observable<Void> onImport(Message<JsonObject> msg) {
+  protected Single<Void> onImport(Message<JsonObject> msg) {
     JsonObject body = msg.body();
     String filename = body.getString("filename");
     String filepath = incoming + "/" + filename;
@@ -112,18 +112,18 @@ public class ImporterVerticle extends AbstractVerticle {
 
     FileSystem fs = vertx.fileSystem();
     OpenOptions openOptions = new OpenOptions().setCreate(false).setWrite(false);
-    return fs.openObservable(filepath, openOptions)
+    return fs.rxOpen(filepath, openOptions)
       .flatMap(f -> importFile(contentType, f, correlationId, filename, timestamp, layer, tags, properties)
       .doAfterTerminate(() -> {
         // delete file from 'incoming' folder
         log.info("Deleting " + filepath + " from incoming folder");
-        f.closeObservable()
-          .flatMap(v -> fs.deleteObservable(filepath))
+        f.rxClose()
+          .flatMap(v -> fs.rxDelete(filepath))
           .subscribe(v -> {}, err -> {
             log.error("Could not delete file from 'incoming' folder", err);
           });
       }))
-      .doOnNext(chunkCount -> {
+      .doOnSuccess(chunkCount -> {
         onImportingFinished(correlationId, filepath, layer, chunkCount,
            System.currentTimeMillis() - timestamp, null);
       })
@@ -206,10 +206,10 @@ public class ImporterVerticle extends AbstractVerticle {
    * @param layer the layer where the file should be stored (may be null)
    * @param tags the list of tags to attach to the file (may be null)
    * @param properties the map of properties to attach to the file (may be null)
-   * @return an observable that will emit with the number if chunks imported
+   * @return a single that will emit with the number if chunks imported
    * when the file has been imported
    */
-  protected Observable<Integer> importFile(String contentType, ReadStream<Buffer> f,
+  protected Single<Integer> importFile(String contentType, ReadStream<Buffer> f,
       String correlationId, String filename, long timestamp, String layer,
       List<String> tags, Map<String, Object> properties) {
     if (belongsTo(contentType, "application", "xml") ||
@@ -218,7 +218,7 @@ public class ImporterVerticle extends AbstractVerticle {
     } else if (belongsTo(contentType, "application", "json")) {
       return importJSON(f, correlationId, filename, timestamp, layer, tags, properties);
     } else {
-      return Observable.error(new NoStackTraceThrowable(String.format(
+      return Single.error(new NoStackTraceThrowable(String.format(
           "Received an unexpected content type '%s' while trying to import "
           + "file '%s'", contentType, filename)));
     }
@@ -233,9 +233,9 @@ public class ImporterVerticle extends AbstractVerticle {
    * @param layer the layer where the file should be stored (may be null)
    * @param tags the list of tags to attach to the file (may be null)
    * @param properties the map of properties to attach to the file (may be null)
-   * @return an observable that will emit when the file has been imported
+   * @return a single that will emit when the file has been imported
    */
-  private Observable<Integer> importXML(ReadStream<Buffer> f, String correlationId,
+  private Single<Integer> importXML(ReadStream<Buffer> f, String correlationId,
       String filename, long timestamp, String layer, List<String> tags, Map<String, Object> properties) {
     Window window = new Window();
     XMLSplitter splitter = new FirstLevelSplitter(window);
@@ -252,12 +252,12 @@ public class ImporterVerticle extends AbstractVerticle {
           }
         })
         .flatMap(splitter::onEventObservable)
-        .flatMap(result -> {
+        .flatMapSingle(result -> {
           IndexMeta indexMeta = new IndexMeta(correlationId, filename,
               timestamp, tags, properties, crsIndexer.getCRS());
           return addToStoreWithPause(result, layer, indexMeta, f, processing);
         })
-        .count();
+        .count().toSingle();
   }
   
   /**
@@ -269,9 +269,9 @@ public class ImporterVerticle extends AbstractVerticle {
    * @param layer the layer where the file should be stored (may be null)
    * @param tags the list of tags to attach to the file (may be null)
    * @param properties the map of properties to attach to the file (may be null)
-   * @return an observable that will emit when the file has been imported
+   * @return a single that will emit when the file has been imported
    */
-  private Observable<Integer> importJSON(ReadStream<Buffer> f, String correlationId,
+  private Single<Integer> importJSON(ReadStream<Buffer> f, String correlationId,
       String filename, long timestamp, String layer, List<String> tags, Map<String, Object> properties) {
     StringWindow window = new StringWindow();
     GeoJsonSplitter splitter = new GeoJsonSplitter(window);
@@ -281,12 +281,12 @@ public class ImporterVerticle extends AbstractVerticle {
         .doOnNext(window::append)
         .lift(new JsonParserOperator())
         .flatMap(splitter::onEventObservable)
-        .flatMap(result -> {
+        .flatMapSingle(result -> {
           IndexMeta indexMeta = new IndexMeta(correlationId, filename,
               timestamp, tags, properties, null);
           return addToStoreWithPause(result, layer, indexMeta, f, processing);
         })
-        .count();
+        .count().toSingle();
   }
   
   /**
@@ -303,10 +303,10 @@ public class ImporterVerticle extends AbstractVerticle {
    * @param processing an AtomicInteger keeping the number of chunks currently
    * being written (should be initialized to <code>0</code> the first time this
    * method is called)
-   * @return an observable that will emit exactly one item when the
+   * @return a single that will emit exactly one item when the
    * operation has finished
    */
-  private Observable<Void> addToStoreWithPause(Result<? extends ChunkMeta> chunk,
+  private Single<Void> addToStoreWithPause(Result<? extends ChunkMeta> chunk,
       String layer, IndexMeta indexMeta, ReadStream<Buffer> f, AtomicInteger processing) {
     // pause stream while chunk is being written
     f.pause();
@@ -315,7 +315,7 @@ public class ImporterVerticle extends AbstractVerticle {
     processing.incrementAndGet();
 
     return addToStore(chunk.getChunk(), chunk.getMeta(), layer, indexMeta)
-        .doOnNext(v -> {
+        .doOnSuccess(v -> {
           // resume stream only after all chunks from the current
           // buffer have been stored
           if (processing.decrementAndGet() == 0) {
@@ -330,12 +330,12 @@ public class ImporterVerticle extends AbstractVerticle {
    * @param meta the chunk's metadata
    * @param layer the layer the chunk should be added to (may be null)
    * @param indexMeta metadata specifying how the chunk should be indexed
-   * @return an observable that will emit exactly one item when the
+   * @return a single that will emit exactly one item when the
    * operation has finished
    */
-  protected Observable<Void> addToStore(String chunk, ChunkMeta meta,
+  protected Single<Void> addToStore(String chunk, ChunkMeta meta,
       String layer, IndexMeta indexMeta) {
-    return Observable.defer(() -> store.addObservable(chunk, meta, layer, indexMeta))
+    return Single.defer(() -> store.addObservable(chunk, meta, layer, indexMeta).toSingle())
         .retryWhen(RxUtils.makeRetry(MAX_RETRIES, RETRY_INTERVAL, log));
   }
 }
