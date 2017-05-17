@@ -305,7 +305,7 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
    */
   private Observable<JsonObject> performRequestRetry(HttpMethod method,
       String uri, String body) {
-    return Observable.<JsonObject>create(subscriber -> {
+    return Observable.<JsonObject>unsafeCreate(subscriber -> {
       HttpClientRequest req = client.request(method, uri);
       performRequest(req, body).subscribe(subscriber);
     }).retryWhen(errors -> {
