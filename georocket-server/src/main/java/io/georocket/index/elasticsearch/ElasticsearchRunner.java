@@ -53,7 +53,7 @@ public class ElasticsearchRunner {
     String storage = config.getString(ConfigConstants.STORAGE_FILE_PATH);
     String root = storage + "/index";
     
-    return vertx.<Void>executeBlockingObservable(f -> {
+    return vertx.<Void>rxExecuteBlocking(f -> {
       log.info("Starting Elasticsearch ...");
       
       // get Elasticsearch executable
@@ -97,7 +97,7 @@ public class ElasticsearchRunner {
       } catch (IOException e) {
         f.fail(e);
       }
-    });
+    }).toObservable();
   }
   
   /**
@@ -110,9 +110,7 @@ public class ElasticsearchRunner {
   public Observable<Void> waitUntilElasticsearchRunning(
       ElasticsearchClient client) {
     final Throwable repeat = new NoStackTraceThrowable("");
-    return Observable.<Boolean>create(subscriber -> {
-      client.isRunning().subscribe(subscriber);
-    }).flatMap(running -> {
+    return Observable.defer(client::isRunning).flatMap(running -> {
       if (!running) {
         return Observable.error(repeat);
       }

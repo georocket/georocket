@@ -53,7 +53,7 @@ public class RxStoreCursor implements StoreCursor {
    * respective path in the store (retrieved via {@link #getChunkPath()})
    */
   public Observable<Pair<ChunkMeta, String>> toObservable() {
-    return Observable.create(s -> {
+    return Observable.unsafeCreate(s -> {
       s.setProducer(new Producer() {
         private AtomicLong requested = new AtomicLong();
         
