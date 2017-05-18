@@ -71,7 +71,7 @@ public class ImporterVerticle extends AbstractVerticle {
       .flatMapSingle(msg -> {
         // call onImport() but ignore errors. onImport() will handle errors for us.
         return onImport(msg).onErrorReturn(err -> null);
-      }, false /* delay errros */, MAX_PARALLEL_IMPORTS)
+      }, false, MAX_PARALLEL_IMPORTS)
       .subscribe(v -> {
         // ignore
       }, err -> {
@@ -257,7 +257,8 @@ public class ImporterVerticle extends AbstractVerticle {
               timestamp, tags, properties, crsIndexer.getCRS());
           return addToStoreWithPause(result, layer, indexMeta, f, processing);
         })
-        .count().toSingle();
+        .count()
+        .toSingle();
   }
   
   /**
@@ -286,7 +287,8 @@ public class ImporterVerticle extends AbstractVerticle {
               timestamp, tags, properties, null);
           return addToStoreWithPause(result, layer, indexMeta, f, processing);
         })
-        .count().toSingle();
+        .count()
+        .toSingle();
   }
   
   /**

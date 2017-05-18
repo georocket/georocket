@@ -81,7 +81,8 @@ public class ElasticsearchInstaller {
             return Single.just(destPath);
           }
           return downloadNoCheck(downloadUrl, destPath, strip);
-        }).toObservable();
+        })
+        .toObservable();
   }
   
   /**
