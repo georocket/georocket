@@ -110,9 +110,7 @@ public class ElasticsearchRunner {
   public Observable<Void> waitUntilElasticsearchRunning(
       ElasticsearchClient client) {
     final Throwable repeat = new NoStackTraceThrowable("");
-    return Observable.<Boolean>unsafeCreate(subscriber -> {
-      client.isRunning().subscribe(subscriber);
-    }).flatMap(running -> {
+    return Observable.defer(client::isRunning).flatMap(running -> {
       if (!running) {
         return Observable.error(repeat);
       }
