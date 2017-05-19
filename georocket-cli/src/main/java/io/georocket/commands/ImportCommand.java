@@ -269,11 +269,11 @@ public class ImportCommand extends AbstractGeoRocketCommand {
     // open file
     FileSystem fs = vertx.fileSystem();
     OpenOptions openOptions = new OpenOptions().setCreate(false).setWrite(false);
-    return fs.openObservable(path, openOptions)
+    return fs.rxOpen(path, openOptions)
       // get file size
-      .flatMap(f -> fs.propsObservable(path).map(props -> Pair.of(f, props.size())))
+      .flatMap(f -> fs.rxProps(path).map(props -> Pair.of(f, props.size())))
       // import file
-      .flatMap(f -> {
+      .flatMapObservable(f -> {
         ObservableFuture<Void> o = RxHelper.observableFuture();
         Handler<AsyncResult<Void>> handler = o.toHandler();
         AsyncFile file = (AsyncFile)f.getLeft().getDelegate();
