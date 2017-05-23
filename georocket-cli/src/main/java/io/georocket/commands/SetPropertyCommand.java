@@ -88,7 +88,7 @@ public class SetPropertyCommand extends AbstractGeoRocketCommand {
   public void doRun(String[] remainingArgs, InputReader in, PrintWriter out,
       Handler<Integer> handler) throws OptionParserException, IOException {
     GeoRocketClient client = createClient();
-    client.getStore().setProperties(query, layer, properties, ar -> {
+    client.getProperties().setProperties(query, layer, properties, ar -> {
       if (ar.failed()) {
         client.close();
         Throwable t = ar.cause();

@@ -85,12 +85,28 @@ public class GeoRocketClient implements Closeable {
   public void close() {
     client.close();
   }
-  
+
   /**
    * Create a new client accessing the GeoRocket data store
    * @return the store client
    */
   public StoreClient getStore() {
     return new StoreClient(client);
+  }
+
+  /**
+   * Create a new client accessing the GeoRocket tags store
+   * @return the tags client
+   */
+  public TagsClient getTags() {
+    return new TagsClient(client);
+  }
+
+  /**
+   * Create a new client accessing the GeoRocket properties store
+   * @return the properties client
+   */
+  public PropertiesClient getProperties() {
+    return new PropertiesClient(client);
   }
 }
