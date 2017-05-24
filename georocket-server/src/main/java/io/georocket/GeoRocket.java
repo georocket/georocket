@@ -11,6 +11,7 @@ import io.georocket.http.GeneralEndpoint;
 import io.georocket.http.PropertiesEndpoint;
 import io.georocket.http.StoreEndpoint;
 import io.georocket.http.TagsEndpoint;
+import io.georocket.index.MetadataVerticle;
 import org.apache.commons.io.FileUtils;
 import org.yaml.snakeyaml.Yaml;
 
@@ -72,6 +73,15 @@ public class GeoRocket extends AbstractVerticle {
    */
   protected Observable<String> deployImporter() {
     return deployVerticle(ImporterVerticle.class);
+  }
+
+  /**
+   * Deploy the metadata verticle
+   * @return an observable that will complete when the verticle was deployed
+   * and will carry the verticle's deployment id
+   */
+  protected Observable<String> deployMetadata() {
+    return deployVerticle(MetadataVerticle.class);
   }
 
   private Observable<HttpServer> deployHttpServer() {
@@ -175,6 +185,7 @@ public class GeoRocket extends AbstractVerticle {
 
     deployIndexer()
       .flatMap(v -> deployImporter())
+      .flatMap(v -> deployMetadata())
       .flatMap(v -> deployHttpServer())
       .subscribe(id -> {
         log.info("GeoRocket launched successfully.");
