@@ -1,6 +1,8 @@
 package io.georocket.util;
 
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -37,7 +39,16 @@ public class MapUtils {
           // Don't overwrite an existing value that is equal to the new value.
           // This is useful if we are trying to merge unmodifiable maps.
         } else {
-          m1.put(k, v2);
+          if (v2 instanceof Map) {
+            // Don't copy a map key if it is a Map, because it could be
+            // a immutable Map and the value could be never merged with
+            // other maps.
+            Map<Object, Object> emptyMap = new HashMap<>();
+            deepMerge(emptyMap, (Map<Object, Object>)v2);
+            m1.put(k, (V)emptyMap);
+          } else {
+            m1.put(k, v2);
+          }
         }
       }
     }

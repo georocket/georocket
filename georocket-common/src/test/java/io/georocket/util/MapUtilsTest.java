@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.google.common.collect.ImmutableMap;
 import org.junit.Test;
 
 /**
@@ -154,6 +155,36 @@ public class MapUtilsTest {
     expected.put("a", "1");
     expected.put("b", Arrays.asList("1", "2"));
     MapUtils.deepMerge(m1, m2);
+    assertEquals(expected, m1);
+  }
+
+  /**
+   * Test if that no immutable map is copied into the destination map.
+   */
+  @Test
+  public void mergeTwoUnmodifiableMaps() {
+    Map<String, Object> m1 = new HashMap<>();
+    Map<String, Object> m2 = ImmutableMap.of(
+        "a", ImmutableMap.of(
+            "a2", "1",
+            "b2", "2"
+        )
+    );
+    Map<String, Object> m3 = ImmutableMap.of(
+        "a", ImmutableMap.of(
+            "a2", "1",
+            "b2", "3"
+        )
+    );
+
+    Map<String, Object> expected = new HashMap<>();
+    Map<String, String> nestedExpected = new HashMap<>();
+    nestedExpected.put("a2", "1");
+    nestedExpected.put("b2", "3");
+    expected.put("a", nestedExpected);
+
+    MapUtils.deepMerge(m1, m2);
+    MapUtils.deepMerge(m1, m3);
     assertEquals(expected, m1);
   }
 }
