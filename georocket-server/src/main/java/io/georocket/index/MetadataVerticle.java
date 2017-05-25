@@ -127,20 +127,19 @@ public class MetadataVerticle extends AbstractVerticle {
   }
 
   private Observable<JsonObject> onGetPropertyValues(JsonObject body) {
-    return onGetMap(body, "props");
+    return onGetMap(body, "props", body.getString("property"));
   }
 
-  private Observable<JsonObject> onGetMap(JsonObject body, String name) {
-    return executeQuery(body)
+  private Observable<JsonObject> onGetMap(JsonObject body, String map, String key) {
+    return executeQuery(body, map + "." + key)
       .map(result -> {
-        String property = body.getString("property");
         JsonObject hits = result.getJsonObject("hits");
 
         List<String> resultHits = hits.getJsonArray("hits").stream()
           .map(JsonObject.class::cast)
           .map(hit -> hit.getJsonObject("_source"))
-          .flatMap(source -> source.getJsonObject(name, new JsonObject()).stream())
-          .filter(pair -> Objects.equals(pair.getKey(), property))
+          .flatMap(source -> source.getJsonObject(map, new JsonObject()).stream())
+          .filter(pair -> Objects.equals(pair.getKey(), key))
           .map(Map.Entry::getValue)
           .map(String.class::cast)
           .collect(Collectors.toList());
@@ -152,7 +151,7 @@ public class MetadataVerticle extends AbstractVerticle {
       });
   }
 
-  private Observable<JsonObject> executeQuery(JsonObject body) {
+  private Observable<JsonObject> executeQuery(JsonObject body, String keyExists) {
     String search = body.getString("search");
     String path = body.getString("path");
     String scrollId = body.getString("scrollId");
@@ -165,7 +164,7 @@ public class MetadataVerticle extends AbstractVerticle {
         // a yes/no answer and no scoring (i.e. we only want to get matching
         // documents and not those that likely match). For the difference between
         // query and post_filter see the Elasticsearch documentation.
-        JsonObject postFilter = queryCompiler.compileQuery(search, path);
+        JsonObject postFilter = queryCompiler.compileQuery(search, path, keyExists);
         return client.beginScroll(TYPE_NAME, null, postFilter, pageSize, timeout);
       } catch (Throwable t) {
         return Observable.error(t);
