@@ -111,21 +111,7 @@ public class DefaultQueryCompiler implements QueryCompiler {
    * @return the compiled query
    */
   public JsonObject compileQuery(String search, String path) {
-    JsonObject qb = compileQueryNoOptimize(search);
-    if (path != null && !path.equals("/")) {
-      String prefix = PathUtils.addTrailingSlash(path);
-      
-      JsonObject qi = boolQuery(1);
-      boolAddShould(qi, termQuery("path", path));
-      boolAddShould(qi, prefixQuery("path", prefix));
-      
-      JsonObject qr = boolQuery(1);
-      boolAddShould(qr, qb);
-      boolAddMust(qr, qi);
-      
-      return ElasticsearchQueryOptimizer.optimize(qr);
-    }
-    return ElasticsearchQueryOptimizer.optimize(qb);
+    return compileQuery(search, path, null);
   }
 
   @Override
