@@ -99,6 +99,7 @@ public class GeoRocketClient implements Closeable {
   /**
    * Create a new client accessing the GeoRocket data store
    * @return the store client
+   * @since 1.1.0
    */
   public StoreClient getStoreClient() {
     return new StoreClient(client);
@@ -107,6 +108,7 @@ public class GeoRocketClient implements Closeable {
   /**
    * Create a new client accessing the GeoRocket tags store
    * @return the tags client
+   * @since 1.1.0
    */
   public TagsClient getTagsClient() {
     return new TagsClient(client);
@@ -115,6 +117,7 @@ public class GeoRocketClient implements Closeable {
   /**
    * Create a new client accessing the GeoRocket properties store
    * @return the properties client
+   * @since 1.1.0
    */
   public PropertiesClient getPropertiesClient() {
     return new PropertiesClient(client);

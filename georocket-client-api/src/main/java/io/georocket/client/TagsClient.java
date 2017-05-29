@@ -35,7 +35,6 @@ public class TagsClient extends AbstractClient {
    * @param tags a collection of tags to be removed from the queried chunks
    * @param handler a handler that will be called when the operation has
    * finished
-   * @since 1.1.0
    */
   public void appendTags(String query, String layer, List<String> tags,
     Handler<AsyncResult<Void>> handler) {
@@ -57,7 +56,6 @@ public class TagsClient extends AbstractClient {
    * @param tags a collection of tags to be removed from the queried chunks
    * @param handler a handler that will be called when the operation has
    * finished
-   * @since 1.1.0
    */
   public void removeTags(String query, String layer, List<String> tags,
     Handler<AsyncResult<Void>> handler) {

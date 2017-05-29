@@ -38,7 +38,6 @@ public class PropertiesClient extends AbstractClient {
    * @param properties a collection of properties to set
    * @param handler a handler that will be called when the operation
    * has finished
-   * @since 1.1.0
    */
   public void setProperties(String query, String layer, List<String> properties,
     Handler<AsyncResult<Void>> handler) {
@@ -62,7 +61,6 @@ public class PropertiesClient extends AbstractClient {
    * the queried chunks
    * @param handler a handler that will be called when the operation
    * has finished
-   * @since 1.1.0
    */
   public void removeProperties(String query, String layer, List<String> properties,
     Handler<AsyncResult<Void>> handler) {
