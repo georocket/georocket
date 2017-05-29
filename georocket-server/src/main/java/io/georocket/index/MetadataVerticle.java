@@ -89,7 +89,7 @@ public class MetadataVerticle extends AbstractVerticle {
     String cls = config.getString(ConfigConstants.QUERY_COMPILER_CLASS,
       DefaultQueryCompiler.class.getName());
     try {
-      return (DefaultQueryCompiler) Class.forName(cls).newInstance();
+      return (DefaultQueryCompiler)Class.forName(cls).newInstance();
     } catch (ReflectiveOperationException e) {
       throw new RuntimeException("Could not create a DefaultQueryCompiler", e);
     }
