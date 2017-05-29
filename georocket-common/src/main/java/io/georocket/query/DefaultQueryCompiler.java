@@ -4,14 +4,17 @@ import static io.georocket.query.ElasticsearchQueryHelper.boolAddMust;
 import static io.georocket.query.ElasticsearchQueryHelper.boolAddMustNot;
 import static io.georocket.query.ElasticsearchQueryHelper.boolAddShould;
 import static io.georocket.query.ElasticsearchQueryHelper.boolQuery;
+import static io.georocket.query.ElasticsearchQueryHelper.existsQuery;
 import static io.georocket.query.ElasticsearchQueryHelper.matchAllQuery;
 import static io.georocket.query.ElasticsearchQueryHelper.prefixQuery;
 import static io.georocket.query.ElasticsearchQueryHelper.termQuery;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
+import java.util.List;
 
 import org.antlr.v4.runtime.ANTLRInputStream;
 import org.antlr.v4.runtime.CommonTokenStream;
@@ -69,24 +72,46 @@ public class DefaultQueryCompiler implements QueryCompiler {
    * @param search the search string to compile
    * @param path the path where to perform the search (may be null if the
    * whole data store should be searched)
+   * @param keyExists the name of a property which must exist in the document
    * @return the compiled query
    */
-  public JsonObject compileQuery(String search, String path) {
+  public JsonObject compileQuery(String search, String path, String keyExists) {
     JsonObject qb = compileQueryNoOptimize(search);
+    List<JsonObject> filter = new ArrayList<>();
+    
     if (path != null && !path.equals("/")) {
       String prefix = PathUtils.addTrailingSlash(path);
-      
+
       JsonObject qi = boolQuery(1);
       boolAddShould(qi, termQuery("path", path));
       boolAddShould(qi, prefixQuery("path", prefix));
-      
+      filter.add(qi);
+    }
+
+    if (keyExists != null) {
+      filter.add(existsQuery(keyExists));
+    }
+
+    if (filter.size() > 0) {
       JsonObject qr = boolQuery(1);
       boolAddShould(qr, qb);
-      boolAddMust(qr, qi);
-      
+      filter.forEach(q -> boolAddMust(qr, q));
+
       return ElasticsearchQueryOptimizer.optimize(qr);
     }
+    
     return ElasticsearchQueryOptimizer.optimize(qb);
+  }
+
+  /**
+   * Compile a search string
+   * @param search the search string to compile
+   * @param path the path where to perform the search (may be null if the
+   * whole data store should be searched)
+   * @return the compiled query
+   */
+  public JsonObject compileQuery(String search, String path) {
+    return compileQuery(search, path, null);
   }
 
   @Override

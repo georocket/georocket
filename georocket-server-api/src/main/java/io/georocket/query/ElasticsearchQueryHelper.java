@@ -192,7 +192,19 @@ public final class ElasticsearchQueryHelper {
             .put("query", text)
             .put("fields", new JsonArray(Arrays.asList(fieldNames))));
   }
-  
+
+  /**
+   * Create a query that looks if a field with the given name exists
+   * @param name the field's name
+   * @return the query
+   * @since 1.1.0
+   */
+  public static JsonObject existsQuery(String name) {
+    return new JsonObject()
+      .put("exists", new JsonObject()
+        .put("field", name));
+  }
+
   /**
    * Create a query that looks for a field starting with a given prefix
    * @param name the field's name
