@@ -59,7 +59,7 @@ public class DeleteCommand extends AbstractQueryCommand {
   public void doRun(String[] remainingArgs, InputReader in, PrintWriter out,
       Handler<Integer> handler) throws OptionParserException, IOException {
     GeoRocketClient client = createClient();
-    client.getStore().delete(query, layer, ar -> {
+    client.getStoreClient().delete(query, layer, ar -> {
       if (ar.failed()) {
         client.close();
         Throwable t = ar.cause();

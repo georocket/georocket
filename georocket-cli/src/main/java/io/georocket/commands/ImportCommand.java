@@ -278,7 +278,7 @@ public class ImportCommand extends AbstractGeoRocketCommand {
         Handler<AsyncResult<Void>> handler = o.toHandler();
         AsyncFile file = (AsyncFile)f.getLeft().getDelegate();
 
-        WriteStream<Buffer> out = client.getStore().startImport(layer, tags, properties,
+        WriteStream<Buffer> out = client.getStoreClient().startImport(layer, tags, properties,
             Optional.of(f.getRight()), handler);
 
         AtomicBoolean fileClosed = new AtomicBoolean();

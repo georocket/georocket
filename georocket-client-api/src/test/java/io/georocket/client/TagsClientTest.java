@@ -33,7 +33,7 @@ public class TagsClientTest extends StoreClientTestBase {
         .withStatus(204)));
     List<String> tags = Arrays.asList("a", "b", "c");
     Async async = context.async();
-    client.getTags().appendTags("test", "/", tags, ar -> {
+    client.getTagsClient().appendTags("test", "/", tags, ar -> {
       context.assertTrue(ar.succeeded());
       async.complete();
     });
@@ -51,7 +51,7 @@ public class TagsClientTest extends StoreClientTestBase {
         .withStatus(204)));
     List<String> tags = Arrays.asList("a", "b", "c");
     Async async = context.async();
-    client.getTags().removeTags("test", "/", tags, ar -> {
+    client.getTagsClient().removeTags("test", "/", tags, ar -> {
       context.assertTrue(ar.succeeded());
       async.complete();
     });
