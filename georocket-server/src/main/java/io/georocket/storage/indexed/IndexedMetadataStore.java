@@ -15,7 +15,7 @@ import java.util.Objects;
  * @author Tim Hellhake
  */
 public class IndexedMetadataStore implements MetadataStore {
-  private static final int PAGE_SIZE = 1;
+  private static final int PAGE_SIZE = 100;
   private final Vertx vertx;
 
   /**
