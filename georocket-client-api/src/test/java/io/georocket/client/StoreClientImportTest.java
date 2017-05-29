@@ -59,7 +59,7 @@ public class StoreClientImportTest extends StoreClientTestBase {
             .withStatus(202)));
     
     Async async = context.async();
-    WriteStream<Buffer> w = client.getStore().startImport(
+    WriteStream<Buffer> w = client.getStoreClient().startImport(
         context.asyncAssertSuccess(v -> {
       verifyPosted(url, XML, context);
       async.complete();
@@ -79,7 +79,7 @@ public class StoreClientImportTest extends StoreClientTestBase {
             .withStatus(202)));
     
     Async async = context.async();
-    WriteStream<Buffer> w = client.getStore().startImport("hello/world",
+    WriteStream<Buffer> w = client.getStoreClient().startImport("hello/world",
         context.asyncAssertSuccess(v -> {
       verifyPosted(url, XML, context);
       async.complete();
@@ -99,7 +99,7 @@ public class StoreClientImportTest extends StoreClientTestBase {
             .withStatus(202)));
 
     Async async = context.async();
-    WriteStream<Buffer> w = client.getStore().startImport("he+llo/world",
+    WriteStream<Buffer> w = client.getStoreClient().startImport("he+llo/world",
         context.asyncAssertSuccess(v -> {
       verifyPosted(url, XML, context);
       async.complete();
@@ -120,7 +120,7 @@ public class StoreClientImportTest extends StoreClientTestBase {
             .withStatus(202)));
     
     Async async = context.async();
-    WriteStream<Buffer> w = client.getStore().startImport(null,
+    WriteStream<Buffer> w = client.getStoreClient().startImport(null,
         Arrays.asList("hello", "world"), context.asyncAssertSuccess(v -> {
       verifyPosted(url, XML, context);
       async.complete();
@@ -141,7 +141,7 @@ public class StoreClientImportTest extends StoreClientTestBase {
             .withStatus(202)));
 
     Async async = context.async();
-    WriteStream<Buffer> w = client.getStore().startImport(null, null,
+    WriteStream<Buffer> w = client.getStoreClient().startImport(null, null,
         Arrays.asList("hello:world", "key:value"), context.asyncAssertSuccess(v -> {
       verifyPosted(url, XML, context);
       async.complete();
@@ -162,7 +162,7 @@ public class StoreClientImportTest extends StoreClientTestBase {
             .withStatus(202)));
 
     Async async = context.async();
-    WriteStream<Buffer> w = client.getStore().startImport(null,
+    WriteStream<Buffer> w = client.getStoreClient().startImport(null,
       Arrays.asList("testTag", "testTag2"), Arrays.asList("hello:wo\\:rld", "hallo2:world2"),
     context.asyncAssertSuccess(v -> {
       verifyPosted(url, XML, context);

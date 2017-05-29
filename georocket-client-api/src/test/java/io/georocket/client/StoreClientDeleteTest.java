@@ -43,7 +43,7 @@ public class StoreClientDeleteTest extends StoreClientTestBase {
   @Test
   public void noLayer(TestContext context) {
     Async async = context.async();
-    client.getStore().delete(null, null, context.asyncAssertFailure(t -> {
+    client.getStoreClient().delete(null, null, context.asyncAssertFailure(t -> {
       context.assertTrue(t instanceof NoStackTraceThrowable);
       async.complete();
     }));
@@ -56,7 +56,7 @@ public class StoreClientDeleteTest extends StoreClientTestBase {
   @Test
   public void emptyQuery(TestContext context) {
     Async async = context.async();
-    client.getStore().delete("", null, context.asyncAssertFailure(t -> {
+    client.getStoreClient().delete("", null, context.asyncAssertFailure(t -> {
       context.assertTrue(t instanceof NoStackTraceThrowable);
       async.complete();
     }));
@@ -74,7 +74,7 @@ public class StoreClientDeleteTest extends StoreClientTestBase {
             .withStatus(204)));
     
     Async async = context.async();
-    client.getStore().delete("test", context.asyncAssertSuccess(v -> {
+    client.getStoreClient().delete("test", context.asyncAssertSuccess(v -> {
       verifyDeleted(url, context);
       async.complete();
     }));
@@ -92,7 +92,7 @@ public class StoreClientDeleteTest extends StoreClientTestBase {
             .withStatus(204)));
     
     Async async = context.async();
-    client.getStore().delete("test1 test2", context.asyncAssertSuccess(v -> {
+    client.getStoreClient().delete("test1 test2", context.asyncAssertSuccess(v -> {
       verifyDeleted(url, context);
       async.complete();
     }));
@@ -110,7 +110,7 @@ public class StoreClientDeleteTest extends StoreClientTestBase {
             .withStatus(204)));
     
     Async async = context.async();
-    client.getStore().delete(null, "/", context.asyncAssertSuccess(v -> {
+    client.getStoreClient().delete(null, "/", context.asyncAssertSuccess(v -> {
       verifyDeleted(url, context);
       async.complete();
     }));
@@ -129,7 +129,7 @@ public class StoreClientDeleteTest extends StoreClientTestBase {
             .withStatus(204)));
     
     Async async = context.async();
-    client.getStore().delete(null, "hello/world", context.asyncAssertSuccess(v -> {
+    client.getStoreClient().delete(null, "hello/world", context.asyncAssertSuccess(v -> {
       verifyDeleted(url, context);
       async.complete();
     }));
@@ -148,7 +148,7 @@ public class StoreClientDeleteTest extends StoreClientTestBase {
             .withStatus(204)));
     
     Async async = context.async();
-    client.getStore().delete("test", "hello/world", context.asyncAssertSuccess(v -> {
+    client.getStoreClient().delete("test", "hello/world", context.asyncAssertSuccess(v -> {
       verifyDeleted(url, context);
       async.complete();
     }));

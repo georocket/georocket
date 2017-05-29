@@ -88,7 +88,7 @@ public class AddTagCommand extends AbstractQueryCommand {
   public void doRun(String[] remainingArgs, InputReader in, PrintWriter out,
       Handler<Integer> handler) throws OptionParserException, IOException {
     GeoRocketClient client = createClient();
-    client.getStore().appendTags(query, layer, tags, ar -> {
+    client.getTagsClient().appendTags(query, layer, tags, ar -> {
       if (ar.failed()) {
         client.close();
         Throwable t = ar.cause();
