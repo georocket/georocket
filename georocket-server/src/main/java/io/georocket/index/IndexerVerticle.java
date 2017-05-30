@@ -209,7 +209,6 @@ public class IndexerVerticle extends AbstractVerticle {
     registerAdd();
     registerDelete();
     registerQuery();
-    registerUpdate();
   }
 
   /**
@@ -259,22 +258,6 @@ public class IndexerVerticle extends AbstractVerticle {
           msg.reply(v);
         }, err -> {
           log.error("Could not delete document", err);
-          msg.fail(throwableToCode(err), throwableToMessage(err, ""));
-        });
-      });
-  }
-
-  /**
-   * Register consumer for update messages
-   */
-  private void registerUpdate() {
-    vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_UPDATE)
-      .toObservable()
-      .subscribe(msg -> {
-        onUpdate(msg.body()).subscribe(v -> {
-          msg.reply(v);
-        }, err -> {
-          log.error("Could not update document", err);
           msg.fail(throwableToCode(err), throwableToMessage(err, ""));
         });
       });
@@ -700,101 +683,6 @@ public class IndexerVerticle extends AbstractVerticle {
         onDeletingFinished(stopTimeStamp - startTimeStamp, paths.size(), null);
         return Observable.just(null);
       }
-    });
-  }
-
-  /**
-   * Remove or append meta data of existing chunks in the index. The chunks are
-   * specified by a search query.
-   * @param body the message containing the query and updates
-   * @return an observable that emits a single item when the chunks have
-   * been updated successfully
-   */
-  private Single<Void> onUpdate(JsonObject body) {
-    String search = body.getString("search", "");
-    String path = body.getString("path", "");
-    JsonObject postFilter = queryCompiler.compileQuery(search, path);
-
-    String action = body.getString("action", "").trim().toLowerCase();
-    String target = body.getString("target", "").trim().toLowerCase();
-    List<String> updates = body.getJsonArray("updates", new JsonArray())
-      .stream()
-      .map(x -> Objects.toString(x, ""))
-      .collect(Collectors.toList());
-
-    if (updates.isEmpty()) {
-      return Single.error(new NoStackTraceThrowable(
-          "Missing values to append or remove"));
-    }
-    
-    JsonObject updateScript = new JsonObject()
-      .put("lang", "painless");
-    String scriptName = action + "_" + target + ".txt";
-
-    try {
-      JsonObject params;
-      if (Objects.equals(scriptName, "set_properties.txt")) {
-        params = new JsonObject().put(target, parseProperties(updates));
-      } else {
-        params = new JsonObject().put(target, new JsonArray(updates));
-      }
-      updateScript.put("params", params);
-      
-      URL url = getClass().getResource(scriptName);
-      if (url == null) {
-        throw new FileNotFoundException("Script " + scriptName + " does not exist");
-      }
-      String script = Resources.toString(url, StandardCharsets.UTF_8);
-      updateScript.put("inline", script);
-      return updateDocuments(postFilter, updateScript);
-    } catch (ServerAPIException | IOException e) {
-      return Single.error(e);
-    }
-  }
-
-  /**
-   * Parse list of properties in the form key:value
-   * @param updates the list of properties
-   * @return a json object with the property keys as object keys and the property
-   * values as corresponding object values
-   * @throws ServerAPIException if the syntax is not valid
-   */
-  private static JsonObject parseProperties(List<String> updates)
-    throws ServerAPIException {
-    JsonObject props = new JsonObject();
-    String regex = "(?<!" + Pattern.quote("\\") + ")" + Pattern.quote(":");
-
-    for (String part : updates) {
-      part = part.trim();
-      String[] property = part.split(regex);
-      if (property.length != 2) {
-        throw new ServerAPIException(
-            ServerAPIException.INVALID_PROPERTY_SYNTAX_ERROR,
-            "Invalid property syntax: " + part);
-      }
-      String key = StringEscapeUtils.unescapeJava(property[0].trim());
-      String value = StringEscapeUtils.unescapeJava(property[1].trim());
-      props.put(key, value);
-    }
-
-    return props;
-  }
-
-  /**
-   * Update a document using a painless script
-   * @param postFilter the filter to select the documents
-   * @param updateScript the script which should be applied to the documents
-   * @return a Single which completes if the update is successful or fails if
-   * an error occurs
-   */
-  private Single<Void> updateDocuments(JsonObject postFilter, JsonObject updateScript) {
-    return client.updateByQuery(TYPE_NAME, postFilter, updateScript)
-      .toSingle()
-      .flatMap(sr -> {
-        if (sr.getBoolean("timed_out", true)) {
-          return Single.error(new TimeoutException());
-        }
-        return Single.just(null);
     });
   }
 }

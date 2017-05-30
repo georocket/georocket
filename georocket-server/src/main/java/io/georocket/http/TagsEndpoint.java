@@ -76,7 +76,7 @@ public class TagsEndpoint extends AbstractEndpoint {
       .put("target", "tags")
       .put("updates", updates);
 
-    vertx.eventBus().send(AddressConstants.INDEXER_UPDATE, msg, ar -> {
+    vertx.eventBus().send(AddressConstants.METADATA_UPDATE, msg, ar -> {
       if (ar.succeeded()) {
         response.setStatusCode(204).end();
       } else {
