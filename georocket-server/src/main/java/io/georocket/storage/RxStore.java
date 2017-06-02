@@ -88,12 +88,6 @@ public class RxStore implements Store {
     delegate.get(search, path, handler);
   }
 
-  @Override
-  public void get(String search, String path, String scrollId, Integer requestedPageSize,
-                  Handler<AsyncResult<StoreCursor>> handler) {
-    delegate.get(search, path, scrollId, requestedPageSize, handler);
-  }
-
   /**
    * Observable version of {@link #get(String, String, Handler)}
    * @param search the search query
@@ -107,19 +101,25 @@ public class RxStore implements Store {
     return o;
   }
 
-  /**
-   * Observable verison of {@link #get(String, String, String, Integer, Handler)}
-   * @param search the search query
-   * @param path the path where to search for the chunks (may be null)
-   * @param scrollId the scrollId that gets used to continue to a specific page.
-   * @param requestedPageSize the size a page should have
-   * May be null - in that case the the cursor will point on the first result.
-   * @return an observable that emits a cursor when the chunks have been retrieved from the store
-   */
-  public Observable<StoreCursor> getObservable(String search, String path, 
-      String scrollId, Integer requestedPageSize) {
+  @Override
+  public void scroll(String search, String path, Handler<AsyncResult<StoreCursor>> handler) {
+    delegate.scroll(search, path, handler);
+  }
+
+  public Observable<StoreCursor> scrollObservable(String search, String path) {
     ObservableFuture<StoreCursor> o = RxHelper.observableFuture();
-    delegate.get(search, path, scrollId, requestedPageSize, o.toHandler());
+    scroll(search, path, o.toHandler());
+    return o;
+  }
+
+  @Override
+  public void scroll(String scrollId, Handler<AsyncResult<StoreCursor>> handler) {
+    delegate.scroll(scrollId, handler);
+  }
+
+  public Observable<StoreCursor> scrollObservable(String scrollId) {
+    ObservableFuture<StoreCursor> o = RxHelper.observableFuture();
+    scroll(scrollId, o.toHandler());
     return o;
   }
 }
