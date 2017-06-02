@@ -13,6 +13,7 @@ import io.georocket.http.StoreEndpoint;
 import io.georocket.http.TagsEndpoint;
 import io.georocket.index.MetadataVerticle;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang.BooleanUtils;
 import org.yaml.snakeyaml.Yaml;
 
 import io.georocket.constants.ConfigConstants;
@@ -297,8 +298,47 @@ public class GeoRocket extends AbstractVerticle {
 
     // replace variables in config
     replaceConfVariables(conf);
+    
+    overwriteWithEnvironmentVariables(conf);
 
     return conf;
+  }
+
+  /**
+   * Look up all environment variables and take all variables with the prefix
+   * <code>georocket</code>. Parse the value and put it into the config. Replace existing key entries.
+   * @param conf The config
+   */
+  private static void overwriteWithEnvironmentVariables(JsonObject conf) {
+    System.getenv().forEach((key, val) -> {
+      if (key.startsWith("georocket")) {
+        Object newVal = toJsonType(val);
+        conf.put(key, newVal);
+      }
+    });
+  }
+
+  /**
+   * Parse a string into int, double, boolean or keep it as String.
+   * @param val The string to parse
+   * @return The parsed value as object.
+   */
+  private static Object toJsonType(String val) {
+    try {
+      return Integer.parseInt(val);
+    } catch (NumberFormatException ex) {
+      // ok
+    }
+    try {
+      return Double.parseDouble(val);
+    } catch (NumberFormatException ex) {
+      // ok
+    }
+    Boolean bool = BooleanUtils.toBooleanObject(val);
+    if (bool != null) {
+      return bool;
+    }
+    return val;    
   }
 
   /**
