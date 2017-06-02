@@ -246,7 +246,7 @@ Content-Length: 100
 === GET file
 
 Search the data store for chunks that match a given <<query-language, query>>. Merge the chunks found and return the result as a file.
-<<pagination,Pagination>> is also available.
+<<scrolling,Scrolling>> is also available.
 
 ===== Resource URL
 
@@ -262,12 +262,12 @@ Search the data store for chunks that match a given <<query-language, query>>. M
 | *search* +
   _(optional)_
 | A URL-encoded <<query-language, query string>>. If no query string is provided all chunks from the requested layer will be returned.
-| *paginated* +
+| *scroll* +
   _(optional)_
-| A boolean ("true"/"false") indicating whether the result should be <<pagination, paginated>>.
+| A boolean ("true"/"false") indicating whether the result should be <<scrolled, scrolled>>.
 | *scrollId* +
   _(optional)_
-| The scrollId from a previous <<pagination, pagination>>.
+| The scrollId from a previous <<scrolling, scrolling>>.
 |===
 
 ===== Status codes
@@ -300,29 +300,28 @@ Transfer-Encoding: chunked
 </CityModel>
 ----
 
-[[pagination]]
-==== Pagination
+[[scrolling]]
+==== Scrolling
 
-Pagination is available to retrieve some portion of the results from a GET query at a time.
-With pagination the returned file is also stand-alone, meaning that it has a root element and the same structure as a un-paginated file.
+Scrolling is available to retrieve some portion of the results from a GET query at a time.
+With scrolling the returned file is also stand-alone, meaning that it has a root element and the same structure as a un-paginated file.
 The response also contains a "X-Scroll-Id" header to retrieve the next elements.
 
-The next example request shows how to start a paginated GET request.
-Notice the response headers. When the "X-Hits" header is less than the header "X-Page-Size", there are no elements left or the scrollId is not valid (anymore).
+The next example request shows how to start a scroll GET request.
 
 ===== Example request
 
-  GET /store/CityModel?paginated=true&search=LOD1+textured+13.378,52.515,13.380,52.517 HTTP/1.1
+  GET /store/CityModel?scroll=true&search=LOD1+textured+13.378,52.515,13.380,52.517 HTTP/1.1
 
 ===== Example response
 
-The default page size is 100. It can be changed by providing a pageSize query
-argument with the initial pagination erquest. After the pegination has started, the
-pageSize will have no effect on further requests.
+The default page size is 100. It can be changed by providing a size query
+argument with the initial scrolling erquest. After the scroll has started, the
+size will have no effect on further requests.
 
 ===== Example request
 
-  GET /store/CityModel?paginated=true&pageSize=75&search=LOD1+textured+13.378,52.515,13.380,52.517 HTTP/1.1
+  GET /store/CityModel?scroll=true&size=75&search=LOD1+textured+13.378,52.515,13.380,52.517 HTTP/1.1
 
 ===== Example response
 
@@ -331,7 +330,6 @@ HTTP/1.1 200 OK
 X-Scroll-Id: some_scroll_id
 X-Total-Hits: 420
 X-Hits: 100
-X-Page-Size: 100
 Transfer-Encoding: chunked
 
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -344,7 +342,7 @@ The next example request shows how to continue a scroll. The scrollId GET parame
 
 ===== Example request
 
-  GET /store/CityModel?paginated=true&scrollId=some_scroll_id&search=LOD1+textured+13.378,52.515,13.380,52.517 HTTP/1.1
+  GET /store/CityModel?scroll=true&scrollId=some_scroll_id&search=LOD1+textured+13.378,52.515,13.380,52.517 HTTP/1.1
 
 ===== Example response
 
@@ -353,7 +351,6 @@ HTTP/1.1 200 OK
 X-Scroll-Id: some_new_scroll_id
 X-Total-Hits: 420
 X-Hits: 100
-X-Page-Size: 100
 Transfer-Encoding: chunked
 
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
