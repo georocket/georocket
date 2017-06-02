@@ -1,7 +1,6 @@
 package io.georocket.http.mocks;
 
 import io.georocket.constants.AddressConstants;
-import io.georocket.storage.indexed.IndexedStore;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.rxjava.core.Vertx;
@@ -30,7 +29,7 @@ public class MockIndexer {
 
   /**
    * The number of hits per page
-   * @see IndexedStore PAGE_SIZE
+   * @see io.georocket.storage.indexed.FrameCursor SIZE
    */
   public static Long HITS_PER_PAGE = 100L;
 
@@ -43,7 +42,6 @@ public class MockIndexer {
    * The scrollId that gets returned from the indexer after the first query with a "null" scrollId given
    */
   public static final String FIRST_RETURNED_SCROLL_ID = "FIRST_SCROLL_ID";
-  public static final String LAST_RETURNED_SCROLL_ID = "LAST_SCROLL_ID";
 
   /**
    * The scrollId that gets returned when the FIRST_RETURNED_SCROLL_ID or "null" is given
@@ -84,10 +82,7 @@ public class MockIndexer {
           returnScrollId = FIRST_RETURNED_SCROLL_ID;
         } else if (givenScrollId.equals(FIRST_RETURNED_SCROLL_ID)) {
           numberReturnHits = TOTAL_HITS - HITS_PER_PAGE;
-          returnScrollId = LAST_RETURNED_SCROLL_ID;
-        } else if (LAST_RETURNED_SCROLL_ID.equals(givenScrollId)) {
-          numberReturnHits = 0L;
-          returnScrollId = LAST_RETURNED_SCROLL_ID;
+          returnScrollId = INVALID_SCROLLID;
         } else {
           numberReturnHits = 0L;
           returnScrollId = INVALID_SCROLLID;

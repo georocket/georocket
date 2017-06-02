@@ -220,7 +220,7 @@ abstract public class StorageTest {
     vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_QUERY).handler(request -> {
       JsonObject msg = request.body();
 
-      context.assertTrue(msg.containsKey("pageSize"));
+      context.assertTrue(msg.getJsonObject("parameters", new JsonObject()).containsKey("size"));
       context.assertTrue(msg.containsKey("search"));
 
       String indexSearch = msg.getString("search");

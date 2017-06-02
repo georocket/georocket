@@ -51,5 +51,5 @@ public class MockStore extends IndexedStore {
   private <T> void notImplemented(Handler<AsyncResult<T>> handler) {
     handler.handle(Future.failedFuture("NOT IMPLEMENTED"));
   }
-
 }
+
