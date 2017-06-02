@@ -122,7 +122,7 @@ public class DefaultQueryCompiler implements QueryCompiler {
 
   /**
    * <p>Create an Elasticsearch query for the given search string but does
-   * not apply the {@link ElasticsearchQueryOptimizer} to it.</p>
+   * not apply the {@link ElasticsearchQueryOptimizer} to it.</p>
    * @param search the search string
    * @return the Elasticsearch query (may be null)
    */
