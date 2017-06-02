@@ -51,13 +51,25 @@ public class FrameCursor implements StoreCursor {
    * The path where to perform the search (may be null)
    */
   private String path;
-  
+
+  /**
+   * Load the first frame of chunks.
+   * @param vertx vertx instance
+   * @param search The search query
+   * @param path The search path
+   */
   public FrameCursor(Vertx vertx, String search, String path) {
     this(vertx, null);
     this.search = search;
     this.path = path;
   }
-  
+
+  /**
+   * Load the next frame with a scrollId.
+   * Use {@link #getInfo()} to get the scrollId.
+   * @param vertx vertx instance
+   * @param scrollId scrollId to load the next frame
+   */
   public FrameCursor(Vertx vertx, String scrollId) {
     this.vertx = vertx;
     this.scrollId = scrollId;

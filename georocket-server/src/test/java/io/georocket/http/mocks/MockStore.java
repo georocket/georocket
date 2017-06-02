@@ -13,10 +13,19 @@ import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 
+/**
+ * Mock for georocket indexed store.
+ * 
+ * @author David Gengenbach
+ */
 public class MockStore extends IndexedStore {
   
-  static final String RETURNED_CHUNK = "{\"type\":\"Polygon\"}"; 
+  static final String RETURNED_CHUNK = "{\"type\":\"Polygon\"}";
 
+  /**
+   * Standard constructor 
+   * @param vertx vertx instance
+   */
   public MockStore(Vertx vertx) {
     super(vertx);
   }

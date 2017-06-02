@@ -66,7 +66,7 @@ public class MockIndexer {
    * 
    * Returns "valid" hits that correspond to the items that are returned from the {@link MockStore}.
    * 
-   * @param vertx
+   * @param vertx vertx instance
    */
   public static void mockIndexerQuery(Vertx vertx) {
     indexerQuerySubscription = vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_QUERY).toObservable()

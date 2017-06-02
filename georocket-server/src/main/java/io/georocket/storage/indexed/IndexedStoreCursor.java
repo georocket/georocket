@@ -40,22 +40,12 @@ public class IndexedStoreCursor implements StoreCursor {
   private int pos = -1;
 
   /**
-   * The position in the the current frame.
-   */
-  private Integer posInFrame = -1;
-
-  /**
    * The total number of items requested from the store
    */
   private Long totalHits = 0L;
 
   /**
-   * The numver of items received in the current frame.
-   */
-  private Integer currentHits = 0;
-
-  /**
-   * A scroll ID used by Elasticsearch for pagination
+   * The scrollId for elasticsearch
    */
   private String scrollId;
 
@@ -91,7 +81,6 @@ public class IndexedStoreCursor implements StoreCursor {
     currentFrameCursor = framedCursor;
     FrameInfo info = framedCursor.getInfo();
     this.totalHits = info.getTotalHits();
-    this.currentHits = info.getCurrentHits();
     this.scrollId = info.getScrollId();
   }
 
@@ -99,16 +88,15 @@ public class IndexedStoreCursor implements StoreCursor {
   public boolean hasNext() {
     return pos + 1 < totalHits;
   }
-
   
   @Override
   public void next(Handler<AsyncResult<ChunkMeta>> handler) {
-    ++posInFrame;
     ++pos;
     if (pos >= totalHits) {
       handler.handle(Future.failedFuture(new IndexOutOfBoundsException("Curser is out of a valid position.")));
-    } else if (posInFrame >= currentHits) {
-      posInFrame = - 1;
+    } else if (this.currentFrameCursor.hasNext()) {
+      this.currentFrameCursor.next(handler);
+    } else {
       new FrameCursor(vertx, scrollId).start(h -> {
         if (h.failed()) {
           handler.handle(Future.failedFuture(h.cause()));
@@ -117,8 +105,6 @@ public class IndexedStoreCursor implements StoreCursor {
           this.currentFrameCursor.next(handler);
         }
       });
-    } else {
-      this.currentFrameCursor.next(handler);
     }
   }
 

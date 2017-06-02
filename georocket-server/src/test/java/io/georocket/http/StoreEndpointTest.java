@@ -51,7 +51,7 @@ public class StoreEndpointTest {
 
   /**
    * Starts a MockServer verticle with a StoreEndpoint to test against
-   * @param context
+   * @param context Test context
    */
   @BeforeClass
   public static void setupServer(TestContext context) {
@@ -70,7 +70,7 @@ public class StoreEndpointTest {
   
   /**
    * Tests that a scroll request can be done.
-   * @param context
+   * @param context Test context
    */
   @Test
   public void testScrolling(TestContext context) {
@@ -88,7 +88,7 @@ public class StoreEndpointTest {
   
   /**
    * Tests whether a scroll can be continued with a given scrollId.
-   * @param context
+   * @param context Test context
    */
   @Test
   public void testScrollingWithGivenScrollId(TestContext context) {
@@ -105,7 +105,7 @@ public class StoreEndpointTest {
   
   /**
    * Tests what happens when an invalid scrollId is returned.
-   * @param context
+   * @param context Test context
    */
   @Test
   public void testScrollingWithInvalidScrollId(TestContext context) {
@@ -120,7 +120,7 @@ public class StoreEndpointTest {
 
   /**
    * Tests that a normal query returns all the elements.
-   * @param context
+   * @param context Test context
    */
   @Test
   public void testNormalGet(TestContext context) {
@@ -135,7 +135,7 @@ public class StoreEndpointTest {
   }
   /**
    * Tests that a normal query returns all the elements.
-   * @param context
+   * @param context Test context
    */
   @Test
   public void testNormalGetWithoutScrollParameterGiven(TestContext context) {
@@ -168,8 +168,9 @@ public class StoreEndpointTest {
   
   /**
    * Checks for scroll-specific headers that are returned from the server are present or not.
-   * @param response
-   * @param context
+   * @param response client response
+   * @param context context
+   * @param checkScrollIdHeaderPresent should the test check the scroll id
    */
   private void checkScrollingResponsePresent(HttpClientResponse response, TestContext context, Boolean checkScrollIdHeaderPresent) {
     List<String> neededHeaders = new LinkedList<>();
@@ -189,11 +190,14 @@ public class StoreEndpointTest {
    * Performs request against the server and checks for the scroll headers.
    * Fails when the headers are not present or an error occured during the request.
    *  
-   * @param context
-   * @param url
-   * @param handler
+   * @param context Test context
+   * @param url url
+   * @param checkHeaders should the test check the headers
+   * @param checkScrollIdHeaderPresent should the test check the scroll id
+   * @param handler response handler
    */
-  private void doScrolledStorepointRequest(TestContext context, String url, Boolean checkHeaders, Boolean checkScrollIdHeaderPresent, Handler<HttpClientResponse> handler) {
+  private void doScrolledStorepointRequest(TestContext context, String url, Boolean checkHeaders, 
+    Boolean checkScrollIdHeaderPresent, Handler<HttpClientResponse> handler) {
     HttpClient client = createHttpClient();
     HttpClientRequest request = client.get(url, response -> {
       if (checkHeaders) {
@@ -209,6 +213,7 @@ public class StoreEndpointTest {
   
   /**
    * Creates a StoreEndpoint router
+   * @return Router
    */
   private static Router getStoreEndpointRouter() {
     Router router = Router.router(vertxCore);

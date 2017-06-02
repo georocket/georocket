@@ -304,7 +304,7 @@ Transfer-Encoding: chunked
 ==== Scrolling
 
 Scrolling is available to retrieve some portion of the results from a GET query at a time.
-With scrolling the returned file is also stand-alone, meaning that it has a root element and the same structure as a un-paginated file.
+With scrolling the returned file is also stand-alone, meaning that it has a root element and the same structure as a un-unscrolled file.
 The response also contains a "X-Scroll-Id" header to retrieve the next elements.
 
 The next example request shows how to start a scroll GET request.
@@ -314,29 +314,6 @@ The next example request shows how to start a scroll GET request.
   GET /store/CityModel?scroll=true&search=LOD1+textured+13.378,52.515,13.380,52.517 HTTP/1.1
 
 ===== Example response
-
-The default page size is 100. It can be changed by providing a size query
-argument with the initial scrolling erquest. After the scroll has started, the
-size will have no effect on further requests.
-
-===== Example request
-
-  GET /store/CityModel?scroll=true&size=75&search=LOD1+textured+13.378,52.515,13.380,52.517 HTTP/1.1
-
-===== Example response
-
-----
-HTTP/1.1 200 OK
-X-Scroll-Id: some_scroll_id
-X-Total-Hits: 420
-X-Hits: 100
-Transfer-Encoding: chunked
-
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<CityModel ...>
-  ...
-</CityModel>
-----
 
 The next example request shows how to continue a scroll. The scrollId GET parameter is taken from the preceding example response header ("X-Scroll-Id").
 

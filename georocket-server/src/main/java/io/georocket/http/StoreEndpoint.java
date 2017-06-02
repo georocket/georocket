@@ -115,7 +115,7 @@ public class StoreEndpoint extends AbstractEndpoint {
           .onErrorResumeNext(t -> {
             if (t instanceof IllegalStateException) {
               // Chunk cannot be merged. maybe it's a new one that has
-              // been added after the merger was initialized. Justc
+              // been added after the merger was initialized. Just
               // ignore it, but emit a warning later
               return Observable.just(Pair.of(0L, 1L));
             }
@@ -146,7 +146,12 @@ public class StoreEndpoint extends AbstractEndpoint {
         }
       });
   }
-  
+
+  /**
+   * Read the context, select the right StoreCursor and set the respose header. 
+   * @param context The clients routing context
+   * @return Observable which provide a StoreCursor
+   */
   protected Observable<StoreCursor> prepareCursor(RoutingContext context) {
     HttpServerRequest request = context.request();
     HttpServerResponse response = context.response();

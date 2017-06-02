@@ -106,6 +106,13 @@ public class RxStore implements Store {
     delegate.scroll(search, path, handler);
   }
 
+  /**
+   * Observable version of {@link #scroll(String, String, Handler)}
+   * @param search the search query
+   * @param path the path where to search for the chunks (may be null)
+   * @return on observable that emits a cursor that can be used to iterate
+   * over all matched chunks
+   */
   public Observable<StoreCursor> scrollObservable(String search, String path) {
     ObservableFuture<StoreCursor> o = RxHelper.observableFuture();
     scroll(search, path, o.toHandler());
@@ -117,6 +124,12 @@ public class RxStore implements Store {
     delegate.scroll(scrollId, handler);
   }
 
+  /**
+   * Scrollable version of {@link #scroll(String, Handler)}
+   * @param scrollId The scrollId to load the chunks
+   * @return on observable that emits a cursor that can be used to iterate
+   * over all matched chunks
+   */
   public Observable<StoreCursor> scrollObservable(String scrollId) {
     ObservableFuture<StoreCursor> o = RxHelper.observableFuture();
     scroll(scrollId, o.toHandler());
