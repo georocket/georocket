@@ -312,8 +312,9 @@ public class GeoRocket extends AbstractVerticle {
   private static void overwriteWithEnvironmentVariables(JsonObject conf) {
     System.getenv().forEach((key, val) -> {
       if (key.startsWith("georocket")) {
+        String newKey = key.replaceAll("_", ".");
         Object newVal = toJsonType(val);
-        conf.put(key, newVal);
+        conf.put(newKey, newVal);
       }
     });
   }
