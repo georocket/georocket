@@ -85,12 +85,14 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
   
   @Override
   public Observable<JsonObject> beginScroll(String type, JsonObject query,
-      JsonObject postFilter, JsonObject aggregations, int pageSize, String timeout) {
+      JsonObject postFilter, JsonObject aggregations, JsonObject parameters, String timeout) {
     String uri = "/" + index + "/" + type + "/_search";
     uri += "?scroll=" + timeout;
     
     JsonObject source = new JsonObject();
-    source.put("size", pageSize);
+    parameters.forEach(entry ->
+      source.put(entry.getKey(), entry.getValue()));
+
     if (query != null) {
       source.put("query", query);
     }
@@ -120,11 +122,13 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
   
   @Override
   public Observable<JsonObject> search(String type, JsonObject query,
-      JsonObject postFilter, JsonObject aggregations, int size) {
+      JsonObject postFilter, JsonObject aggregations, JsonObject parameters) {
     String uri = "/" + index + "/" + type + "/_search";
     
     JsonObject source = new JsonObject();
-    source.put("size", size);
+    parameters.forEach(entry -> 
+      source.put(entry.getKey(), entry.getValue()));
+    
     if (query != null) {
       source.put("query", query);
     }
