@@ -9,7 +9,7 @@ import io.vertx.core.json.JsonObject;
  * @since 1.0.0
  * @author Michel Kraemer
  */
-public interface StoreCursor {
+public interface StoreCursor extends AsyncCursor<ChunkMeta> {
   /**
    * @return true if there are more items to iterate over
    */
@@ -28,7 +28,7 @@ public interface StoreCursor {
   String getChunkPath();
 
   /**
-   * @return info about the current batch of items
+   * @return info about the set of items
    */
-  JsonObject getCurrentFrameInfo();
+  FrameInfo getInfo();
 }

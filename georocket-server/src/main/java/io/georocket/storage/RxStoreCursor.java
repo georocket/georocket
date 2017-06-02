@@ -1,6 +1,5 @@
 package io.georocket.storage;
 
-import io.vertx.core.json.JsonObject;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.lang3.tuple.Pair;
@@ -49,8 +48,8 @@ public class RxStoreCursor implements StoreCursor {
   }
 
   @Override
-  public JsonObject getCurrentFrameInfo() {
-    return delegate.getCurrentFrameInfo();
+  public FrameInfo getInfo() {
+    return delegate.getInfo();
   }
 
   /**
