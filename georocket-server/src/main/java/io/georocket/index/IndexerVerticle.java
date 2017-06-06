@@ -23,6 +23,7 @@ import java.util.stream.Stream;
 import com.google.common.io.Resources;
 import io.georocket.ServerAPIException;
 import io.georocket.constants.ConfigConstants;
+import io.georocket.index.elasticsearch.GeorocketIndexClientFactory;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.jooq.lambda.Seq;
 import org.jooq.lambda.tuple.Tuple;
@@ -33,8 +34,6 @@ import com.google.common.collect.ImmutableList;
 
 import io.georocket.constants.AddressConstants;
 import io.georocket.index.elasticsearch.ElasticsearchClient;
-import io.georocket.index.elasticsearch.ElasticsearchClientFactory;
-import io.georocket.index.generic.DefaultMetaIndexerFactory;
 import io.georocket.index.xml.JsonIndexerFactory;
 import io.georocket.index.xml.MetaIndexer;
 import io.georocket.index.xml.MetaIndexerFactory;
@@ -50,7 +49,6 @@ import io.georocket.storage.RxStore;
 import io.georocket.storage.StoreFactory;
 import io.georocket.storage.XMLChunkMeta;
 import io.georocket.util.JsonParserOperator;
-import io.georocket.util.MapUtils;
 import io.georocket.util.RxUtils;
 import io.georocket.util.StreamEvent;
 import io.georocket.util.XMLParserOperator;
@@ -172,19 +170,14 @@ public class IndexerVerticle extends AbstractVerticle {
 
     queryCompiler = createQueryCompiler();
     queryCompiler.setQueryCompilers(indexerFactories);
-    
-    new ElasticsearchClientFactory(vertx).createElasticsearchClient(INDEX_NAME)
-      .doOnNext(es -> {
-        client = es;
-      })
-      .flatMap(v -> client.ensureIndex())
-      .flatMap(v -> ensureMapping())
-      .subscribe(es -> {
+
+    new GeorocketIndexClientFactory(vertx)
+      .createElasticsearchClient(INDEX_NAME, TYPE_NAME, indexerFactories)
+      .subscribe(client -> {
+        this.client = client;
         registerMessageConsumers();
         startFuture.complete();
-      }, err -> {
-        startFuture.fail(err);
-      });
+      }, startFuture::fail);
   }
 
   private DefaultQueryCompiler createQueryCompiler() {
@@ -346,18 +339,7 @@ public class IndexerVerticle extends AbstractVerticle {
       vertx.eventBus().send(AddressConstants.ACTIVITIES, msg);
     }
   }
-  
-  private Observable<Void> ensureMapping() {
-    // merge mappings from all indexers
-    Map<String, Object> mappings = new HashMap<>();
-    indexerFactories.stream().filter(f -> f instanceof DefaultMetaIndexerFactory)
-        .forEach(factory -> MapUtils.deepMerge(mappings, factory.getMapping()));
-    indexerFactories.stream().filter(f -> !(f instanceof DefaultMetaIndexerFactory))
-        .forEach(factory -> MapUtils.deepMerge(mappings, factory.getMapping()));
 
-    return client.putMapping(TYPE_NAME, new JsonObject(mappings)).map(r -> null);
-  }
-  
   /**
    * Insert multiple Elasticsearch documents into the index. Perform a
    * bulk request. This method replies to all messages if the bulk request

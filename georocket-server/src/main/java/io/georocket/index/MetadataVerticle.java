@@ -4,10 +4,8 @@ import com.google.common.collect.ImmutableList;
 import io.georocket.constants.AddressConstants;
 import io.georocket.constants.ConfigConstants;
 import io.georocket.index.elasticsearch.ElasticsearchClient;
-import io.georocket.index.elasticsearch.ElasticsearchClientFactory;
-import io.georocket.index.generic.DefaultMetaIndexerFactory;
+import io.georocket.index.elasticsearch.GeorocketIndexClientFactory;
 import io.georocket.query.DefaultQueryCompiler;
-import io.georocket.util.MapUtils;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -16,7 +14,6 @@ import io.vertx.core.logging.LoggerFactory;
 import io.vertx.rxjava.core.AbstractVerticle;
 import rx.Observable;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -67,13 +64,10 @@ public class MetadataVerticle extends AbstractVerticle {
     queryCompiler = createQueryCompiler();
     queryCompiler.setQueryCompilers(indexerFactories);
 
-    new ElasticsearchClientFactory(vertx).createElasticsearchClient(INDEX_NAME)
-      .doOnNext(es -> {
-        client = es;
-      })
-      .flatMap(v -> client.ensureIndex())
-      .flatMap(v -> ensureMapping())
-      .subscribe(es -> {
+    new GeorocketIndexClientFactory(vertx)
+      .createElasticsearchClient(INDEX_NAME, TYPE_NAME, indexerFactories)
+      .subscribe(client -> {
+        this.client = client;
         registerMessageConsumers();
         startFuture.complete();
       }, startFuture::fail);
@@ -93,17 +87,6 @@ public class MetadataVerticle extends AbstractVerticle {
     } catch (ReflectiveOperationException e) {
       throw new RuntimeException("Could not create a DefaultQueryCompiler", e);
     }
-  }
-
-  private Observable<Void> ensureMapping() {
-    // merge mappings from all indexers
-    Map<String, Object> mappings = new HashMap<>();
-    indexerFactories.stream().filter(f -> f instanceof DefaultMetaIndexerFactory)
-      .forEach(factory -> MapUtils.deepMerge(mappings, factory.getMapping()));
-    indexerFactories.stream().filter(f -> !(f instanceof DefaultMetaIndexerFactory))
-      .forEach(factory -> MapUtils.deepMerge(mappings, factory.getMapping()));
-
-    return client.putMapping(TYPE_NAME, new JsonObject(mappings)).map(r -> null);
   }
 
   /**
