@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import io.georocket.http.Endpoint;
 import io.georocket.http.GeneralEndpoint;
@@ -310,10 +312,17 @@ public class GeoRocket extends AbstractVerticle {
    * @param conf The config
    */
   private static void overwriteWithEnvironmentVariables(JsonObject conf) {
+    Map<String, String> names = ConfigConstants.getConfigKeys()
+      .stream()
+      .collect(Collectors.toMap(
+        s -> s.toUpperCase().replace(".", "_"), 
+        Function.identity()
+      ));
     System.getenv().forEach((key, val) -> {
-      if (key.startsWith("georocket")) {
+      String name = names.get(key.toUpperCase());
+      if (name != null) {
         Object newVal = toJsonType(val);
-        conf.put(key, newVal);
+        conf.put(name, newVal);
       }
     });
   }

@@ -1,5 +1,9 @@
 package io.georocket.constants;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+
 /**
  * Configuration constants
  * @author Michel Kraemer
@@ -47,5 +51,20 @@ public final class ConfigConstants {
   
   private ConfigConstants() {
     // hidden constructor
+  }
+
+  public static List<String> getConfigKeys() {
+    return Arrays.stream(ConfigConstants.class.getFields())
+      .map(f -> {
+        try {
+          return f.get(null);
+        } catch (IllegalAccessException e) {
+          throw new RuntimeException("Could not access config constant", e);
+        }
+      })
+      .filter(s -> s instanceof String)
+      .map(String.class::cast)
+      .filter(s -> s.startsWith("georocket"))
+      .collect(Collectors.toList());
   }
 }
