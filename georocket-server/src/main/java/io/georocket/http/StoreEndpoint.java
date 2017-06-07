@@ -233,6 +233,7 @@ public class StoreEndpoint extends AbstractEndpoint {
     String layer = getEndpointPath(context);
     String tagsStr = request.getParam("tags");
     String propertiesStr = request.getParam("props");
+    String fallbackCRSString = request.getParam("fallbackCRS");
 
     List<String> tags = tagsStr != null ? Splitter.on(',')
         .trimResults().splitToList(tagsStr) : null;
@@ -334,6 +335,10 @@ public class StoreEndpoint extends AbstractEndpoint {
 
         if (!properties.isEmpty()) {
           msg.put("properties", new JsonObject(properties));
+        }
+
+        if (fallbackCRSString != null) {
+          msg.put("fallbackCRSString", fallbackCRSString);
         }
 
         request.response()
