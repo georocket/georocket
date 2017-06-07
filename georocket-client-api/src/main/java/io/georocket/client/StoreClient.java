@@ -44,7 +44,7 @@ public class StoreClient extends AbstractClient {
    * @return the import path
    */
   protected String prepareImport(String layer, Collection<String> tags) {
-    return prepareImport(layer, tags, null);
+    return prepareImport(layer, tags, null, null);
   }
 
   /**
@@ -59,7 +59,25 @@ public class StoreClient extends AbstractClient {
    * @since 1.1.0
    */
   protected String prepareImport(String layer, Collection<String> tags,
-      Collection<String> properties) {
+    Collection<String> properties) {
+    return prepareImport(layer, tags, properties, null);
+  }
+
+  /**
+   * Prepare an import. Generate an import path for the given layer and tags.
+   * @param layer the layer to import to (may be <code>null</code> if data
+   * should be imported to the root layer)
+   * @param tags a collection of tags to attach to the imported data (may be
+   * <code>null</code> if no tags need to be attached)
+   * @param properties a collection of properties to attach to the imported
+   * data (may be <code>null</code> if no properties need to be attached)
+   * @param fallbackCRS the CRS which should be used if the imported file does
+   * not specify one (may be <code>null</code>)
+   * @return the import path
+   * @since 1.1.0
+   */
+  protected String prepareImport(String layer, Collection<String> tags,
+    Collection<String> properties, String fallbackCRS) {
     String path = getEndpoint();
 
     if (layer != null && !layer.isEmpty()) {
@@ -82,6 +100,7 @@ public class StoreClient extends AbstractClient {
       path += "?tags=" + urlencode(String.join(",", tags));
     }
 
+    boolean hasProperties = false;
     if (properties != null && !properties.isEmpty()) {
       if (hasTags) {
         path += "&props=";
@@ -89,6 +108,16 @@ public class StoreClient extends AbstractClient {
         path += "?props=";
       }
       path += urlencode(String.join(",", properties));
+      hasProperties = true;
+    }
+
+    if (fallbackCRS != null && !fallbackCRS.isEmpty()) {
+      if (hasTags || hasProperties) {
+        path += "&fallbackCRS=";
+      } else {
+        path += "?fallbackCRS=";
+      }
+      path += urlencode(String.join(",", fallbackCRS));
     }
 
     return path;
@@ -106,7 +135,7 @@ public class StoreClient extends AbstractClient {
    * @return a {@link WriteStream} that can be used to send data
    */
   public WriteStream<Buffer> startImport(Handler<AsyncResult<Void>> handler) {
-    return startImport(null, null, null, Optional.empty(), handler);
+    return startImport(null, null, null, Optional.empty(), null, handler);
   }
   
   /**
@@ -124,7 +153,7 @@ public class StoreClient extends AbstractClient {
    */
   public WriteStream<Buffer> startImport(String layer,
       Handler<AsyncResult<Void>> handler) {
-    return startImport(layer, null, null, Optional.empty(), handler);
+    return startImport(layer, null, null, Optional.empty(), null, handler);
   }
   
   /**
@@ -144,7 +173,7 @@ public class StoreClient extends AbstractClient {
    */
   public WriteStream<Buffer> startImport(String layer, Collection<String> tags,
       Handler<AsyncResult<Void>> handler) {
-    return startImport(layer, tags, null, Optional.empty(), handler);
+    return startImport(layer, tags, null, Optional.empty(), null, handler);
   }
 
   /**
@@ -167,7 +196,7 @@ public class StoreClient extends AbstractClient {
    */
   public WriteStream<Buffer> startImport(String layer, Collection<String> tags,
       Collection<String> properties, Handler<AsyncResult<Void>> handler) {
-    return startImport(layer, tags, properties, Optional.empty(), handler);
+    return startImport(layer, tags, properties, Optional.empty(), null, handler);
   }
   
   /**
@@ -212,7 +241,7 @@ public class StoreClient extends AbstractClient {
    */
   public WriteStream<Buffer> startImport(String layer, Collection<String> tags,
       Collection<String> properties, long size, Handler<AsyncResult<Void>> handler) {
-    return startImport(layer, tags, properties, Optional.of(size), handler);
+    return startImport(layer, tags, properties, Optional.of(size), null, handler);
   }
   
   /**
@@ -233,9 +262,9 @@ public class StoreClient extends AbstractClient {
    */
   public WriteStream<Buffer> startImport(String layer, Collection<String> tags,
       Optional<Long> size, Handler<AsyncResult<Void>> handler) {
-    return startImport(layer, tags, null, size, handler);
+    return startImport(layer, tags, null, size, null, handler);
   }
-  
+
   /**
    * <p>Start importing data to GeoRocket. The method opens a connection to the
    * GeoRocket server and returns a {@link WriteStream} that can be used to
@@ -256,8 +285,35 @@ public class StoreClient extends AbstractClient {
    * @since 1.1.0
    */
   public WriteStream<Buffer> startImport(String layer, Collection<String> tags,
-      Collection<String> properties, Optional<Long> size, Handler<AsyncResult<Void>> handler) {
-    String path = prepareImport(layer, tags, properties);
+    Collection<String> properties, Optional<Long> size, Handler<AsyncResult<Void>> handler) {
+    return startImport(layer, tags, properties, size, null, handler);
+  }
+
+  /**
+   * <p>Start importing data to GeoRocket. The method opens a connection to the
+   * GeoRocket server and returns a {@link WriteStream} that can be used to
+   * send data.</p>
+   * <p>The caller is responsible for closing the stream (and ending
+   * the import process) through {@link WriteStream#end()} and handling
+   * exceptions through {@link WriteStream#exceptionHandler(Handler)}.</p>
+   * @param layer the layer to import to (may be <code>null</code> if data
+   * should be imported to the root layer)
+   * @param tags a collection of tags to attach to the imported data (may be
+   * <code>null</code> if no tags need to be attached)
+   * @param properties a collection of properties to attach to the imported
+   * data (may be <code>null</code> if no properties need to be attached)
+   * @param size size of the data to be sent in bytes (optional)
+   * @param fallbackCRS the CRS which should be used if the imported file does
+   * not specify one (may be <code>null</code>)
+   * @param handler a handler that will be called when the data has been
+   * imported by the GeoRocket server
+   * @return a {@link WriteStream} that can be used to send data
+   * @since 1.1.0
+   */
+  public WriteStream<Buffer> startImport(String layer, Collection<String> tags,
+    Collection<String> properties, Optional<Long> size,
+    String fallbackCRS, Handler<AsyncResult<Void>> handler) {
+    String path = prepareImport(layer, tags, properties, fallbackCRS);
     HttpClientRequest request = client.post(path);
 
     if (size.isPresent() && size.get() != null) {
@@ -271,13 +327,13 @@ public class StoreClient extends AbstractClient {
       if (response.statusCode() != 202) {
         fail(response, handler, message -> {
           ClientAPIException e = ClientAPIException.parse(message);
-          
+
           String msg = String.format(
             "GeoRocket did not accept the file (status code %s: %s) %s",
             response.statusCode(),
             response.statusMessage(),
             e.getMessage());
-          
+
           return new ClientAPIException(e.getType(), msg);
         });
       } else {
