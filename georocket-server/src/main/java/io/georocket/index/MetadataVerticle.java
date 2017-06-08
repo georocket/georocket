@@ -2,7 +2,6 @@ package io.georocket.index;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.Resources;
-import io.georocket.ServerAPIException;
 import io.georocket.constants.AddressConstants;
 import io.georocket.constants.ConfigConstants;
 import io.georocket.index.elasticsearch.ElasticsearchClient;
@@ -122,7 +121,10 @@ public class MetadataVerticle extends AbstractVerticle {
    */
   private void registerMessageConsumers() {
     register(AddressConstants.METADATA_GET_PROPERTIES, this::onGetPropertyValues);
-    register(AddressConstants.METADATA_UPDATE, this::onUpdate);
+    register(AddressConstants.METADATA_SET_PROPERTIES, this::onSetProperties);
+    register(AddressConstants.METADATA_REMOVE_PROPERTIES, this::onRemoveProperties);
+    register(AddressConstants.METADATA_APPEND_TAGS, this::onAppendTags);
+    register(AddressConstants.METADATA_REMOVE_TAGS, this::onRemoveTags);
   }
 
   private <T> void register(String address, Function<JsonObject, Single<T>> mapper) {
@@ -187,40 +189,72 @@ public class MetadataVerticle extends AbstractVerticle {
   }
 
   /**
-   * Remove or append meta data of existing chunks in the index. The chunks are
+   * Set properties of a list of chunks
+   * @param body the message containing the search, path and the properties
+   * @return a single that emits null when the properties have been set
+   * successfully
+   */
+  private Single<Void> onSetProperties(JsonObject body) {
+    JsonObject list = body.getJsonObject("properties");
+    JsonObject params = new JsonObject().put("properties", list);
+    return updateMetadata(body, "set_properties.txt", params);
+  }
+
+  /**
+   * Remove properties of a list of chunks
+   * @param body the message containing the search, path and the properties
+   * @return a single that emits null when the properties have been deleted
+   * successfully
+   */
+  private Single<Void> onRemoveProperties(JsonObject body) {
+    JsonArray list = body.getJsonArray("properties");
+    JsonObject params = new JsonObject().put("properties", list);
+    return updateMetadata(body, "remove_properties.txt", params);
+  }
+
+  /**
+   * Append tags to a list of chunks
+   * @param body the message containing the search, path and the tags
+   * @return a single that emits null when the tags have been set
+   * successfully
+   */
+  private Single<Void> onAppendTags(JsonObject body) {
+    JsonArray list = body.getJsonArray("tags");
+    JsonObject params = new JsonObject().put("tags", list);
+    return updateMetadata(body, "append_tags.txt", params);
+  }
+
+  /**
+   * Remove tags of a list of chunks
+   * @param body the message containing the search, path and the tags
+   * @return a single that emits null when the tags have been set
+   * successfully
+   */
+  private Single<Void> onRemoveTags(JsonObject body) {
+    JsonArray list = body.getJsonArray("tags");
+    JsonObject params = new JsonObject().put("tags", list);
+    return updateMetadata(body, "remove_tags.txt", params);
+  }
+
+  /**
+   * Update the meta data of existing chunks in the index. The chunks are
    * specified by a search query.
-   * @param body the message containing the query and updates
+   * @param body the message containing the search and path
+   * @param scriptName the name of the painscript file
+   * @param params the parameters for the painscript
    * @return an observable that emits a single item when the chunks have
    * been updated successfully
    */
-  private Single<Void> onUpdate(JsonObject body) {
+  private Single<Void> updateMetadata(JsonObject body, String scriptName,
+    JsonObject params) {
     String search = body.getString("search", "");
     String path = body.getString("path", "");
     JsonObject postFilter = queryCompiler.compileQuery(search, path);
 
-    String action = body.getString("action", "").trim().toLowerCase();
-    String target = body.getString("target", "").trim().toLowerCase();
-    List<String> updates = body.getJsonArray("updates", new JsonArray())
-      .stream()
-      .map(x -> Objects.toString(x, ""))
-      .collect(Collectors.toList());
-
-    if (updates.isEmpty()) {
-      return Single.error(new NoStackTraceThrowable(
-        "Missing values to append or remove"));
-    }
-
     JsonObject updateScript = new JsonObject()
       .put("lang", "painless");
-    String scriptName = action + "_" + target + ".txt";
 
     try {
-      JsonObject params;
-      if (Objects.equals(scriptName, "set_properties.txt")) {
-        params = new JsonObject().put(target, parseProperties(updates));
-      } else {
-        params = new JsonObject().put(target, new JsonArray(updates));
-      }
       updateScript.put("params", params);
 
       URL url = getClass().getResource(scriptName);
@@ -230,37 +264,9 @@ public class MetadataVerticle extends AbstractVerticle {
       String script = Resources.toString(url, StandardCharsets.UTF_8);
       updateScript.put("inline", script);
       return updateDocuments(postFilter, updateScript);
-    } catch (ServerAPIException | IOException e) {
+    } catch (IOException e) {
       return Single.error(e);
     }
-  }
-
-  /**
-   * Parse list of properties in the form key:value
-   * @param updates the list of properties
-   * @return a json object with the property keys as object keys and the property
-   * values as corresponding object values
-   * @throws ServerAPIException if the syntax is not valid
-   */
-  private static JsonObject parseProperties(List<String> updates)
-      throws ServerAPIException {
-    JsonObject props = new JsonObject();
-    String regex = "(?<!" + Pattern.quote("\\") + ")" + Pattern.quote(":");
-
-    for (String part : updates) {
-      part = part.trim();
-      String[] property = part.split(regex);
-      if (property.length != 2) {
-        throw new ServerAPIException(
-          ServerAPIException.INVALID_PROPERTY_SYNTAX_ERROR,
-          "Invalid property syntax: " + part);
-      }
-      String key = StringEscapeUtils.unescapeJava(property[0].trim());
-      String value = StringEscapeUtils.unescapeJava(property[1].trim());
-      props.put(key, value);
-    }
-
-    return props;
   }
 
   /**
