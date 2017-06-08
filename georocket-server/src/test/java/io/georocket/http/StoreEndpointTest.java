@@ -77,7 +77,7 @@ public class StoreEndpointTest {
     Async async = context.async();
     MockIndexer.mockIndexerQuery(vertx);
     
-    doScrolledStorepointRequest(context, "/?search=DUMMY_QUERY&scroll=true", true, true, response -> {
+    doScrolledStorepointRequest(context, "/?search=DUMMY_QUERY&scroll=true&size=100", true, true, response -> {
       context.assertEquals(MockIndexer.FIRST_RETURNED_SCROLL_ID, response.getHeader(HeaderConstants.SCROLL_ID));
       checkGeoJsonResponse(response, context, returned -> {
         checkGeoJsonSize(context, response, returned, MockIndexer.HITS_PER_PAGE, true, "The size of the returned elements on the first page should be the page size.");

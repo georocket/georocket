@@ -312,6 +312,13 @@ The next example request shows how to start a scroll GET request.
 ===== Example request
 
   GET /store/CityModel?scroll=true&search=LOD1+textured+13.378,52.515,13.380,52.517 HTTP/1.1
+  
+The response will contain a maximum of 100 elements. The default value of 100 can be modified
+with the query argument `size`.
+
+===== Example request
+
+  GET /store/CityModel?scroll=true&size=50&search=LOD1+textured+13.378,52.515,13.380,52.517 HTTP/1.1
 
 ===== Example response
 

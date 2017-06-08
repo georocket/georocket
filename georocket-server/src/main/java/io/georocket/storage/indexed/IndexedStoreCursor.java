@@ -14,6 +14,11 @@ import io.vertx.core.Vertx;
  */
 public class IndexedStoreCursor implements StoreCursor {
   /**
+   * The number of items retrieved in one batch
+   */
+  private static final int SIZE = 100;
+
+  /**
    * The Vert.x instance
    */
   private final Vertx vertx;
@@ -66,7 +71,7 @@ public class IndexedStoreCursor implements StoreCursor {
    * @param handler will be called when the cursor has retrieved its first batch
    */
   public void start(Handler<AsyncResult<StoreCursor>> handler) {
-    new FrameCursor(vertx, search, path).start(h -> {
+    new FrameCursor(vertx, search, path, SIZE).start(h -> {
       if (h.succeeded()) {
         handleFrameCursor(h.result());
         handler.handle(Future.succeededFuture(this));

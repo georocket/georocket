@@ -101,8 +101,8 @@ public abstract class IndexedStore implements Store {
   }
 
   @Override
-  public void scroll(String search, String path, Handler<AsyncResult<StoreCursor>> handler) {
-    new FrameCursor(vertx, search, path).start(handler);
+  public void scroll(String search, String path, int size, Handler<AsyncResult<StoreCursor>> handler) {
+    new FrameCursor(vertx, search, path, size).start(handler);
   }
 
   @Override

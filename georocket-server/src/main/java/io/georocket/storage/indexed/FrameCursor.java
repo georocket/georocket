@@ -22,11 +22,6 @@ import io.vertx.core.json.JsonObject;
  */
 public class FrameCursor implements StoreCursor {
   /**
-   * The number of items retrieved in one batch
-   */
-  private static final int SIZE = 100;
-
-  /**
    * The Vert.x instance
    */
   private final Vertx vertx;
@@ -53,15 +48,42 @@ public class FrameCursor implements StoreCursor {
   private String path;
 
   /**
+   * The size of elements to load in the frame.
+   * <p>INV: <code>size == metas.length</code></p>
+   */
+  private int size;
+
+  /**
+   * The total number of items the store has to offer.
+   * If {@link #size} > totalHits then this frame cursor will
+   * never load all items of the store.
+   * 
+   * <b>INV: <code>SIZE <= totalHits</code></b>
+   */
+  private Long totalHits;
+
+  /**
+   * The chunk IDs retrieved in the last batch
+   */
+  private String[] ids;
+
+  /**
+   * Chunk metadata retrieved in the last batch
+   */
+  private ChunkMeta metas[];
+
+  /**
    * Load the first frame of chunks.
    * @param vertx vertx instance
    * @param search The search query
    * @param path The search path
+   * @param size The number of elements to load in this frame
    */
-  public FrameCursor(Vertx vertx, String search, String path) {
+  public FrameCursor(Vertx vertx, String search, String path, int size) {
     this(vertx, null);
     this.search = search;
     this.path = path;
+    this.size = size;
   }
 
   /**
@@ -86,7 +108,7 @@ public class FrameCursor implements StoreCursor {
       queryMsg.put("scrollId", scrollId);
     } else {
       queryMsg
-        .put("size", SIZE)
+        .put("size", size)
         .put("search", search);
       if (path != null) {
         queryMsg.put("path", path);
@@ -131,24 +153,6 @@ public class FrameCursor implements StoreCursor {
     return new CursorInfo(scrollId, totalHits, metas.length);
   }
 
-  /**
-   * The total number of items the store has to offer.
-   * If {@link #SIZE} > totalHits then this frame cursor will
-   * never load all items of the store.
-   * 
-   * <b>INV: <code>SIZE <= totalHits</code></b>
-   */
-  private Long totalHits;
-
-  /**
-   * The chunk IDs retrieved in the last batch
-   */
-  private String[] ids;
-
-  /**
-   * Chunk metadata retrieved in the last batch
-   */
-  private ChunkMeta metas[];
 
   private void handleResponse(JsonObject body) {
     totalHits = body.getLong("totalHits");

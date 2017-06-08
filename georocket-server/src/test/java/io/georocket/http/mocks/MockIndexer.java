@@ -1,7 +1,6 @@
 package io.georocket.http.mocks;
 
 import io.georocket.constants.AddressConstants;
-import io.georocket.storage.indexed.ScrollCursor;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.rxjava.core.Vertx;
@@ -30,7 +29,6 @@ public class MockIndexer {
 
   /**
    * The number of hits per page
-   * @see ScrollCursor SIZE
    */
   public static Long HITS_PER_PAGE = 100L;
 

@@ -49,8 +49,9 @@ public interface Store {
    * @param search the search query
    * @param path the path where to search for the chunks (may be null)
    * @param handler will be called when the chunks have been retrieved from the store
+   * @param size the number of elements to load.
    */
-  void scroll(String search, String path, Handler<AsyncResult<StoreCursor>> handler);
+  void scroll(String search, String path, int size, Handler<AsyncResult<StoreCursor>> handler);
 
   /**
    * Continue scrolling with a given scrollId
