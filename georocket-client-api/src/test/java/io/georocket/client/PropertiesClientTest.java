@@ -27,7 +27,7 @@ public class PropertiesClientTest extends StoreClientTestBase {
    */
   @Test
   public void setProperties(TestContext context) {
-    String url = "/properties/?search=test&properties=a%3D1,b%3D2";
+    String url = "/store/?search=test&properties=a%3D1,b%3D2";
     stubFor(put(urlEqualTo(url))
       .willReturn(aResponse()
         .withStatus(204)));
@@ -45,7 +45,7 @@ public class PropertiesClientTest extends StoreClientTestBase {
    */
   @Test
   public void removeProperties(TestContext context) {
-    String url = "/properties/?search=test&properties=a%3D1,b%3D2";
+    String url = "/store/?search=test&properties=a%3D1,b%3D2";
     stubFor(delete(urlEqualTo(url))
       .willReturn(aResponse()
         .withStatus(204)));

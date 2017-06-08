@@ -77,6 +77,6 @@ public class TagsClient extends AbstractClient {
    * @return the endpoint
    */
   protected String getEndpoint() {
-    return "/tags";
+    return "/store";
   }
 }

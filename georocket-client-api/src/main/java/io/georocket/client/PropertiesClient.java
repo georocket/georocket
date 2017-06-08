@@ -82,6 +82,6 @@ public class PropertiesClient extends AbstractClient {
    * @return the endpoint
    */
   protected String getEndpoint() {
-    return "/properties";
+    return "/store";
   }
 }

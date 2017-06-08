@@ -27,7 +27,7 @@ public class TagsClientTest extends StoreClientTestBase {
    */
   @Test
   public void appendTags(TestContext context) {
-    String url = "/tags/?search=test&tags=a,b,c";
+    String url = "/store/?search=test&tags=a,b,c";
     stubFor(put(urlEqualTo(url))
       .willReturn(aResponse()
         .withStatus(204)));
@@ -45,7 +45,7 @@ public class TagsClientTest extends StoreClientTestBase {
    */
   @Test
   public void removeTags(TestContext context) {
-    String url = "/tags/?search=test&tags=a,b,c";
+    String url = "/store/?search=test&tags=a,b,c";
     stubFor(delete(urlEqualTo(url))
       .willReturn(aResponse()
         .withStatus(204)));
