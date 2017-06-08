@@ -153,8 +153,11 @@ public class FrameCursor implements StoreCursor {
     return new CursorInfo(scrollId, totalHits, metas.length);
   }
 
-
-  private void handleResponse(JsonObject body) {
+  /**
+   * Handle the response from the indexer.
+   * @param body The indexer response body.
+   */
+  protected void handleResponse(JsonObject body) {
     totalHits = body.getLong("totalHits");
     scrollId = body.getString("scrollId");
     JsonArray hits = body.getJsonArray("hits");
