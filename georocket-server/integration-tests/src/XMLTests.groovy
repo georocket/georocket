@@ -253,7 +253,7 @@ class XMLTests extends StoreTests {
      */
     def assertValues(def query, def field, def name, def values) {
         testUntilOK({
-            def exportedContents = run("curl -sS -X GET http://${georocketHost}:63020/properties/"
+            def exportedContents = run("curl -sS -X GET http://${georocketHost}:63020/store/"
                     + "?search=" + URLEncoder.encode(query, 'UTF-8')
                     + "&$field=$name", null, true)
             try {

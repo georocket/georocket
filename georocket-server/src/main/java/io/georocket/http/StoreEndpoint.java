@@ -1,5 +1,6 @@
 package io.georocket.http;
 
+import io.georocket.storage.AsyncCursor;
 import io.georocket.storage.StoreCursor;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -197,8 +198,26 @@ public class StoreEndpoint extends AbstractEndpoint {
    * @param context the routing context
    */
   private void onGet(RoutingContext context) {
+    HttpServerRequest request = context.request();
     HttpServerResponse response = context.response();
-    
+
+    String path = getEndpointPath(context);
+    String search = request.getParam("search");
+    String property = request.getParam("property");
+
+    if (property != null) {
+      getPropertyValues(search, path, property, response);
+    } else {
+      getChunks(context);
+    }
+  }
+
+  /**
+   * Search all chunks for the specified query and path
+   * @param context the routing context
+   */
+  private void getChunks(RoutingContext context) {
+    HttpServerResponse response = context.response();
     Observable<StoreCursor> data = prepareCursor(context);
     
     // Our responses must always be chunked because we cannot calculate
@@ -223,7 +242,64 @@ public class StoreEndpoint extends AbstractEndpoint {
         fail(response, err);
       });
   }
-  
+
+  /**
+   * Get all values for the specified property
+   * @param search the search query
+   * @param path the path
+   * @param property the name of the property
+   * @param response the http response
+   */
+  private void getPropertyValues(String search, String path, String property,
+    HttpServerResponse response) {
+    response.setChunked(true);
+    response.write("[");
+
+    metadataStore.getPropertyValues(search, path, property, ar -> {
+      if (ar.succeeded()) {
+        AsyncCursor<String> cursor = ar.result();
+        merge(cursor, response, 0, ar2 -> {
+          if (ar2.succeeded()) {
+            response
+              .write("]")
+              .setStatusCode(200)
+              .end();
+          } else {
+            fail(response, ar2.cause());
+          }
+        });
+      } else {
+        fail(response, ar.cause());
+      }
+    });
+  }
+
+  /**
+   * Merge the results of the cursor to a json array
+   * @param cursor the result cursor
+   * @param response the http response object
+   * @param count the current count of results which have been sent
+   * @param handler will be called when all results have been sent
+   */
+  private static void merge(AsyncCursor<String> cursor, HttpServerResponse response,
+    long count, Handler<AsyncResult<Long>> handler) {
+    if (cursor.hasNext()) {
+      cursor.next(ar -> {
+        if (ar.succeeded()) {
+          if (count > 0) {
+            response.write(",");
+          }
+          response.write("\"" + ar.result() + "\"");
+          merge(cursor, response, count + 1, handler);
+        } else {
+          handler.handle(Future.failedFuture(ar.cause()));
+        }
+      });
+    } else {
+      handler.handle(Future.succeededFuture(count));
+    }
+  }
+
   /**
    * Try to detect the content type of a file
    * @param filepath the absolute path to the file to analyse
