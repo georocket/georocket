@@ -2,7 +2,6 @@ package io.georocket.storage;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
-import io.vertx.core.json.JsonObject;
 
 /**
  * A cursor that can be used to iterate over chunks in a {@link Store}
@@ -30,5 +29,5 @@ public interface StoreCursor extends AsyncCursor<ChunkMeta> {
   /**
    * @return info about the set of items
    */
-  FrameInfo getInfo();
+  CursorInfo getInfo();
 }

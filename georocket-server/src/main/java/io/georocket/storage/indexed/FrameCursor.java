@@ -4,7 +4,7 @@ import static io.georocket.util.MimeTypeUtils.belongsTo;
 
 import io.georocket.constants.AddressConstants;
 import io.georocket.storage.ChunkMeta;
-import io.georocket.storage.FrameInfo;
+import io.georocket.storage.CursorInfo;
 import io.georocket.storage.GeoJsonChunkMeta;
 import io.georocket.storage.JsonChunkMeta;
 import io.georocket.storage.StoreCursor;
@@ -127,8 +127,8 @@ public class FrameCursor implements StoreCursor {
   }
 
   @Override
-  public FrameInfo getInfo() {
-    return new FrameInfo(scrollId, totalHits, metas.length);
+  public CursorInfo getInfo() {
+    return new CursorInfo(scrollId, totalHits, metas.length);
   }
 
   /**

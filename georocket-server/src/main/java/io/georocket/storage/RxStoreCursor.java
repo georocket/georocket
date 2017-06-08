@@ -48,7 +48,7 @@ public class RxStoreCursor implements StoreCursor {
   }
 
   @Override
-  public FrameInfo getInfo() {
+  public CursorInfo getInfo() {
     return delegate.getInfo();
   }
 

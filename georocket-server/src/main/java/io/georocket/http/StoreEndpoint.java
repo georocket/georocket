@@ -156,13 +156,13 @@ public class StoreEndpoint extends AbstractEndpoint {
     HttpServerRequest request = context.request();
     HttpServerResponse response = context.response();
     
+    String scroll = request.getParam("scroll");
+    String scrollId = request.getParam("scrollId");
+    Boolean scrolling = "true".equals(scroll) || scrollId != null;
+    
     return Observable.<StoreCursor>defer(() -> {
       String path = getEndpointPath(context);
       String search = request.getParam("search");
-
-      String scrollId = request.getParam("scrollId");
-      String scroll = request.getParam("scroll");
-      Boolean scrolling = "true".equals(scroll) || scrollId != null;
 
       if (scrolling) {
         if (scrollId == null) {
@@ -174,10 +174,12 @@ public class StoreEndpoint extends AbstractEndpoint {
         return store.getObservable(search, path);
       }
     }).doOnNext(cursor -> {
-      response
-        .putHeader("X-Scroll-Id", cursor.getInfo().getScrollId())
-        .putHeader("X-Total-Hits", String.valueOf(cursor.getInfo().getTotalHits()))
-        .putHeader("X-Hits", String.valueOf(cursor.getInfo().getCurrentHits()));
+      if (scrolling) {
+        response
+          .putHeader("X-Scroll-Id", cursor.getInfo().getScrollId())
+          .putHeader("X-Total-Hits", String.valueOf(cursor.getInfo().getTotalHits()))
+          .putHeader("X-Hits", String.valueOf(cursor.getInfo().getCurrentHits()));
+      }
     });
   }
   

@@ -1,13 +1,12 @@
 package io.georocket.storage.indexed;
 
 import io.georocket.storage.ChunkMeta;
-import io.georocket.storage.FrameInfo;
+import io.georocket.storage.CursorInfo;
 import io.georocket.storage.StoreCursor;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonObject;
 
 /**
  * Implementation of {@link StoreCursor} for indexed chunk stores
@@ -79,7 +78,7 @@ public class IndexedStoreCursor implements StoreCursor {
   
   private void handleFrameCursor(StoreCursor framedCursor) {
     currentFrameCursor = framedCursor;
-    FrameInfo info = framedCursor.getInfo();
+    CursorInfo info = framedCursor.getInfo();
     this.totalHits = info.getTotalHits();
     this.scrollId = info.getScrollId();
   }
@@ -114,7 +113,7 @@ public class IndexedStoreCursor implements StoreCursor {
   }
 
   @Override
-  public FrameInfo getInfo() {
+  public CursorInfo getInfo() {
     return this.currentFrameCursor.getInfo();
   }
 }

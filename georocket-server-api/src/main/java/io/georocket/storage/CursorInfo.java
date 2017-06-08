@@ -1,11 +1,11 @@
 package io.georocket.storage;
 
 /**
- * Information about one frame.
+ * Information about the cursor.
  * 
  * @author Andrej Sajenko
  */
-public class FrameInfo {
+public class CursorInfo {
   
   private String scrollId;
   private Long totalHits;
@@ -18,7 +18,7 @@ public class FrameInfo {
    * @param totalHits Total number of elements.
    * @param currentHits The current number of elements loaded in a frame.
    */
-  public FrameInfo(String scrollId, Long totalHits, Integer currentHits) {
+  public CursorInfo(String scrollId, Long totalHits, Integer currentHits) {
     this.scrollId = scrollId;
     this.totalHits = totalHits;
     this.currentHits = currentHits;
