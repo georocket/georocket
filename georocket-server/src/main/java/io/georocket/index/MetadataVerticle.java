@@ -125,16 +125,14 @@ public class MetadataVerticle extends AbstractVerticle {
     register(AddressConstants.METADATA_UPDATE, this::onUpdate);
   }
 
-  private <T> void register(String address,
-    Function<JsonObject, Single<T>> mapper) {
+  private <T> void register(String address, Function<JsonObject, Single<T>> mapper) {
     vertx.eventBus().<JsonObject>consumer(address)
       .toObservable()
       .subscribe(msg -> {
-        mapper.apply(msg.body()).subscribe(msg::reply,
-          err -> {
-            log.error("Could not perform query", err);
-            msg.fail(throwableToCode(err), throwableToMessage(err, ""));
-          });
+        mapper.apply(msg.body()).subscribe(msg::reply, err -> {
+          log.error("Could not perform query", err);
+          msg.fail(throwableToCode(err), throwableToMessage(err, ""));
+        });
       });
   }
 
@@ -244,7 +242,7 @@ public class MetadataVerticle extends AbstractVerticle {
    * @throws ServerAPIException if the syntax is not valid
    */
   private static JsonObject parseProperties(List<String> updates)
-    throws ServerAPIException {
+      throws ServerAPIException {
     JsonObject props = new JsonObject();
     String regex = "(?<!" + Pattern.quote("\\") + ")" + Pattern.quote(":");
 

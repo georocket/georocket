@@ -4,26 +4,15 @@ import static io.georocket.util.MimeTypeUtils.belongsTo;
 import static io.georocket.util.ThrowableHelper.throwableToCode;
 import static io.georocket.util.ThrowableHelper.throwableToMessage;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.google.common.io.Resources;
-import io.georocket.ServerAPIException;
-import io.georocket.constants.ConfigConstants;
-import org.apache.commons.lang3.StringEscapeUtils;
 import org.jooq.lambda.Seq;
 import org.jooq.lambda.tuple.Tuple;
 import org.jooq.lambda.tuple.Tuple2;
@@ -32,6 +21,7 @@ import org.jooq.lambda.tuple.Tuple3;
 import com.google.common.collect.ImmutableList;
 
 import io.georocket.constants.AddressConstants;
+import io.georocket.constants.ConfigConstants;
 import io.georocket.index.elasticsearch.ElasticsearchClient;
 import io.georocket.index.elasticsearch.ElasticsearchClientFactory;
 import io.georocket.index.generic.DefaultMetaIndexerFactory;
@@ -66,7 +56,6 @@ import io.vertx.rxjava.core.AbstractVerticle;
 import io.vertx.rxjava.core.eventbus.Message;
 import rx.Observable;
 import rx.Observable.Operator;
-import rx.Single;
 import rx.functions.Func1;
 
 /**
