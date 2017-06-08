@@ -16,42 +16,42 @@ import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 
 /**
- * Tests {@link TagsClient}
+ * Tests {@link StoreClient}
  * @author Tim Hellhake
  */
 @RunWith(VertxUnitRunner.class)
-public class TagsClientTest extends StoreClientTestBase {
+public class StoreClientPropertiesTest extends StoreClientTestBase {
   /**
-   * Test if tags can be can be appended
+   * Test if properties can be can be set
    * @param context the test context
    */
   @Test
-  public void appendTags(TestContext context) {
-    String url = "/store/?search=test&tags=a,b,c";
+  public void setProperties(TestContext context) {
+    String url = "/store/?search=test&properties=a%3D1,b%3D2";
     stubFor(put(urlEqualTo(url))
       .willReturn(aResponse()
         .withStatus(204)));
-    List<String> tags = Arrays.asList("a", "b", "c");
+    List<String> tags = Arrays.asList("a=1", "b=2");
     Async async = context.async();
-    client.getTagsClient().appendTags("test", "/", tags, ar -> {
+    client.getStoreClient().setProperties("test", "/", tags, ar -> {
       context.assertTrue(ar.succeeded());
       async.complete();
     });
   }
 
   /**
-   * Test if tags can be can be removed
+   * Test if properties can be can be removed
    * @param context the test context
    */
   @Test
-  public void removeTags(TestContext context) {
-    String url = "/store/?search=test&tags=a,b,c";
+  public void removeProperties(TestContext context) {
+    String url = "/store/?search=test&properties=a%3D1,b%3D2";
     stubFor(delete(urlEqualTo(url))
       .willReturn(aResponse()
         .withStatus(204)));
-    List<String> tags = Arrays.asList("a", "b", "c");
+    List<String> tags = Arrays.asList("a=1", "b=2");
     Async async = context.async();
-    client.getTagsClient().removeTags("test", "/", tags, ar -> {
+    client.getStoreClient().removeProperties("test", "/", tags, ar -> {
       context.assertTrue(ar.succeeded());
       async.complete();
     });

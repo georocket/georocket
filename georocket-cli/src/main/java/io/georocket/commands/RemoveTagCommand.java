@@ -88,7 +88,7 @@ public class RemoveTagCommand extends AbstractQueryCommand {
   public void doRun(String[] remainingArgs, InputReader in, PrintWriter out,
       Handler<Integer> handler) throws OptionParserException, IOException {
     GeoRocketClient client = createClient();
-    client.getTagsClient().removeTags(query, layer, tags, ar -> {
+    client.getStoreClient().removeTags(query, layer, tags, ar -> {
       if (ar.failed()) {
         client.close();
         Throwable t = ar.cause();

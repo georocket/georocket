@@ -16,42 +16,42 @@ import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 
 /**
- * Tests {@link PropertiesClient}
+ * Tests {@link StoreClient}
  * @author Tim Hellhake
  */
 @RunWith(VertxUnitRunner.class)
-public class PropertiesClientTest extends StoreClientTestBase {
+public class StoreClientTagsTest extends StoreClientTestBase {
   /**
-   * Test if properties can be can be set
+   * Test if tags can be can be appended
    * @param context the test context
    */
   @Test
-  public void setProperties(TestContext context) {
-    String url = "/store/?search=test&properties=a%3D1,b%3D2";
+  public void appendTags(TestContext context) {
+    String url = "/store/?search=test&tags=a,b,c";
     stubFor(put(urlEqualTo(url))
       .willReturn(aResponse()
         .withStatus(204)));
-    List<String> tags = Arrays.asList("a=1", "b=2");
+    List<String> tags = Arrays.asList("a", "b", "c");
     Async async = context.async();
-    client.getPropertiesClient().setProperties("test", "/", tags, ar -> {
+    client.getStoreClient().appendTags("test", "/", tags, ar -> {
       context.assertTrue(ar.succeeded());
       async.complete();
     });
   }
 
   /**
-   * Test if properties can be can be removed
+   * Test if tags can be can be removed
    * @param context the test context
    */
   @Test
-  public void removeProperties(TestContext context) {
-    String url = "/store/?search=test&properties=a%3D1,b%3D2";
+  public void removeTags(TestContext context) {
+    String url = "/store/?search=test&tags=a,b,c";
     stubFor(delete(urlEqualTo(url))
       .willReturn(aResponse()
         .withStatus(204)));
-    List<String> tags = Arrays.asList("a=1", "b=2");
+    List<String> tags = Arrays.asList("a", "b", "c");
     Async async = context.async();
-    client.getPropertiesClient().removeProperties("test", "/", tags, ar -> {
+    client.getStoreClient().removeTags("test", "/", tags, ar -> {
       context.assertTrue(ar.succeeded());
       async.complete();
     });
