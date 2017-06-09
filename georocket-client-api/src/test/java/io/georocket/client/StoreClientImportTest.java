@@ -159,8 +159,8 @@ public class StoreClientImportTest extends StoreClientTestBase {
   public void importTagsAndProperties(TestContext context) throws Exception {
     String url = "/store?tags=testTag%2CtestTag2&props=hello%3Awo%5C%3Arld%2Challo2%3Aworld2";
     stubFor(post(urlEqualTo(url))
-      .willReturn(aResponse()
-        .withStatus(202)));
+        .willReturn(aResponse()
+            .withStatus(202)));
 
     Async async = context.async();
     WriteStream<Buffer> w = client.getStoreClient().startImport(null,
@@ -181,8 +181,8 @@ public class StoreClientImportTest extends StoreClientTestBase {
   public void importCRS(TestContext context) throws Exception {
     String url = "/store?fallbackCRS=test";
     stubFor(post(urlEqualTo(url))
-      .willReturn(aResponse()
-        .withStatus(202)));
+        .willReturn(aResponse()
+            .withStatus(202)));
 
     Async async = context.async();
     WriteStream<Buffer> w = client.getStoreClient()
@@ -204,8 +204,8 @@ public class StoreClientImportTest extends StoreClientTestBase {
     String url = "/store?tags=testTag%2CtestTag2&props=" +
       "hello%3Awo%5C%3Arld%2Challo2%3Aworld2&fallbackCRS=test";
     stubFor(post(urlEqualTo(url))
-      .willReturn(aResponse()
-        .withStatus(202)));
+        .willReturn(aResponse()
+            .withStatus(202)));
 
     Async async = context.async();
     WriteStream<Buffer> w = client.getStoreClient()

@@ -208,8 +208,8 @@ public class ImportCommandTest extends CommandTestBase<ImportCommand> {
   public void importFallbackCRS(TestContext context) throws Exception {
     String url = "/store?fallbackCRS=test";
     stubFor(post(urlEqualTo(url))
-      .willReturn(aResponse()
-        .withStatus(202)));
+        .willReturn(aResponse()
+            .withStatus(202)));
 
     Async async = context.async();
     cmd.setEndHandler(exitCode -> {
@@ -218,6 +218,6 @@ public class ImportCommandTest extends CommandTestBase<ImportCommand> {
       async.complete();
     });
 
-    cmd.run(new String[]{"-c", "test", testFile.getAbsolutePath()}, in, out);
+    cmd.run(new String[] { "-c", "test", testFile.getAbsolutePath() }, in, out);
   }
 }

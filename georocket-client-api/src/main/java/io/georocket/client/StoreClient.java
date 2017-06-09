@@ -53,7 +53,7 @@ public class StoreClient extends AbstractClient {
    * @since 1.1.0
    */
   protected String prepareImport(String layer, Collection<String> tags,
-    Collection<String> properties) {
+      Collection<String> properties) {
     return prepareImport(layer, tags, properties, null);
   }
 
@@ -71,7 +71,7 @@ public class StoreClient extends AbstractClient {
    * @since 1.1.0
    */
   protected String prepareImport(String layer, Collection<String> tags,
-    Collection<String> properties, String fallbackCRS) {
+      Collection<String> properties, String fallbackCRS) {
     String path = getEndpoint();
 
     if (layer != null && !layer.isEmpty()) {
@@ -94,15 +94,14 @@ public class StoreClient extends AbstractClient {
       path += "?tags=" + urlencode(String.join(",", tags));
     }
 
-    boolean hasProperties = false;
-    if (properties != null && !properties.isEmpty()) {
+    boolean hasProperties = properties != null && !properties.isEmpty();
+    if (hasProperties) {
       if (hasTags) {
         path += "&props=";
       } else {
         path += "?props=";
       }
       path += urlencode(String.join(",", properties));
-      hasProperties = true;
     }
 
     if (fallbackCRS != null && !fallbackCRS.isEmpty()) {
@@ -279,7 +278,7 @@ public class StoreClient extends AbstractClient {
    * @since 1.1.0
    */
   public WriteStream<Buffer> startImport(String layer, Collection<String> tags,
-    Collection<String> properties, Optional<Long> size, Handler<AsyncResult<Void>> handler) {
+      Collection<String> properties, Optional<Long> size, Handler<AsyncResult<Void>> handler) {
     return startImport(layer, tags, properties, size, null, handler);
   }
 
@@ -305,7 +304,7 @@ public class StoreClient extends AbstractClient {
    * @since 1.1.0
    */
   public WriteStream<Buffer> startImport(String layer, Collection<String> tags,
-    Collection<String> properties, Optional<Long> size,
+      Collection<String> properties, Optional<Long> size,
     String fallbackCRS, Handler<AsyncResult<Void>> handler) {
     String path = prepareImport(layer, tags, properties, fallbackCRS);
     HttpClientRequest request = client.post(path);

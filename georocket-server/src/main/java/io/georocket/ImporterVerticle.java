@@ -208,12 +208,14 @@ public class ImporterVerticle extends AbstractVerticle {
    * @param layer the layer where the file should be stored (may be null)
    * @param tags the list of tags to attach to the file (may be null)
    * @param properties the map of properties to attach to the file (may be null)
+   * @param fallbackCRSString the CRS which should be used if the imported
+   * file does not specify one (may be <code>null</code>)
    * @return a single that will emit with the number if chunks imported
    * when the file has been imported
    */
   protected Single<Integer> importFile(String contentType, ReadStream<Buffer> f,
       String correlationId, String filename, long timestamp, String layer,
-    List<String> tags, Map<String, Object> properties, String fallbackCRSString) {
+      List<String> tags, Map<String, Object> properties, String fallbackCRSString) {
     if (belongsTo(contentType, "application", "xml") ||
         belongsTo(contentType, "text", "xml")) {
       return importXML(f, correlationId, filename, timestamp, layer, tags,
@@ -236,11 +238,13 @@ public class ImporterVerticle extends AbstractVerticle {
    * @param layer the layer where the file should be stored (may be null)
    * @param tags the list of tags to attach to the file (may be null)
    * @param properties the map of properties to attach to the file (may be null)
+   * @param fallbackCRSString the CRS which should be used if the imported
+   * file does not specify one (may be <code>null</code>)
    * @return a single that will emit when the file has been imported
    */
   private Single<Integer> importXML(ReadStream<Buffer> f, String correlationId,
-    String filename, long timestamp, String layer, List<String> tags,
-    Map<String, Object> properties, String fallbackCRSString) {
+      String filename, long timestamp, String layer, List<String> tags,
+      Map<String, Object> properties, String fallbackCRSString) {
     Window window = new Window();
     XMLSplitter splitter = new FirstLevelSplitter(window);
     AtomicInteger processing = new AtomicInteger(0);
@@ -262,7 +266,7 @@ public class ImporterVerticle extends AbstractVerticle {
             crsString = crsIndexer.getCRS();
           }
           IndexMeta indexMeta = new IndexMeta(correlationId, filename,
-            timestamp, tags, properties, crsString);
+              timestamp, tags, properties, crsString);
           return addToStoreWithPause(result, layer, indexMeta, f, processing);
         })
         .count()

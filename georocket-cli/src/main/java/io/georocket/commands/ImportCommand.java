@@ -101,8 +101,8 @@ public class ImportCommand extends AbstractGeoRocketCommand {
    * @param layer the layer
    */
   @OptionDesc(longName = "layer", shortName = "l",
-    description = "absolute path to the destination layer",
-    argumentName = "PATH", argumentType = ArgumentType.STRING)
+      description = "absolute path to the destination layer",
+      argumentName = "PATH", argumentType = ArgumentType.STRING)
   public void setLayer(String layer) {
     this.layer = layer;
   }
@@ -112,8 +112,8 @@ public class ImportCommand extends AbstractGeoRocketCommand {
    * @param fallbackCRS the fallback CRS
    */
   @OptionDesc(longName = "fallbackCRS", shortName = "c",
-    description = "the fallback crs if the file does not specify a crs",
-    argumentName = "CRS", argumentType = ArgumentType.STRING)
+      description = "the CRS to use for indexing if the file does not specify one",
+      argumentName = "CRS", argumentType = ArgumentType.STRING)
   public void setFallbackCRS(String fallbackCRS) {
     this.fallbackCRS = fallbackCRS;
   }
