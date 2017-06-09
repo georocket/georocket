@@ -53,6 +53,7 @@ public class ImportCommand extends AbstractGeoRocketCommand {
   protected List<String> tags;
   protected List<String> properties;
   protected String layer;
+  protected String fallbackCRS;
   
   /**
    * Set the patterns of the files to import
@@ -94,7 +95,7 @@ public class ImportCommand extends AbstractGeoRocketCommand {
       this.properties = Splitter.on(",").trimResults().splitToList(properties);
     }
   }
-  
+
   /**
    * Set the absolute path to the layer to search
    * @param layer the layer
@@ -104,6 +105,17 @@ public class ImportCommand extends AbstractGeoRocketCommand {
       argumentName = "PATH", argumentType = ArgumentType.STRING)
   public void setLayer(String layer) {
     this.layer = layer;
+  }
+
+  /**
+   * Set the fallback crs if the file does not specify a CRS
+   * @param fallbackCRS the fallback CRS
+   */
+  @OptionDesc(longName = "fallbackCRS", shortName = "c",
+      description = "the CRS to use for indexing if the file does not specify one",
+      argumentName = "CRS", argumentType = ArgumentType.STRING)
+  public void setFallbackCRS(String fallbackCRS) {
+    this.fallbackCRS = fallbackCRS;
   }
   
   @Override
@@ -276,10 +288,11 @@ public class ImportCommand extends AbstractGeoRocketCommand {
       .flatMapObservable(f -> {
         ObservableFuture<Void> o = RxHelper.observableFuture();
         Handler<AsyncResult<Void>> handler = o.toHandler();
-        AsyncFile file = (AsyncFile)f.getLeft().getDelegate();
+        AsyncFile file = f.getLeft().getDelegate();
 
-        WriteStream<Buffer> out = client.getStoreClient().startImport(layer, tags, properties,
-            Optional.of(f.getRight()), handler);
+        WriteStream<Buffer> out = client.getStoreClient()
+          .startImport(layer, tags, properties, Optional.of(f.getRight()),
+            fallbackCRS, handler);
 
         AtomicBoolean fileClosed = new AtomicBoolean();
 

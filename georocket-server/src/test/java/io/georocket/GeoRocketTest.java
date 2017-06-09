@@ -26,9 +26,8 @@ public class GeoRocketTest {
       .toUpperCase();
     final String VALUE = "test";
     JsonObject conf = new JsonObject();
-    Map<String, String> env = new HashMap<String, String>() {{
-      put(ENV_KEY, VALUE);
-    }};
+    Map<String, String> env = new HashMap<String, String>();
+    env.put(ENV_KEY, VALUE);
     GeoRocket.overwriteWithEnvironmentVariables(conf, env);
     assertEquals(Sets.newHashSet(PROP_KEY), conf.getMap().keySet());
     assertEquals(VALUE, conf.getString(PROP_KEY));

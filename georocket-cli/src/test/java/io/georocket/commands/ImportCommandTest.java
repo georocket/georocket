@@ -198,4 +198,26 @@ public class ImportCommandTest extends CommandTestBase<ImportCommand> {
 
     cmd.run(new String[] { "-props", "hello:world,myKey:my\\:Value,my\\:Key:myValue", testFile.getAbsolutePath() }, in, out);
   }
+
+  /**
+   * Test importing with tags
+   * @param context the test context
+   * @throws Exception if something goes wrong
+   */
+  @Test
+  public void importFallbackCRS(TestContext context) throws Exception {
+    String url = "/store?fallbackCRS=test";
+    stubFor(post(urlEqualTo(url))
+        .willReturn(aResponse()
+            .withStatus(202)));
+
+    Async async = context.async();
+    cmd.setEndHandler(exitCode -> {
+      context.assertEquals(0, exitCode);
+      verifyPosted(url, XML, context);
+      async.complete();
+    });
+
+    cmd.run(new String[] { "-c", "test", testFile.getAbsolutePath() }, in, out);
+  }
 }

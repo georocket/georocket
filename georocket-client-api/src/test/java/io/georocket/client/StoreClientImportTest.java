@@ -9,6 +9,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 
 import java.util.Arrays;
+import java.util.Optional;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -164,10 +165,56 @@ public class StoreClientImportTest extends StoreClientTestBase {
     Async async = context.async();
     WriteStream<Buffer> w = client.getStoreClient().startImport(null,
       Arrays.asList("testTag", "testTag2"), Arrays.asList("hello:wo\\:rld", "hallo2:world2"),
-    context.asyncAssertSuccess(v -> {
-      verifyPosted(url, XML, context);
-      async.complete();
-    }));
+      context.asyncAssertSuccess(v -> {
+        verifyPosted(url, XML, context);
+        async.complete();
+      }));
+    w.end(Buffer.buffer(XML));
+  }
+
+  /**
+   * Test importing tags and properties
+   * @param context the test context
+   * @throws Exception if something goes wrong
+   */
+  @Test
+  public void importCRS(TestContext context) throws Exception {
+    String url = "/store?fallbackCRS=test";
+    stubFor(post(urlEqualTo(url))
+        .willReturn(aResponse()
+            .withStatus(202)));
+
+    Async async = context.async();
+    WriteStream<Buffer> w = client.getStoreClient()
+      .startImport(null, null, null, Optional.empty(), "test",
+        context.asyncAssertSuccess(v -> {
+          verifyPosted(url, XML, context);
+          async.complete();
+        }));
+    w.end(Buffer.buffer(XML));
+  }
+
+  /**
+   * Test importing tags and properties
+   * @param context the test context
+   * @throws Exception if something goes wrong
+   */
+  @Test
+  public void importTagsAndCRS(TestContext context) throws Exception {
+    String url = "/store?tags=testTag%2CtestTag2&props=" +
+      "hello%3Awo%5C%3Arld%2Challo2%3Aworld2&fallbackCRS=test";
+    stubFor(post(urlEqualTo(url))
+        .willReturn(aResponse()
+            .withStatus(202)));
+
+    Async async = context.async();
+    WriteStream<Buffer> w = client.getStoreClient()
+      .startImport(null, Arrays.asList("testTag", "testTag2"),
+        Arrays.asList("hello:wo\\:rld", "hallo2:world2"), Optional.empty(),
+        "test", context.asyncAssertSuccess(v -> {
+          verifyPosted(url, XML, context);
+          async.complete();
+        }));
     w.end(Buffer.buffer(XML));
   }
 }
