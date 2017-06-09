@@ -147,14 +147,14 @@ public class XMLBoundingBoxIndexer extends BoundingBoxIndexer
       // same string, no need to parse
       return;
     }
-    
-    crsStr = srsName;
+
     try {
+      CoordinateReferenceSystem crs;
       // decode string
-      if (CompoundCRSDecoder.isCompound(crsStr)) {
-        crs = CompoundCRSDecoder.decode(crsStr);
+      if (CompoundCRSDecoder.isCompound(srsName)) {
+        crs = CompoundCRSDecoder.decode(srsName);
       } else {
-        crs = CRS.decode(crsStr);
+        crs = CRS.decode(srsName);
       }
       
       // only keep horizontal CRS
@@ -164,14 +164,15 @@ public class XMLBoundingBoxIndexer extends BoundingBoxIndexer
       }
       
       // find transformation to WGS84
-      transform = CRS.findMathTransform(crs, WGS84, true);
-      flippedCRS = isFlippedCRS(crs);
+      MathTransform transform = CRS.findMathTransform(crs, WGS84, true);
+      boolean flippedCRS = isFlippedCRS(crs);
+
+      this.crsStr = srsName;
+      this.crs = crs;
+      this.transform = transform;
+      this.flippedCRS = flippedCRS;
     } catch (FactoryException e) {
       // unknown CRS or no transformation available
-      crsStr = null;
-      transform = null;
-      crs = null;
-      flippedCRS = false;
     }
   }
   
