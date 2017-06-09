@@ -16,6 +16,9 @@ import java.util.Map;
  * @author Tim Hellhake
  */
 public class GeoRocketTest {
+  /**
+   * Test if the configuration values are overwritten by environment values
+   */
   @Test
   public void testOverwriteWithEnvironmentVariables() {
     final String PROP_KEY = ConfigConstants.LOG_CONFIG;

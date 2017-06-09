@@ -53,6 +53,11 @@ public final class ConfigConstants {
     // hidden constructor
   }
 
+  /**
+   * Get all configuration keys by enumerating over all string constants beginning
+   * with the prefix <code>georocket</code>
+   * @return the list of configuration keys
+   */
   public static List<String> getConfigKeys() {
     return Arrays.stream(ConfigConstants.class.getFields())
       .map(f -> {
