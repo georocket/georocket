@@ -144,7 +144,7 @@ public class PropertiesEndpoint extends AbstractEndpoint {
       .put("target", "properties")
       .put("updates", updates);
 
-    vertx.eventBus().send(AddressConstants.INDEXER_UPDATE, msg, ar -> {
+    vertx.eventBus().send(AddressConstants.METADATA_UPDATE, msg, ar -> {
       if (ar.succeeded()) {
         response.setStatusCode(204).end();
       } else {
