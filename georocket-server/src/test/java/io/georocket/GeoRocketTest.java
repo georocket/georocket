@@ -3,13 +3,12 @@ package io.georocket;
 import com.google.common.collect.Sets;
 import io.georocket.constants.ConfigConstants;
 import io.vertx.core.json.JsonObject;
-import org.junit.Assert;
 import org.junit.Test;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+
+import static org.junit.Assert.assertEquals;
 
 /**
  * Test {@link GeoRocket}
@@ -31,7 +30,7 @@ public class GeoRocketTest {
       put(ENV_KEY, VALUE);
     }};
     GeoRocket.overwriteWithEnvironmentVariables(conf, env);
-    Assert.assertEquals(Sets.newHashSet(PROP_KEY), conf.getMap().keySet());
-    Assert.assertEquals(VALUE, conf.getString(PROP_KEY));
+    assertEquals(Sets.newHashSet(PROP_KEY), conf.getMap().keySet());
+    assertEquals(VALUE, conf.getString(PROP_KEY));
   }
 }
