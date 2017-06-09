@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import io.georocket.http.Endpoint;
 import io.georocket.http.GeneralEndpoint;
@@ -305,15 +307,36 @@ public class GeoRocket extends AbstractVerticle {
   }
 
   /**
-   * Look up all environment variables and take all variables with the prefix
-   * <code>georocket</code>. Parse the value and put it into the config. Replace existing key entries.
-   * @param conf The config
+   * Match every environment variable against the config keys from
+   * {{@link ConfigConstants#getConfigKeys()}} and save the found values using
+   * the config key in the config object. The method is equivalent to calling
+   * <code>overwriteWithEnvironmentVariables(conf, java.lang.System.getenv())</code>
+   * @param conf the config object
    */
   private static void overwriteWithEnvironmentVariables(JsonObject conf) {
-    System.getenv().forEach((key, val) -> {
-      if (key.startsWith("georocket")) {
+    overwriteWithEnvironmentVariables(conf, System.getenv());
+  }
+
+  /**
+   * Match every environment variable against the config keys from
+   * {{@link ConfigConstants#getConfigKeys()}} and save the found values using
+   * the config key in the config object.
+   * @param conf the config object
+   * @param env the map with the environment variables
+   */
+  static void overwriteWithEnvironmentVariables(JsonObject conf,
+    Map<String, String> env) {
+    Map<String, String> names = ConfigConstants.getConfigKeys()
+      .stream()
+      .collect(Collectors.toMap(
+        s -> s.toUpperCase().replace(".", "_"),
+        Function.identity()
+      ));
+    env.forEach((key, val) -> {
+      String name = names.get(key.toUpperCase());
+      if (name != null) {
         Object newVal = toJsonType(val);
-        conf.put(key, newVal);
+        conf.put(name, newVal);
       }
     });
   }
