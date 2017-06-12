@@ -1,12 +1,9 @@
 package io.georocket.http;
 
 import io.georocket.constants.AddressConstants;
-import io.georocket.storage.AsyncCursor;
-import io.georocket.storage.MetadataStore;
+import io.georocket.storage.RxAsyncCursor;
+import io.georocket.storage.RxMetadataStore;
 import io.georocket.storage.indexed.IndexedMetadataStore;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpServerResponse;
@@ -23,7 +20,7 @@ import java.util.Arrays;
  */
 public class PropertiesEndpoint extends AbstractEndpoint {
   private final Vertx vertx;
-  private final MetadataStore store;
+  private final RxMetadataStore store;
 
   /**
    * Create the endpoint
@@ -31,7 +28,7 @@ public class PropertiesEndpoint extends AbstractEndpoint {
    */
   public PropertiesEndpoint(Vertx vertx) {
     this.vertx = vertx;
-    this.store = new IndexedMetadataStore(vertx);
+    this.store = new RxMetadataStore(new IndexedMetadataStore(vertx));
   }
 
   @Override
@@ -54,52 +51,26 @@ public class PropertiesEndpoint extends AbstractEndpoint {
     String search = request.getParam("search");
     String property = request.getParam("property");
 
+    final Boolean[] first = {true};
     response.setChunked(true);
     response.write("[");
 
-    store.getPropertyValues(search, path, property, ar -> {
-      if (ar.succeeded()) {
-        AsyncCursor<String> cursor = ar.result();
-        merge(cursor, response, 0, ar2 -> {
-          if (ar2.succeeded()) {
-            response
-              .write("]")
-              .setStatusCode(200)
-              .end();
+    store.rxGetPropertyValues(search, path, property)
+      .flatMap(x -> new RxAsyncCursor<>(x).toObservable())
+      .subscribe(
+        x -> {
+          if (first[0]) {
+            first[0] = false;
           } else {
-            fail(response, ar2.cause());
-          }
-        });
-      } else {
-        fail(response, ar.cause());
-      }
-    });
-  }
-
-  /**
-   * Merge the results of the cursor to a json array
-   * @param cursor the result cursor
-   * @param response the http response object
-   * @param count the current count of results which have been sent
-   * @param handler will be called when all results have been sent
-   */
-  private static void merge(AsyncCursor<String> cursor, HttpServerResponse response,
-    long count, Handler<AsyncResult<Long>> handler) {
-    if (cursor.hasNext()) {
-      cursor.next(ar -> {
-        if (ar.succeeded()) {
-          if (count > 0) {
             response.write(",");
           }
-          response.write("\"" + ar.result() + "\"");
-          merge(cursor, response, count + 1, handler);
-        } else {
-          handler.handle(Future.failedFuture(ar.cause()));
-        }
-      });
-    } else {
-      handler.handle(Future.succeededFuture(count));
-    }
+          response.write("\"" + x + "\"");
+        },
+        err -> fail(response, err),
+        () -> response
+          .write("]")
+          .setStatusCode(200)
+          .end());
   }
 
   /**
