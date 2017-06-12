@@ -43,4 +43,20 @@ public interface Store {
    * @param handler will be called when the chunks have been retrieved from the store
    */
   void get(String search, String path, Handler<AsyncResult<StoreCursor>> handler);
+
+  /**
+   * Start scrolling but load only one frame.
+   * @param search the search query
+   * @param path the path where to search for the chunks (may be null)
+   * @param handler will be called when the chunks have been retrieved from the store
+   * @param size the number of elements to load.
+   */
+  void scroll(String search, String path, int size, Handler<AsyncResult<StoreCursor>> handler);
+
+  /**
+   * Continue scrolling with a given scrollId
+   * @param scrollId The scrollId to load the chunks
+   * @param handler will be called when the chunks have been retrieved from the store
+   */
+  void scroll(String scrollId, Handler<AsyncResult<StoreCursor>> handler);
 }

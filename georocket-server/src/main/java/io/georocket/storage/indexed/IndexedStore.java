@@ -23,8 +23,6 @@ import io.vertx.core.json.JsonObject;
  * @author Michel Kraemer
  */
 public abstract class IndexedStore implements Store {
-  private static final int PAGE_SIZE = 100;
-  
   private final Vertx vertx;
   
   /**
@@ -76,7 +74,7 @@ public abstract class IndexedStore implements Store {
 
   @Override
   public void delete(String search, String path, Handler<AsyncResult<Void>> handler) {
-    new IndexedStoreCursor(vertx, PAGE_SIZE, search, path).start(ar -> {
+    get(search, path, ar -> {
       if (ar.failed()) {
         Throwable cause = ar.cause();
         if (cause instanceof ReplyException) {
@@ -99,9 +97,19 @@ public abstract class IndexedStore implements Store {
 
   @Override
   public void get(String search, String path, Handler<AsyncResult<StoreCursor>> handler) {
-    new IndexedStoreCursor(vertx, PAGE_SIZE, search, path).start(handler);
+    new IndexedStoreCursor(vertx, search, path).start(handler);
   }
-  
+
+  @Override
+  public void scroll(String search, String path, int size, Handler<AsyncResult<StoreCursor>> handler) {
+    new FrameCursor(vertx, search, path, size).start(handler);
+  }
+
+  @Override
+  public void scroll(String scrollId, Handler<AsyncResult<StoreCursor>> handler) {
+    new FrameCursor(vertx, scrollId).start(handler);
+  }
+
   /**
    * Iterate over a cursor and delete all returned chunks from the index
    * and from the store.
@@ -128,8 +136,9 @@ public abstract class IndexedStore implements Store {
         } else {
           // add item to queue
           paths.add(cursor.getChunkPath());
-          
-          if (paths.size() >= PAGE_SIZE) {
+          int size = cursor.getInfo().getCurrentHits();
+
+          if (paths.size() >= size) {
             // if there are enough items in the queue, bulk delete them
             doDeleteBulk(paths, handleBulk);
           } else {

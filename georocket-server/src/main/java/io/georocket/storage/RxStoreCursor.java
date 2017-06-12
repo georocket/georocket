@@ -46,7 +46,12 @@ public class RxStoreCursor implements StoreCursor {
   public String getChunkPath() {
     return delegate.getChunkPath();
   }
-  
+
+  @Override
+  public CursorInfo getInfo() {
+    return delegate.getInfo();
+  }
+
   /**
    * Convert this cursor to an observable
    * @return an observable emitting the chunks from the cursor and their

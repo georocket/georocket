@@ -246,6 +246,7 @@ Content-Length: 100
 === GET file
 
 Search the data store for chunks that match a given <<query-language, query>>. Merge the chunks found and return the result as a file.
+<<scrolling,Scrolling>> is also available.
 
 ===== Resource URL
 
@@ -261,6 +262,12 @@ Search the data store for chunks that match a given <<query-language, query>>. M
 | *search* +
   _(optional)_
 | A URL-encoded <<query-language, query string>>. If no query string is provided all chunks from the requested layer will be returned.
+| *scroll* +
+  _(optional)_
+| A boolean ("true"/"false") indicating whether the result should be <<scrolled, scrolled>>.
+| *scrollId* +
+  _(optional)_
+| The scrollId from a previous <<scrolling, scrolling>>.
 |===
 
 ===== Status codes
@@ -285,6 +292,49 @@ Search the data store for chunks that match a given <<query-language, query>>. M
 
 ----
 HTTP/1.1 200 OK
+Transfer-Encoding: chunked
+
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<CityModel ...>
+  ...
+</CityModel>
+----
+
+[[scrolling]]
+==== Scrolling
+
+Scrolling is available to retrieve some portion of the results from a GET query at a time.
+With scrolling the returned file is also stand-alone, meaning that it has a root element and the same structure as a un-unscrolled file.
+The response also contains a "X-Scroll-Id" header to retrieve the next elements.
+
+The next example request shows how to start a scroll GET request.
+
+===== Example request
+
+  GET /store/CityModel?scroll=true&search=LOD1+textured+13.378,52.515,13.380,52.517 HTTP/1.1
+  
+The response will contain a maximum of 100 elements. The default value of 100 can be modified
+with the query argument `size`.
+
+===== Example request
+
+  GET /store/CityModel?scroll=true&size=50&search=LOD1+textured+13.378,52.515,13.380,52.517 HTTP/1.1
+
+===== Example response
+
+The next example request shows how to continue a scroll. The scrollId GET parameter is taken from the preceding example response header ("X-Scroll-Id").
+
+===== Example request
+
+  GET /store/CityModel?scroll=true&scrollId=some_scroll_id&search=LOD1+textured+13.378,52.515,13.380,52.517 HTTP/1.1
+
+===== Example response
+
+----
+HTTP/1.1 200 OK
+X-Scroll-Id: some_new_scroll_id
+X-Total-Hits: 420
+X-Hits: 100
 Transfer-Encoding: chunked
 
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>

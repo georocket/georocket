@@ -1,5 +1,6 @@
 package io.georocket.http;
 
+import io.georocket.storage.StoreCursor;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -83,14 +84,12 @@ public class StoreEndpoint extends AbstractEndpoint {
    * Initialize the given merger. Perform a search using the given search string
    * and pass all chunk metadata retrieved to the merger.
    * @param merger the merger to initialize
-   * @param search the search query
-   * @param path the path where to perform the search
+   * @param data data to use for the initialization
    * @return an observable that will emit exactly one item when the merger
    * has been initialized with all results
    */
-  private Observable<Void> initializeMerger(MultiMerger merger, String search,
-      String path) {
-    return store.getObservable(search, path)
+  private Observable<Void> initializeMerger(MultiMerger merger, Observable<StoreCursor> data) {
+    return data
       .map(RxStoreCursor::new)
       .flatMap(RxStoreCursor::toObservable)
       .map(Pair::getLeft)
@@ -102,14 +101,12 @@ public class StoreEndpoint extends AbstractEndpoint {
   /**
    * Perform a search and merge all retrieved chunks using the given merger
    * @param merger the merger
-   * @param search the search query
-   * @param path the path where to perform the search
-   * @param out a write stream to write the merged chunks to
+   * @param data Data to merge into the response
+   * @param out the response to write the merged chunks to
    * @return an observable that will emit one item when all chunks have been merged
    */
-  private Observable<Void> doMerge(MultiMerger merger, String search, String path,
-      WriteStream<Buffer> out) {
-    return store.getObservable(search, path)
+  private Observable<Void> doMerge(MultiMerger merger, Observable<StoreCursor> data, WriteStream<Buffer> out) {
+    return data
       .map(RxStoreCursor::new)
       .flatMap(RxStoreCursor::toObservable)
       .flatMap(p -> store.getOneObservable(p.getRight())
@@ -149,18 +146,54 @@ public class StoreEndpoint extends AbstractEndpoint {
         }
       });
   }
+
+  /**
+   * Read the context, select the right StoreCursor and set the respose header. 
+   * @param context The clients routing context
+   * @return Observable which provide a StoreCursor
+   */
+  protected Observable<StoreCursor> prepareCursor(RoutingContext context) {
+    HttpServerRequest request = context.request();
+    HttpServerResponse response = context.response();
+    
+    String scroll = request.getParam("scroll");
+    String scrollId = request.getParam("scrollId");
+    Boolean scrolling = "true".equals(scroll) || scrollId != null;
+    
+    return Observable.<StoreCursor>defer(() -> {
+      String path = getEndpointPath(context);
+      String search = request.getParam("search");
+      String strSize = request.getParam("size");
+      int size = strSize == null ? 100 : new Integer(strSize);
+
+      if (scrolling) {
+        if (scrollId == null) {
+          return store.scrollObservable(search, path, size);
+        } else {
+          return store.scrollObservable(scrollId);
+        }
+      } else {
+        return store.getObservable(search, path);
+      }
+    }).doOnNext(cursor -> {
+      if (scrolling) {
+        response
+          .putHeader("X-Scroll-Id", cursor.getInfo().getScrollId())
+          .putHeader("X-Total-Hits", String.valueOf(cursor.getInfo().getTotalHits()))
+          .putHeader("X-Hits", String.valueOf(cursor.getInfo().getCurrentHits()));
+      }
+    });
+  }
   
   /**
    * Handles the HTTP GET request for a bunch of chunks
    * @param context the routing context
    */
   private void onGet(RoutingContext context) {
-    HttpServerRequest request = context.request();
     HttpServerResponse response = context.response();
-
-    String path = getEndpointPath(context);
-    String search = request.getParam("search");
-
+    
+    Observable<StoreCursor> data = prepareCursor(context);
+    
     // Our responses must always be chunked because we cannot calculate
     // the exact content-length beforehand. We perform two searches, one to
     // initialize the merger and one to do the actual merge. The problem is
@@ -172,8 +205,8 @@ public class StoreEndpoint extends AbstractEndpoint {
     // perform two searches: first initialize the merger and then
     // merge all retrieved chunks
     MultiMerger merger = new MultiMerger();
-    initializeMerger(merger, search, path)
-      .flatMap(v -> doMerge(merger, search, path, response))
+    initializeMerger(merger, data)
+      .flatMap(v -> doMerge(merger, data, response))
       .subscribe(v -> {
         response.end();
       }, err -> {
