@@ -39,7 +39,7 @@ public class IndexedMetadataStore implements MetadataStore {
       template.put("path", path);
     }
     new IndexedMetadataCursor<>(Objects::toString,
-      AddressConstants.METADATA_GET_PROPERTIES, vertx, PAGE_SIZE, template)
+      AddressConstants.METADATA_GET_PROPERTY_VALUES, vertx, PAGE_SIZE, template)
       .start(handler);
   }
 

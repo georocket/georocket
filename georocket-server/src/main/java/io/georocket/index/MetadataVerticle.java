@@ -10,13 +10,11 @@ import io.georocket.index.generic.DefaultMetaIndexerFactory;
 import io.georocket.query.DefaultQueryCompiler;
 import io.georocket.util.MapUtils;
 import io.vertx.core.Future;
-import io.vertx.core.impl.NoStackTraceThrowable;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.rxjava.core.AbstractVerticle;
-import org.apache.commons.lang3.StringEscapeUtils;
 import rx.Observable;
 import rx.Single;
 
@@ -31,7 +29,6 @@ import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static io.georocket.util.ThrowableHelper.throwableToCode;
@@ -120,7 +117,7 @@ public class MetadataVerticle extends AbstractVerticle {
    * Register all message consumers for this verticle
    */
   private void registerMessageConsumers() {
-    register(AddressConstants.METADATA_GET_PROPERTIES, this::onGetPropertyValues);
+    register(AddressConstants.METADATA_GET_PROPERTY_VALUES, this::onGetPropertyValues);
     register(AddressConstants.METADATA_SET_PROPERTIES, this::onSetProperties);
     register(AddressConstants.METADATA_REMOVE_PROPERTIES, this::onRemoveProperties);
     register(AddressConstants.METADATA_APPEND_TAGS, this::onAppendTags);
