@@ -16,24 +16,24 @@ import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 
 /**
- * Tests {@link TagsClient}
+ * Tests {@link StoreClient}
  * @author Tim Hellhake
  */
 @RunWith(VertxUnitRunner.class)
-public class TagsClientTest extends StoreClientTestBase {
+public class StoreClientTagsTest extends StoreClientTestBase {
   /**
    * Test if tags can be can be appended
    * @param context the test context
    */
   @Test
   public void appendTags(TestContext context) {
-    String url = "/tags/?search=test&tags=a,b,c";
+    String url = "/store/?search=test&tags=a,b,c";
     stubFor(put(urlEqualTo(url))
       .willReturn(aResponse()
         .withStatus(204)));
     List<String> tags = Arrays.asList("a", "b", "c");
     Async async = context.async();
-    client.getTagsClient().appendTags("test", "/", tags, ar -> {
+    client.getStore().appendTags("test", "/", tags, ar -> {
       context.assertTrue(ar.succeeded());
       async.complete();
     });
@@ -45,13 +45,13 @@ public class TagsClientTest extends StoreClientTestBase {
    */
   @Test
   public void removeTags(TestContext context) {
-    String url = "/tags/?search=test&tags=a,b,c";
+    String url = "/store/?search=test&tags=a,b,c";
     stubFor(delete(urlEqualTo(url))
       .willReturn(aResponse()
         .withStatus(204)));
     List<String> tags = Arrays.asList("a", "b", "c");
     Async async = context.async();
-    client.getTagsClient().removeTags("test", "/", tags, ar -> {
+    client.getStore().removeTags("test", "/", tags, ar -> {
       context.assertTrue(ar.succeeded());
       async.complete();
     });

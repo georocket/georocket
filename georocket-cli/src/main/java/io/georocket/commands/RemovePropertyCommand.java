@@ -88,7 +88,7 @@ public class RemovePropertyCommand extends AbstractGeoRocketCommand {
   public void doRun(String[] remainingArgs, InputReader in, PrintWriter out,
       Handler<Integer> handler) throws OptionParserException, IOException {
     GeoRocketClient client = createClient();
-    client.getPropertiesClient().removeProperties(query, layer, properties, ar -> {
+    client.getStore().removeProperties(query, layer, properties, ar -> {
       if (ar.failed()) {
         client.close();
         Throwable t = ar.cause();

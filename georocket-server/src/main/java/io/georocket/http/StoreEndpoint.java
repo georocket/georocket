@@ -1,15 +1,20 @@
 package io.georocket.http;
 
+import io.georocket.storage.AsyncCursor;
 import io.georocket.storage.StoreCursor;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
+import io.georocket.ServerAPIException;
+import io.georocket.storage.MetadataStore;
+import io.georocket.storage.indexed.IndexedMetadataStore;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.ParseException;
@@ -59,6 +64,7 @@ public class StoreEndpoint extends AbstractEndpoint {
   
   private RxStore store;
   private String storagePath;
+  private MetadataStore metadataStore;
 
   /**
    * Create the endpoint
@@ -69,12 +75,14 @@ public class StoreEndpoint extends AbstractEndpoint {
     store = new RxStore(StoreFactory.createStore(vertx));
     storagePath = vertx.getOrCreateContext().config()
         .getString(ConfigConstants.STORAGE_FILE_PATH);
+    metadataStore = new IndexedMetadataStore(vertx);
   }
 
   @Override
   public Router createRouter() {
     Router router = Router.router(vertx);
     router.get("/*").handler(this::onGet);
+    router.put("/*").handler(this::onPut);
     router.post("/*").handler(this::onPost);
     router.delete("/*").handler(this::onDelete);
     return router;
@@ -190,8 +198,26 @@ public class StoreEndpoint extends AbstractEndpoint {
    * @param context the routing context
    */
   private void onGet(RoutingContext context) {
+    HttpServerRequest request = context.request();
     HttpServerResponse response = context.response();
-    
+
+    String path = getEndpointPath(context);
+    String search = request.getParam("search");
+    String property = request.getParam("property");
+
+    if (property != null) {
+      getPropertyValues(search, path, property, response);
+    } else {
+      getChunks(context);
+    }
+  }
+
+  /**
+   * Search all chunks for the specified query and path
+   * @param context the routing context
+   */
+  private void getChunks(RoutingContext context) {
+    HttpServerResponse response = context.response();
     Observable<StoreCursor> data = prepareCursor(context);
     
     // Our responses must always be chunked because we cannot calculate
@@ -216,7 +242,64 @@ public class StoreEndpoint extends AbstractEndpoint {
         fail(response, err);
       });
   }
-  
+
+  /**
+   * Get all values for the specified property
+   * @param search the search query
+   * @param path the path
+   * @param property the name of the property
+   * @param response the http response
+   */
+  private void getPropertyValues(String search, String path, String property,
+    HttpServerResponse response) {
+    response.setChunked(true);
+    response.write("[");
+
+    metadataStore.getPropertyValues(search, path, property, ar -> {
+      if (ar.succeeded()) {
+        AsyncCursor<String> cursor = ar.result();
+        merge(cursor, response, 0, ar2 -> {
+          if (ar2.succeeded()) {
+            response
+              .write("]")
+              .setStatusCode(200)
+              .end();
+          } else {
+            fail(response, ar2.cause());
+          }
+        });
+      } else {
+        fail(response, ar.cause());
+      }
+    });
+  }
+
+  /**
+   * Merge the results of the cursor to a json array
+   * @param cursor the result cursor
+   * @param response the http response object
+   * @param count the current count of results which have been sent
+   * @param handler will be called when all results have been sent
+   */
+  private static void merge(AsyncCursor<String> cursor, HttpServerResponse response,
+    long count, Handler<AsyncResult<Long>> handler) {
+    if (cursor.hasNext()) {
+      cursor.next(ar -> {
+        if (ar.succeeded()) {
+          if (count > 0) {
+            response.write(",");
+          }
+          response.write("\"" + ar.result() + "\"");
+          merge(cursor, response, count + 1, handler);
+        } else {
+          handler.handle(Future.failedFuture(ar.cause()));
+        }
+      });
+    } else {
+      handler.handle(Future.succeededFuture(count));
+    }
+  }
+
   /**
    * Try to detect the content type of a file
    * @param filepath the absolute path to the file to analyse
@@ -395,11 +478,72 @@ public class StoreEndpoint extends AbstractEndpoint {
    */
   private void onDelete(RoutingContext context) {
     String path = getEndpointPath(context);
-    
     HttpServerResponse response = context.response();
     HttpServerRequest request = context.request();
     String search = request.getParam("search");
-    
+    String properties = request.getParam("properties");
+    String tags = request.getParam("tags");
+
+    if (properties != null) {
+      removeProperties(search, path, properties, response);
+    } else if (tags != null) {
+      removeTags(search, path, tags, response);
+    } else {
+      deleteChunks(search, path, response);
+    }
+  }
+
+  /**
+   * Remove properties
+   * @param search the search query
+   * @param path the path
+   * @param properties the properties to remove
+   * @param response the http response
+   */
+  private void removeProperties(String search, String path, String properties,
+    HttpServerResponse response) {
+    List<String> list = Arrays.asList(properties.split(","));
+    metadataStore.removeProperties(search, path, list, ar -> {
+      if (ar.succeeded()) {
+        response
+          .setStatusCode(204)
+          .end();
+      } else {
+        fail(response, ar.cause());
+      }
+    });
+  }
+
+  /**
+   * Remove tags
+   * @param search the search query
+   * @param path the path
+   * @param tags the tags to remove
+   * @param response the http response
+   */
+  private void removeTags(String search, String path, String tags,
+    HttpServerResponse response) {
+    if (tags != null) {
+      List<String> list = Arrays.asList(tags.split(","));
+      metadataStore.removeTags(search, path, list, ar -> {
+        if (ar.succeeded()) {
+          response
+            .setStatusCode(204)
+            .end();
+        } else {
+          fail(response, ar.cause());
+        }
+      });
+    }
+  }
+
+  /**
+   * Delete chunks
+   * @param search the search query
+   * @param path the path
+   * @param response the http response
+   */
+  private void deleteChunks(String search, String path, HttpServerResponse response) {
     store.deleteObservable(search, path)
       .subscribe(v -> {
         response
@@ -409,5 +553,106 @@ public class StoreEndpoint extends AbstractEndpoint {
         log.error("Could not delete chunks", err);
         fail(response, err);
       });
+  }
+
+  /**
+   * Handles the HTTP PUT request
+   * @param context the routing context
+   */
+  private void onPut(RoutingContext context) {
+    String path = getEndpointPath(context);
+    HttpServerResponse response = context.response();
+    HttpServerRequest request = context.request();
+    String search = request.getParam("search");
+    String properties = request.getParam("properties");
+    String tags = request.getParam("tags");
+
+    if (properties != null) {
+      setProperties(search, path, properties, response);
+    } else if (tags != null) {
+      appendTags(search, path, tags, response);
+    } else {
+      response
+        .setStatusCode(405)
+        .end("Chunks cannot be modified");
+    }
+  }
+
+  /**
+   * Set properties
+   * @param search the search query
+   * @param path the path
+   * @param properties the properties to set
+   * @param response the http response
+   */
+  private void setProperties(String search, String path, String properties,
+    HttpServerResponse response) {
+    List<String> list = Arrays.asList(properties.split(","));
+
+    try {
+      Map<String, String> map = parseProperties(list);
+      metadataStore.setProperties(search, path, map, ar -> {
+        if (ar.succeeded()) {
+          response
+            .setStatusCode(204)
+            .end();
+        } else {
+          fail(response, ar.cause());
+        }
+      });
+    } catch (ServerAPIException e) {
+      fail(response, e);
+    }
+  }
+
+  /**
+   * Append tags
+   * @param search the search query
+   * @param path the path
+   * @param tags the tags to append
+   * @param response the http response
+   */
+  private void appendTags(String search, String path, String tags,
+    HttpServerResponse response) {
+    if (tags != null) {
+      List<String> list = Arrays.asList(tags.split(","));
+      metadataStore.appendTags(search, path, list, ar -> {
+        if (ar.succeeded()) {
+          response
+            .setStatusCode(204)
+            .end();
+        } else {
+          fail(response, ar.cause());
+        }
+      });
+    }
+  }
+
+  /**
+   * Parse list of properties in the form key:value
+   * @param updates the list of properties
+   * @return a json object with the property keys as object keys and the property
+   * values as corresponding object values
+   * @throws ServerAPIException if the syntax is not valid
+   */
+  private static Map<String, String> parseProperties(List<String> updates)
+    throws ServerAPIException {
+    Map<String, String> props = new HashMap<>();
+    String regex = "(?<!" + Pattern.quote("\\") + ")" + Pattern.quote(":");
+
+    for (String part : updates) {
+      part = part.trim();
+      String[] property = part.split(regex);
+      if (property.length != 2) {
+        throw new ServerAPIException(
+          ServerAPIException.INVALID_PROPERTY_SYNTAX_ERROR,
+          "Invalid property syntax: " + part);
+      }
+      String key = StringEscapeUtils.unescapeJava(property[0].trim());
+      String value = StringEscapeUtils.unescapeJava(property[1].trim());
+      props.put(key, value);
+    }
+
+    return props;
   }
 }
