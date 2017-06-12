@@ -88,20 +88,9 @@ public class GeoRocketClient implements Closeable {
 
   /**
    * Create a new client accessing the GeoRocket data store
-   * @deprecated use {@link #getStoreClient()} instead (will be removed 2.x)
    * @return the store client
    */
-  @Deprecated
   public StoreClient getStore() {
-    return new StoreClient(client);
-  }
-
-  /**
-   * Create a new client accessing the GeoRocket data store
-   * @return the store client
-   * @since 1.1.0
-   */
-  public StoreClient getStoreClient() {
     return new StoreClient(client);
   }
 }

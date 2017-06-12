@@ -29,7 +29,7 @@ public abstract class AbstractQueryCommand extends AbstractGeoRocketCommand {
   protected void query(String query, String layer, PrintWriter out,
       Handler<Integer> handler) throws IOException {
     GeoRocketClient client = createClient();
-    client.getStoreClient().search(query, layer, ar -> {
+    client.getStore().search(query, layer, ar -> {
       if (ar.failed()) {
         error(ar.cause().getMessage());
         if (!(ar.cause() instanceof NoSuchElementException)
