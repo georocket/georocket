@@ -2,14 +2,12 @@ package io.georocket.storage;
 
 /**
  * Information about the cursor.
- * 
  * @author Andrej Sajenko
  */
 public class CursorInfo {
-  
   private String scrollId;
-  private Long totalHits;
-  private Integer currentHits;
+  private long totalHits;
+  private int currentHits;
 
   /**
    * Standard constructor.
@@ -18,7 +16,7 @@ public class CursorInfo {
    * @param totalHits Total number of elements.
    * @param currentHits The current number of elements loaded in a frame.
    */
-  public CursorInfo(String scrollId, Long totalHits, Integer currentHits) {
+  public CursorInfo(String scrollId, long totalHits, int currentHits) {
     this.scrollId = scrollId;
     this.totalHits = totalHits;
     this.currentHits = currentHits;
@@ -34,14 +32,14 @@ public class CursorInfo {
   /**
    * @return The number of all elements.
    */
-  public Long getTotalHits() {
+  public long getTotalHits() {
     return totalHits;
   }
 
   /**
    * @return The current number of elements loaded in a frame.
    */
-  public Integer getCurrentHits() {
+  public int getCurrentHits() {
     return currentHits;
   }
 }

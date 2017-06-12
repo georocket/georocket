@@ -60,7 +60,7 @@ public class FrameCursor implements StoreCursor {
    * 
    * <b>INV: <code>SIZE <= totalHits</code></b>
    */
-  private Long totalHits;
+  private long totalHits;
 
   /**
    * The chunk IDs retrieved in the last batch

@@ -15,11 +15,9 @@ import io.vertx.core.buffer.Buffer;
 
 /**
  * Mock for georocket indexed store.
- * 
  * @author David Gengenbach
  */
 public class MockStore extends IndexedStore {
-  
   static final String RETURNED_CHUNK = "{\"type\":\"Polygon\"}";
 
   /**

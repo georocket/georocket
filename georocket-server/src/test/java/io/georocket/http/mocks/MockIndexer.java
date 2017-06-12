@@ -7,26 +7,20 @@ import io.vertx.rxjava.core.Vertx;
 import rx.Subscription;
 
 /**
- * Mocks an indexer
- * 
- * Consumes messages from {@link AddressConstants#INDEXER_QUERY} and returns hits.
+ * <p>Mocks an indexer</p>
+ * <p>Consumes messages from {@link AddressConstants#INDEXER_QUERY} and returns hits.
  * The flow is the following:
  * If no scrollId is given in the request, returns {@link MockIndexer#HITS_PER_PAGE} items.
- * Also reply the scrollId {@link MockIndexer#FIRST_RETURNED_SCROLL_ID}.
- * 
- * If the scrollId {@link MockIndexer#FIRST_RETURNED_SCROLL_ID} is given, returns ({@link MockIndexer#TOTAL_HITS}- {@link MockIndexer#HITS_PER_PAGE}) items.
+ * Also reply the scrollId {@link MockIndexer#FIRST_RETURNED_SCROLL_ID}.</p>
+ * <p>If the scrollId {@link MockIndexer#FIRST_RETURNED_SCROLL_ID} is given, returns ({@link MockIndexer#TOTAL_HITS}- {@link MockIndexer#HITS_PER_PAGE}) items.
  * (This number IS smaller than {@link MockIndexer#HITS_PER_PAGE}!)
- * Also replies the scrollId {@link MockIndexer#INVALID_SCROLLID}.
- * 
- * If the scrollId {@link MockIndexer#INVALID_SCROLLID} is given, returns 0 items.
- * Also replies the scrollId {@link MockIndexer#INVALID_SCROLLID}.
- * 
- * So this MockIndexer simulates a query response that has 2 pages: one full and one not-full.
- * 
+ * Also replies the scrollId {@link MockIndexer#INVALID_SCROLLID}.</p>
+ * <p>If the scrollId {@link MockIndexer#INVALID_SCROLLID} is given, returns 0 items.
+ * Also replies the scrollId {@link MockIndexer#INVALID_SCROLLID}.</p>
+ * <p>So this MockIndexer simulates a query response that has 2 pages: one full and one not-full.</p>
  * @author David Gengenbach
  */
 public class MockIndexer {
-
   /**
    * The number of hits per page
    */
