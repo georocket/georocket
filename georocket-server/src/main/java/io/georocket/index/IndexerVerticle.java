@@ -602,6 +602,9 @@ public class IndexerVerticle extends AbstractVerticle {
     String scrollId = body.getString("scrollId");
     int pageSize = body.getInteger("pageSize", 100);
     String timeout = "1m"; // one minute
+    
+    JsonObject parameters = new JsonObject()
+      .put("size", pageSize);
 
     Observable<JsonObject> observable;
     if (scrollId == null) {
@@ -615,7 +618,7 @@ public class IndexerVerticle extends AbstractVerticle {
       } catch (Throwable t) {
         return Observable.error(t);
       }
-      observable = client.beginScroll(TYPE_NAME, null, postFilter, pageSize, timeout);
+      observable = client.beginScroll(TYPE_NAME, null, postFilter, parameters, timeout);
     } else {
       // continue searching
       observable = client.continueScroll(scrollId, timeout);

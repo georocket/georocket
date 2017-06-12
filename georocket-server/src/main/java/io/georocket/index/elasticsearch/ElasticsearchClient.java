@@ -33,14 +33,14 @@ public interface ElasticsearchClient {
    * Perform a search and start scrolling over the result documents
    * @param type the type of the documents to search
    * @param query the query to send
-   * @param pageSize the number of objects to return in one response
+   * @param parameters the elasticsearch parameters
    * @param timeout the time after which the returned scroll id becomes invalid
    * @return an object containing the search hits and a scroll id that can
    * be passed to {@link #continueScroll(String, String)} to get more results
    */
   default Observable<JsonObject> beginScroll(String type, JsonObject query,
-      int pageSize, String timeout) {
-    return beginScroll(type, query, null, pageSize, timeout);
+      JsonObject parameters, String timeout) {
+    return beginScroll(type, query, null, parameters, timeout);
   }
   
   /**
@@ -52,14 +52,14 @@ public interface ElasticsearchClient {
    * <code>postFilter</code> must be set)
    * @param postFilter a filter to apply (may be <code>null</code>, in this case
    * <code>query</code> must be set)
-   * @param pageSize the number of objects to return in one response
+   * @param parameters the elasticsearch parameters
    * @param timeout the time after which the returned scroll id becomes invalid
    * @return an object containing the search hits and a scroll id that can
    * be passed to {@link #continueScroll(String, String)} to get more results
    */
   default Observable<JsonObject> beginScroll(String type, JsonObject query,
-      JsonObject postFilter, int pageSize, String timeout) {
-    return beginScroll(type, query, postFilter, null, pageSize, timeout);
+      JsonObject postFilter, JsonObject parameters, String timeout) {
+    return beginScroll(type, query, postFilter, null, parameters, timeout);
   }
 
   /**
@@ -72,17 +72,17 @@ public interface ElasticsearchClient {
    * @param postFilter a filter to apply (may be <code>null</code>, in this case
    * <code>query</code> must be set)
    * @param aggregations the aggregations to apply. Can be <code>null</code>
-   * @param pageSize the number of objects to return in one response
+   * @param parameters the elasticsearch parameters
    * @param timeout the time after which the returned scroll id becomes invalid
    * @return an object containing the search hits and a scroll id that can
    * be passed to {@link #continueScroll(String, String)} to get more results
    */
   Observable<JsonObject> beginScroll(String type, JsonObject query,
-      JsonObject postFilter, JsonObject aggregations, int pageSize, String timeout);
+      JsonObject postFilter, JsonObject aggregations, JsonObject parameters, String timeout);
   
   /**
    * Continue scrolling through search results. Call
-   * {@link #beginScroll(String, JsonObject, int, String)} to get a scroll id
+   * {@link #beginScroll(String, JsonObject, JsonObject, String)} to get a scroll id
    * @param scrollId the scroll id
    * @param timeout the time after which the scroll id becomes invalid
    * @return an object containing new search hits and possibly a new scroll id
@@ -92,47 +92,47 @@ public interface ElasticsearchClient {
   /**
    * Perform a search. The result set might not contain all documents. If you
    * want to scroll over all results use
-   * {@link #beginScroll(String, JsonObject, int, String)}
+   * {@link #beginScroll(String, JsonObject, JsonObject, String)}
    * instead.
    * @param type the type of the documents to search
    * @param query the query to send
-   * @param size the maximum number of documents to return
+   * @param parameters the elasticsearch parameters
    * @return an object containing the search result as returned from Elasticsearch
    */
-  default Observable<JsonObject> search(String type, JsonObject query, int size) {
-    return search(type, query, null, null, size);
+  default Observable<JsonObject> search(String type, JsonObject query, JsonObject parameters) {
+    return search(type, query, null, null, parameters);
   }
   
   /**
    * Perform a search. The result set might not contain all documents. If you
    * want to scroll over all results use
-   * {@link #beginScroll(String, JsonObject, JsonObject, int, String)}
+   * {@link #beginScroll(String, JsonObject, JsonObject, JsonObject, String)}
    * instead.
    * @param type the type of the documents to search
    * @param query the query to send (may be <code>null</code>)
    * @param postFilter a filter to apply (may be <code>null</code>)
-   * @param size the maximum number of documents to return
+   * @param parameters the elasticsearch parameters
    * @return an object containing the search result as returned from Elasticsearch
    */
   default Observable<JsonObject> search(String type, JsonObject query,
-    JsonObject postFilter, int size) {
-    return search(type, query, postFilter, null, size);
+    JsonObject postFilter, JsonObject parameters) {
+    return search(type, query, postFilter, null, parameters);
   }
   
   /**
    * Perform a search. The result set might not contain all documents. If you
    * want to scroll over all results use
-   * {@link #beginScroll(String, JsonObject, JsonObject, JsonObject, int, String)}
+   * {@link #beginScroll(String, JsonObject, JsonObject, JsonObject, JsonObject, String)}
    * instead.
    * @param type the type of the documents to search
    * @param query the query to send (may be <code>null</code>)
    * @param postFilter a filter to apply (may be <code>null</code>)
    * @param aggregations the aggregations to apply (may be <code>null</code>)
-   * @param size the maximum number of documents to return
+   * @param parameters the elasticsearch parameters
    * @return an object containing the search result as returned from Elasticsearch
    */
   Observable<JsonObject> search(String type, JsonObject query,
-    JsonObject postFilter, JsonObject aggregations, int size);
+    JsonObject postFilter, JsonObject aggregations, JsonObject parameters);
 
   /**
    * Perform a count operation. The result is the number of documents

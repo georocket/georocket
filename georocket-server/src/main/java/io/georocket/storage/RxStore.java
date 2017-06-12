@@ -87,7 +87,7 @@ public class RxStore implements Store {
   public void get(String search, String path, Handler<AsyncResult<StoreCursor>> handler) {
     delegate.get(search, path, handler);
   }
-  
+
   /**
    * Observable version of {@link #get(String, String, Handler)}
    * @param search the search query
@@ -98,6 +98,42 @@ public class RxStore implements Store {
   public Observable<StoreCursor> getObservable(String search, String path) {
     ObservableFuture<StoreCursor> o = RxHelper.observableFuture();
     get(search, path, o.toHandler());
+    return o;
+  }
+
+  @Override
+  public void scroll(String search, String path, int size, Handler<AsyncResult<StoreCursor>> handler) {
+    delegate.scroll(search, path, size, handler);
+  }
+
+  /**
+   * Observable version of {@link #scroll(String, String, int, Handler)}
+   * @param search the search query
+   * @param path the path where to search for the chunks (may be null)
+   * @param size the number of elements to load
+   * @return on observable that emits a cursor that can be used to iterate
+   * over all matched chunks
+   */
+  public Observable<StoreCursor> scrollObservable(String search, String path, int size) {
+    ObservableFuture<StoreCursor> o = RxHelper.observableFuture();
+    scroll(search, path, size, o.toHandler());
+    return o;
+  }
+
+  @Override
+  public void scroll(String scrollId, Handler<AsyncResult<StoreCursor>> handler) {
+    delegate.scroll(scrollId, handler);
+  }
+
+  /**
+   * Scrollable version of {@link #scroll(String, Handler)}
+   * @param scrollId The scrollId to load the chunks
+   * @return on observable that emits a cursor that can be used to iterate
+   * over all matched chunks
+   */
+  public Observable<StoreCursor> scrollObservable(String scrollId) {
+    ObservableFuture<StoreCursor> o = RxHelper.observableFuture();
+    scroll(scrollId, o.toHandler());
     return o;
   }
 }

@@ -8,7 +8,7 @@ import io.vertx.core.Handler;
  * @since 1.0.0
  * @author Michel Kraemer
  */
-public interface StoreCursor {
+public interface StoreCursor extends AsyncCursor<ChunkMeta> {
   /**
    * @return true if there are more items to iterate over
    */
@@ -25,4 +25,9 @@ public interface StoreCursor {
    * call to {@link #next(Handler)}
    */
   String getChunkPath();
+
+  /**
+   * @return info about the set of items
+   */
+  CursorInfo getInfo();
 }

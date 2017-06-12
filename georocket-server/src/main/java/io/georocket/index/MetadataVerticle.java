@@ -165,7 +165,8 @@ public class MetadataVerticle extends AbstractVerticle {
     String search = body.getString("search");
     String path = body.getString("path");
     String scrollId = body.getString("scrollId");
-    int pageSize = body.getInteger("pageSize", 100);
+    JsonObject parameters = new JsonObject()
+      .put("size", body.getInteger("pageSize", 100));
     String timeout = "1m"; // one minute
 
     if (scrollId == null) {
@@ -175,7 +176,7 @@ public class MetadataVerticle extends AbstractVerticle {
         // documents and not those that likely match). For the difference between
         // query and post_filter see the Elasticsearch documentation.
         JsonObject postFilter = queryCompiler.compileQuery(search, path, keyExists);
-        return client.beginScroll(TYPE_NAME, null, postFilter, pageSize, timeout).toSingle();
+        return client.beginScroll(TYPE_NAME, null, postFilter, parameters, timeout).toSingle();
       } catch (Throwable t) {
         return Single.error(t);
       }
