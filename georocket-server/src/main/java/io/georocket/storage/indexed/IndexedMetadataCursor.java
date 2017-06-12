@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 /**
  * Implementation of {@link AsyncCursor} for {@link IndexedMetadataStore}
  * @author Tim Hellhake
+ * @param <T> type of the item
  */
 public class IndexedMetadataCursor<T> implements AsyncCursor<T> {
   /**

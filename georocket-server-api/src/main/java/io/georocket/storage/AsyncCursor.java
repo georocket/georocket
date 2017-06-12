@@ -7,6 +7,7 @@ import io.vertx.core.Handler;
  * A cursor that can be used to iterate asynchronously over items
  * @author Tim Hellhake
  * @since 1.1.0
+ * @param <T> type of the item
  */
 public interface AsyncCursor<T> {
   /**

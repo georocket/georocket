@@ -46,12 +46,15 @@ public class StoreEndpointTest {
    */
   private static VertxOptions vertxOptions = new VertxOptions().setBlockedThreadCheckInterval(999999L);
 
+  /**
+   * Run the test on a Vert.x test context
+   */
   @ClassRule
   public static RunTestOnContext rule = new RunTestOnContext(vertxOptions);
 
   /**
    * Starts a MockServer verticle with a StoreEndpoint to test against
-   * @param context Test context
+   * @param context the test context
    */
   @BeforeClass
   public static void setupServer(TestContext context) {
@@ -63,6 +66,10 @@ public class StoreEndpointTest {
     setupMockEndpoint().subscribe(x -> async.complete());
   }
 
+  /**
+   * Uninitialize the unit test
+   * @param context the test context
+   */
   @After
   public void teardown(TestContext context) {
     MockIndexer.unsubscribeIndexer();

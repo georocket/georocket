@@ -3,6 +3,7 @@ package io.georocket.storage;
 /**
  * Information about the cursor.
  * @author Andrej Sajenko
+ * @since 1.1.0
  */
 public class CursorInfo {
   private String scrollId;
