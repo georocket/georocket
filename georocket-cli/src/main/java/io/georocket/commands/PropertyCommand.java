@@ -24,6 +24,9 @@ public class PropertyCommand extends AbstractGeoRocketCommand {
    * @param subcommand the command
    */
   @CommandDescList({
+    @CommandDesc(longName = "get",
+        description = "get property values of a property in GeoRocket",
+        command = GetPropertyCommand.class),
     @CommandDesc(longName = "set",
         description = "set properties of existing chunks in GeoRocket",
         command = SetPropertyCommand.class),
