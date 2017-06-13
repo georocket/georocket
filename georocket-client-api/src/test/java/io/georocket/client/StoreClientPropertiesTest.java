@@ -11,6 +11,7 @@ import java.util.List;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.delete;
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.put;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
@@ -21,6 +22,23 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
  */
 @RunWith(VertxUnitRunner.class)
 public class StoreClientPropertiesTest extends StoreClientTestBase {
+  /**
+   * Test if property values can be get
+   * @param context the test context
+   */
+  @Test
+  public void getProperties(TestContext context) {
+    String url = "/store/?property=test";
+    stubFor(get(urlEqualTo(url))
+      .willReturn(aResponse()
+        .withStatus(200)));
+    Async async = context.async();
+    client.getStore().getPropertyValues("test", "", "/", ar -> {
+      context.assertTrue(ar.succeeded());
+      async.complete();
+    });
+  }
+
   /**
    * Test if properties can be can be set
    * @param context the test context

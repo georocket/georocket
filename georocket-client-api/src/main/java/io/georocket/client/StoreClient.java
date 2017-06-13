@@ -552,6 +552,29 @@ public class StoreClient extends AbstractClient {
   }
 
   /**
+   * <p>Search the GeoRocket store for all values of the specified
+   * property and return a {@link ReadStream} of merged values matching the
+   * given criteria.</p>
+   * <p>If <code>query</code> is <code>null</code> or empty all chunks from
+   * the given <code>layer</code> (and all sub-layers) will be searched for the
+   * property. If <code>layer</code> is also <code>null</code> or empty the
+   * contents of the whole data store will be searched for the property.</p>
+   * <p>The caller is responsible for handling exceptions through
+   * {@link ReadStream#exceptionHandler(Handler)}.</p>
+   * @param property the name of the property
+   * @param query a search query specifying which chunks should be searched
+   * (may be <code>null</code>)
+   * @param layer the name of the layer where to search for chunks recursively
+   * (may be <code>null</code>)
+   * @param handler a handler that will receive the {@link ReadStream} from
+   * which the merged values matching the given criteria can be read
+   */
+  public void getPropertyValues(String property, String query, String layer,
+    Handler<AsyncResult<ReadStream<Buffer>>> handler) {
+    getWithParameter(getEndpoint(), "property", property, query, layer, handler);
+  }
+
+  /**
    * Return the HTTP endpoint, the GeoRocket data store path at
    * server side.
    * @return the endpoint
