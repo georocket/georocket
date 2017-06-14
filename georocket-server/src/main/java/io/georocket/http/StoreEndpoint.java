@@ -13,8 +13,6 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 import io.georocket.ServerAPIException;
-import io.georocket.storage.MetadataStore;
-import io.georocket.storage.indexed.IndexedMetadataStore;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.ParseException;
@@ -64,7 +62,6 @@ public class StoreEndpoint extends AbstractEndpoint {
   
   private RxStore store;
   private String storagePath;
-  private MetadataStore metadataStore;
 
   /**
    * Create the endpoint
@@ -75,7 +72,6 @@ public class StoreEndpoint extends AbstractEndpoint {
     store = new RxStore(StoreFactory.createStore(vertx));
     storagePath = vertx.getOrCreateContext().config()
         .getString(ConfigConstants.STORAGE_FILE_PATH);
-    metadataStore = new IndexedMetadataStore(vertx);
   }
 
   @Override
@@ -255,7 +251,7 @@ public class StoreEndpoint extends AbstractEndpoint {
     response.setChunked(true);
     response.write("[");
 
-    metadataStore.getPropertyValues(search, path, property, ar -> {
+    store.getPropertyValues(search, path, property, ar -> {
       if (ar.succeeded()) {
         AsyncCursor<String> cursor = ar.result();
         merge(cursor, response, 0, ar2 -> {
@@ -503,7 +499,7 @@ public class StoreEndpoint extends AbstractEndpoint {
   private void removeProperties(String search, String path, String properties,
     HttpServerResponse response) {
     List<String> list = Arrays.asList(properties.split(","));
-    metadataStore.removeProperties(search, path, list, ar -> {
+    store.removeProperties(search, path, list, ar -> {
       if (ar.succeeded()) {
         response
           .setStatusCode(204)
@@ -525,7 +521,7 @@ public class StoreEndpoint extends AbstractEndpoint {
     HttpServerResponse response) {
     if (tags != null) {
       List<String> list = Arrays.asList(tags.split(","));
-      metadataStore.removeTags(search, path, list, ar -> {
+      store.removeTags(search, path, list, ar -> {
         if (ar.succeeded()) {
           response
             .setStatusCode(204)
@@ -591,7 +587,7 @@ public class StoreEndpoint extends AbstractEndpoint {
 
     try {
       Map<String, String> map = parseProperties(list);
-      metadataStore.setProperties(search, path, map, ar -> {
+      store.setProperties(search, path, map, ar -> {
         if (ar.succeeded()) {
           response
             .setStatusCode(204)
@@ -616,7 +612,7 @@ public class StoreEndpoint extends AbstractEndpoint {
     HttpServerResponse response) {
     if (tags != null) {
       List<String> list = Arrays.asList(tags.split(","));
-      metadataStore.appendTags(search, path, list, ar -> {
+      store.appendTags(search, path, list, ar -> {
         if (ar.succeeded()) {
           response
             .setStatusCode(204)
