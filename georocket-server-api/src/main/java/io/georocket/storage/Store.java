@@ -64,6 +64,16 @@ public interface Store {
   void scroll(String scrollId, Handler<AsyncResult<StoreCursor>> handler);
 
   /**
+   * Get all values for the specified attribute
+   * @param search the search query
+   * @param path the path where to search for the values (may be null)
+   * @param attribute the name of the attribute
+   * @param handler will be called when the values have been retrieved from the store
+   */
+  void getAttributeValues(String search, String path, String attribute,
+    Handler<AsyncResult<AsyncCursor<String>>> handler);
+
+  /**
    * Get all values for the specified property
    * @param search the search query
    * @param path the path where to search for the values (may be null)
