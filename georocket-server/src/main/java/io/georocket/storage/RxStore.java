@@ -5,6 +5,10 @@ import io.vertx.core.Handler;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
 import rx.Observable;
+import rx.Single;
+
+import java.util.List;
+import java.util.Map;
 
 /**
  * Wraps around {@link Store} and adds methods to be used with RxJava
@@ -135,5 +139,68 @@ public class RxStore implements Store {
     ObservableFuture<StoreCursor> o = RxHelper.observableFuture();
     scroll(scrollId, o.toHandler());
     return o;
+  }
+
+  @Override
+  public void getPropertyValues(String search, String path, String property,
+      Handler<AsyncResult<AsyncCursor<String>>> handler) {
+    delegate.getPropertyValues(search, path, property, handler);
+  }
+
+  public Single<AsyncCursor<String>> rxGetPropertyValues(String search,
+      String path, String property) {
+    ObservableFuture<AsyncCursor<String>> o = RxHelper.observableFuture();
+    getPropertyValues(search, path, property, o.toHandler());
+    return o.toSingle();
+  }
+
+  @Override
+  public void setProperties(String search, String path,
+      Map<String, String> properties, Handler<AsyncResult<Void>> handler) {
+    delegate.setProperties(search, path, properties, handler);
+  }
+
+  public Single<Void> rxSetProperties(String search, String path,
+      Map<String, String> properties) {
+    ObservableFuture<Void> o = RxHelper.observableFuture();
+    setProperties(search, path, properties, o.toHandler());
+    return o.toSingle();
+  }
+
+  @Override
+  public void removeProperties(String search, String path,
+      List<String> properties, Handler<AsyncResult<Void>> handler) {
+    delegate.removeProperties(search, path, properties, handler);
+  }
+
+  public Single<Void> rxRemoveProperties(String search, String path,
+      List<String> properties) {
+    ObservableFuture<Void> o = RxHelper.observableFuture();
+    removeProperties(search, path, properties, o.toHandler());
+    return o.toSingle();
+  }
+
+  @Override
+  public void appendTags(String search, String path, List<String> tags,
+      Handler<AsyncResult<Void>> handler) {
+    delegate.appendTags(search, path, tags, handler);
+  }
+
+  public Single<Void> rxAppendTags(String search, String path, List<String> tags) {
+      ObservableFuture<Void> o = RxHelper.observableFuture();
+    appendTags(search, path, tags, o.toHandler());
+    return o.toSingle();
+  }
+
+  @Override
+  public void removeTags(String search, String path, List<String> tags,
+      Handler<AsyncResult<Void>> handler) {
+    delegate.removeTags(search, path, tags, handler);
+  }
+
+  public Single<Void> rxRemoveTags(String search, String path, List<String> tags) {
+    ObservableFuture<Void> o = RxHelper.observableFuture();
+    removeTags(search, path, tags, o.toHandler());
+    return o.toSingle();
   }
 }
