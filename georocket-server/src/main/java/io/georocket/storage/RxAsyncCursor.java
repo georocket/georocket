@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * Wraps around {@link AsyncCursor} so it can be used with RxJava
  * @author Tim Hellhake
+ * @param <T> type of the cursor item
  */
 public class RxAsyncCursor<T> implements AsyncCursor<T> {
   private final AsyncCursor<T> delegate;
@@ -45,7 +46,7 @@ public class RxAsyncCursor<T> implements AsyncCursor<T> {
    * @return an observable emitting the items from the cursor
    */
   public Observable<T> toObservable() {
-    return Observable.create(s -> {
+    return Observable.unsafeCreate(s -> {
       s.setProducer(new Producer() {
         private AtomicLong requested = new AtomicLong();
 
