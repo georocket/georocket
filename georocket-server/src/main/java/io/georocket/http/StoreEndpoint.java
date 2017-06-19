@@ -1,6 +1,6 @@
 package io.georocket.http;
 
-import io.georocket.storage.RxIndexedAsyncCursor;
+import io.georocket.storage.RxAsyncCursor;
 import io.georocket.storage.StoreCursor;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -253,7 +253,7 @@ public class StoreEndpoint extends AbstractEndpoint {
     response.write("[");
 
     store.rxGetPropertyValues(search, path, property)
-      .flatMapObservable(x -> new RxIndexedAsyncCursor<>(x).toObservable())
+      .flatMapObservable(x -> new RxAsyncCursor<>(x).toObservable())
       .subscribe(
         x -> {
           if (first[0]) {

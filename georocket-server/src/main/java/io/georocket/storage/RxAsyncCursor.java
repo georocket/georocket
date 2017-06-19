@@ -12,14 +12,14 @@ import java.util.concurrent.atomic.AtomicLong;
  * Wraps around {@link AsyncCursor} so it can be used with RxJava
  * @author Tim Hellhake
  */
-public class RxIndexedAsyncCursor<T> implements AsyncCursor<T> {
+public class RxAsyncCursor<T> implements AsyncCursor<T> {
   private final AsyncCursor<T> delegate;
 
   /**
    * Create a new rx-ified cursor
    * @param delegate the actual cursor to delegate to
    */
-  public RxIndexedAsyncCursor(AsyncCursor<T> delegate) {
+  public RxAsyncCursor(AsyncCursor<T> delegate) {
     this.delegate = delegate;
   }
 
