@@ -25,6 +25,7 @@ def runXMLTests(String georocketHost) {
     xml.testExportNone()
     xml.testTags()
     xml.testProperties()
+    xml.testAttributes()
 }
 
 def finishXMLTests(String georocketHost) {

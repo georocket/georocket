@@ -248,6 +248,14 @@ class XMLTests extends StoreTests {
     }
 
     /**
+     * Get attributes
+     */
+    def testAttributes() {
+        def expected = ["TestBuilding1", "TestBuilding2"]
+        assertValues("", "attribute", "TestBuildingName", expected)
+    }
+
+    /**
      * Assert that no chunk is found for the specified query
      * @param query the query to search for
      */

@@ -200,9 +200,12 @@ public class StoreEndpoint extends AbstractEndpoint {
     String path = getEndpointPath(context);
     String search = request.getParam("search");
     String property = request.getParam("property");
+    String attribute = request.getParam("attribute");
 
     if (property != null) {
       getPropertyValues(search, path, property, response);
+    } else if (attribute != null) {
+      getAttributeValues(search, path, attribute, response);
     } else {
       getChunks(context);
     }
@@ -237,6 +240,37 @@ public class StoreEndpoint extends AbstractEndpoint {
         }
         fail(response, err);
       });
+  }
+
+  /**
+   * Get all values for the specified attribute
+   * @param search the search query
+   * @param path the path
+   * @param attribute the name of the attribute
+   * @param response the http response
+   */
+  private void getAttributeValues(String search, String path, String attribute,
+      HttpServerResponse response) {
+    final Boolean[] first = {true};
+    response.setChunked(true);
+    response.write("[");
+
+    store.rxGetAttributeValues(search, path, attribute)
+      .flatMapObservable(x -> new RxAsyncCursor<>(x).toObservable())
+      .subscribe(
+        x -> {
+          if (first[0]) {
+            first[0] = false;
+          } else {
+            response.write(",");
+          }
+          response.write("\"" + x + "\"");
+        },
+        err -> fail(response, err),
+        () -> response
+          .write("]")
+          .setStatusCode(200)
+          .end());
   }
 
   /**

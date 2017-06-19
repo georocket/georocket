@@ -187,6 +187,20 @@ public abstract class IndexedStore implements Store {
   }
 
   @Override
+  public void getAttributeValues(String search, String path, String attribute,
+      Handler<AsyncResult<AsyncCursor<String>>> handler) {
+    JsonObject template = new JsonObject()
+      .put("search", search)
+      .put("attribute", attribute);
+    if (path != null) {
+      template.put("path", path);
+    }
+    new IndexedAsyncCursor<>(Objects::toString,
+      AddressConstants.METADATA_GET_ATTRIBUTE_VALUES, vertx, template)
+      .start(handler);
+  }
+
+  @Override
   public void getPropertyValues(String search, String path, String property,
       Handler<AsyncResult<AsyncCursor<String>>> handler) {
     JsonObject template = new JsonObject()

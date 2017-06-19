@@ -11,6 +11,7 @@ public final class AddressConstants {
   public static final String INDEXER_ADD = "georocket.indexer.add";
   public static final String INDEXER_QUERY = "georocket.indexer.query";
   public static final String INDEXER_DELETE = "georocket.indexer.delete";
+  public static final String METADATA_GET_ATTRIBUTE_VALUES = "georocket.metadata.attribute.values.get";
   public static final String METADATA_GET_PROPERTY_VALUES = "georocket.metadata.property.values.get";
   public static final String METADATA_SET_PROPERTIES = "georocket.metadata.properties.set";
   public static final String METADATA_REMOVE_PROPERTIES = "georocket.metadata.properties.remove";

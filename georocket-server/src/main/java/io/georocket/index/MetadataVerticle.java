@@ -117,6 +117,7 @@ public class MetadataVerticle extends AbstractVerticle {
    * Register all message consumers for this verticle
    */
   private void registerMessageConsumers() {
+    register(AddressConstants.METADATA_GET_ATTRIBUTE_VALUES, this::onGetAttributeValues);
     register(AddressConstants.METADATA_GET_PROPERTY_VALUES, this::onGetPropertyValues);
     register(AddressConstants.METADATA_SET_PROPERTIES, this::onSetProperties);
     register(AddressConstants.METADATA_REMOVE_PROPERTIES, this::onRemoveProperties);
@@ -133,6 +134,10 @@ public class MetadataVerticle extends AbstractVerticle {
           msg.fail(throwableToCode(err), throwableToMessage(err, ""));
         });
       });
+  }
+
+  private Single<JsonObject> onGetAttributeValues(JsonObject body) {
+    return onGetMap(body, "genAttrs", body.getString("attribute"));
   }
 
   private Single<JsonObject> onGetPropertyValues(JsonObject body) {
