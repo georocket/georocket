@@ -78,7 +78,7 @@ public class GetPropertyCommand extends AbstractGeoRocketCommand {
 
   @Override
   public void doRun(String[] remainingArgs, InputReader in, PrintWriter out,
-    Handler<Integer> handler) throws OptionParserException, IOException {
+      Handler<Integer> handler) throws OptionParserException, IOException {
     GeoRocketClient client = createClient();
     client.getStore().getPropertyValues(property, query, layer, ar -> {
       if (ar.failed()) {

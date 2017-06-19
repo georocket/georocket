@@ -49,8 +49,8 @@ public class AbstractClient {
    * which the results matching the given criteria can be read
    */
   protected void getWithParameter(String endpoint, String parameterName,
-    String parameterValue, String query, String layer,
-    Handler<AsyncResult<ReadStream<Buffer>>> handler) {
+      String parameterValue, String query, String layer,
+      Handler<AsyncResult<ReadStream<Buffer>>> handler) {
     if ((query == null || query.isEmpty()) && (layer == null || layer.isEmpty())) {
       handler.handle(Future.failedFuture("No search query and no layer given. "
         + "Do you really wish to export/query the whole data store? If so, "
@@ -98,7 +98,7 @@ public class AbstractClient {
    * @since 1.1.0
    */
   protected void update(HttpMethod method, String fieldEndpoint, String fieldName,
-    String query, String layer, List<String> updates, Handler<AsyncResult<Void>> handler) {
+      String query, String layer, List<String> updates, Handler<AsyncResult<Void>> handler) {
     if ((query == null || query.isEmpty()) && (layer == null || layer.isEmpty())) {
       handler.handle(Future.failedFuture("No search query and no layer given. "
         + "Do you really wish to update all chunks in the GeoRocket "
@@ -192,7 +192,7 @@ public class AbstractClient {
    * @param handler the handler to call
    */
   protected static <T> void fail(HttpClientResponse response,
-    Handler<AsyncResult<T>> handler) {
+      Handler<AsyncResult<T>> handler) {
     fail(response, handler, ClientAPIException::parse);
   }
 
@@ -205,7 +205,7 @@ public class AbstractClient {
    * @param map a function that maps the parsed error message to an exception
    */
   protected static <T> void fail(HttpClientResponse response,
-    Handler<AsyncResult<T>> handler, Function<String, Throwable> map) {
+      Handler<AsyncResult<T>> handler, Function<String, Throwable> map) {
     response.bodyHandler(buffer ->
       handler.handle(Future.failedFuture(map.apply(buffer.toString()))));
   }
