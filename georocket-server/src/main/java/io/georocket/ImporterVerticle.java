@@ -59,7 +59,7 @@ public class ImporterVerticle extends AbstractVerticle {
   @Override
   public void start() {
     log.info("Launching importer ...");
-    reportActivities = config().getBoolean("georocket.reportActivities", false);
+    reportActivities = config().getBoolean(ConfigConstants.REPORT_ACTIVITIES, false);
     
     store = new RxStore(StoreFactory.createStore(getVertx()));
     String storagePath = config().getString(ConfigConstants.STORAGE_FILE_PATH);
@@ -109,7 +109,7 @@ public class ImporterVerticle extends AbstractVerticle {
     // generate timestamp for this import
     long timestamp = System.currentTimeMillis();
 
-    onImportingStarted(correlationId, filepath, layer, timestamp);
+    onImportingStarted(correlationId, filepath, contentType, layer, timestamp);
 
     FileSystem fs = vertx.fileSystem();
     OpenOptions openOptions = new OpenOptions().setCreate(false).setWrite(false);
@@ -126,11 +126,11 @@ public class ImporterVerticle extends AbstractVerticle {
           });
       }))
       .doOnSuccess(chunkCount -> {
-        onImportingFinished(correlationId, filepath, layer, chunkCount,
+        onImportingFinished(correlationId, filepath, contentType, layer, chunkCount,
            System.currentTimeMillis() - timestamp, null);
       })
       .doOnError(err -> {
-        onImportingFinished(correlationId, filepath, layer, null,
+        onImportingFinished(correlationId, filepath, contentType, layer, null,
             System.currentTimeMillis() - timestamp, err);
       })
       .map(count -> null);
@@ -140,24 +140,26 @@ public class ImporterVerticle extends AbstractVerticle {
    * Will be called before the importer starts importing chunks
    * @param correlationId the id for this import
    * @param filepath the filepath of the file containing the chunks
+   * @param mimeType The mimeType of the imported file
    * @param layer the layer where to import the chunks
    * @param timestamp the time when the importer has started importing
    */
   private void onImportingStarted(String correlationId, String filepath,
-      String layer, long timestamp) {
+      String mimeType, String layer, long timestamp) {
     log.info(String.format("Importing [%s] '%s' to layer '%s' started at '%d'",
         correlationId, filepath, layer, timestamp));
 
     if (reportActivities) {
       JsonObject msg = new JsonObject()
-          .put("activity", "import")
-          .put("state", "store")
-          .put("owner", deploymentID())
-          .put("action", "enter")
-          .put("correlationId", correlationId)
-          .put("timestamp", timestamp)
-          .put("layer", layer);
-      vertx.eventBus().send(AddressConstants.ACTIVITIES, msg);
+        .put("activity", "import")
+        .put("state", "store")
+        .put("owner", deploymentID())
+        .put("action", "enter")
+        .put("correlationId", correlationId)
+        .put("timestamp", timestamp)
+        .put("mimeType", mimeType)
+        .put("layer", layer);
+      vertx.eventBus().publish(AddressConstants.ACTIVITIES, msg);
     }
   }
 
@@ -165,13 +167,14 @@ public class ImporterVerticle extends AbstractVerticle {
    * Will be called after the importer has finished importing chunks
    * @param correlationId the id for this import
    * @param filepath the filepath of the file containing the chunks
+   * @param mimeType The mimeType of the imported file
    * @param layer the layer where to import the chunks
    * @param chunkCount the number of chunks that have been imported
    * @param duration the time it took to import the chunks
    * @param error an error if the process has failed
    */
   private void onImportingFinished(String correlationId, String filepath,
-      String layer, Integer chunkCount, long duration, Throwable error) {
+      String mimeType, String layer, Integer chunkCount, long duration, Throwable error) {
     if (error == null) {
       log.info(String.format("Finished importing [%s] %d chunks '%s' "
           + "to layer '%s' after %d ms", correlationId, chunkCount, filepath,
@@ -184,20 +187,21 @@ public class ImporterVerticle extends AbstractVerticle {
 
     if (reportActivities) {
       JsonObject msg = new JsonObject()
-          .put("activity", "import")
-          .put("state", "store")
-          .put("owner", deploymentID())
-          .put("action", "leave")
-          .put("correlationId", correlationId)
-          .put("chunkCount", chunkCount)
-          .put("duration", duration)
-          .put("layer", layer);
+        .put("activity", "import")
+        .put("state", "store")
+        .put("owner", deploymentID())
+        .put("action", "leave")
+        .put("correlationId", correlationId)
+        .put("chunkCount", chunkCount)
+        .put("duration", duration)
+        .put("mimeType", mimeType)
+        .put("layer", layer);
 
       if (error != null) {
         msg.put("error", error.getMessage());
       }
 
-      vertx.eventBus().send(AddressConstants.ACTIVITIES, msg);
+      vertx.eventBus().publish(AddressConstants.ACTIVITIES, msg);
     }
   }
 

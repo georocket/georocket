@@ -137,7 +137,7 @@ public class IndexerVerticle extends AbstractVerticle {
   public void start(Future<Void> startFuture) {
     // True if the indexer and other verticles should report their activities
     // to the Vert.x event bus (mostly useful for GeoRocket plug-ins)
-    reportActivities = config().getBoolean("georocket.reportActivities", false);
+    reportActivities = config().getBoolean(ConfigConstants.REPORT_ACTIVITIES, false);
     
     maxBulkSize = config().getInteger(ConfigConstants.INDEX_MAX_BULK_SIZE,
         ConfigConstants.DEFAULT_INDEX_MAX_BULK_SIZE);
@@ -278,14 +278,14 @@ public class IndexerVerticle extends AbstractVerticle {
 
     if (reportActivities) {
       JsonObject msg = new JsonObject()
-          .put("activity", "delete")
-          .put("state", "index")
-          .put("owner", deploymentID())
-          .put("action", "enter")
-          .put("chunkCount", paths.size())
-          .put("paths", paths)
-          .put("timestamp", timeStamp);
-      vertx.eventBus().send(AddressConstants.ACTIVITIES, msg);
+        .put("activity", "delete")
+        .put("state", "index")
+        .put("owner", deploymentID())
+        .put("action", "enter")
+        .put("chunkCount", paths.size())
+        .put("paths", paths)
+        .put("timestamp", timeStamp);
+      vertx.eventBus().publish(AddressConstants.ACTIVITIES, msg);
     }
   }
 
@@ -306,19 +306,19 @@ public class IndexerVerticle extends AbstractVerticle {
 
     if (reportActivities) {
       JsonObject msg = new JsonObject()
-          .put("activity", "delete")
-          .put("state", "index")
-          .put("owner", deploymentID())
-          .put("action", "leave")
-          .put("chunkCount", paths.size())
-          .put("paths", paths)
-          .put("duration", duration);
+        .put("activity", "delete")
+        .put("state", "index")
+        .put("owner", deploymentID())
+        .put("action", "leave")
+        .put("chunkCount", paths.size())
+        .put("paths", paths)
+        .put("duration", duration);
 
       if (errorMessage != null) {
         msg.put("error", errorMessage);
       }
 
-      vertx.eventBus().send(AddressConstants.ACTIVITIES, msg);
+      vertx.eventBus().publish(AddressConstants.ACTIVITIES, msg);
     }
   }
   
@@ -345,7 +345,11 @@ public class IndexerVerticle extends AbstractVerticle {
   private Observable<Void> insertDocuments(String type,
       List<Tuple3<String, JsonObject, Message<JsonObject>>> documents) {
     long startTimeStamp = System.currentTimeMillis();
-    onIndexingStarted(startTimeStamp, documents.size());
+    
+    List<String> chunkPaths = Seq.seq(documents)
+      .map(Tuple3::v1)
+      .toList();
+    onIndexingStarted(startTimeStamp, chunkPaths);
 
     List<Tuple2<String, JsonObject>> docsToInsert = Seq.seq(documents)
       .map(Tuple3::limit2)
@@ -373,7 +377,7 @@ public class IndexerVerticle extends AbstractVerticle {
         .map(d -> d.getString("correlationId"))
         .toList();
       onIndexingFinished(stopTimeStamp - startTimeStamp, correlationIds,
-          client.bulkResponseGetErrorMessage(bres));
+          chunkPaths, client.bulkResponseGetErrorMessage(bres));
 
       return Observable.empty();
     });
@@ -382,10 +386,10 @@ public class IndexerVerticle extends AbstractVerticle {
   /**
    * Will be called before the indexer starts the indexing process
    * @param timestamp the time when the indexer has started the process
-   * @param count the number of chunks to index
+   * @param chunkIds A list of chunkIds
    */
-  private void onIndexingStarted(long timestamp, int count) {
-    log.info("Indexing " + count + " chunks");
+  private void onIndexingStarted(long timestamp, List<String> chunkIds) {
+    log.info("Indexing " + chunkIds.size() + " chunks");
     
     if (reportActivities) {
       JsonObject msg = new JsonObject()
@@ -393,8 +397,9 @@ public class IndexerVerticle extends AbstractVerticle {
         .put("state", "index")
         .put("owner", deploymentID())
         .put("action", "enter")
+        .put("chunkIds", new JsonArray(chunkIds))
         .put("timestamp", timestamp);
-      vertx.eventBus().send(AddressConstants.ACTIVITIES, msg);
+      vertx.eventBus().publish(AddressConstants.ACTIVITIES, msg);
     }
   }
 
@@ -403,11 +408,12 @@ public class IndexerVerticle extends AbstractVerticle {
    * @param duration the time passed during indexing
    * @param correlationIds the correlation IDs of the chunks that were processed by
    * the indexer. This list may include IDs of chunks whose indexing failed.
+   * @param chunkIds A list of chunkIds
    * @param errorMessage an error message if the process has failed
    * or <code>null</code> if everything was successful
    */
   private void onIndexingFinished(long duration, List<String> correlationIds,
-      String errorMessage) {
+      List<String> chunkIds, String errorMessage) {
     if (errorMessage != null) {
       log.error("Indexing failed: " + errorMessage);
     } else {
@@ -422,13 +428,14 @@ public class IndexerVerticle extends AbstractVerticle {
         .put("owner", deploymentID())
         .put("action", "leave")
         .put("correlationIds", new JsonArray(correlationIds))
+        .put("chunkIds", new JsonArray(chunkIds))
         .put("duration", duration);
 
       if (errorMessage != null) {
         msg.put("error", errorMessage);
       }
 
-      vertx.eventBus().send(AddressConstants.ACTIVITIES, msg);
+      vertx.eventBus().publish(AddressConstants.ACTIVITIES, msg);
     }
   }
   

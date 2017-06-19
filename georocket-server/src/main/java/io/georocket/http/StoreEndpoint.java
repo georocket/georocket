@@ -1,8 +1,5 @@
 package io.georocket.http;
 
-import static io.georocket.util.ThrowableHelper.throwableToCode;
-import static io.georocket.util.ThrowableHelper.throwableToMessage;
-
 import io.georocket.storage.RxAsyncCursor;
 import io.georocket.storage.StoreCursor;
 
@@ -78,7 +75,7 @@ public class StoreEndpoint extends AbstractEndpoint {
    */
   public StoreEndpoint(Vertx vertx) {
     reportActivities = vertx.getOrCreateContext()
-        .config().getBoolean("georocket.reportActivities", false);
+        .config().getBoolean(ConfigConstants.REPORT_ACTIVITIES, false);
     this.vertx = vertx;
     store = new RxStore(StoreFactory.createStore(vertx));
     storagePath = vertx.getOrCreateContext().config()
@@ -454,12 +451,6 @@ public class StoreEndpoint extends AbstractEndpoint {
         return Observable.just(mimeType);
       })
       .subscribe(detectedContentType -> {
-        request.response()
-          .setStatusCode(202) // Accepted
-          .putHeader("X-Correlation-Id", correlationId)
-          .setStatusMessage("Accepted file - importing in progress")
-          .end();
-
         long duration = System.currentTimeMillis() - startTime;
         this.onReceivingFileFinished(correlationId, duration, layer, null);
 
@@ -493,9 +484,6 @@ public class StoreEndpoint extends AbstractEndpoint {
       }, err -> {
         long duration = System.currentTimeMillis() - startTime;
         this.onReceivingFileFinished(correlationId, duration, layer, err);
-        request.response()
-          .setStatusCode(throwableToCode(err))
-          .end("Could not import file: " + err.getMessage());
         fail(request.response(), err);
         err.printStackTrace();
         fs.delete(filepath, ar -> {});
@@ -507,13 +495,13 @@ public class StoreEndpoint extends AbstractEndpoint {
 
     if (reportActivities) {
       JsonObject msg = new JsonObject()
-          .put("activity", "import")
-          .put("state", "receive")
-          .put("action", "enter")
-          .put("correlationId", correlationId)
-          .put("timestamp", startTime);
+        .put("activity", "import")
+        .put("state", "receive")
+        .put("action", "enter")
+        .put("correlationId", correlationId)
+        .put("timestamp", startTime);
 
-      vertx.eventBus().send(AddressConstants.ACTIVITIES, msg);
+      vertx.eventBus().publish(AddressConstants.ACTIVITIES, msg);
     }
   }
 
@@ -529,17 +517,17 @@ public class StoreEndpoint extends AbstractEndpoint {
 
     if (reportActivities) {
       JsonObject msg = new JsonObject()
-          .put("activity", "import")
-          .put("state", "receive")
-          .put("action", "leave")
-          .put("correlationId", correlationId)
-          .put("duration", duration);
+        .put("activity", "import")
+        .put("state", "receive")
+        .put("action", "leave")
+        .put("correlationId", correlationId)
+        .put("duration", duration);
 
       if (error != null) {
         msg.put("error", error.getMessage());
       }
 
-      vertx.eventBus().send(AddressConstants.ACTIVITIES, msg);
+      vertx.eventBus().publish(AddressConstants.ACTIVITIES, msg);
     }
   }
 

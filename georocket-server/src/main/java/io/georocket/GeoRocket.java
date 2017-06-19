@@ -1,5 +1,6 @@
 package io.georocket;
 
+import io.georocket.constants.AddressConstants;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashSet;
