@@ -15,6 +15,7 @@ public final class ConfigConstants {
   public static final String PORT = "georocket.port";
   
   public static final String LOG_CONFIG = "georocket.logConfig";
+  public static final String REPORT_ACTIVITIES = "georocket.reportActivities";
   
   public static final String STORAGE_CLASS = "georocket.storage.class";
   public static final String STORAGE_FILE_PATH = "georocket.storage.file.path";
