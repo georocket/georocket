@@ -3,10 +3,12 @@ package io.georocket.client;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.http.HttpMethod;
+import io.vertx.core.streams.ReadStream;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -35,6 +37,47 @@ public class AbstractClient {
   }
 
   /**
+   * Execute a get request with specified path, query and additional parameter
+   * @param endpoint the endpoint
+   * @param parameterName the name of the query parameter
+   * @param parameterValue the value of the query parameter
+   * @param query a search query specifying which chunks to return (may be
+   * <code>null</code>)
+   * @param layer the name of the layer where to search for chunks recursively
+   * (may be <code>null</code>)
+   * @param handler a handler that will receive the {@link ReadStream} from
+   * which the results matching the given criteria can be read
+   */
+  protected void getWithParameter(String endpoint, String parameterName,
+      String parameterValue, String query, String layer,
+      Handler<AsyncResult<ReadStream<Buffer>>> handler) {
+    if ((query == null || query.isEmpty()) && (layer == null || layer.isEmpty())) {
+      handler.handle(Future.failedFuture("No search query and no layer given. "
+        + "Do you really wish to export/query the whole data store? If so, "
+        + "set the root layer /."));
+      return;
+    }
+    String queryPath = prepareQuery(query, layer);
+    if (query == null || query.isEmpty()) {
+      queryPath += "?";
+    } else {
+      queryPath += "&";
+    }
+
+    String path = endpoint + queryPath + parameterName + "=" + parameterValue;
+    HttpClientRequest request = client.get(path);
+    request.exceptionHandler(t -> handler.handle(Future.failedFuture(t)));
+    request.handler(response -> {
+      if (response.statusCode() != 200) {
+        fail(response, handler);
+      } else {
+        handler.handle(Future.succeededFuture(response));
+      }
+    });
+    configureRequest(request).end();
+  }
+
+  /**
    * <p>Update a field in the chunk metadata (such as properties or tags).</p>
    * <p>The chunks are either specified by a <code>query</code> or
    * <code>layer</code> information or both. If none is given, all chunks in the
@@ -55,7 +98,7 @@ public class AbstractClient {
    * @since 1.1.0
    */
   protected void update(HttpMethod method, String fieldEndpoint, String fieldName,
-    String query, String layer, List<String> updates, Handler<AsyncResult<Void>> handler) {
+      String query, String layer, List<String> updates, Handler<AsyncResult<Void>> handler) {
     if ((query == null || query.isEmpty()) && (layer == null || layer.isEmpty())) {
       handler.handle(Future.failedFuture("No search query and no layer given. "
         + "Do you really wish to update all chunks in the GeoRocket "
@@ -149,7 +192,7 @@ public class AbstractClient {
    * @param handler the handler to call
    */
   protected static <T> void fail(HttpClientResponse response,
-    Handler<AsyncResult<T>> handler) {
+      Handler<AsyncResult<T>> handler) {
     fail(response, handler, ClientAPIException::parse);
   }
 
@@ -162,7 +205,7 @@ public class AbstractClient {
    * @param map a function that maps the parsed error message to an exception
    */
   protected static <T> void fail(HttpClientResponse response,
-    Handler<AsyncResult<T>> handler, Function<String, Throwable> map) {
+      Handler<AsyncResult<T>> handler, Function<String, Throwable> map) {
     response.bodyHandler(buffer ->
       handler.handle(Future.failedFuture(map.apply(buffer.toString()))));
   }

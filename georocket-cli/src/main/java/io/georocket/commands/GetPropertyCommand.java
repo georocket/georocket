@@ -1,13 +1,7 @@
 package io.georocket.commands;
 
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
 import de.undercouch.underline.InputReader;
-import de.undercouch.underline.Option.ArgumentType;
+import de.undercouch.underline.Option;
 import de.undercouch.underline.OptionDesc;
 import de.undercouch.underline.OptionParserException;
 import de.undercouch.underline.UnknownAttributes;
@@ -17,16 +11,20 @@ import io.vertx.core.impl.NoStackTraceThrowable;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.List;
+
 /**
- * Add tags to existing chunks in the GeoRocket data store
- * @author Benedikt Hiemenz
+ * Get all values of a property
+ * @author Tim Hellhake
  */
-public class AddTagCommand extends AbstractQueryCommand {
-  private static Logger log = LoggerFactory.getLogger(AddTagCommand.class);
+public class GetPropertyCommand extends AbstractGeoRocketCommand {
+  private static Logger log = LoggerFactory.getLogger(GetPropertyCommand.class);
 
   protected String query;
   protected String layer;
-  protected List<String> tags;
+  private String property;
 
   /**
    * Set the query parts
@@ -38,47 +36,41 @@ public class AddTagCommand extends AbstractQueryCommand {
   }
 
   /**
-   * Set the absolute path to the layer from which to update tags
+   * Set the absolute path to the layer from which to update property
    * @param layer the layer
    */
   @OptionDesc(longName = "layer", shortName = "l",
-      description = "absolute path to the layer from which to add tags",
-      argumentName = "PATH", argumentType = ArgumentType.STRING)
+    description = "absolute path to the layer in which to set property",
+    argumentName = "PATH", argumentType = Option.ArgumentType.STRING)
   public void setLayer(String layer) {
     this.layer = layer;
   }
 
   /**
-   * Set the tags to append to the queried chunks within the given layer
-   * @param tags the tags
+   * The property to set to the queried chunks within the given layer
+   * @param property the property
    */
-  @OptionDesc(longName = "tags", shortName = "t",
-      description = "comma-separated list of tags to add to the chunks",
-      argumentName = "TAGS", argumentType = ArgumentType.STRING)
-  public void setTags(String tags) {
-    if (tags == null || tags.isEmpty()) {
-      this.tags = null;
-    } else {
-      this.tags = Stream.of(tags.split(","))
-          .map(String::trim)
-          .collect(Collectors.toList());
-    }
+  @OptionDesc(longName = "property", shortName = "prop",
+    description = "the name of the properties",
+    argumentName = "PROPERTIES", argumentType = Option.ArgumentType.STRING)
+  public void setProperty(String property) {
+    this.property = property;
   }
 
   @Override
   public String getUsageName() {
-    return "tag add";
+    return "property get";
   }
 
   @Override
   public String getUsageDescription() {
-    return "Add tags to existing chunks in the GeoRocket data store";
+    return "Get all values of a property";
   }
 
   @Override
   public boolean checkArguments() {
-    if (tags == null || tags.isEmpty()) {
-      error("no tags given");
+    if (property == null || property.isEmpty()) {
+      error("no property given");
       return false;
     }
     return super.checkArguments();
@@ -88,17 +80,22 @@ public class AddTagCommand extends AbstractQueryCommand {
   public void doRun(String[] remainingArgs, InputReader in, PrintWriter out,
       Handler<Integer> handler) throws OptionParserException, IOException {
     GeoRocketClient client = createClient();
-    client.getStore().appendTags(query, layer, tags, ar -> {
+    client.getStore().getPropertyValues(property, query, layer, ar -> {
       if (ar.failed()) {
-        client.close();
         Throwable t = ar.cause();
         error(t.getMessage());
         if (!(t instanceof NoStackTraceThrowable)) {
-          log.error("Could not add the tags", t);
+          log.error("Could not get values for property " + property, t);
         }
         handler.handle(1);
       } else {
-        handler.handle(0);
+        ar.result().handler(buf -> {
+          out.write(buf.toString("utf-8"));
+        });
+        ar.result().endHandler(v -> {
+          client.close();
+          handler.handle(0);
+        });
       }
     });
   }

@@ -48,7 +48,7 @@ public class StoreClientSearchTest extends StoreClientTestBase {
             .withBody(XML)));
     
     Async async = context.async();
-    client.getStoreClient().search(null, "/", context.asyncAssertSuccess(
+    client.getStore().search(null, "/", context.asyncAssertSuccess(
         assertExport(url, XML, context, async)));
   }
 
@@ -64,7 +64,7 @@ public class StoreClientSearchTest extends StoreClientTestBase {
         .willReturn(aResponse()
             .withStatus(200)
             .withBody(XML)));
-    client.getStoreClient().search(null, "/hello/world", context.asyncAssertSuccess(
+    client.getStore().search(null, "/hello/world", context.asyncAssertSuccess(
         assertExport(url, XML, context, context.async())));
   }
   
@@ -80,7 +80,7 @@ public class StoreClientSearchTest extends StoreClientTestBase {
         .willReturn(aResponse()
             .withStatus(200)
             .withBody(XML)));
-    client.getStoreClient().search("test", context.asyncAssertSuccess(
+    client.getStore().search("test", context.asyncAssertSuccess(
         assertExport(url, XML, context, context.async())));
   }
 
@@ -96,7 +96,7 @@ public class StoreClientSearchTest extends StoreClientTestBase {
         .willReturn(aResponse()
             .withStatus(200)
             .withBody(XML)));
-    client.getStoreClient().search("test1 test2", context.asyncAssertSuccess(
+    client.getStore().search("test1 test2", context.asyncAssertSuccess(
         assertExport(url, XML, context, context.async())));
   }
   
@@ -112,7 +112,7 @@ public class StoreClientSearchTest extends StoreClientTestBase {
         .willReturn(aResponse()
             .withStatus(200)
             .withBody(XML)));
-    client.getStoreClient().search("test", "hello/world", context.asyncAssertSuccess(
+    client.getStore().search("test", "hello/world", context.asyncAssertSuccess(
         assertExport(url, XML, context, context.async())));
   }
 
@@ -128,7 +128,7 @@ public class StoreClientSearchTest extends StoreClientTestBase {
         .willReturn(aResponse()
             .withStatus(200)
             .withBody(XML)));
-    client.getStoreClient().search("test", "he+llo/world", context.asyncAssertSuccess(
+    client.getStore().search("test", "he+llo/world", context.asyncAssertSuccess(
         assertExport(url, XML, context, context.async())));
   }
 }

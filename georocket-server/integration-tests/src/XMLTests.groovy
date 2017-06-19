@@ -180,14 +180,14 @@ class XMLTests extends StoreTests {
         assertNotFound("test3")
 
         // append single test tag to the chunk
-        run("curl -sS -X PUT http://${georocketHost}:63020/tags/"
+        run("curl -sS -X PUT http://${georocketHost}:63020/store/"
                 + "?search=ID_146_D&tags=test1", null, true)
 
         // check if chunk is found by the added tag
         assertFound("test1", "ID_146_D")
 
         // append multiple test tags to the chunk
-        run("curl -sS -X PUT http://${georocketHost}:63020/tags/"
+        run("curl -sS -X PUT http://${georocketHost}:63020/store/"
                 + "?search=ID_146_D&tags=test2,test3", null, true)
 
         // check if the new tags are appended and the previous tag is still present
@@ -196,7 +196,7 @@ class XMLTests extends StoreTests {
         assertFound("test3", "ID_146_D")
 
         // remove first tag
-        run("curl -sS -X DELETE http://${georocketHost}:63020/tags/"
+        run("curl -sS -X DELETE http://${georocketHost}:63020/store/"
                 + "?search=ID_146_D&tags=test1", null, true)
 
         // check if all tags but the first are present
@@ -205,7 +205,7 @@ class XMLTests extends StoreTests {
         assertFound("test3", "ID_146_D")
 
         // remove multiple tags
-        run("curl -sS -X DELETE http://${georocketHost}:63020/tags/"
+        run("curl -sS -X DELETE http://${georocketHost}:63020/store/"
                 + "?search=ID_146_D&tags=test2,test3", null, true)
 
         // check if the tags are removed
@@ -219,7 +219,7 @@ class XMLTests extends StoreTests {
      */
     def testProperties() {
         // set test property
-        run("curl -sS -X PUT http://${georocketHost}:63020/properties/"
+        run("curl -sS -X PUT http://${georocketHost}:63020/store/"
                 + "?search=ID_146_D&properties="
                 + URLEncoder.encode('test1:1', 'UTF-8'), null, true)
 
@@ -228,7 +228,7 @@ class XMLTests extends StoreTests {
         assertNotFound("EQ(test1 2)")
         
         // update property value
-        run("curl -sS -X PUT http://${georocketHost}:63020/properties/"
+        run("curl -sS -X PUT http://${georocketHost}:63020/store/"
                 + "?search=ID_146_D&properties="
                 + URLEncoder.encode('test1:2', 'UTF-8'), null, true)
 
@@ -239,7 +239,7 @@ class XMLTests extends StoreTests {
         assertValues("", "property", "test1", ["2"])
 
         // update property value
-        run("curl -sS -X PUT http://${georocketHost}:63020/properties/"
+        run("curl -sS -X PUT http://${georocketHost}:63020/store/"
                 + "?search=ID_147_D&properties="
                 + URLEncoder.encode('test1:3,test2:3', 'UTF-8'), null, true)
 
@@ -253,7 +253,7 @@ class XMLTests extends StoreTests {
      */
     def assertValues(def query, def field, def name, def values) {
         testUntilOK({
-            def exportedContents = run("curl -sS -X GET http://${georocketHost}:63020/properties/"
+            def exportedContents = run("curl -sS -X GET http://${georocketHost}:63020/store/"
                     + "?search=" + URLEncoder.encode(query, 'UTF-8')
                     + "&$field=$name", null, true)
             try {

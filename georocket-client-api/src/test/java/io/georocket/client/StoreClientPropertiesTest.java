@@ -11,29 +11,47 @@ import java.util.List;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.delete;
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.put;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 
 /**
- * Tests {@link PropertiesClient}
+ * Tests {@link StoreClient}
  * @author Tim Hellhake
  */
 @RunWith(VertxUnitRunner.class)
-public class PropertiesClientTest extends StoreClientTestBase {
+public class StoreClientPropertiesTest extends StoreClientTestBase {
+  /**
+   * Test if property values can be get
+   * @param context the test context
+   */
+  @Test
+  public void getProperties(TestContext context) {
+    String url = "/store/?property=test";
+    stubFor(get(urlEqualTo(url))
+      .willReturn(aResponse()
+        .withStatus(200)));
+    Async async = context.async();
+    client.getStore().getPropertyValues("test", "", "/", ar -> {
+      context.assertTrue(ar.succeeded());
+      async.complete();
+    });
+  }
+
   /**
    * Test if properties can be can be set
    * @param context the test context
    */
   @Test
   public void setProperties(TestContext context) {
-    String url = "/properties/?search=test&properties=a%3D1,b%3D2";
+    String url = "/store/?search=test&properties=a%3D1,b%3D2";
     stubFor(put(urlEqualTo(url))
       .willReturn(aResponse()
         .withStatus(204)));
     List<String> tags = Arrays.asList("a=1", "b=2");
     Async async = context.async();
-    client.getPropertiesClient().setProperties("test", "/", tags, ar -> {
+    client.getStore().setProperties("test", "/", tags, ar -> {
       context.assertTrue(ar.succeeded());
       async.complete();
     });
@@ -45,13 +63,13 @@ public class PropertiesClientTest extends StoreClientTestBase {
    */
   @Test
   public void removeProperties(TestContext context) {
-    String url = "/properties/?search=test&properties=a%3D1,b%3D2";
+    String url = "/store/?search=test&properties=a%3D1,b%3D2";
     stubFor(delete(urlEqualTo(url))
       .willReturn(aResponse()
         .withStatus(204)));
     List<String> tags = Arrays.asList("a=1", "b=2");
     Async async = context.async();
-    client.getPropertiesClient().removeProperties("test", "/", tags, ar -> {
+    client.getStore().removeProperties("test", "/", tags, ar -> {
       context.assertTrue(ar.succeeded());
       async.complete();
     });
