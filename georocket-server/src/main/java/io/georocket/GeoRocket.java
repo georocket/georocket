@@ -1,6 +1,5 @@
 package io.georocket;
 
-import io.georocket.constants.AddressConstants;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashSet;
@@ -35,7 +34,7 @@ import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.web.Router;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
-import rx.Observable;
+import rx.Single;
 import rx.plugins.RxJavaHooks;
 
 /**
@@ -50,43 +49,47 @@ public class GeoRocket extends AbstractVerticle {
   /**
    * Deploy a new verticle with the standard configuration of this instance
    * @param cls the class of the verticle class to deploy
-   * @return an observable that will carry the verticle's deployment id
+   * @return a single that will carry the verticle's deployment id
    */
-  protected Observable<String> deployVerticle(Class<? extends Verticle> cls) {
+  protected Single<String> deployVerticle(Class<? extends Verticle> cls) {
     ObservableFuture<String> observable = RxHelper.observableFuture();
     DeploymentOptions options = new DeploymentOptions().setConfig(config());
     vertx.deployVerticle(cls.getName(), options, observable.toHandler());
-    return observable;
+    return observable.toSingle();
   }
 
   /**
    * Deploy the indexer verticle
-   * @return an observable that will complete when the verticle was deployed
+   * @return a single that will complete when the verticle was deployed
    * and will carry the verticle's deployment id
    */
-  protected Observable<String> deployIndexer() {
+  protected Single<String> deployIndexer() {
     return deployVerticle(IndexerVerticle.class);
   }
 
   /**
    * Deploy the importer verticle
-   * @return an observable that will complete when the verticle was deployed
+   * @return a single that will complete when the verticle was deployed
    * and will carry the verticle's deployment id
    */
-  protected Observable<String> deployImporter() {
+  protected Single<String> deployImporter() {
     return deployVerticle(ImporterVerticle.class);
   }
 
   /**
    * Deploy the metadata verticle
-   * @return an observable that will complete when the verticle was deployed
+   * @return a single that will complete when the verticle was deployed
    * and will carry the verticle's deployment id
    */
-  protected Observable<String> deployMetadata() {
+  protected Single<String> deployMetadata() {
     return deployVerticle(MetadataVerticle.class);
   }
 
-  private Observable<HttpServer> deployHttpServer() {
+  /**
+   * Deploy the http server.
+   * @return a single that will complete when the http server was started.
+   */
+  protected Single<HttpServer> deployHttpServer() {
     String host = config().getString(ConfigConstants.HOST, ConfigConstants.DEFAULT_HOST);
     int port = config().getInteger(ConfigConstants.PORT, ConfigConstants.DEFAULT_PORT);
 
@@ -96,7 +99,7 @@ public class GeoRocket extends AbstractVerticle {
 
     ObservableFuture<HttpServer> observable = RxHelper.observableFuture();
     server.requestHandler(router::accept).listen(port, host, observable.toHandler());
-    return observable;
+    return observable.toSingle();
   }
   
   /**
