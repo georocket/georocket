@@ -201,7 +201,7 @@ public class StoreEndpoint extends AbstractEndpoint {
    * Handles the HTTP GET request for a bunch of chunks
    * @param context the routing context
    */
-  private void onGet(RoutingContext context) {
+  protected void onGet(RoutingContext context) {
     HttpServerRequest request = context.request();
     HttpServerResponse response = context.response();
 
