@@ -171,13 +171,13 @@ public class StoreEndpoint extends AbstractEndpoint {
     String scroll = request.getParam("scroll");
     String scrollId = request.getParam("scrollId");
     Boolean scrolling = "true".equals(scroll) || scrollId != null;
-    
-    return Observable.<StoreCursor>defer(() -> {
-      String path = getEndpointPath(context);
-      String search = request.getParam("search");
-      String strSize = request.getParam("size");
-      int size = strSize == null ? 100 : new Integer(strSize);
 
+    String path = getEndpointPath(context);
+    String search = request.getParam("search");
+    String strSize = request.getParam("size");
+    int size = strSize == null ? 100 : new Integer(strSize);
+
+    return Observable.<StoreCursor>defer(() -> {
       if (scrolling) {
         if (scrollId == null) {
           return store.scrollObservable(search, path, size);
