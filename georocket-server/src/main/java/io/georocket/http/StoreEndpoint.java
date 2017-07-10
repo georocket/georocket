@@ -51,6 +51,7 @@ import io.vertx.ext.web.RoutingContext;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
 import rx.Observable;
+import rx.Single;
 
 /**
  * An HTTP endpoint handling requests related to the GeoRocket data store
@@ -100,10 +101,10 @@ public class StoreEndpoint extends AbstractEndpoint {
    * @return an observable that will emit exactly one item when the merger
    * has been initialized with all results
    */
-  private Observable<Void> initializeMerger(MultiMerger merger, Observable<StoreCursor> data) {
+  private Observable<Void> initializeMerger(MultiMerger merger, Single<StoreCursor> data) {
     return data
       .map(RxStoreCursor::new)
-      .flatMap(RxStoreCursor::toObservable)
+      .flatMapObservable(RxStoreCursor::toObservable)
       .map(Pair::getLeft)
       .flatMap(merger::init)
       .defaultIfEmpty(null)
@@ -115,14 +116,14 @@ public class StoreEndpoint extends AbstractEndpoint {
    * @param merger the merger
    * @param data Data to merge into the response
    * @param out the response to write the merged chunks to
-   * @return an observable that will emit one item when all chunks have been merged
+   * @return a single that will emit one item when all chunks have been merged
    */
-  private Observable<Void> doMerge(MultiMerger merger, Observable<StoreCursor> data, WriteStream<Buffer> out) {
+  private Single<Void> doMerge(MultiMerger merger, Single<StoreCursor> data, WriteStream<Buffer> out) {
     return data
       .map(RxStoreCursor::new)
-      .flatMap(RxStoreCursor::toObservable)
-      .flatMap(p -> store.getOneObservable(p.getRight())
-        .flatMap(crs -> merger.merge(crs, p.getLeft(), out)
+      .flatMapObservable(RxStoreCursor::toObservable)
+      .flatMap(p -> store.rxGetOne(p.getRight())
+        .flatMapObservable(crs -> merger.merge(crs, p.getLeft(), out)
           .map(v -> Pair.of(1L, 0L)) // left: count, right: not_accepted
           .onErrorResumeNext(t -> {
             if (t instanceof IllegalStateException) {
@@ -156,15 +157,15 @@ public class StoreEndpoint extends AbstractEndpoint {
         } else {
           return Observable.error(new FileNotFoundException("Not Found"));
         }
-      });
+      }).toSingle().map(v -> null);
   }
 
   /**
    * Read the context, select the right StoreCursor and set the respose header. 
    * @param context The clients routing context
-   * @return Observable which provide a StoreCursor
+   * @return Single which provide a StoreCursor
    */
-  protected Observable<StoreCursor> prepareCursor(RoutingContext context) {
+  protected Single<StoreCursor> prepareCursor(RoutingContext context) {
     HttpServerRequest request = context.request();
     HttpServerResponse response = context.response();
     
@@ -172,7 +173,7 @@ public class StoreEndpoint extends AbstractEndpoint {
     String scrollId = request.getParam("scrollId");
     Boolean scrolling = "true".equals(scroll) || scrollId != null;
     
-    return Observable.<StoreCursor>defer(() -> {
+    return Single.<StoreCursor>defer(() -> {
       String path = getEndpointPath(context);
       String search = request.getParam("search");
       String strSize = request.getParam("size");
@@ -180,14 +181,14 @@ public class StoreEndpoint extends AbstractEndpoint {
 
       if (scrolling) {
         if (scrollId == null) {
-          return store.scrollObservable(search, path, size);
+          return store.rxScroll(search, path, size);
         } else {
-          return store.scrollObservable(scrollId);
+          return store.rxScroll(scrollId);
         }
       } else {
-        return store.getObservable(search, path);
+        return store.rxGet(search, path);
       }
-    }).doOnNext(cursor -> {
+    }).doOnSuccess(cursor -> {
       if (scrolling) {
         response
           .putHeader("X-Scroll-Id", cursor.getInfo().getScrollId())
@@ -225,7 +226,7 @@ public class StoreEndpoint extends AbstractEndpoint {
    */
   private void getChunks(RoutingContext context) {
     HttpServerResponse response = context.response();
-    Observable<StoreCursor> data = prepareCursor(context);
+    Single<StoreCursor> data = prepareCursor(context);
     
     // Our responses must always be chunked because we cannot calculate
     // the exact content-length beforehand. We perform two searches, one to
@@ -239,7 +240,7 @@ public class StoreEndpoint extends AbstractEndpoint {
     // merge all retrieved chunks
     MultiMerger merger = new MultiMerger();
     initializeMerger(merger, data)
-      .flatMap(v -> doMerge(merger, data, response))
+      .flatMapSingle(v -> doMerge(merger, data, response))
       .subscribe(v -> {
         response.end();
       }, err -> {
@@ -603,7 +604,7 @@ public class StoreEndpoint extends AbstractEndpoint {
    * @param response the http response
    */
   private void deleteChunks(String search, String path, HttpServerResponse response) {
-    store.deleteObservable(search, path)
+    store.rxDelete(search, path)
       .subscribe(v -> {
         response
           .setStatusCode(204)
