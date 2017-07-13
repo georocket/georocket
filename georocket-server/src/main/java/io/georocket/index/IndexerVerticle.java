@@ -449,8 +449,8 @@ public class IndexerVerticle extends AbstractVerticle {
    */
   private Observable<Map<String, Object>> openChunkToDocument(
       String path, ChunkMeta chunkMeta, IndexMeta indexMeta) {
-    return Observable.defer(() -> store.getOneObservable(path)
-      .flatMap(chunk -> {
+    return Observable.defer(() -> store.rxGetOne(path)
+      .flatMapObservable(chunk -> {
         List<? extends IndexerFactory> factories;
         Operator<? extends StreamEvent, Buffer> parserOperator;
         

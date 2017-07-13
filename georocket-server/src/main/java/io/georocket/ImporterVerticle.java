@@ -359,7 +359,7 @@ public class ImporterVerticle extends AbstractVerticle {
    */
   protected Single<Void> addToStore(String chunk, ChunkMeta meta,
       String layer, IndexMeta indexMeta) {
-    return Single.defer(() -> store.addObservable(chunk, meta, layer, indexMeta).toSingle())
+    return Single.defer(() -> store.rxAdd(chunk, meta, layer, indexMeta))
         .retryWhen(RxUtils.makeRetry(MAX_RETRIES, RETRY_INTERVAL, log));
   }
 }
