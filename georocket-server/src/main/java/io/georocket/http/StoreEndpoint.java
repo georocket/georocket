@@ -172,13 +172,13 @@ public class StoreEndpoint extends AbstractEndpoint {
     String scroll = request.getParam("scroll");
     String scrollId = request.getParam("scrollId");
     Boolean scrolling = "true".equals(scroll) || scrollId != null;
-    
-    return Single.<StoreCursor>defer(() -> {
-      String path = getEndpointPath(context);
-      String search = request.getParam("search");
-      String strSize = request.getParam("size");
-      int size = strSize == null ? 100 : new Integer(strSize);
 
+    String path = getEndpointPath(context);
+    String search = request.getParam("search");
+    String strSize = request.getParam("size");
+    int size = strSize == null ? 100 : new Integer(strSize);
+
+    return Single.<StoreCursor>defer(() -> {
       if (scrolling) {
         if (scrollId == null) {
           return store.rxScroll(search, path, size);
@@ -202,7 +202,7 @@ public class StoreEndpoint extends AbstractEndpoint {
    * Handles the HTTP GET request for a bunch of chunks
    * @param context the routing context
    */
-  private void onGet(RoutingContext context) {
+  protected void onGet(RoutingContext context) {
     HttpServerRequest request = context.request();
     HttpServerResponse response = context.response();
 
