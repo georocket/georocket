@@ -109,7 +109,7 @@ public class ImporterVerticle extends AbstractVerticle {
     // generate timestamp for this import
     long timestamp = System.currentTimeMillis();
 
-    onImportingStarted(correlationId, filepath, contentType, layer, timestamp);
+    onImportingStarted(correlationId, filepath, contentType, layer, tagsArr, timestamp);
 
     FileSystem fs = vertx.fileSystem();
     OpenOptions openOptions = new OpenOptions().setCreate(false).setWrite(false);
@@ -142,10 +142,11 @@ public class ImporterVerticle extends AbstractVerticle {
    * @param filepath the filepath of the file containing the chunks
    * @param mimeType The mimeType of the imported file
    * @param layer the layer where to import the chunks
+   * @param tags all tags for the current chunks
    * @param timestamp the time when the importer has started importing
    */
   private void onImportingStarted(String correlationId, String filepath,
-      String mimeType, String layer, long timestamp) {
+      String mimeType, String layer, JsonArray tags, long timestamp) {
     log.info(String.format("Importing [%s] '%s' to layer '%s' started at '%d'",
         correlationId, filepath, layer, timestamp));
 
@@ -158,6 +159,7 @@ public class ImporterVerticle extends AbstractVerticle {
         .put("correlationId", correlationId)
         .put("timestamp", timestamp)
         .put("mimeType", mimeType)
+        .put("tags", tags)
         .put("layer", layer);
       vertx.eventBus().publish(AddressConstants.ACTIVITIES, msg);
     }
