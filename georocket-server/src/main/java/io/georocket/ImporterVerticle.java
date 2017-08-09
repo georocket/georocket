@@ -145,7 +145,7 @@ public class ImporterVerticle extends AbstractVerticle {
    * @param tags all tags for the current chunks
    * @param timestamp the time when the importer has started importing
    */
-  private void onImportingStarted(String correlationId, String filepath,
+  protected void onImportingStarted(String correlationId, String filepath,
       String mimeType, String layer, JsonArray tags, long timestamp) {
     log.info(String.format("Importing [%s] '%s' to layer '%s' started at '%d'",
         correlationId, filepath, layer, timestamp));
@@ -175,7 +175,7 @@ public class ImporterVerticle extends AbstractVerticle {
    * @param duration the time it took to import the chunks
    * @param error an error if the process has failed
    */
-  private void onImportingFinished(String correlationId, String filepath,
+  protected void onImportingFinished(String correlationId, String filepath,
       String mimeType, String layer, Integer chunkCount, long duration, Throwable error) {
     if (error == null) {
       log.info(String.format("Finished importing [%s] %d chunks '%s' "
@@ -252,7 +252,7 @@ public class ImporterVerticle extends AbstractVerticle {
    * file does not specify one (may be <code>null</code>)
    * @return a single that will emit when the file has been imported
    */
-  private Single<Integer> importXML(ReadStream<Buffer> f, String correlationId,
+  protected Single<Integer> importXML(ReadStream<Buffer> f, String correlationId,
       String filename, long timestamp, String layer, List<String> tags,
       Map<String, Object> properties, String fallbackCRSString) {
     Window window = new Window();
@@ -294,7 +294,7 @@ public class ImporterVerticle extends AbstractVerticle {
    * @param properties the map of properties to attach to the file (may be null)
    * @return a single that will emit when the file has been imported
    */
-  private Single<Integer> importJSON(ReadStream<Buffer> f, String correlationId,
+  protected Single<Integer> importJSON(ReadStream<Buffer> f, String correlationId,
       String filename, long timestamp, String layer, List<String> tags, Map<String, Object> properties) {
     StringWindow window = new StringWindow();
     GeoJsonSplitter splitter = new GeoJsonSplitter(window);
