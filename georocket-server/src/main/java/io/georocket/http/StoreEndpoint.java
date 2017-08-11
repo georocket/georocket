@@ -211,7 +211,11 @@ public class StoreEndpoint extends AbstractEndpoint {
     String property = request.getParam("property");
     String attribute = request.getParam("attribute");
 
-    if (property != null) {
+    if (property != null && attribute != null) {
+      response
+        .setStatusCode(400)
+        .end("You can only get the values of a single property OR attribute");
+    } else if (property != null) {
       getPropertyValues(search, path, property, response);
     } else if (attribute != null) {
       getAttributeValues(search, path, attribute, response);
