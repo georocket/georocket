@@ -631,14 +631,27 @@ public class StoreEndpoint extends AbstractEndpoint {
     String properties = request.getParam("properties");
     String tags = request.getParam("tags");
 
-    if (properties != null) {
-      setProperties(search, path, properties, response);
-    } else if (tags != null) {
-      appendTags(search, path, tags, response);
+    if (properties != null || tags != null) {
+      Single<Void> single = Single.just(null);
+
+      if (properties != null) {
+        single = single.flatMap(v -> setProperties(search, path, properties));
+      }
+
+      if (tags != null) {
+        single = single.flatMap(v -> appendTags(search, path, tags));
+      }
+
+      single.subscribe(
+        v -> response
+          .setStatusCode(204)
+          .end(),
+        err -> fail(response, err)
+      );
     } else {
       response
         .setStatusCode(405)
-        .end("Chunks cannot be modified");
+        .end("Only properties and tags can be modified");
     }
   }
 
@@ -647,26 +660,20 @@ public class StoreEndpoint extends AbstractEndpoint {
    * @param search the search query
    * @param path the path
    * @param properties the properties to set
-   * @param response the http response
+   * @return a Single with completes when the properties are set
    */
-  private void setProperties(String search, String path, String properties,
-    HttpServerResponse response) {
-    List<String> list = Arrays.asList(properties.split(","));
-
-    try {
-      Map<String, String> map = parseProperties(list);
-      store.setProperties(search, path, map, ar -> {
-        if (ar.succeeded()) {
-          response
-            .setStatusCode(204)
-            .end();
-        } else {
-          fail(response, ar.cause());
+  private Single<Void> setProperties(String search, String path, String properties) {
+    return Single.just(properties)
+      .map(x -> x.split(","))
+      .map(Arrays::asList)
+      .flatMap(x -> {
+        try {
+          return Single.just(parseProperties(x));
+        } catch (ServerAPIException e) {
+          return Single.error(e);
         }
-      });
-    } catch (ServerAPIException e) {
-      fail(response, e);
-    }
+      })
+      .flatMap(map -> store.rxSetProperties(search, path, map));
   }
 
   /**
@@ -674,22 +681,13 @@ public class StoreEndpoint extends AbstractEndpoint {
    * @param search the search query
    * @param path the path
    * @param tags the tags to append
-   * @param response the http response
+   * @return a Single with completes when the tags are appended
    */
-  private void appendTags(String search, String path, String tags,
-    HttpServerResponse response) {
-    if (tags != null) {
-      List<String> list = Arrays.asList(tags.split(","));
-      store.appendTags(search, path, list, ar -> {
-        if (ar.succeeded()) {
-          response
-            .setStatusCode(204)
-            .end();
-        } else {
-          fail(response, ar.cause());
-        }
-      });
-    }
+  private Single<Void> appendTags(String search, String path, String tags) {
+    return Single.just(tags)
+      .map(x -> x.split(","))
+      .map(Arrays::asList)
+      .flatMap(tagList -> store.rxAppendTags(search, path, tagList));
   }
 
   /**

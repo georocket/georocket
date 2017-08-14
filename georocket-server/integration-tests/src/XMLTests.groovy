@@ -248,6 +248,25 @@ class XMLTests extends StoreTests {
     }
 
     /**
+     * Set tags and properties simultaneously
+     */
+    def testTagsAndProperties() {
+        assertNotFound("tag1")
+        assertNotFound("EQ(property1 1)")
+
+        // set test tag and property
+        run("curl -sS -X PUT http://${georocketHost}:63020/store/"
+                + "?search=ID_146_D&properties="
+                + URLEncoder.encode('property1:1', 'UTF-8')
+                + "&tags=tag1", null, true)
+
+        // check if chunk is found by tag and property
+        assertFound("tag1", "ID_146_D")
+        assertFound("EQ(property1 1)", "ID_146_D")
+        assertValues("", "property", "property1", ["1"])
+    }
+
+    /**
      * Get attributes
      */
     def testAttributes() {
