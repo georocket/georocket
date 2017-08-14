@@ -13,6 +13,7 @@ script:
     cp docker/.dockerignore georocket-server/build/install/.dockerignore &&
     cp docker/Dockerfile georocket-server/build/install/Dockerfile &&
     docker build -t georocket/georocket georocket-server/build/install &&
+    docker tag georocket/georocket georocket/georocket:unstable &&
     cd georocket-server/integration-tests &&
     ./test.sh &&
     cd ../.. &&
@@ -21,7 +22,7 @@ script:
     fi &&
     if [ "$TRAVIS_REPO_SLUG" == "georocket/georocket" ] && ([ "$TRAVIS_BRANCH" == "master" ] || [ ! -z "$TRAVIS_TAG" ]) && [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
     docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD" &&
-    docker push georocket/georocket;
+    docker push georocket/georocket:unstable;
     fi
 
 # see also https://docs.travis-ci.com/user/languages/java/#Caching
