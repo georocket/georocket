@@ -102,6 +102,16 @@ public class EmbeddedElasticsearchClient implements ElasticsearchClient {
   public Observable<Boolean> putMapping(String type, JsonObject mapping) {
     return delegate.putMapping(type, mapping);
   }
+
+  @Override
+  public Observable<JsonObject> getMapping(String type) {
+    return delegate.getMapping(type);
+  }
+
+  @Override
+  public Observable<JsonObject> getMapping(String type, String field) {
+    return delegate.getMapping(type, field);
+  }
   
   @Override
   public Observable<Void> ensureMapping(String type, JsonObject mapping) {
