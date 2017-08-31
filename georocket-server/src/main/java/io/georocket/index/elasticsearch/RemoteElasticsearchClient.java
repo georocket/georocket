@@ -292,7 +292,21 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
       }
     });
   }
-  
+
+  @Override
+  public Observable<JsonObject> getMapping(String type) {
+    return getMapping(type, null);
+  }
+
+  @Override
+  public Observable<JsonObject> getMapping(String type, String field) {
+    String uri = "/" + index + "/_mapping/" + type;
+    if (field != null) {
+      uri += "/field/" + field;
+    }
+    return performRequestRetry(HttpMethod.GET, uri, "");
+  }
+
   @Override
   public Observable<Boolean> isRunning() {
     HttpClientRequest req = client.head("/");

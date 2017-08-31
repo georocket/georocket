@@ -223,7 +223,22 @@ public interface ElasticsearchClient {
    * been created or if it already exists
    */
   Observable<Void> ensureMapping(String type, JsonObject mapping);
-  
+
+  /**
+   * Get mapping for the given type
+   * @param type the type
+   * @return the parsed mapping response from the server
+   */
+  Observable<JsonObject> getMapping(String type);
+
+  /**
+   * Get mapping for the given type
+   * @param type the type
+   * @param field the field
+   * @return the parsed mapping response from the server
+   */
+  Observable<JsonObject> getMapping(String type, String field);
+
   /**
    * Check if Elasticsearch is running and if it answers to a simple request
    * @return <code>true</code> if Elasticsearch is running, <code>false</code>
