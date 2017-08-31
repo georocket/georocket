@@ -1,9 +1,19 @@
 package io.georocket;
 
+import com.github.zafarkhaja.semver.Version;
+import com.google.common.collect.ImmutableList;
+import io.georocket.index.IndexerFactory;
+import io.georocket.index.elasticsearch.ElasticsearchClientFactory;
+import io.georocket.index.generic.DefaultMetaIndexerFactory;
+import io.georocket.migration.MigrationManager;
+import io.georocket.util.MapUtils;
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -34,7 +44,9 @@ import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.web.Router;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
+import rx.Observable;
 import rx.Single;
+import rx.functions.Func1;
 import rx.plugins.RxJavaHooks;
 
 /**
@@ -371,13 +383,30 @@ public class GeoRocket extends AbstractVerticle {
       log.info("Configuration:\n" + options.getConfig().encodePrettily());
     }
 
-    // deploy main verticle
-    vertx.deployVerticle(GeoRocket.class.getName(), options, ar -> {
-        if (ar.failed()) {
-          log.fatal("Could not deploy GeoRocket");
-          ar.cause().printStackTrace();
-          System.exit(1);
-        }
+    MigrationManager
+      .create(vertx)
+      .flatMap(mm -> mm.migrate()
+          .switchIfEmpty(
+            mm.ensureNewIndex(
+              ConfigConstants.ES_INDEX_NAME + "_" + mm.getBinaryVersion().getNormalVersion())
+              .flatMap(v1 -> mm.moveAlias())
+              .toObservable()
+          )
+          .last()
+          .toSingle()
+      )
+      .subscribe(ok -> {
+        // deploy main verticle
+        vertx.deployVerticle(GeoRocket.class.getName(), options, ar -> {
+          if (ar.failed()) {
+            log.fatal("Could not deploy GeoRocket");
+            ar.cause().printStackTrace();
+            System.exit(1);
+          }
+        });
+      }, err -> {
+        log.fatal("Migration manager failed", err);
+        System.exit(2);
       });
   }
 }
