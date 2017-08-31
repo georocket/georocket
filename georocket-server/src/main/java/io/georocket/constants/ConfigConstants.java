@@ -49,6 +49,9 @@ public final class ConfigConstants {
   
   public static final int DEFAULT_INDEX_MAX_BULK_SIZE = 200;
   public static final int DEFAULT_INDEX_MAX_PARALLEL_INSERTS = 5;
+
+  public static final String ES_INDEX_NAME = "georocket";
+  public static final String ES_TYPE_NAME = "object";
   
   private ConfigConstants() {
     // hidden constructor
