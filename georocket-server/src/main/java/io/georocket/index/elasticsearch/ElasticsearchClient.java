@@ -6,7 +6,7 @@ import org.jooq.lambda.tuple.Tuple2;
 
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import rx.Observable;
+import rx.Single;
 
 /**
  * An Elasticsearch client
@@ -26,7 +26,7 @@ public interface ElasticsearchClient {
    * @see #bulkResponseHasErrors(JsonObject)
    * @see #bulkResponseGetErrorMessage(JsonObject)
    */
-  Observable<JsonObject> bulkInsert(String type,
+  Single<JsonObject> bulkInsert(String type,
       List<Tuple2<String, JsonObject>> documents);
   
   /**
@@ -38,7 +38,7 @@ public interface ElasticsearchClient {
    * @return an object containing the search hits and a scroll id that can
    * be passed to {@link #continueScroll(String, String)} to get more results
    */
-  default Observable<JsonObject> beginScroll(String type, JsonObject query,
+  default Single<JsonObject> beginScroll(String type, JsonObject query,
       JsonObject parameters, String timeout) {
     return beginScroll(type, query, null, parameters, timeout);
   }
@@ -57,7 +57,7 @@ public interface ElasticsearchClient {
    * @return an object containing the search hits and a scroll id that can
    * be passed to {@link #continueScroll(String, String)} to get more results
    */
-  default Observable<JsonObject> beginScroll(String type, JsonObject query,
+  default Single<JsonObject> beginScroll(String type, JsonObject query,
       JsonObject postFilter, JsonObject parameters, String timeout) {
     return beginScroll(type, query, postFilter, null, parameters, timeout);
   }
@@ -77,7 +77,7 @@ public interface ElasticsearchClient {
    * @return an object containing the search hits and a scroll id that can
    * be passed to {@link #continueScroll(String, String)} to get more results
    */
-  Observable<JsonObject> beginScroll(String type, JsonObject query,
+  Single<JsonObject> beginScroll(String type, JsonObject query,
       JsonObject postFilter, JsonObject aggregations, JsonObject parameters, String timeout);
   
   /**
@@ -87,7 +87,7 @@ public interface ElasticsearchClient {
    * @param timeout the time after which the scroll id becomes invalid
    * @return an object containing new search hits and possibly a new scroll id
    */
-  Observable<JsonObject> continueScroll(String scrollId, String timeout);
+  Single<JsonObject> continueScroll(String scrollId, String timeout);
   
   /**
    * Perform a search. The result set might not contain all documents. If you
@@ -99,7 +99,7 @@ public interface ElasticsearchClient {
    * @param parameters the elasticsearch parameters
    * @return an object containing the search result as returned from Elasticsearch
    */
-  default Observable<JsonObject> search(String type, JsonObject query, JsonObject parameters) {
+  default Single<JsonObject> search(String type, JsonObject query, JsonObject parameters) {
     return search(type, query, null, null, parameters);
   }
   
@@ -114,7 +114,7 @@ public interface ElasticsearchClient {
    * @param parameters the elasticsearch parameters
    * @return an object containing the search result as returned from Elasticsearch
    */
-  default Observable<JsonObject> search(String type, JsonObject query,
+  default Single<JsonObject> search(String type, JsonObject query,
     JsonObject postFilter, JsonObject parameters) {
     return search(type, query, postFilter, null, parameters);
   }
@@ -131,7 +131,7 @@ public interface ElasticsearchClient {
    * @param parameters the elasticsearch parameters
    * @return an object containing the search result as returned from Elasticsearch
    */
-  Observable<JsonObject> search(String type, JsonObject query,
+  Single<JsonObject> search(String type, JsonObject query,
     JsonObject postFilter, JsonObject aggregations, JsonObject parameters);
 
   /**
@@ -142,7 +142,7 @@ public interface ElasticsearchClient {
    * @param query the query to send (may be <code>null</code>)
    * @return the number of documents matching the query
    */
-  Observable<Long> count(String type, JsonObject query);
+  Single<Long> count(String type, JsonObject query);
 
   /**
    * Perform an update operation. The update script is applied to all
@@ -152,7 +152,7 @@ public interface ElasticsearchClient {
    * @param script the update script to apply
    * @return an object containing the search result as returned from Elasticsearch
    */
-  Observable<JsonObject> updateByQuery(String type, JsonObject postFilter,
+  Single<JsonObject> updateByQuery(String type, JsonObject postFilter,
     JsonObject script);
 
   /**
@@ -163,55 +163,55 @@ public interface ElasticsearchClient {
    * @see #bulkResponseHasErrors(JsonObject)
    * @see #bulkResponseGetErrorMessage(JsonObject)
    */
-  Observable<JsonObject> bulkDelete(String type, JsonArray ids);
+  Single<JsonObject> bulkDelete(String type, JsonArray ids);
 
   /**
    * Check if the index exists
-   * @return an observable emitting <code>true</code> if the index exists or
+   * @return an single emitting <code>true</code> if the index exists or
    * <code>false</code> otherwise
    */
-  Observable<Boolean> indexExists();
+  Single<Boolean> indexExists();
 
   /**
    * Check if the type of the index exists
    * @param type the type
-   * @return an observable emitting <code>true</code> if the type of
+   * @return an single emitting <code>true</code> if the type of
    * the index exists or <code>false</code> otherwise
    */
-  Observable<Boolean> typeExists(String type);
+  Single<Boolean> typeExists(String type);
 
   /**
    * Create the index
-   * @return an observable emitting <code>true</code> if the index creation
+   * @return an single emitting <code>true</code> if the index creation
    * was acknowledged by Elasticsearch, <code>false</code> otherwise
    */
-  Observable<Boolean> createIndex();
+  Single<Boolean> createIndex();
 
   /**
    * Create the index with settings.
    * @param settings the settings to set for the index.
-   * @return an observable emitting <code>true</code> if the index creation
+   * @return an single emitting <code>true</code> if the index creation
    * was acknowledged by Elasticsearch, <code>false</code> otherwise
    */
-  Observable<Boolean> createIndex(JsonObject settings);
+  Single<Boolean> createIndex(JsonObject settings);
   
   /**
    * Convenience method that makes sure the index exists. It first calls
    * {@link #indexExists()} and then {@link #createIndex()} if the index does
    * not exist yet.
-   * @return an observable that will emit a single item when the index has
+   * @return an single that will emit a single item when the index has
    * been created or if it already exists
    */
-  Observable<Void> ensureIndex();
+  Single<Void> ensureIndex();
   
   /**
    * Add mapping for the given type
    * @param type the type
    * @param mapping the mapping to set for the type
-   * @return an observable emitting <code>true</code> if the operation
+   * @return an single emitting <code>true</code> if the operation
    * was acknowledged by Elasticsearch, <code>false</code> otherwise
    */
-  Observable<Boolean> putMapping(String type, JsonObject mapping);
+  Single<Boolean> putMapping(String type, JsonObject mapping);
   
   /**
    * Convenience method that makes sure the given mapping exists. It first calls
@@ -219,17 +219,17 @@ public interface ElasticsearchClient {
    * if the mapping does not exist yet.
    * @param type the target type for the mapping
    * @param mapping the mapping to set for the type
-   * @return an observable that will emit a single item when the mapping has
+   * @return a single that will emit a single item when the mapping has
    * been created or if it already exists
    */
-  Observable<Void> ensureMapping(String type, JsonObject mapping);
+  Single<Void> ensureMapping(String type, JsonObject mapping);
 
   /**
    * Get mapping for the given type
    * @param type the type
    * @return the parsed mapping response from the server
    */
-  Observable<JsonObject> getMapping(String type);
+  Single<JsonObject> getMapping(String type);
 
   /**
    * Get mapping for the given type
@@ -237,14 +237,95 @@ public interface ElasticsearchClient {
    * @param field the field
    * @return the parsed mapping response from the server
    */
-  Observable<JsonObject> getMapping(String type, String field);
-
+  Single<JsonObject> getMapping(String type, String field);
   /**
    * Check if Elasticsearch is running and if it answers to a simple request
    * @return <code>true</code> if Elasticsearch is running, <code>false</code>
    * otherwise
    */
-  Observable<Boolean> isRunning();
+  Single<Boolean> isRunning();
+
+  /**
+   * Create a new alias to an index.
+   * @param alias Alias name.
+   * @param index Index name.
+   * @return
+   */
+  default Single<Void> addAlias(String alias, String index) {
+    return aliases(new JsonArray()
+      .add(new JsonObject()
+        .put("add", new JsonObject().put("index", index).put("alias", alias))
+      )
+    );
+  }
+
+  /**
+   * Remove an existing alias from an index.
+   * @param alias Alias name.
+   * @param index Index name.
+   * @return
+   */
+  default Single<Void> removeAlias(String alias, String index) {
+    return aliases(new JsonArray()
+      .add(new JsonObject()
+        .put("remove", new JsonObject().put("index", index).put("alias", alias))
+      )
+    );
+  }
+
+  /**
+   * Elasticsearch aliases api to create or remove aliases.
+   * https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-aliases.html
+   *
+   * @param actions Add or remove actions.
+   * @return Single that emmit if the reindex process started.
+   */
+  Single<Void> aliases(JsonArray actions);
+
+  /**
+   * @return All aliases of all elasticsearch indices.
+   */
+  Single<JsonObject> getAliases();
+
+  /**
+   * Elasticsearch reindex api to fast copy a index into an another one.
+   * https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-reindex.html
+   *
+   * @param src The source index
+   * @param dest The destination index
+   * <p>
+   *  <b>Note:</b> If the index does not exists, it will copy all mappings from the old one.
+   * </p>
+   * @return Single that emmit if the reindex process started.
+   */
+  default Single<Void> reindex(JsonObject src, JsonObject dest) {
+    return reindex(src, dest, null);
+  }
+
+  /**
+   * Elasticsearch reindex api to fast copy a index into an another one.
+   * https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-reindex.html
+   *
+   * @param src The source index
+   * @param dest The destination index
+   * <p>
+   *  <b>Note:</b> If the index does not exists, it will copy all mappings from the old one.
+   * </p>
+   * @param script Es scripts like painless to map and modify the copied data. (May be <code>null</code>)
+   * @return Single which emmit if the reindex process started.
+   */
+  Single<Void> reindex(JsonObject src, JsonObject dest, JsonObject script);
+
+  /**
+   * Delete the whole index.
+   * @return Single that emit when the index has been deleted.
+   */
+  Single<Void> delete();
+
+  /**
+   * @return All indices names as a list.
+   */
+  Single<List<String>> indices();
 
   /**
    * Check if the given bulk response contains errors

@@ -6,7 +6,7 @@ import org.jooq.lambda.tuple.Tuple2;
 
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import rx.Observable;
+import rx.Single;
 
 /**
  * A client for embedded Elasticsearch instances. Will shut down the embedded
@@ -27,7 +27,7 @@ public class EmbeddedElasticsearchClient implements ElasticsearchClient {
     this.delegate = delegate;
     this.runner = runner;
   }
-  
+
   @Override
   public void close() {
     delegate.close();
@@ -35,91 +35,114 @@ public class EmbeddedElasticsearchClient implements ElasticsearchClient {
   }
 
   @Override
-  public Observable<JsonObject> bulkInsert(String type,
+  public Single<JsonObject> bulkInsert(String type,
       List<Tuple2<String, JsonObject>> documents) {
     return delegate.bulkInsert(type, documents);
   }
 
   @Override
-  public Observable<JsonObject> beginScroll(String type, JsonObject query,
+  public Single<JsonObject> beginScroll(String type, JsonObject query,
     JsonObject postFilter, JsonObject aggregations, JsonObject parameters, String timeout) {
     return delegate.beginScroll(type, query, postFilter, aggregations, parameters, timeout);
   }
 
   @Override
-  public Observable<JsonObject> continueScroll(String scrollId, String timeout) {
+  public Single<JsonObject> continueScroll(String scrollId, String timeout) {
     return delegate.continueScroll(scrollId, timeout);
   }
 
   @Override
-  public Observable<JsonObject> search(String type, JsonObject query,
+  public Single<JsonObject> search(String type, JsonObject query,
     JsonObject postFilter, JsonObject aggregations, JsonObject parameters) {
     return delegate.search(type, query, postFilter, aggregations, parameters);
   }
 
   @Override
-  public Observable<Long> count(String type, JsonObject query) {
+  public Single<Long> count(String type, JsonObject query) {
     return delegate.count(type, query);
   }
 
   @Override
-  public Observable<JsonObject> updateByQuery(String type, JsonObject postFilter,
+  public Single<JsonObject> updateByQuery(String type, JsonObject postFilter,
       JsonObject script) {
     return delegate.updateByQuery(type, postFilter, script);
   }
 
   @Override
-  public Observable<JsonObject> bulkDelete(String type, JsonArray ids) {
+  public Single<JsonObject> bulkDelete(String type, JsonArray ids) {
     return delegate.bulkDelete(type, ids);
   }
 
   @Override
-  public Observable<Boolean> indexExists() {
+  public Single<Boolean> indexExists() {
     return delegate.indexExists();
   }
 
   @Override
-  public Observable<Boolean> typeExists(String type) {
+  public Single<Boolean> typeExists(String type) {
     return delegate.typeExists(type);
   }
 
   @Override
-  public Observable<Boolean> createIndex() {
+  public Single<Boolean> createIndex() {
     return delegate.createIndex();
   }
 
   @Override
-  public Observable<Boolean> createIndex(JsonObject settings) {
+  public Single<Boolean> createIndex(JsonObject settings) {
     return delegate.createIndex(settings);
   }
 
   @Override
-  public Observable<Void> ensureIndex() {
+  public Single<Void> ensureIndex() {
     return delegate.ensureIndex();
   }
 
   @Override
-  public Observable<Boolean> putMapping(String type, JsonObject mapping) {
+  public Single<Boolean> putMapping(String type, JsonObject mapping) {
     return delegate.putMapping(type, mapping);
   }
-
   @Override
-  public Observable<JsonObject> getMapping(String type) {
+  public Single<JsonObject> getMapping(String type) {
     return delegate.getMapping(type);
   }
 
   @Override
-  public Observable<JsonObject> getMapping(String type, String field) {
+  public Single<JsonObject> getMapping(String type, String field) {
     return delegate.getMapping(type, field);
   }
-  
   @Override
-  public Observable<Void> ensureMapping(String type, JsonObject mapping) {
+  public Single<Void> ensureMapping(String type, JsonObject mapping) {
     return delegate.ensureMapping(type, mapping);
   }
 
   @Override
-  public Observable<Boolean> isRunning() {
+  public Single<Boolean> isRunning() {
     return delegate.isRunning();
+  }
+
+  @Override
+  public Single<Void> aliases(JsonArray actions) {
+    return delegate.aliases(actions);
+  }
+
+  @Override
+  public Single<JsonObject> getAliases() {
+    return delegate.getAliases();
+  }
+
+  @Override
+  public Single<Void> reindex(JsonObject src, JsonObject dest, JsonObject script) {
+    return delegate.reindex(src, dest, script);
+  }
+
+  @Override
+  public Single<Void> delete() {
+    return delegate.delete();
+  }
+
+  @Override
+  public Single<List<String>> indices() {
+    return delegate.indices();
   }
 }
