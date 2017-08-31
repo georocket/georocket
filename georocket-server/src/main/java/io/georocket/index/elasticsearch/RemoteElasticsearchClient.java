@@ -346,12 +346,12 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
   }
 
   @Override
-  public Observable<JsonObject> getMapping(String type) {
+  public Single<JsonObject> getMapping(String type) {
     return getMapping(type, null);
   }
 
   @Override
-  public Observable<JsonObject> getMapping(String type, String field) {
+  public Single<JsonObject> getMapping(String type, String field) {
     String uri = "/" + index + "/_mapping/" + type;
     if (field != null) {
       uri += "/field/" + field;
