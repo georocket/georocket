@@ -18,8 +18,8 @@ dependencies {
 
     compile 'com.fasterxml:aalto-xml:1.0.0'
     compile 'com.google.guava:guava:20.0'
-    compile 'de.undercouch:actson:1.1.0'
-    compile 'org.apache.commons:commons-lang3:3.5'
+    compile 'de.undercouch:actson:1.2.0'
+    compile 'org.apache.commons:commons-lang3:3.6'
 
     compile('org.geotools:gt-epsg-extension:16.0') {
         // exclude invalid dependency

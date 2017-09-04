@@ -1,14 +1,13 @@
 package io.georocket.storage;
 
+import java.util.List;
+import java.util.Map;
+
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
-import rx.Observable;
 import rx.Single;
-
-import java.util.List;
-import java.util.Map;
 
 /**
  * Wraps around {@link Store} and adds methods to be used with RxJava
