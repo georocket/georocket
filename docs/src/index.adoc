@@ -143,6 +143,14 @@ Use slashes to import to sub-layers.
 You may attach tags to imported files. Tags are human-readable labels that you can use to search for files or chunks stored in GeoRocket. Use a comma to separate multiple tags.
 
   georocket import --tags city,district,lod1 myfile.xml
+  
+In addition to tags, GeoRocket supports attaching properties to imported files. Properties are key:value pairs including arbitrary information that can be queried in later searches. Multiple properties are separated by comma, each pair is separated by a colon. Values can be strings, numbers or dates, which are encoded as follows: 
+
+`yyyy-MM-dd[THH:mm:ss]` (e.g. 2017-03-15[T13:40:25]). 
+
+An example for properties attached to an import is:
+
+  georocket import --properties author:smith,creation-date:2017-02-15 myfile.xml
 
 === Export command
 
@@ -198,6 +206,66 @@ You may even delete the whole data store by specifying the root layer `/`.
   georocket delete --layer /
 
 CAUTION: This is a dangerous operation. It will remove everything that is stored in your GeoRocket instance. There is no safety net--no confirmation prompt and no recycle bin.
+
+[[tag-append-command]]
+=== Add Tag command
+
+Add one or multiple tags (separated by comma) to existing chunks in the GeoRocket data store. Provide a <<query-language, query>> to specify the chunks, whose tags should be updated:
+    
+    georocket tag add --tags tag1,tag2 myquery
+    
+This example adds the tags `tag1` and `tag2` to chunks matching the query `myquery`.
+
+You can also restrict the command to a certain layer.
+
+    georocket tag add --layer CityModel/LOD1 --tags tag1,tag2 myquery
+
+This example adds the tags `tag1` and `tag2` to chunks within the layer `CityModel/LOD1` matching the query `myquery`.
+
+[[tag-remove-command]]
+=== Remove Tag command
+
+Remove one or multiple tags (separated by comma) from existing chunks in the GeoRocket data store. Provide a <<query-language, query>> to specify the chunks, whose tags should be updated:
+    
+    georocket tag rm --tags tag1,tag2 myquery
+    
+This example removes the tags `tag1` and `tag2` from chunks matching the query `myquery`. If a tag does not exist for a certain chunk, nothing changes.
+
+You can also restrict the command to a certain layer.
+
+    georocket tag rm --layer CityModel/LOD1 --tags tag1,tag2 myquery
+
+This example removes the tags `tag1` and `tag2` from chunks within the layer `CityModel/LOD1` matching the query `myquery`.
+
+[[props-set-command]]
+=== Set Property command
+
+Set one or multiple properties (separated by comma) to existing chunks in the GeoRocket data store. Provide a <<query-language, query>> to specify the chunks, whose properties should be updated. If a property with the same key is already attached to a particular chunk, its value will be overwritten.
+    
+    georocket property set --properties author:smith,creation-date:2017-02-15 myquery
+    
+This example sets the properties `author:smith` and `creation-date:2017-02-15` to chunks matching the query `myquery`.
+
+You can also restrict the command to a certain layer.
+
+    georocket property set --layer CityModel/LOD1 --properties author:smith myquery
+
+This example sets the property `author:smith` to chunks within the layer `CityModel/LOD1` matching the query `myquery`.
+
+[[props-remove-command]]
+=== Remove Property command
+
+Remove one or multiple properties (separated by comma) from existing chunks in the GeoRocket data store. To remove a properties, only its key must be set. Provide a <<query-language, query>> to specify the chunks, whose properties should be updated:
+    
+    georocket property rm --properties author,creation-date myquery
+    
+This example removes the properties with either the key `author` or `creation-date` from chunks matching the query `myquery`. If a property does not exist for a certain chunk, nothing changes.
+
+You can also restrict the command to a certain layer.
+
+    georocket property rm --layer CityModel/LOD1 --properties author,creation-date myquery
+
+This example removes the properties with either the key `author` or `creation-date` from chunks within the layer `CityModel/LOD1` matching the query `myquery`.
 
 == HTTP interface
 
@@ -521,6 +589,61 @@ Example:
   NOT(13.378,52.515,13.380,52.517 foobar)
 
 This example matches all chunks that are not within the bounding box `13.378,52.515,13.380,52.517` and that don't have a tag or indexed attribute with a value of `foobar`.
+
+=== Comparison operators
+
+The operators <<EQ>>, <<LT>>, <<LTE>>, <<GT>> and <<GTE>> can be used to search for chunks with certain key:value pairs. They are applied using the following notation:
+
+  <operator>(<key> <value>)
+  
+Key and value are separated by a space character. 
+
+Examples:
+
+  EQ(construction-material wooden)
+  LT(year-of-construction 1990-01-01)
+  GT(building-height 50)
+
+Comparison operations cannot be nested. GeoRocket supports the comparison of strings, numbers and dates. 
+
+==== EQ
+Use the equal comparison to search for chunks that includes a key:value pair equally to the search.
+
+    EQ(foo bar)
+
+This example matches all chunks that have a key:value pair with key=foo and value=bar.
+
+==== LT
+Use the less than comparison to search for chunks that includes a key:value pair matching the key and a value less than the one given within the query.
+    
+    LT(foo 12)
+
+This example matches all chunks that have a key:value pair with key=foo and those values are less than 12. Besides numbers, dates can be compared, too.
+
+    LT(foo 2017-01-12)
+    
+This matches all chunks having a key:value pair with key=foo and those values are dates earlier than 2017-01-12. Additionally, a time can be specify such as `2017-01-12T09:15:59`.  
+
+==== LTE
+Use the less than or equal to comparison to search for chunks that includes a key:value pair matching the key and a value less than or equal to the one given within the query.
+    
+    LTE(foo 12)
+
+This example matches all chunks that have a key:value pair with key=foo and those values are less than or equal to 12. Besides numbers, dates can be compared, too.
+
+==== GT
+Use the greater than comparison to search for chunks that includes a key:value pair matching the key and a value greater than the one given within the query.
+    
+    GT(foo 12)
+
+This example matches all chunks that have a key:value pair with key=foo and those values are greater than 12. Besides numbers, dates can be compared, too.
+
+==== GTE
+Use the greater than or equal to comparison to search for chunks that includes a key:value pair matching the key and a value greater than or equal to the one given within the query.
+    
+    GTE(foo 12)
+
+This example matches all chunks that have a key:value pair with key=foo and those values are greater than or equal to 12. Besides numbers, dates can be compared, too.
 
 == Client configuration
 
