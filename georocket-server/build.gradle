@@ -134,10 +134,21 @@ task downloadElasticsearch {
         def destFile = new File(buildDir, elasticsearchArchiveName)
         if (!destFile.exists()) {
             def tempFile = new File(buildDir, "${elasticsearchArchiveName}.part")
-            download {
-                src elasticsearchUrl
-                dest tempFile
-                overwrite true
+            for (int i = 0; i < 5; ++i) {
+                try {
+                    download {
+                        src elasticsearchUrl
+                        dest tempFile
+                        overwrite true
+                    }
+                    break
+                } catch (Exception e) {
+                    if (i == 4) {
+                        throw e
+                    }
+                    logger.warn("Download failed. Retrying in 5 seconds ...")
+                    Thread.sleep(5000)
+                }
             }
             tempFile.renameTo(destFile)
         }
