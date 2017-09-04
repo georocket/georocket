@@ -249,7 +249,7 @@ public interface ElasticsearchClient {
    * Create a new alias to an index.
    * @param alias Alias name.
    * @param index Index name.
-   * @return
+   * @return Single which emmit when the operation was finished.
    */
   default Single<Void> addAlias(String alias, String index) {
     return aliases(new JsonArray()
@@ -263,7 +263,7 @@ public interface ElasticsearchClient {
    * Remove an existing alias from an index.
    * @param alias Alias name.
    * @param index Index name.
-   * @return
+   * @return Single which emmit when the operation was finished.
    */
   default Single<Void> removeAlias(String alias, String index) {
     return aliases(new JsonArray()
