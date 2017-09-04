@@ -54,7 +54,7 @@ public class AbstractClient {
     if ((query == null || query.isEmpty()) && (layer == null || layer.isEmpty())) {
       handler.handle(Future.failedFuture("No search query and no layer given. "
         + "Do you really wish to export/query the whole data store? If so, "
-        + "set the root layer /."));
+        + "set the layer to '/'."));
       return;
     }
     String queryPath = prepareQuery(query, layer);
@@ -102,7 +102,7 @@ public class AbstractClient {
     if ((query == null || query.isEmpty()) && (layer == null || layer.isEmpty())) {
       handler.handle(Future.failedFuture("No search query and no layer given. "
         + "Do you really wish to update all chunks in the GeoRocket "
-        + "data store? If so, set the root layer /."));
+        + "data store? If so, set the layer to '/'."));
       return;
     }
 
