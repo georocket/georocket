@@ -225,7 +225,7 @@ public class StoreEndpoint extends AbstractEndpoint {
   }
 
   /**
-   * Search all chunks for the specified query and path
+   * Retrieve all chunks matching the specified query and path
    * @param context the routing context
    */
   private void getChunks(RoutingContext context) {
@@ -277,7 +277,7 @@ public class StoreEndpoint extends AbstractEndpoint {
           } else {
             response.write(",");
           }
-          response.write("\"" + x + "\"");
+          response.write("\"" + StringEscapeUtils.escapeJson(x) + "\"");
         },
         err -> fail(response, err),
         () -> response
@@ -308,7 +308,7 @@ public class StoreEndpoint extends AbstractEndpoint {
           } else {
             response.write(",");
           }
-          response.write("\"" + x + "\"");
+          response.write("\"" + StringEscapeUtils.escapeJson(x) + "\"");
         },
         err -> fail(response, err),
         () -> response
