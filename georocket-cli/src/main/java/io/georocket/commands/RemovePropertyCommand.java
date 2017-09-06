@@ -42,7 +42,8 @@ public class RemovePropertyCommand extends AbstractGeoRocketCommand {
    * @param layer the layer
    */
   @OptionDesc(longName = "layer", shortName = "l",
-      description = "absolute path to the layer in which to remove properties",
+      description = "absolute path to the layer containing the chunks from "
+        + "which the properties should be removed",
       argumentName = "PATH", argumentType = Option.ArgumentType.STRING)
   public void setLayer(String layer) {
     this.layer = layer;

@@ -38,11 +38,13 @@ public class AddTagCommand extends AbstractQueryCommand {
   }
 
   /**
-   * Set the absolute path to the layer from which to update tags
+   * Set the absolute path to the layer containing the chunks to which the
+   * tags should be added
    * @param layer the layer
    */
   @OptionDesc(longName = "layer", shortName = "l",
-      description = "absolute path to the layer from which to add tags",
+      description = "absolute path to the layer containing the chunks to "
+        + "which the tags should be added",
       argumentName = "PATH", argumentType = ArgumentType.STRING)
   public void setLayer(String layer) {
     this.layer = layer;

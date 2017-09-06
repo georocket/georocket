@@ -25,10 +25,10 @@ public class TagCommand extends AbstractGeoRocketCommand {
    */
   @CommandDescList({
     @CommandDesc(longName = "add",
-        description = "add tags to existing chunks in GeoRocket",
+        description = "add tags to existing chunks",
         command = AddTagCommand.class),
     @CommandDesc(longName = "rm",
-        description = "remove tags from existing chunks in GeoRocket",
+        description = "remove tags from existing chunks",
         command = RemoveTagCommand.class)
   })
   public void setCommand(AbstractGeoRocketCommand subcommand) {
@@ -53,7 +53,7 @@ public class TagCommand extends AbstractGeoRocketCommand {
 
   @Override
   public String getUsageDescription() {
-    return "Update tags of existing chunks in the GeoRocket data store";
+    return "Modify tags of existing chunks in the GeoRocket data store";
   }
 
   @Override

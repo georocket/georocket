@@ -10,7 +10,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 
 /**
- * Update properties of existing chunks in the GeoRocket data store
+ * Modify properties of existing chunks in the GeoRocket data store
  * @author Benedikt Hiemenz
  */
 public class PropertyCommand extends AbstractGeoRocketCommand {
@@ -25,13 +25,13 @@ public class PropertyCommand extends AbstractGeoRocketCommand {
    */
   @CommandDescList({
     @CommandDesc(longName = "get",
-        description = "get property values of a property in GeoRocket",
+        description = "get values of a property",
         command = GetPropertyCommand.class),
     @CommandDesc(longName = "set",
-        description = "set properties of existing chunks in GeoRocket",
+        description = "set properties of existing chunks",
         command = SetPropertyCommand.class),
     @CommandDesc(longName = "rm",
-        description = "remove properties from existing chunks in GeoRocket",
+        description = "remove properties from existing chunks",
         command = RemovePropertyCommand.class)
   })
   public void setCommand(AbstractGeoRocketCommand subcommand) {
@@ -56,7 +56,7 @@ public class PropertyCommand extends AbstractGeoRocketCommand {
 
   @Override
   public String getUsageDescription() {
-    return "Update properties of existing chunks in the GeoRocket data store";
+    return "Modify properties of existing chunks in the GeoRocket data store";
   }
 
   @Override

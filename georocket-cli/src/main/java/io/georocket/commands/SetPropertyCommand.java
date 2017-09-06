@@ -42,7 +42,8 @@ public class SetPropertyCommand extends AbstractGeoRocketCommand {
    * @param layer the layer
    */
   @OptionDesc(longName = "layer", shortName = "l",
-      description = "absolute path to the layer in which to set properties",
+      description = "absolute path to the layer containing the chunks whose "
+        + "properties should be set",
       argumentName = "PATH", argumentType = Option.ArgumentType.STRING)
   public void setLayer(String layer) {
     this.layer = layer;
@@ -53,7 +54,8 @@ public class SetPropertyCommand extends AbstractGeoRocketCommand {
    * @param properties the properties
    */
   @OptionDesc(longName = "properties", shortName = "props",
-      description = "comma-separated list of properties to set",
+      description = "comma-separated list of properties to set (e.g. "
+        + "`key1:value1,key2:value2`)",
       argumentName = "PROPERTIES", argumentType = Option.ArgumentType.STRING)
   public void setProperties(String properties) {
     if (properties == null || properties.isEmpty()) {

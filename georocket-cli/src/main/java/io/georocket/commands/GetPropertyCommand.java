@@ -36,22 +36,24 @@ public class GetPropertyCommand extends AbstractGeoRocketCommand {
   }
 
   /**
-   * Set the absolute path to the layer from which to update property
+   * Set the absolute path to the layer containing the chunks whose property
+   * values should be retrieved
    * @param layer the layer
    */
   @OptionDesc(longName = "layer", shortName = "l",
-    description = "absolute path to the layer in which to set property",
+    description = "absolute path to the layer containing the chunks whose "
+      + "property values should be retrieved",
     argumentName = "PATH", argumentType = Option.ArgumentType.STRING)
   public void setLayer(String layer) {
     this.layer = layer;
   }
 
   /**
-   * The property to set to the queried chunks within the given layer
+   * The name of the property to get
    * @param property the property
    */
   @OptionDesc(longName = "property", shortName = "prop",
-    description = "the name of the properties",
+    description = "the name of the property",
     argumentName = "PROPERTIES", argumentType = Option.ArgumentType.STRING)
   public void setProperty(String property) {
     this.property = property;
@@ -85,7 +87,7 @@ public class GetPropertyCommand extends AbstractGeoRocketCommand {
         Throwable t = ar.cause();
         error(t.getMessage());
         if (!(t instanceof NoStackTraceThrowable)) {
-          log.error("Could not get values for property " + property, t);
+          log.error("Could not get values of property " + property, t);
         }
         handler.handle(1);
       } else {
