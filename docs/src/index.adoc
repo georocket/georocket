@@ -155,13 +155,31 @@ You may attach tags to imported files. Tags are human-readable labels that you c
 
   georocket import --tags city,district,lod1 myfile.xml
 
+In addition, you may define properties. Properties are key-value pairs that can be attached to imported files. Similar to tags, you can use properties to search chunks stored in GeoRocket. Multiple properties can be attached to a chunk, but keys must be unique. Use a colon ':' to separate key and value, and a comma to specify multiple properties.
+
+  georocket import --properties type:building,lod:1 myfile.xml
+
+Of course, you can combine tags, properties and layers:
+
+  georocket import --layer CityModel \
+    --tags city,district,lod1 \
+    --properties type:building,lod:1 \
+    myfile.xml
+
+For a description on how to use tags and properties to retrieve chunks from the data store, we refer to the sections on the <<search-command, search command>> and the <<query-language, query language>>.
+
+[NOTE]
+====
+GeoRocket is able to automatically detect the coordinate reference system (CRS) of an imported file. If this is, for any reason, not possible, you may manually specify a reference system with the parameter `--fallbackCRS`. GeoRocket will only use this fallback CRS if it does not find a valid one in the imported file. The CLI accepts CRS strings in the form `EPSG:<code>` (e.g.  `EPSG:25832`). See the http://www.epsg-registry.org/[EPSG registry] for more information.
+====
+
 === Export command
 
 Export a layer stored in GeoRocket. Provide the name of the layer you want to export.
 
   georocket export CityModel/LOD1
 
-By default the export command writes to standard out (your console). Redirect output to a file as follows.
+By default, the export command writes to standard out (your console). Redirect output to a file as follows.
 
   georocket export CityModel/LOD1 > lod1.xml
 
@@ -169,7 +187,7 @@ You may also export the whole data store. Just provide the root layer `/` to the
 
   georocket export /
 
-WARNING: Exporting the whole data store may take a while depending on how much data you have stored in GeoRocket.
+WARNING: Exporting the whole data store may take a while, depending on how much data you have stored in GeoRocket.
 
 [[search-command]]
 === Search command
@@ -182,7 +200,7 @@ You can also search individual layers.
 
   georocket search --layer CityModel myquery
 
-By default the search command writes to standard out (your console). Redirect output to a file as follows.
+By default, the search command writes to standard out (your console). Redirect output to a file as follows.
 
   georocket search myquery > results.xml
 
