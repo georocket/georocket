@@ -208,6 +208,105 @@ Use a space character to separate multiple query terms. Search results will be c
 
 See the <<query-language>> section for a full description of all possible terms in a query.
 
+[NOTE]
+====
+There are command interpreters that do not accept specific query strings. You may have to escape individual characters to formulate a valid command. Consider the following example:
+
+  georocket search EQ(key value)
+
+This command works perfectly on the Windows Command Prompt, but not under Linux/macOS with bash or zsh. For these shells, you have to escape the parentheses as follows:
+
+  georocket search EQ\(key value\)
+
+Do not try to quote the whole query string or to escape the space character. THE FOLLOWING COMMANDS ARE MOST LIKELY NOT WHAT YOU WANT:
+
+  georocket search "EQ(key value)"
+  georocket search EQ\(key\ value\)
+
+These commands search for chunks that contain the verbatim string `EQ(key value)` and not for those where the specified property equals the given value!
+====
+
+=== Tag command
+
+Modify tags of existing chunks in the data store. Tags are labels that you can use to categorise your data and to make it searchable. The `tag` command has to sub-commands that you can use to add or remove tags.
+
+==== Add tags
+
+Add tags to existing chunks in the data store as follows:
+
+  georocket tag add --tags city,lod1 myquery
+
+This command adds the tags `city` and `lod1` to all chunks matching the given <<query-language, query>>.
+
+You may also limit the command to chunks from a given layer:
+
+  georocket tag add --layer CityModel --tags city,lod1 myquery
+
+==== Remove tags
+
+Remove tags from existing chunks in the data store as follows:
+
+  georocket tag rm --tags city,lod1 myquery
+
+The command will remove the tags `city` and `lod1` from all chunks matching the given <<query-language, query>>.
+
+To limit the command to chunks from a certain layer use the `--layer` parameter:
+
+  georocket tag rm --layer CityModel --tags city,lod1 myquery
+
+=== Property command
+
+Manage properties of existing chunks in the data store. Properties are key-value pairs that you can attach to your data to make it searchable. The `property` command has sub-commands to set, remove, and retrieve properties.
+
+NOTE: Properties belong to metadata and should not be mixed up with attributes contained in the imported data (such as CityGML generic attributes or GeoJSON properties). Modifying properties only affects GeoRocket's index and does not change the imported chunks!
+
+==== Set properties
+
+Set properties of existing chunks in the data store as follows:
+
+  georocket property set --properties type:building,lod:1 myquery
+
+This command modifies chunks matching the given <<query-language, query>>. It sets the property `type` to `building` and `lod` to `1`.
+
+You may also limit the command to chunks from a given layer:
+
+  georocket property set --layer CityModel --properties type:building,lod:1 myquery
+
+[NOTE]
+====
+Numerical property values, dates, and times are automatically analysed by GeoRocket and can be used in combination with <<comparison-operators,comparison operators>> (such as `EQ`, `LT`, and `GT`) when formulating a <<query-language, query>>. For example, if you attach a property named `importDate` to all chunks, denoting the date when the chunk was imported into GeoRocket, you will be able to query the data store for all chunks whose `importDate` is before 1 January 2017 with the following query:
+
+  LT(importDate 2017-01-01)
+
+Dates must be given in the form `YYYY-MM-DD`, `YYYY-MM` or `YYYY`. Times must be given as `HH:mm:ss`, `HH:mm` or `HH`.
+====
+
+==== Get property values
+
+Get all values of a property with the following command:
+
+  ./georocket property get --property type myquery
+
+This command retrieves all values of the property with the key `type` from all chunks matching the given <<query-language, query>>.
+
+You may limit the command to a certain layer as follows:
+
+  ./georocket property get --layer CityModel --property type myquery
+
+NOTE: The operation returns a list of all values of the given property from all matching chunks. Duplicate values are not filtered out. This means, in the example above, if there are 10 chunks whose property `type` has the value `building`, you will get a list with the value `building` repeated 10 times.
+
+==== Remove properties
+
+Remove properties from existing chunks in the GeoRocket data store:
+
+  georocket property rm --properties type,lod myquery
+
+This command removes the properties with the keys `type` and `lod` from all chunks matching the given <<query-language, query>>.
+
+You may limit the command to chunks from a given layer:
+
+  georocket property rm --layer CityModel --properties type,lod myquery
+
 === Delete command
 
 Remove geospatial features (chunks) or whole layers from the GeoRocket data store. Provide a <<query-language, query>> to the delete command to select the features to delete.
@@ -550,6 +649,11 @@ Example:
   NOT(13.378,52.515,13.380,52.517 foobar)
 
 This example matches all chunks that are not within the bounding box `13.378,52.515,13.380,52.517` and that don't have a tag or indexed attribute with a value of `foobar`.
+
+[[comparison-operators]]
+=== Comparison operators
+
+TODO
 
 == Client configuration
 
