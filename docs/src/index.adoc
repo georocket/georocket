@@ -12,7 +12,7 @@ Copyright (C) 2015-2017 Fraunhofer Institute for Computer Graphics Research IGD
 
 == Introduction
 
-GeoRocket is a high-performance data store for geospatial files. It can store 3D city models (e.g. CityGML), GML files or any other XML-based geospatial data sets. GeoRocket provides the following features:
+GeoRocket is a high-performance data store for geospatial files. It can store GeoJSON files, 3D city models (e.g. CityGML), GML files or any other XML-based geospatial data sets. GeoRocket provides the following features:
 
 * High performance data storage with multiple back-ends such as Amazon S3, MongoDB, distributed file systems (e.g. HDFS or Ceph), or your local hard drive (enabled by default)
 * Support for high-speed search features based on the popular Open-Source framework https://www.elastic.co/[Elasticsearch]. You can perform spatial queries and search for attributes, layers and tags.
@@ -29,13 +29,11 @@ The following figure depicts the software architecture of GeoRocket.
 .The architecture of GeoRocket
 image::images/architecture.svg[alt="GeoRocket architecture diagram", width="70%", align="center"]
 
-The import process starts in the upper left corner. Every imported file is first split into individual chunks. Depending on the input format chunks have different meanings. CityGML files, for example, are split into individual `cityObjectMember` objects which are typically the buildings of a city model.
+The import process starts in the upper left corner. Every imported file is first split into individual chunks. Depending on the input format, chunks have different meanings. CityGML files, for example, are split into individual `cityObjectMember` objects which are typically the buildings of a city model.
 
-Attached to each chunk is metadata containing additional information describing the chunk. This includes tags specified by the client and other automatically generated attributes.
+Attached to each chunk, there is metadata containing additional information describing the chunk. This includes tags and properties specified by the client, as well as other automatically generated attributes.
 
-The chunks are put into the GeoRocket data store. There are several data store implementations supporting different back-ends such as Amazon S3, HDFS, MongoDB or the local hard drive (default).
-
-Immediately after a chunk has been put into the data store the indexer starts working asynchronously in the background. It reads new chunks from the data store and analyses them for known patterns. It recognises spatial coordinates, attributes and other content. The indexer creates a directory of every item found--the '`index`'.
+The chunks are put into the GeoRocket data store. There are several data store implementations supporting different back-ends such as Amazon S3, HDFS, MongoDB or the local hard drive (default). Immediately after a chunk has been put into the data store, the indexer starts working asynchronously in the background. It reads new chunks from the data store and analyses them for known patterns. It recognises spatial coordinates, attributes and other content. The indexer creates a directory of every item found--the '`index`'.
 
 The export process starts with querying the indexer for chunks matching the <<query-language, criteria>> supplied by the client. These chunks are then retrieved from the data store (together with their metadata) and merged into a result file.
 
@@ -53,6 +51,17 @@ Whenever a new chunk is added to the data store a custom processor can retrieve 
 * Process a 3D city model and derive LOD1 buildings from LOD2 or LOD3.
 
 The advantage of keeping a secondary data store is that it is created automatically in the background when new data is added to GeoRocket. This avoids manual processing. Individual processors may even keep the secondary data store up to date incrementally and only re-create those parts that have changed since it has been created or updated the last time.
+
+=== Glossary
+
+This section contains a list of terms often used in this document and in GeoRocket.
+
+Chunk:: A part of an imported file, typically a geospatial feature (e.g. a building from a 3D city model).
+Metadata:: Information about a chunk (such as user-defined tags and properties, as well as derived attributes).
+Secondary data store:: A store for data that is automatically derived from chunks in the main data store (e.g. https://www.khronos.org/gltf[glTF] files derived from imported CityGML chunks).
+Tag:: A user-defined label that can be attached to one or more chunks in order to categorise data. In contrast to a layer, multiple tags can be attached to a chunk.
+Property:: A user-defined key-value pair that can be attached to a chunk. Multiple properties can be attached to one chunk, but the key must be unique. Properties belong to metadata and should not be mixed up with attributes contained in the imported data (such as CityGML generic attributes or GeoJSON properties).
+Layer:: A way to structure the data store. Can be compared to folders or directories on a hard drive. In contrast to tags, a chunk can only be stored in one layer. Chunks without a layer are kept in the root layer named `/`. Layers can be structured hierarchically, but parent layers always include all chunks of their children.
 
 == Getting started
 
@@ -96,11 +105,13 @@ GeoRocket comes with a handy command-line interface (CLI) letting you interact w
 
 [NOTE]
 ====
-In the following sections it is assumed that you have the `georocket` executable in your path. If you have not done so already, you may add it to your path with the following command (Linux):
+In the following sections it is assumed that you have the `georocket` executable in your path. If you have not done so already, you may add it to your path with the following command.
+
+Linux:
 
   export PATH=/path/to/georocket-cli-1.0.1-SNAPSHOT/bin:$PATH
 
-Or under Windows do:
+Windows:
 
   set PATH=C:\path\to\georocket-cli-1.0.1-SNAPSHOT\bin;%PATH%
 ====
