@@ -62,6 +62,7 @@ Secondary data store:: A store for data that is automatically derived from chunk
 Tag:: A user-defined label that can be attached to one or more chunks in order to categorise data. In contrast to a layer, multiple tags can be attached to a chunk.
 Property:: A user-defined key-value pair that can be attached to a chunk. Multiple properties can be attached to one chunk, but the key must be unique. Properties belong to metadata and should not be mixed up with attributes contained in the imported data (such as CityGML generic attributes or GeoJSON properties).
 Layer:: A way to structure the data store. Can be compared to folders or directories on a hard drive. In contrast to tags, a chunk can only be stored in one layer. Chunks without a layer are kept in the root layer named `/`. Layers can be structured hierarchically, but parent layers always include all chunks of their children.
+Indexed attribute:: In contrast to properties, indexed attributes do not belong to metadata. Instead, they are information inside the imported chunks, detected by the indexer (e.g. CityGML generic attributes or GeoJSON properties). Since chunks cannot be modified, indexed attributes are immutable.
 
 == Getting started
 
@@ -281,6 +282,7 @@ Numerical property values, dates, and times are automatically analysed by GeoRoc
 Dates must be given in the form `YYYY-MM-DD`, `YYYY-MM` or `YYYY`. Times must be given as `HH:mm:ss`, `HH:mm` or `HH`.
 ====
 
+[[get-property-value-command]]
 ==== Get property values
 
 Get all values of a property with the following command:
@@ -329,7 +331,7 @@ CAUTION: This is a dangerous operation. It will remove everything that is stored
 
 == HTTP interface
 
-GeoRocket Server provides an (REST-like) HTTP interface that you can use to interact with the data store as well as to embed GeoRocket in your application. By default GeoRocket listens to incoming connections on port 63020.
+GeoRocket Server provides a (REST-like) HTTP interface that you can use to interact with the data store and to embed GeoRocket in your application. By default, GeoRocket listens to incoming connections on port 63020.
 
 === GET information
 
@@ -374,7 +376,6 @@ Content-Length: 100
 === GET file
 
 Search the data store for chunks that match a given <<query-language, query>>. Merge the chunks found and return the result as a file.
-<<scrolling,Scrolling>> is also available.
 
 ===== Resource URL
 
@@ -390,12 +391,6 @@ Search the data store for chunks that match a given <<query-language, query>>. M
 | *search* +
   _(optional)_
 | A URL-encoded <<query-language, query string>>. If no query string is provided all chunks from the requested layer will be returned.
-| *scroll* +
-  _(optional)_
-| A boolean ("true"/"false") indicating whether the result should be <<scrolled, scrolled>>.
-| *scrollId* +
-  _(optional)_
-| The scrollId from a previous <<scrolling, scrolling>>.
 |===
 
 ===== Status codes
@@ -428,47 +423,112 @@ Transfer-Encoding: chunked
 </CityModel>
 ----
 
-[[scrolling]]
-==== Scrolling
+[[get-property-values]]
+=== GET property values
 
-Scrolling is available to retrieve some portion of the results from a GET query at a time.
-With scrolling the returned file is also stand-alone, meaning that it has a root element and the same structure as a un-unscrolled file.
-The response also contains a "X-Scroll-Id" header to retrieve the next elements.
+Get a list of all values of a property from all chunks matching a given <<query-language, query>>. Properties are key-value pairs that you can attach to your data to make it searchable.
 
-The next example request shows how to start a scroll GET request.
+NOTE: Duplicate values are not filtered out. See the <<get-property-value-command, get property value command>> for more information.
+
+WARNING: Properties belong to metadata and should not be mixed up with indexed attributes contained in the imported data (such as CityGML generic attributes or GeoJSON properties). For indexed attributes, see the <<get-attribute-values>> endpoint instead.
+
+===== Resource URL
+
+  /store/:path
+
+===== Parameters
+
+[cols="1,2"]
+|===
+| *property* +
+  _(required)_
+| The name of the property whose values should be returned.
+| *path* +
+  _(optional)_
+| The absolute path to a layer to search. Omit this parameter to query the whole data store.
+| *search* +
+  _(optional)_
+| A URL-encoded <<query-language, query string>>. If no query string is provided, the property values of all chunks from the requested layer will be returned.
+|===
+
+===== Status codes
+
+[cols="1,2"]
+|===
+| *200*
+| The operation was successful
+| *400*
+| The provided information was invalid (e.g. malformed query)
+| *404*
+| The requested chunks were not found or the query returned an empty result
+| *500*
+| An unexpected error occurred on the server side
+|===
 
 ===== Example request
 
-  GET /store/CityModel?scroll=true&search=LOD1+textured+13.378,52.515,13.380,52.517 HTTP/1.1
-  
-The response will contain a maximum of 100 elements. The default value of 100 can be modified
-with the query argument `size`.
-
-===== Example request
-
-  GET /store/CityModel?scroll=true&size=50&search=LOD1+textured+13.378,52.515,13.380,52.517 HTTP/1.1
-
-===== Example response
-
-The next example request shows how to continue a scroll. The scrollId GET parameter is taken from the preceding example response header ("X-Scroll-Id").
-
-===== Example request
-
-  GET /store/CityModel?scroll=true&scrollId=some_scroll_id&search=LOD1+textured+13.378,52.515,13.380,52.517 HTTP/1.1
+  GET /store/CityModel?property=type&search=LOD1+textured+13.378,52.515,13.380,52.517 HTTP/1.1
 
 ===== Example response
 
 ----
 HTTP/1.1 200 OK
-X-Scroll-Id: some_new_scroll_id
-X-Total-Hits: 420
-X-Hits: 100
 Transfer-Encoding: chunked
 
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<CityModel ...>
-  ...
-</CityModel>
+["Building", "Building", "Building", "Tree", ... "Tree", "Building", "Tree", "Street"]
+----
+
+[[get-attribute-values]]
+=== GET indexed attribute values
+
+Get a list of all values of an indexed attribute from all chunks matching a given <<query-language, query>>. In contrast to properties, indexed attributes are information inside the imported chunks (such as CityGML generic attributes or GeoJSON properties).
+
+NOTE: Similar to the <<get-property-values>> endpoint, duplicate values are not filtered out.
+
+===== Resource URL
+
+  /store/:path
+
+===== Parameters
+
+[cols="1,2"]
+|===
+| *attribute* +
+  _(required)_
+| The name of the indexed attribute whose values should be returned.
+| *path* +
+  _(optional)_
+| The absolute path to a layer to search. Omit this parameter to query the whole data store.
+| *search* +
+  _(optional)_
+| A URL-encoded <<query-language, query string>>. If no query string is provided, the attribute values of all chunks from the requested layer will be returned.
+|===
+
+===== Status codes
+
+[cols="1,2"]
+|===
+| *200*
+| The operation was successful
+| *400*
+| The provided information was invalid (e.g. malformed query)
+| *404*
+| The requested chunks were not found or the query returned an empty result
+| *500*
+| An unexpected error occurred on the server side
+|===
+
+===== Example request
+
+  GET /store/CityModel?attribute=Street&search=LOD1 HTTP/1.1
+
+===== Example response
+
+----
+HTTP/1.1 200 OK
+Transfer-Encoding: chunked
+
+["Main Street", "Main Street", "5th Avenue", "Lake Street", ... "5th Avenue", "5th Avenue", "Lake Street", "Main Street"]
 ----
 
 === POST file
