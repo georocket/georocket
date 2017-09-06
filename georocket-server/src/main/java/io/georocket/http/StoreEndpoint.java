@@ -161,9 +161,9 @@ public class StoreEndpoint extends AbstractEndpoint {
   }
 
   /**
-   * Read the context, select the right StoreCursor and set the respose header. 
-   * @param context The clients routing context
-   * @return Single which provide a StoreCursor
+   * Read the context, select the right StoreCursor and set the response header
+   * @param context the routing context
+   * @return a Single providing a StoreCursor
    */
   protected Single<StoreCursor> prepareCursor(RoutingContext context) {
     HttpServerRequest request = context.request();
@@ -171,7 +171,7 @@ public class StoreEndpoint extends AbstractEndpoint {
     
     String scroll = request.getParam("scroll");
     String scrollId = request.getParam("scrollId");
-    Boolean scrolling = "true".equals(scroll) || scrollId != null;
+    Boolean scrolling = Boolean.parseBoolean(scroll) || scrollId != null;
 
     String path = getEndpointPath(context);
     String search = request.getParam("search");

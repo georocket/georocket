@@ -617,7 +617,7 @@ public class IndexerVerticle extends AbstractVerticle {
     String search = body.getString("search");
     String path = body.getString("path");
     String scrollId = body.getString("scrollId");
-    int pageSize = body.getInteger("pageSize", 100);
+    int pageSize = body.getInteger("size", 100);
     String timeout = "1m"; // one minute
     
     JsonObject parameters = new JsonObject()
