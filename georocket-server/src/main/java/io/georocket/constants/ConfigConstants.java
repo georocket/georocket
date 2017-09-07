@@ -15,7 +15,7 @@ public final class ConfigConstants {
   public static final String PORT = "georocket.port";
   
   public static final String LOG_CONFIG = "georocket.logConfig";
-  public static final String REPORT_ACTIVITIES = "georocket.reportActivities";
+  public static final String REPORT_ACTIVITIES = "georocket.reportActivities"; // undocumented
   
   public static final String STORAGE_CLASS = "georocket.storage.class";
   public static final String STORAGE_FILE_PATH = "georocket.storage.file.path";
@@ -37,11 +37,11 @@ public final class ConfigConstants {
   public static final String INDEX_ELASTICSEARCH_EMBEDDED = "georocket.index.elasticsearch.embedded";
   public static final String INDEX_ELASTICSEARCH_HOST = "georocket.index.elasticsearch.host";
   public static final String INDEX_ELASTICSEARCH_PORT = "georocket.index.elasticsearch.port";
-  public static final String INDEX_ELASTICSEARCH_DOWNLOAD_URL = "georocket.index.elasticsearch.downloadUrl";
-  public static final String INDEX_ELASTICSEARCH_INSTALL_PATH = "georocket.index.elasticsearch.installPath";
+  public static final String INDEX_ELASTICSEARCH_DOWNLOAD_URL = "georocket.index.elasticsearch.downloadUrl"; // undocumented
+  public static final String INDEX_ELASTICSEARCH_INSTALL_PATH = "georocket.index.elasticsearch.installPath"; // undocumented
   public static final String INDEX_SPATIAL_PRECISION = "georocket.index.spatial.precision";
 
-  public static final String QUERY_COMPILER_CLASS = "georocket.query.defaultQueryCompiler";
+  public static final String QUERY_COMPILER_CLASS = "georocket.query.defaultQueryCompiler"; // undocumented
   public static final String QUERY_DEFAULT_CRS = "georocket.query.defaultCRS";
 
   public static final String DEFAULT_HOST = "127.0.0.1";

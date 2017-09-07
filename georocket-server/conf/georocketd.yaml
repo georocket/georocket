@@ -8,9 +8,6 @@ georocket:
   # Log configuration at startup (useful for debugging)
   logConfig: false
 
-  # Publish georocket activities
-  reportActivities: true
-
   # Back-end configuration
   storage:
     # The data store implementation to use

@@ -891,11 +891,20 @@ or
 
   minimum_longitude,minimum_latitude,maximum_longitude,maximum_latitude
 
-NOTE: As of version 1.0.1-SNAPSHOT GeoRocket only supports spatial queries given in WGS84 coordinates (longitude/latitude). However, data stored in GeoRocket can have an arbitrary spatial reference system as long as it is specified in the original file.
-
 Example:
 
   13.378,52.515,13.380,52.517
+
+[NOTE]
+====
+By default, spatial queries should be given in WGS84 coordinates (longitude/latitude), but you can also <<configuration-queries,configure>> the default value in GeoRocket's configuration file.
+
+Alternatively, you may specify a coordinate reference system (CRS) directly in the query. For this, you have to put the CRS string in front of the coordinates. For example, the following notation specifies a bounding box in the metric 'DHDN / 3-degree Gauss-Kruger zone 3' reference system:
+
+  EPSG:31467:3477533,5605738,3477534,5605739
+
+CRS strings should be in the form `EPSG:<code>` (e.g.  `EPSG:25832`). See the http://www.epsg-registry.org/[EPSG registry] for more information.
+====
 
 [[logical-operators]]
 === Logical operators
@@ -1036,6 +1045,30 @@ is identical to:
     storage:
       class: io.georocket.storage.file.FileStore
 
+You may override items in your configuration file with environment variables. This is particularly useful if you are using GeoRocket inside a https://hub.docker.com/r/georocket/georocket/[Docker container]. The environment variables use a slightly different naming scheme. All variables are in capital letters and dots are replaced by underscores. For example, the configuration key `georocket.storage.class` becomes `GEOROCKET_STORAGE_CLASS` and `georocket.storage.mongodb.database` becomes `GEOROCKET_STORAGE_MONGODB_DATABASE`.
+
+=== General
+
+[cols="1,2"]
+|===
+| *georocket.home* +
+  _(default: application directory)_
+| An absolute path to the directory where GeoRocket can find its configuration and where it should put its internal storage directory.
+| *georocket.logConfig* +
+  _(default: false)_
+| A boolean value (`true` or `false`) denoting whether GeoRocket should log its configuration on startup. This can be useful for debugging.
+|===
+
+[[configuration-queries]]
+=== Queries
+
+[cols="1,2"]
+|===
+| *georocket.query.defaultCRS* +
+  _(default: EPSG:4326)_
+| A coordinate reference system (CRS) that should be used by default for all queries. CRS strings should be given in the form `EPSG:<code>` (e.g.  `EPSG:25832`). See the http://www.epsg-registry.org/[EPSG registry] for more information. The default value refers to World Geodetic System 1984 (WGS 84), which is the reference coordinate system used by the Global Positioning System (GPS) based on longitude and latitude.
+|===
+
 === HTTP interface
 
 [cols="1,2"]
@@ -1148,6 +1181,21 @@ is identical to:
 | *georocket.storage.s3.requestExpirySeconds* +
   _(default: 600)_
 | The number of seconds a pre-signed S3 request should stay valid
+|===
+
+=== Index
+
+[cols="1,2"]
+|===
+| *georocket.index.maxBulkSize* +
+  _(default: 200)_
+| The maximum number of chunks GeoRocket sends to Elasticsearch for indexing in one request. Tweak this parameter if you experience problems with Elasticsearch being too busy.
+| *georocket.index.maxParallelInserts* +
+  _(default: 5)_
+| The maximum number of files GeoRocket imports in parallel. If more files are sent to GeoRocket they will be put into a queue. Tweak this parameter if you experience problems with Elasticsearch or GeoRocket being too busy and occupying too many resources.
+| *georocket.index.spatial.precision* +
+  _(default: maximum)_
+| The desired precision for the spatial indexer in GeoRocket. The value should be a number followed by a distance unit (e.g. `1m`, `2km`, `10cm`, `1mi`). Note that, the higher the precision, the more memory GeoRocket will use. Set this configuration item to a value that is reasonable for your application. The default value is the highest precision GeoRocket (or Elasticsearch) can achieve, but it does not work well, for example, for geometries that cover a whole country. Reduce the precision in such a case to save memory and to avoid crashes.
 |===
 
 [[indexer-elasticsearch]]
