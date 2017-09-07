@@ -549,6 +549,9 @@ Import a file into GeoRocket. Split the file into chunks and put them into the d
 | *tags* +
   _(optional)_
 | A comma-separated list of tags (i.e. labels) to attach to each imported chunk.
+| *fallbackCRS* +
+  _(optional)_
+| GeoRocket is able to automatically detect the coordinate reference system (CRS) of an imported file. If this is, for any reason, not possible, you may manually specify a reference system with this parameter. GeoRocket will only use it if it does not find a valid one in the imported file. Values for this parameter must be in the form `EPSG:<code>` (e.g. `EPSG:25832`). See the http://www.epsg-registry.org/[EPSG registry] for more information.
 |===
 
 ===== Status codes
@@ -575,10 +578,110 @@ Content-Length: 35903517
 </CityModel>
 ----
 
-==== Example response
+===== Example response
 
 ----
 HTTP/1.1 202 Accepted file - importing in progress
+Content-Length: 0
+----
+
+=== PUT tags
+
+Add tags to existing chunks in the data store.
+
+===== Resource URL
+
+  /store/:path
+
+===== Parameters
+
+[cols="1,2"]
+|===
+| *tags* +
+  _(required)_
+| A comma-separated list of tags (i.e. labels) to attach to each matching chunk.
+| *path* +
+  _(optional)_
+| The absolute path to a layer containing the chunks to which the tags should be added. Omit this parameter to add the tags to all matching chunks in the data store.
+| *search* +
+  _(optional)_
+| A URL-encoded <<query-language, query string>>. If no query string is provided, the tags will be added to all chunks from the given layer.
+|===
+
+===== Status codes
+
+[cols="1,2"]
+|===
+| *204*
+| The operation was successful
+| *400*
+| The provided information was invalid (e.g. malformed query)
+| *405*
+| The operation is not allowed. It is not possible to modify anything else in the data store except tags and properties
+| *500*
+| An unexpected error occurred on the server side
+|===
+
+===== Example request
+
+----
+PUT /store/CityModel?tags=textured&search=LOD3 HTTP/1.1
+----
+
+===== Example response
+
+----
+HTTP/1.1 204 No Content
+Content-Length: 0
+----
+
+=== PUT properties
+
+Add properties to existing chunks in the data store.
+
+===== Resource URL
+
+  /store/:path
+
+===== Parameters
+
+[cols="1,2"]
+|===
+| *properties* +
+  _(required)_
+| A comma-separated list of properties to set. Each property should be defined in the form `key:value`.
+| *path* +
+  _(optional)_
+| The absolute path to a layer containing the chunks whose properties should be set. Omit this parameter to set the properties of all matching chunks in the data store.
+| *search* +
+  _(optional)_
+| A URL-encoded <<query-language, query string>>. If no query string is provided, the properties of all chunks from the given layer will be set.
+|===
+
+===== Status codes
+
+[cols="1,2"]
+|===
+| *204*
+| The operation was successful
+| *400*
+| The provided information was invalid (e.g. malformed query)
+| *405*
+| The operation is not allowed. It is not possible to modify anything else in the data store except tags and properties
+| *500*
+| An unexpected error occurred on the server side
+|===
+
+===== Example request
+
+----
+PUT /store/CityModel?properties=type:building,lod:3&search=LOD3 HTTP/1.1
+----
+
+===== Example response
+
+----
+HTTP/1.1 204 No Content
 Content-Length: 0
 ----
 
@@ -624,17 +727,151 @@ NOTE: This HTTP method is idempotent. Even if the given query returns no results
 DELETE /store/CityModel?search=LOD1 HTTP/1.1
 ----
 
-==== Example response
+===== Example response
 
 ----
 HTTP/1.1 204 No Content
 Content-Length: 0
 ----
 
+=== DELETE tags
+
+Remove tags from existing chunks in the data store.
+
+===== Resource URL
+
+  /store/:path
+
+===== Parameters
+
+[cols="1,2"]
+|===
+| *tags* +
+  _(required)_
+| Comma-separated list of tags to remove from the chunks
+| *path* +
+  _(optional)_
+| The absolute path to the layer containing the chunks from which the given tags should be removed
+| *search* +
+  _(optional)_
+| A URL-encoded <<query-language, query string>> specifying from which chunks the given tags should be removed. If no query string is provided the tags are removed from all chunks in the given layer.
+|===
+
+===== Status codes
+
+[cols="1,2"]
+|===
+| *204*
+| The operation was successful. The tags were deleted from the matching chunks.
+| *400*
+| The provided information was invalid (e.g. malformed query)
+| *500*
+| An unexpected error occurred on the server side
+|===
+
+NOTE: This HTTP method is idempotent. Even if the given query returns no results or if the given tags do not exist (i.e. if there is nothing to delete), the operation completes successfully with a status code of `204`.
+
+===== Example request
+
+----
+DELETE /store/CityModel?search=LOD3&tags=textured HTTP/1.1
+----
+
+===== Example response
+
+----
+HTTP/1.1 204 No Content
+Content-Length: 0
+----
+
+=== DELETE properties
+
+Remove properties from existing chunks in the data store.
+
+===== Resource URL
+
+  /store/:path
+
+===== Parameters
+
+[cols="1,2"]
+|===
+| *properties* +
+  _(required)_
+| Comma-separated list of property keys to remove from the chunks
+| *path* +
+  _(optional)_
+| The absolute path to the layer containing the chunks from which the properties should be removed
+| *search* +
+  _(optional)_
+| A URL-encoded <<query-language, query string>> specifying from which chunks the properties should be removed. If no query string is provided the properties are removed from all chunks in the given layer.
+|===
+
+===== Status codes
+
+[cols="1,2"]
+|===
+| *204*
+| The operation was successful. The properties were deleted from the matching chunks.
+| *400*
+| The provided information was invalid (e.g. malformed query)
+| *500*
+| An unexpected error occurred on the server side
+|===
+
+NOTE: This HTTP method is idempotent. Even if the given query returns no results or if the given properties do not exist (i.e. if there is nothing to delete), the operation completes successfully with a status code of `204`.
+
+===== Example request
+
+----
+DELETE /store/CityModel?search=LOD1&properties=type HTTP/1.1
+----
+
+===== Example response
+
+----
+HTTP/1.1 204 No Content
+Content-Length: 0
+----
+
+=== Error responses
+
+All endpoints described above return standardised HTTP status codes. With these status codes you are able to determine if an operation was successful or not. The error codes are descriptive (see https://tools.ietf.org/html/rfc7231[RFC7231]), but sometimes more information is needed. Whenever an error occurs, GeoRocket returns a JSON object providing additional details. The JSON object always has the same structure:
+
+* It has a property named `error`.
+* This property is an object with the properties `type` and `reason`.
+* `type` is a string providing more information about what kind of error has occurred.
+* `reason` is a human-readable string giving details about the cause of the error.
+
+===== Error types
+
+At the moment, the following values are defined for the error `type`:
+
+[cols="1,2"]
+|===
+| *generic_error*
+| A generic error occurred, see the property `reason` for details.
+| *http_error*
+| The server issued an HTTP request to a third-party system (e.g. Elasticsearch) which failed
+| *invalid_property_syntax_error*
+| The syntax of a property is not valid. Valid properties are in the form `key:value`.
+|===
+
+More types may be added in future versions of GeoRocket.
+
+===== Example response
+
+----
+HTTP/1.1 404 Not Found
+Transfer-Encoding: chunked
+
+{"error":{"type":"generic_error","reason":"Not Found"}}
+----
+
 [[query-language]]
 == Query language
 
-NOTE: As of version 1.0.1-SNAPSHOT the query language is rather limited. At the moment you can only specify strings and bounding boxes.
+The GeoRocket query language can be used to search the data store for chunks matching given criteria.
 
 === Strings
 
