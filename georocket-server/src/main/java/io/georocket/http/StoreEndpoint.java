@@ -1,8 +1,5 @@
 package io.georocket.http;
 
-import io.georocket.storage.RxAsyncCursor;
-import io.georocket.storage.StoreCursor;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -13,20 +10,22 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
-import io.georocket.ServerAPIException;
-import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.text.StringEscapeUtils;
 import org.apache.http.ParseException;
 import org.apache.http.entity.ContentType;
 import org.bson.types.ObjectId;
 
 import com.google.common.base.Splitter;
 
+import io.georocket.ServerAPIException;
 import io.georocket.constants.AddressConstants;
 import io.georocket.constants.ConfigConstants;
 import io.georocket.output.MultiMerger;
+import io.georocket.storage.RxAsyncCursor;
 import io.georocket.storage.RxStore;
 import io.georocket.storage.RxStoreCursor;
+import io.georocket.storage.StoreCursor;
 import io.georocket.storage.StoreFactory;
 import io.georocket.util.HttpException;
 import io.georocket.util.MimeTypeUtils;
