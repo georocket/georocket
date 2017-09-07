@@ -214,7 +214,7 @@ public class StoreEndpoint extends AbstractEndpoint {
     if (property != null && attribute != null) {
       response
         .setStatusCode(400)
-        .end("You can only get the values of a single property OR attribute");
+        .end("You can only get the values of a property or an attribute, but not both");
     } else if (property != null) {
       getPropertyValues(search, path, property, response);
     } else if (attribute != null) {
@@ -510,8 +510,8 @@ public class StoreEndpoint extends AbstractEndpoint {
     }
   }
 
-  private void onReceivingFileFinished(String correlationId, long duration, String layer, Throwable error) {
-
+  private void onReceivingFileFinished(String correlationId, long duration,
+      String layer, Throwable error) {
     if (error == null) {
       log.info(String.format("Finished receiving file [%s] to layer '%s' after '%d' ms",
           correlationId, layer, duration));
@@ -548,7 +548,11 @@ public class StoreEndpoint extends AbstractEndpoint {
     String properties = request.getParam("properties");
     String tags = request.getParam("tags");
 
-    if (properties != null) {
+    if (properties != null && tags != null) {
+      response
+        .setStatusCode(400)
+        .end("You can only delete properties or tags, but not both");
+    } else if (properties != null) {
       removeProperties(search, path, properties, response);
     } else if (tags != null) {
       removeTags(search, path, tags, response);
