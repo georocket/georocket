@@ -897,6 +897,7 @@ Example:
 
   13.378,52.515,13.380,52.517
 
+[[logical-operators]]
 === Logical operators
 
 The operators <<OR>>, <<AND>> and <<NOT>> can be used to logically combine terms in a query. They are applied using the following notation:
@@ -950,7 +951,51 @@ This example matches all chunks that are not within the bounding box `13.378,52.
 [[comparison-operators]]
 === Comparison operators
 
-TODO
+These operators can be used to compare property values to literals. There are five comparison operators:
+
+[cols="1,1,2"]
+|===
+| *EQ*
+| equals
+| The property value must be equal to the given literal
+| *LT*
+| less than
+| The property value must be less than the given literal
+| *GT*
+| greater than
+| The property value must be greater than the given literal
+| *LTE*
+| less or equal
+| The property value must be less than or equal to the given literal
+| *GTE*
+| greater than
+| The property value must be greater than or equal to the given literal
+|===
+
+Similar to <<logical-operators, logical operators>>, comparison operators must be given in the prefix notation as follows:
+
+  <operator>(<property> <literal>)
+
+Examples:
+
+  EQ(type building)
+  LT(lod 3)
+  GTE(yearOfConstruction 1982)
+
+You can also combine logical and comparison operators as follows:
+
+  NOT(EQ(type building))
+  OR(EQ(lod 1) GT(lod 2))
+  AND(GTE(yearOfConstruction 1982) LT(yearOfConstruction 2000))
+
+[NOTE]
+====
+Numerical property values, dates, and times are automatically analysed by GeoRocket and can be used in combination with the comparison operators. For example, if you attach a property named `importDate` to all chunks, denoting the date when the chunk was imported into GeoRocket, you will be able to query the data store for all chunks whose `importDate` is before 1 January 2017 with the following query:
+
+  LT(importDate 2017-01-01)
+
+Dates must be given in the form `YYYY-MM-DD`, `YYYY-MM` or `YYYY`. Times must be given as `HH:mm:ss`, `HH:mm` or `HH`.
+====
 
 == Client configuration
 
