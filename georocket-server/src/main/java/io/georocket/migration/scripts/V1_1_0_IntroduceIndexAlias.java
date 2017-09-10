@@ -37,8 +37,8 @@ public class V1_1_0_IntroduceIndexAlias implements MigrationScript {
           new JsonObject().put("index", ConfigConstants.ES_INDEX_NAME),
           new JsonObject().put("index", newIndex)
         )
-        .flatMap(v -> client.addAlias(ConfigConstants.ES_INDEX_NAME, newIndex))
         .flatMap(v -> client.delete())
+        .flatMap(v -> client.addAlias(ConfigConstants.ES_INDEX_NAME, newIndex))
         .flatMap(v -> migrationManager.moveAlias())
       );
   }
