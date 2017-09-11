@@ -1,6 +1,6 @@
 = GeoRocket User Documentation
 Michel Krämer <michel.kraemer@igd.fraunhofer.de>
-v1.1.0
+v1.1.1
 :toc: right
 :homepage: http://georocket.io
 :numbered:
@@ -72,7 +72,7 @@ NOTE: GeoRocket requires http://www.oracle.com/technetwork/java/index.html[Java 
 
 Open your command prompt and change to the directory where you installed GeoRocket Server. Execute `georocketd` to run the server.
 
-  cd georocket-server-1.1.0/bin
+  cd georocket-server-1.1.1/bin
   ./georocketd
 
 Please wait a couple of seconds until you see the following message:
@@ -83,7 +83,7 @@ The server has launched and now waits for incoming HTTP requests on port `63020`
 
 Next open another command prompt and change to the directory where you installed GeoRocket CLI. Run `georocket` to access the server through a convenient command-line application.
 
-  cd georocket-cli-1.1.0/bin
+  cd georocket-cli-1.1.1/bin
   ./georocket
 
 You can now import your first geospatial file. Suppose your file is called `/home/user/my_file.gml`. Issue the following command to import it to GeoRocket.
@@ -110,11 +110,11 @@ In the following sections it is assumed that you have the `georocket` executable
 
 Linux:
 
-  export PATH=/path/to/georocket-cli-1.1.0/bin:$PATH
+  export PATH=/path/to/georocket-cli-1.1.1/bin:$PATH
 
 Windows:
 
-  set PATH=C:\path\to\georocket-cli-1.1.0\bin;%PATH%
+  set PATH=C:\path\to\georocket-cli-1.1.1\bin;%PATH%
 ====
 
 === Help command
@@ -364,11 +364,11 @@ GET / HTTP/1.1
 ----
 HTTP/1.1 200 OK
 Content-Type: application/json
-Content-Length: 91
+Content-Length: 100
 
 {
   "name" : "GeoRocket",
-  "version" : "1.1.0",
+  "version" : "1.1.1-SNAPSHOT",
   "tagline" : "It's not rocket science!"
 }
 ----
