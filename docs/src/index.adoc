@@ -1195,7 +1195,8 @@ You may override items in your configuration file with environment variables. Th
 | The maximum number of files GeoRocket imports in parallel. If more files are sent to GeoRocket they will be put into a queue. Tweak this parameter if you experience problems with Elasticsearch or GeoRocket being too busy and occupying too many resources.
 | *georocket.index.spatial.precision* +
   _(default: maximum)_
-| The desired precision for the spatial indexer in GeoRocket. The value should be a number followed by a distance unit (e.g. `1m`, `2km`, `10cm`, `1mi`). Note that, the higher the precision, the more memory GeoRocket will use. Set this configuration item to a value that is reasonable for your application. The default value is the highest precision GeoRocket (or Elasticsearch) can achieve, but it does not work well, for example, for geometries that cover a whole country. Reduce the precision in such a case to save memory and to avoid crashes.
+| The desired precision for the spatial indexer in GeoRocket. The value should be a number followed by a distance unit (e.g. `1m`, `2km`, `10cm`, `1mi`). Note that, the higher the precision, the more memory GeoRocket will use. Set this configuration item to a value that is reasonable for your application. The default value is the highest precision GeoRocket (or Elasticsearch) can achieve, but it does not work well, for example, for geometries that cover a whole country. Reduce the precision in such a case to save memory and to avoid crashes. +
+*ATTENTION:* This value cannot be changed once GeoRocket has created its index. Set this value before you start GeoRocket for the first time.
 |===
 
 [[indexer-elasticsearch]]
