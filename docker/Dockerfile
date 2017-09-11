@@ -3,7 +3,7 @@
 # - Copy this file and .dockerignore to `georocket-server/build/install`
 # - Run `docker build -t georocket/georocket georocket-server/build/install`
 
-FROM java:openjdk-8-jre-alpine
+FROM openjdk:8-jre-slim
 MAINTAINER Michel Kraemer <michel.kraemer@igd.fraunhofer.de>
 
 # add GeoRocket user
