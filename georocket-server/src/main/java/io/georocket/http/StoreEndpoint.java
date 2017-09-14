@@ -100,7 +100,7 @@ public class StoreEndpoint extends AbstractEndpoint {
    * @return an observable that will emit exactly one item when the merger
    * has been initialized with all results
    */
-  private Observable<Void> initializeMerger(MultiMerger merger, Single<StoreCursor> data) {
+  protected Observable<Void> initializeMerger(MultiMerger merger, Single<StoreCursor> data) {
     return data
       .map(RxStoreCursor::new)
       .flatMapObservable(RxStoreCursor::toObservable)
@@ -117,7 +117,7 @@ public class StoreEndpoint extends AbstractEndpoint {
    * @param out the response to write the merged chunks to
    * @return a single that will emit one item when all chunks have been merged
    */
-  private Single<Void> doMerge(MultiMerger merger, Single<StoreCursor> data, WriteStream<Buffer> out) {
+  protected Single<Void> doMerge(MultiMerger merger, Single<StoreCursor> data, WriteStream<Buffer> out) {
     return data
       .map(RxStoreCursor::new)
       .flatMapObservable(RxStoreCursor::toObservable)
