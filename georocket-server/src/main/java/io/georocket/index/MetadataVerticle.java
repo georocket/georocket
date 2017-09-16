@@ -15,7 +15,6 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.rxjava.core.AbstractVerticle;
-import rx.Observable;
 import rx.Single;
 
 import java.io.FileNotFoundException;
@@ -75,7 +74,7 @@ public class MetadataVerticle extends AbstractVerticle {
     queryCompiler.setQueryCompilers(indexerFactories);
 
     new ElasticsearchClientFactory(vertx).createElasticsearchClient(INDEX_NAME)
-      .doOnNext(es -> {
+      .doOnSuccess(es -> {
         client = es;
       })
       .flatMap(v -> client.ensureIndex())
@@ -102,7 +101,7 @@ public class MetadataVerticle extends AbstractVerticle {
     }
   }
 
-  private Observable<Void> ensureMapping() {
+  private Single<Void> ensureMapping() {
     // merge mappings from all indexers
     Map<String, Object> mappings = new HashMap<>();
     indexerFactories.stream().filter(f -> f instanceof DefaultMetaIndexerFactory)
@@ -180,13 +179,13 @@ public class MetadataVerticle extends AbstractVerticle {
         // documents and not those that likely match). For the difference between
         // query and post_filter see the Elasticsearch documentation.
         JsonObject postFilter = queryCompiler.compileQuery(search, path, keyExists);
-        return client.beginScroll(TYPE_NAME, null, postFilter, parameters, timeout).toSingle();
+        return client.beginScroll(TYPE_NAME, null, postFilter, parameters, timeout);
       } catch (Throwable t) {
         return Single.error(t);
       }
     } else {
       // continue searching
-      return client.continueScroll(scrollId, timeout).toSingle();
+      return client.continueScroll(scrollId, timeout);
     }
   }
 
@@ -280,7 +279,6 @@ public class MetadataVerticle extends AbstractVerticle {
    */
   private Single<Void> updateDocuments(JsonObject postFilter, JsonObject updateScript) {
     return client.updateByQuery(TYPE_NAME, postFilter, updateScript)
-      .toSingle()
       .flatMap(sr -> {
         if (sr.getBoolean("timed_out", true)) {
           return Single.error(new TimeoutException());

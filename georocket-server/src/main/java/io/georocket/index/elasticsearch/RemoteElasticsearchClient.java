@@ -1,5 +1,6 @@
 package io.georocket.index.elasticsearch;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.jooq.lambda.tuple.Tuple2;
@@ -23,6 +24,7 @@ import io.vertx.rxjava.core.buffer.Buffer;
 import io.vertx.rxjava.core.http.HttpClient;
 import io.vertx.rxjava.core.http.HttpClientRequest;
 import rx.Observable;
+import rx.Single;
 
 /**
  * An Elasticsearch client using the HTTP API
@@ -66,7 +68,7 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
   }
   
   @Override
-  public Observable<JsonObject> bulkInsert(String type,
+  public Single<JsonObject> bulkInsert(String type,
       List<Tuple2<String, JsonObject>> documents) {
     String uri = "/" + index + "/" + type + "/_bulk";
     
@@ -84,7 +86,7 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
   }
   
   @Override
-  public Observable<JsonObject> beginScroll(String type, JsonObject query,
+  public Single<JsonObject> beginScroll(String type, JsonObject query,
       JsonObject postFilter, JsonObject aggregations, JsonObject parameters, String timeout) {
     String uri = "/" + index + "/" + type + "/_search";
     uri += "?scroll=" + timeout;
@@ -110,7 +112,7 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
   }
   
   @Override
-  public Observable<JsonObject> continueScroll(String scrollId, String timeout) {
+  public Single<JsonObject> continueScroll(String scrollId, String timeout) {
     String uri = "/_search/scroll";
     
     JsonObject source = new JsonObject();
@@ -121,7 +123,7 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
   }
   
   @Override
-  public Observable<JsonObject> search(String type, JsonObject query,
+  public Single<JsonObject> search(String type, JsonObject query,
       JsonObject postFilter, JsonObject aggregations, JsonObject parameters) {
     String uri = "/" + index + "/" + type + "/_search";
     
@@ -143,7 +145,7 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
   }
 
   @Override
-  public Observable<Long> count(String type, JsonObject query) {
+  public Single<Long> count(String type, JsonObject query) {
     String uri = "/" + index + "/" + type + "/_count";
 
     JsonObject source = new JsonObject();
@@ -155,15 +157,15 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
       .flatMap(sr -> {
         Long l = sr.getLong("count");
         if (l == null) {
-          return Observable.error(new NoStackTraceThrowable(
+          return Single.error(new NoStackTraceThrowable(
               "Could not count documents"));
         }
-        return Observable.just(l);
+        return Single.just(l);
       });
   }
 
   @Override
-  public Observable<JsonObject> updateByQuery(String type, JsonObject postFilter,
+  public Single<JsonObject> updateByQuery(String type, JsonObject postFilter,
       JsonObject script) {
     String uri = "/" + index + "/" + type + "/_update_by_query";
 
@@ -179,7 +181,7 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
   }
   
   @Override
-  public Observable<JsonObject> bulkDelete(String type, JsonArray ids) {
+  public Single<JsonObject> bulkDelete(String type, JsonArray ids) {
     String uri = "/" + index + "/" + type + "/_bulk";
     
     // prepare the whole body now because it's much faster to send
@@ -195,12 +197,62 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
   }
   
   @Override
-  public Observable<Boolean> indexExists() {
+  public Single<Void> aliases(JsonArray actions) {
+    String uri = "/_aliases";
+
+    JsonObject body = new JsonObject()
+      .put("actions", actions);
+
+    return performRequestRetry(HttpMethod.POST, uri, body.encode())
+      .map(v -> null);
+  }
+
+  @Override
+  public Single<JsonObject> getAliases() {
+    String uri = "/_aliases";
+
+    return performRequestRetry(HttpMethod.GET, uri, null);
+  }
+
+  @Override
+  public Single<Void> reindex(JsonObject src, JsonObject dest, JsonObject script) {
+    String uri = "/_reindex";
+
+    JsonObject body = new JsonObject()
+      .put("source", src)
+      .put("dest", dest);
+
+    if (script != null) {
+      body.put("script", script);
+    }
+
+    return performRequestRetry(HttpMethod.POST, uri, body.encode())
+      .map(v -> null);
+  }
+
+  @Override
+  public Single<Void> delete() {
+    String uri = "/" + index;
+
+    return performRequestRetry(HttpMethod.DELETE, uri, null)
+      .map(v -> null);
+  }
+
+  @Override
+  public Single<List<String>> indices() {
+    String uri = "/_all/_settings";
+
+    return performRequestRetry(HttpMethod.GET, uri, null)
+      .map(settings -> new ArrayList<>(settings.fieldNames()));
+  }
+
+  @Override
+  public Single<Boolean> indexExists() {
     return exists("/" + index);
   }
   
   @Override
-  public Observable<Boolean> typeExists(String type) {
+  public Single<Boolean> typeExists(String type) {
     return exists("/" + index + "/" + type);
   }
   
@@ -210,24 +262,24 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
    * @return an observable emitting <code>true</code> if the request
    * was successful or <code>false</code> otherwise
    */
-  private Observable<Boolean> exists(String uri) {
+  private Single<Boolean> exists(String uri) {
     return performRequestRetry(HttpMethod.HEAD, uri, null)
       .map(o -> true)
       .onErrorResumeNext(t -> {
         if (t instanceof HttpException && ((HttpException)t).getStatusCode() == 404) {
-          return Observable.just(false);
+          return Single.just(false);
         }
-        return Observable.error(t);
+        return Single.error(t);
       });
   }
   
   @Override
-  public Observable<Boolean> createIndex() {
+  public Single<Boolean> createIndex() {
     return createIndex(null);
   }
 
   @Override
-  public Observable<Boolean> createIndex(JsonObject settings) {
+  public Single<Boolean> createIndex(JsonObject settings) {
     String uri = "/" + index;
 
     String body = settings == null ? null :
@@ -243,18 +295,18 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
    * been created or if it already exists
    */
   @Override
-  public Observable<Void> ensureIndex() {
+  public Single<Void> ensureIndex() {
     // check if the index exists
     return indexExists().flatMap(exists -> {
       if (exists) {
-        return Observable.just(null);
+        return Single.just(null);
       } else {
         // index does not exist. create it.
         return createIndex().flatMap(ack -> {
           if (ack) {
-            return Observable.just(null);
+            return Single.just(null);
           }
-          return Observable.error(new NoStackTraceThrowable("Index creation "
+          return Single.error(new NoStackTraceThrowable("Index creation "
             + "was not acknowledged by Elasticsearch"));
         });
       }
@@ -262,7 +314,7 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
   }
   
   @Override
-  public Observable<Boolean> putMapping(String type, JsonObject mapping) {
+  public Single<Boolean> putMapping(String type, JsonObject mapping) {
     String uri = "/" + index + "/_mapping/" + type;
     return performRequestRetry(HttpMethod.PUT, uri, mapping.encode())
       .map(res -> res.getBoolean("acknowledged", true));
@@ -275,18 +327,18 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
    * been created or if it already exists
    */
   @Override
-  public Observable<Void> ensureMapping(String type, JsonObject mapping) {
+  public Single<Void> ensureMapping(String type, JsonObject mapping) {
     // check if the target type exists
     return typeExists(type).flatMap(exists -> {
       if (exists) {
-        return Observable.just(null);
+        return Single.just(null);
       } else {
         // target type does not exist. create the mapping.
         return putMapping(type, mapping).flatMap(ack -> {
           if (ack) {
-            return Observable.just(null);
+            return Single.just(null);
           }
-          return Observable.error(new NoStackTraceThrowable("Mapping creation "
+          return Single.error(new NoStackTraceThrowable("Mapping creation "
             + "was not acknowledged by Elasticsearch"));
         });
       }
@@ -294,12 +346,12 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
   }
 
   @Override
-  public Observable<JsonObject> getMapping(String type) {
+  public Single<JsonObject> getMapping(String type) {
     return getMapping(type, null);
   }
 
   @Override
-  public Observable<JsonObject> getMapping(String type, String field) {
+  public Single<JsonObject> getMapping(String type, String field) {
     String uri = "/" + index + "/_mapping/" + type;
     if (field != null) {
       uri += "/field/" + field;
@@ -308,9 +360,10 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
   }
 
   @Override
-  public Observable<Boolean> isRunning() {
+  public Single<Boolean> isRunning() {
     HttpClientRequest req = client.head("/");
-    return performRequest(req, null).map(v -> true).onErrorReturn(t -> false);
+    return performRequest(req, null).map(v -> true).onErrorReturn(t -> false)
+      .toSingle();
   }
   
   /**
@@ -318,10 +371,10 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
    * @param method the HTTP method
    * @param uri the request URI
    * @param body the body to send in the request (may be null)
-   * @return an observable emitting the parsed response body (may be null if no
+   * @return a single emitting the parsed response body (may be null if no
    * body was received)
    */
-  private Observable<JsonObject> performRequestRetry(HttpMethod method,
+  private Single<JsonObject> performRequestRetry(HttpMethod method,
       String uri, String body) {
     return Observable.<JsonObject>unsafeCreate(subscriber -> {
       HttpClientRequest req = client.request(method, uri);
@@ -335,7 +388,7 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
         return Observable.just(error);
       });
       return RxUtils.makeRetry(5, 1000, log).call(o);
-    });
+    }).toSingle();
   }
   
   /**
@@ -369,7 +422,11 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
           }
         });
       } else {
-        handler.handle(Future.failedFuture(new HttpException(code)));
+        Buffer buf = Buffer.buffer();
+        res.handler(buf::appendBuffer);
+        res.endHandler(v -> {
+          handler.handle(Future.failedFuture(new HttpException(code, buf.toString())));
+        });
       }
     });
     
