@@ -1,5 +1,5 @@
 plugins {
-    id "org.standardout.versioneye" version "1.5.0"
+  id 'com.github.ben-manes.versions' version '0.17.0'
 }
 
 subprojects {
@@ -135,10 +135,6 @@ subprojects {
             println version
         }
     }
-}
-
-versioneye {
-    includeSubProjects = true
 }
 
 task wrapper(type: Wrapper) {
