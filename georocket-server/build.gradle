@@ -40,6 +40,7 @@ dependencies {
 
     compile 'com.amazonaws:aws-java-sdk-s3:1.11.56'
     compile 'com.fasterxml:aalto-xml:1.0.0'
+    compile 'com.h2database:h2:1.4.196'
     compile 'com.vividsolutions:jts:1.13'
     compile 'commons-io:commons-io:2.5'
     compile 'javax.servlet:javax.servlet-api:3.1.0'

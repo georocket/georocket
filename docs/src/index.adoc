@@ -1086,9 +1086,10 @@ You may override items in your configuration file with environment variables. Th
 [cols="1,2"]
 |===
 | *georocket.storage.class* +
-  _(defaults to the <<config-backend-file, File back-end>>)_
+  _(defaults to the <<config-backend-h2, H2 back-end>>)_
 | The data store implementation to use. Possible values include: +
   `io.georocket.storage.file.FileStore` +
+  `io.georocket.storage.h2.H2Store` +
   `io.georocket.storage.hdfs.HDFSStore` +
   `io.georocket.storage.mongodb.MongoDBStore` +
   `io.georocket.storage.s3.S3Store`
@@ -1096,6 +1097,8 @@ You may override items in your configuration file with environment variables. Th
 
 [[config-backend-file]]
 ==== File back-end
+
+Store chunks in a folder structure on the local hard drive. Each chunk will be written to a separate file.
 
 ===== Data store implementation
 
@@ -1110,7 +1113,30 @@ You may override items in your configuration file with environment variables. Th
 | The path on the local hard drive where the data store should be located.
 |===
 
+[[config-backend-h2]]
+==== H2 back-end
+
+Store chunks in a http://www.h2database.com[H2 database] on the local hard drive. This back-end is typically much faster than the <<config-backend-file, file back-end>>. All chunks will be written to a single file (the H2 database).
+
+===== Data store implementation
+
+  io.georocket.storage.h2.H2Store
+
+===== Configuration
+
+[cols="2,2"]
+|===
+| *georocket.storage.h2.path* +
+  _(required)_
+| The path on the local hard drive where the H2 database file should be located.
+| *georocket.storage.h2.compress* +
+  _(default: false)_
+| A boolean value (`true` or `false`) denoting whether the chunks stored in the H2 database should be compressed using the LZF algorithm. This can save a lot of disk space but will slow down read and write operations slightly.
+|===
+
 ==== HDFS
+
+Store chunks on https://en.wikipedia.org/wiki/Apache_Hadoop#Hadoop_distributed_file_system[HDFS (Hadoop distributed file system)]. Each chunk will be written to a separate file on the distributed file system.
 
 ===== Data store implementation
 
@@ -1130,6 +1156,8 @@ You may override items in your configuration file with environment variables. Th
 
 ==== MongoDB
 
+Store chunks in a https://www.mongodb.com/[MongoDB] database. GeoRocket uses MongoDB's GridFS to store chunks. This back-end is recommended for applications that need very fast and efficient storage (optionally combined with other capabilities of MongoDB such as replication and sharding).
+
 ===== Data store implementation
 
   io.georocket.storage.mongodb.MongoDBStore
@@ -1148,6 +1176,8 @@ You may override items in your configuration file with environment variables. Th
 |===
 
 ==== Amazon S3
+
+Store chunks in an Amazon S3 bucket. Each chunk will be written to a separate object.
 
 ===== Data store implementation
 
@@ -1231,6 +1261,6 @@ if it should connect to an existing instance.
   _(default: 9200)_
 | Elasticsearch TCP port
 | *georocket.index.elasticsearch.javaOpts* +
-  _(default: "-Xms6g -Xmx6g")_
+  _(optional)_
 | JVM options for the embedded Elasticsearch instance. This configuration item will only be taken into account if `georocket.index.elasticsearch.embedded` is `true`. It can be overridden through the environment variable `ES_JAVA_OPTS`. See the https://www.elastic.co/guide/en/elasticsearch/reference/current/setting-system-settings.html#jvm-options[Elasticsearch documentation] for more information about `ES_JAVA_OPTS` and reasonable values for the https://www.elastic.co/guide/en/elasticsearch/reference/master/heap-size.html[heap size].
 |===

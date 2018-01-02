@@ -96,9 +96,9 @@ if (!mode) {
     mode = "standalone"
 }
 
-if (mode == "standalone") {
-    logTest("GeoRocket standalone ...")
-    def host = "georocket_standalone"
+if (mode == "standalone" || mode == "h2") {
+    logTest("GeoRocket $mode ...")
+    def host = "georocket_$mode"
 
     runXMLTests(host)
     finishXMLTests(host)

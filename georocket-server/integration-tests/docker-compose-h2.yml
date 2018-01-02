@@ -1,0 +1,10 @@
+integration-tester:
+  build: .
+  command: h2
+  links:
+    - georocket_h2
+
+georocket_h2:
+  image: georocket/georocket
+  volumes:
+    - ./conf/georocket_h2:/usr/local/georocket-server/conf

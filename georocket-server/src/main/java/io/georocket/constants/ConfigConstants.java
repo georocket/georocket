@@ -18,6 +18,9 @@ public final class ConfigConstants {
   public static final String REPORT_ACTIVITIES = "georocket.reportActivities"; // undocumented
   
   public static final String STORAGE_CLASS = "georocket.storage.class";
+  public static final String STORAGE_H2_PATH = "georocket.storage.h2.path";
+  public static final String STORAGE_H2_COMPRESS = "georocket.storage.h2.compress";
+  public static final String STORAGE_H2_MAP_NAME = "georocket.storage.h2.mapName"; // undocumented
   public static final String STORAGE_FILE_PATH = "georocket.storage.file.path";
   public static final String STORAGE_HDFS_DEFAULT_FS = "georocket.storage.hdfs.defaultFS";
   public static final String STORAGE_HDFS_PATH = "georocket.storage.hdfs.path";

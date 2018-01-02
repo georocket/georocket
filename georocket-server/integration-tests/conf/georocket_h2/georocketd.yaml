@@ -1,0 +1,6 @@
+georocket:
+  host: 0.0.0.0
+  storage:
+    class: io.georocket.storage.h2.H2Store
+    h2:
+      path: $GEOROCKET_HOME/storage/georocket
