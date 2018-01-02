@@ -10,7 +10,7 @@ public class UTF8BomFilter {
   private static final byte[] UTF8_BOM_BYTES = new byte[] { (byte)0xEF, (byte)0xBB, (byte)0xBF };
   
   /**
-   * <code>true</code> if the filter has already checked a BOM
+   * <code>true</code> if the filter has already checked for a BOM
    */
   private boolean bomChecked = false;
   
@@ -30,7 +30,7 @@ public class UTF8BomFilter {
 
     for (int i = 0; i < UTF8_BOM_BYTES.length && i < buf.length(); ++i) {
       if (UTF8_BOM_BYTES[i] != buf.getByte(i)) {
-        //we did not find a BOM
+        // we did not find a BOM
         return buf;
       }
     }
