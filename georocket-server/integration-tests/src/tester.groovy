@@ -118,7 +118,7 @@ if (mode == "standalone" || mode == "h2") {
 
     runGeoJsonTests(host)
     assertMongoDBChunkCount(EXPECTED_FEATURE_COLL.features.size())
-    finishXMLTests(host)
+    finishGeoJsonTests(host)
     assertMongoDBChunkCount(0)
 
     logSuccess()
