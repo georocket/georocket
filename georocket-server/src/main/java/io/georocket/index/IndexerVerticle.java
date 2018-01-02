@@ -133,6 +133,12 @@ public class IndexerVerticle extends AbstractVerticle {
    */
   private int maxParallelInserts;
   
+  /**
+   * The number of add message currently queued due to backpressure
+   * (see {@link #onAdd(List)})
+   */
+  private int queuedAddMessages;
+  
   @Override
   public void start(Future<Void> startFuture) {
     // True if the indexer and other verticles should report their activities
@@ -214,9 +220,13 @@ public class IndexerVerticle extends AbstractVerticle {
   private void registerAdd() {
     vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_ADD)
       .toObservable()
+      .doOnNext(v -> {
+        queuedAddMessages++;
+      })
       .buffer(BUFFER_TIMESPAN, TimeUnit.MILLISECONDS, maxBulkSize)
       .onBackpressureBuffer() // unlimited buffer
       .flatMap(messages -> {
+        queuedAddMessages -= messages.size();
         return onAdd(messages)
           .onErrorReturn(err -> {
             // reply with error to all peers
@@ -389,7 +399,12 @@ public class IndexerVerticle extends AbstractVerticle {
    * @param chunkIds A list of chunkIds
    */
   private void onIndexingStarted(long timestamp, List<String> chunkIds) {
-    log.info("Indexing " + chunkIds.size() + " chunks");
+    if (queuedAddMessages > 0) {
+      int total = chunkIds.size() + queuedAddMessages;
+      log.info("Indexing " + chunkIds.size() + "/" + total + " chunks");
+    } else {
+      log.info("Indexing " + chunkIds.size() + " chunks");
+    }
     
     if (reportActivities) {
       JsonObject msg = new JsonObject()
