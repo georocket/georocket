@@ -55,3 +55,4 @@ georocket:
       embedded: true
       host: localhost
       port: 9200
+      javaOpts: "-Xms6g -Xmx6g"

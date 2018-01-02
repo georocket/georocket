@@ -1,6 +1,8 @@
 package io.georocket.index.elasticsearch;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.commons.exec.CommandLine;
 import org.apache.commons.exec.DefaultExecuteResultHandler;
@@ -79,8 +81,17 @@ public class ElasticsearchRunner {
       executor.setProcessDestroyer(new ShutdownHookProcessDestroyer());
       executor.setWatchdog(new ExecuteWatchdog(ExecuteWatchdog.INFINITE_TIMEOUT));
       
+      // set ES_JAVA_OPTS environment variable if necessary
+      Map<String, String> env = new HashMap<>(System.getenv());
+      if (!env.containsKey("ES_JAVA_OPTS")) {
+        String javaOpts = config.getString(ConfigConstants.INDEX_ELASTICSEARCH_JAVA_OPTS);
+        if (javaOpts != null) {
+          env.put("ES_JAVA_OPTS", javaOpts);
+        }
+      }
+      
       try {
-        executor.execute(cmdl, new DefaultExecuteResultHandler() {
+        executor.execute(cmdl, env, new DefaultExecuteResultHandler() {
           @Override
           public void onProcessComplete(final int exitValue) {
             log.info("Elasticsearch quit with exit code: " + exitValue);

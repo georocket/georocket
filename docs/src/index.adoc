@@ -1230,4 +1230,7 @@ if it should connect to an existing instance.
 | *georocket.index.elasticsearch.port* +
   _(default: 9200)_
 | Elasticsearch TCP port
+| *georocket.index.elasticsearch.javaOpts* +
+  _(default: "-Xms6g -Xmx6g")_
+| JVM options for the embedded Elasticsearch instance. This configuration item will only be taken into account if `georocket.index.elasticsearch.embedded` is `true`. It can be overridden through the environment variable `ES_JAVA_OPTS`. See the https://www.elastic.co/guide/en/elasticsearch/reference/current/setting-system-settings.html#jvm-options[Elasticsearch documentation] for more information about `ES_JAVA_OPTS` and reasonable values for the https://www.elastic.co/guide/en/elasticsearch/reference/master/heap-size.html[heap size].
 |===
