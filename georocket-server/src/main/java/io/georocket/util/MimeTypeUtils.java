@@ -5,6 +5,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 
+import org.apache.commons.io.input.BOMInputStream;
+
 /**
  * Utility methods for mime types
  * @author Andrej Sajenko
@@ -76,8 +78,8 @@ public class MimeTypeUtils {
     if (!f.exists()) {
       return null;
     }
-    try (BufferedInputStream bis = new BufferedInputStream(
-        new FileInputStream(f))) {
+    try (BufferedInputStream bis = new BufferedInputStream(new BOMInputStream(
+        new FileInputStream(f)))) {
       return determineFileFormat(bis);
     }
   }

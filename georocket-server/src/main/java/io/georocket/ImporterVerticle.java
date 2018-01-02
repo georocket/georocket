@@ -22,6 +22,7 @@ import io.georocket.storage.StoreFactory;
 import io.georocket.util.JsonParserOperator;
 import io.georocket.util.RxUtils;
 import io.georocket.util.StringWindow;
+import io.georocket.util.UTF8BomFilter;
 import io.georocket.util.Window;
 import io.georocket.util.XMLParserOperator;
 import io.vertx.core.file.OpenOptions;
@@ -255,12 +256,14 @@ public class ImporterVerticle extends AbstractVerticle {
   protected Single<Integer> importXML(ReadStream<Buffer> f, String correlationId,
       String filename, long timestamp, String layer, List<String> tags,
       Map<String, Object> properties, String fallbackCRSString) {
+    UTF8BomFilter bomFilter = new UTF8BomFilter();
     Window window = new Window();
     XMLSplitter splitter = new FirstLevelSplitter(window);
     AtomicInteger processing = new AtomicInteger(0);
     XMLCRSIndexer crsIndexer = new XMLCRSIndexer();
     return f.toObservable()
         .map(buf -> (io.vertx.core.buffer.Buffer)buf.getDelegate())
+        .map(bomFilter::filter)
         .doOnNext(window::append)
         .lift(new XMLParserOperator())
         .doOnNext(e -> {
@@ -296,11 +299,13 @@ public class ImporterVerticle extends AbstractVerticle {
    */
   protected Single<Integer> importJSON(ReadStream<Buffer> f, String correlationId,
       String filename, long timestamp, String layer, List<String> tags, Map<String, Object> properties) {
+    UTF8BomFilter bomFilter = new UTF8BomFilter();
     StringWindow window = new StringWindow();
     GeoJsonSplitter splitter = new GeoJsonSplitter(window);
     AtomicInteger processing = new AtomicInteger(0);
     return f.toObservable()
         .map(buf -> (io.vertx.core.buffer.Buffer)buf.getDelegate())
+        .map(bomFilter::filter)
         .doOnNext(window::append)
         .lift(new JsonParserOperator())
         .flatMap(splitter::onEventObservable)
