@@ -11,7 +11,7 @@ georocket:
   # Back-end configuration
   storage:
     # The data store implementation to use
-    class: io.georocket.storage.file.FileStore
+    # class: io.georocket.storage.file.FileStore
     class: io.georocket.storage.h2.H2Store
     # class: io.georocket.storage.hdfs.HDFSStore
     # class: io.georocket.storage.mongodb.MongoDBStore
