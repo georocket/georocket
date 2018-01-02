@@ -17,4 +17,4 @@ s3:
   # Allow s3 server to be accessed through the "s3" domain name.
   # If we don't add the domain name to the config file the server will
   # fail with an authentication error.
-  command: bash -c "node -e \"var conf = require('./config.json'), fs = require('fs'); conf.restEndpoints.s3 = 'file'; fs.writeFileSync('config.json', JSON.stringify(conf, undefined, 2));\" && npm start"
+  command: bash -c "node -e \"var conf = require('./config.json'), fs = require('fs'); conf.restEndpoints.s3 = 'eu-central-1'; fs.writeFileSync('config.json', JSON.stringify(conf, undefined, 2));\" && npm start"
