@@ -1,0 +1,6 @@
+georocket:
+  host: 0.0.0.0
+  storage:
+    class: io.georocket.storage.file.FileStore
+    file:
+      path: $GEOROCKET_HOME/storage
