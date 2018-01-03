@@ -32,8 +32,7 @@ You may build the Docker image for GeoRocket Server locally with the following
 commands:
 
     ./gradlew installDist
-    cp docker/Dockerfile georocket-server/build/install
-    docker build -t georocket georocket-server/build/install
+    docker build -t georocket .
 
 ## Running GeoRocket
 

@@ -10,9 +10,7 @@ jdk:
 
 script:
   - ./gradlew check installDist &&
-    cp docker/.dockerignore georocket-server/build/install/.dockerignore &&
-    cp docker/Dockerfile georocket-server/build/install/Dockerfile &&
-    docker build -t georocket/georocket georocket-server/build/install &&
+    docker build -t georocket/georocket . &&
     docker tag georocket/georocket georocket/georocket:unstable &&
     cd georocket-server/integration-tests &&
     ./test.sh &&

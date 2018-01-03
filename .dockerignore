@@ -1,0 +1,11 @@
+# first exclude everything
+**
+
+# then include GeoRocket server (built with `./gradlew installDist`)
+!georocket-server/build/install/georocket-server
+
+# but exclude log files
+georocket-server/build/install/georocket-server/elasticsearch/*/logs
+
+# and exclude GeoRocket storage
+georocket-server/build/install/georocket-server/storage
