@@ -16,13 +16,13 @@ dependencies {
     compile project(':georocket-client-api')
     compile project(':georocket-common')
 
-    compile 'commons-io:commons-io:2.5'
+    compile 'commons-io:commons-io:2.6'
     compile 'de.undercouch:underline:1.0.0'
-    compile 'net.time4j:time4j-core:4.28'
-    compile 'org.apache.ant:ant:1.9.7'
-    compile 'org.yaml:snakeyaml:1.17'
+    compile 'net.time4j:time4j-core:4.33'
+    compile 'org.apache.ant:ant:1.10.1'
+    compile 'org.yaml:snakeyaml:1.19'
 
-    testCompile 'com.github.tomakehurst:wiremock:2.3.1'
+    testCompile 'com.github.tomakehurst:wiremock:2.12.0'
     testCompile "io.vertx:vertx-unit:$vertxVersion"
     testCompile 'org.slf4j:slf4j-jcl:1.7.25'
 }

@@ -90,7 +90,7 @@ public class RemoteElasticsearchClientTest {
    * Run a mock HTTP server
    */
   @Rule
-  public WireMockRule wireMockRule = new WireMockRule(options().dynamicPort());
+  public WireMockRule wireMockRule = new WireMockRule(options().dynamicPort(), false);
   
   /**
    * Create the Elasticsearch client

@@ -17,19 +17,19 @@ dependencies {
     compile "io.vertx:vertx-rx-java:$vertxVersion"
 
     compile 'com.fasterxml:aalto-xml:1.0.0'
-    compile 'com.google.guava:guava:20.0'
+    compile 'com.google.guava:guava:23.6-jre'
     compile 'de.undercouch:actson:1.2.0'
-    compile 'org.apache.commons:commons-lang3:3.6'
+    compile 'org.apache.commons:commons-lang3:3.7'
 
-    compile('org.geotools:gt-epsg-extension:16.0') {
+    compile('org.geotools:gt-epsg-extension:18.1') {
         // exclude invalid dependency
         exclude group: 'javax.media', module: 'jai_core'
     }
-    compile('org.geotools:gt-epsg-hsql:16.0') {
+    compile('org.geotools:gt-epsg-hsql:18.1') {
         // exclude invalid dependency
         exclude group: 'javax.media', module: 'jai_core'
     }
-    compile('org.geotools:gt-referencing:16.0') {
+    compile('org.geotools:gt-referencing:18.1') {
         // exclude invalid dependency
         exclude group: 'javax.media', module: 'jai_core'
     }
