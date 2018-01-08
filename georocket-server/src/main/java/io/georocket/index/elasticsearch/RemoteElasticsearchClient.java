@@ -201,7 +201,7 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
   
   @Override
   public Observable<Boolean> typeExists(String type) {
-    return exists("/" + index + "/" + type);
+    return exists("/" + index + "/_mapping/" + type);
   }
   
   /**

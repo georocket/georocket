@@ -74,7 +74,6 @@ public class ElasticsearchRunner {
       cmdl.addArgument("-Enode.name=georocket-node");
       cmdl.addArgument("-Enetwork.host=" + host);
       cmdl.addArgument("-Ehttp.port=" + port);
-      cmdl.addArgument("-Edefault.path.home=" + elasticsearchInstallPath);
       cmdl.addArgument("-Epath.data=" + root + "/data");
       
       executor = new DefaultExecutor();
