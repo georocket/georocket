@@ -171,7 +171,7 @@ public class RemoteElasticsearchClientTest {
    */
   @Test
   public void typeIndexExistsTrue(TestContext context) {
-    stubFor(head(urlEqualTo("/" + INDEX + "/" + TYPE))
+    stubFor(head(urlEqualTo("/" + INDEX + "/_mapping/" + TYPE))
       .willReturn(aResponse()
         .withStatus(200)));
 
