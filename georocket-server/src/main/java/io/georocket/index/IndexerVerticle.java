@@ -282,9 +282,18 @@ public class IndexerVerticle extends AbstractVerticle {
    * Will be called before the indexer starts deleting chunks
    * @param timeStamp the time when the indexer has started deleting
    * @param paths the chunks to delete
+   * @param totalChunks the total number of chunks to delete in the whole batch
+   * operation
+   * @param remainingChunks the remaining number of chunks to delete
    */
-  private void onDeletingStarted(long timeStamp, JsonArray paths) {
-    log.info("Deleting " + paths.size() + " chunks from index ...");
+  private void onDeletingStarted(long timeStamp, JsonArray paths,
+      long totalChunks, long remainingChunks) {
+    if (paths.size() < remainingChunks) {
+      log.info("Deleting " + paths.size() + "/" + remainingChunks +
+          " chunks from index ...");
+    } else {
+      log.info("Deleting " + paths.size() + " chunks from index ...");
+    }
 
     if (reportActivities) {
       JsonObject msg = new JsonObject()
@@ -293,6 +302,8 @@ public class IndexerVerticle extends AbstractVerticle {
         .put("owner", deploymentID())
         .put("action", "enter")
         .put("chunkCount", paths.size())
+        .put("totalChunkCount", totalChunks)
+        .put("remainingChunkCount", remainingChunks)
         .put("paths", paths)
         .put("timestamp", timeStamp);
       vertx.eventBus().publish(AddressConstants.ACTIVITIES, msg);
@@ -303,10 +314,14 @@ public class IndexerVerticle extends AbstractVerticle {
    * Will be called after the indexer has finished deleting chunks
    * @param duration the time it took to delete the chunks
    * @param paths the paths of the deleted chunks
+   * @param totalChunks the total number of chunks to delete in the whole batch
+   * operation
+   * @param remainingChunks the remaining number of chunks to delete
    * @param errorMessage an error message if the process has failed
    * or <code>null</code> if everything was successful
    */
-  private void onDeletingFinished(long duration, JsonArray paths, String errorMessage) {
+  private void onDeletingFinished(long duration, JsonArray paths,
+      long totalChunks, long remainingChunks, String errorMessage) {
     if (errorMessage != null) {
       log.error("Deleting chunks failed: " + errorMessage);
     } else {
@@ -321,6 +336,8 @@ public class IndexerVerticle extends AbstractVerticle {
         .put("owner", deploymentID())
         .put("action", "leave")
         .put("chunkCount", paths.size())
+        .put("totalChunkCount", totalChunks)
+        .put("remainingChunkCount", remainingChunks)
         .put("paths", paths)
         .put("duration", duration);
 
@@ -689,10 +706,12 @@ public class IndexerVerticle extends AbstractVerticle {
    */
   private Observable<Void> onDelete(JsonObject body) {
     JsonArray paths = body.getJsonArray("paths");
+    long totalChunks = body.getLong("totalChunks", (long)paths.size());
+    long remainingChunks = body.getLong("remainingChunks", (long)paths.size());
 
     // execute bulk request
     long startTimeStamp = System.currentTimeMillis();
-    onDeletingStarted(startTimeStamp, paths);
+    onDeletingStarted(startTimeStamp, paths, totalChunks, remainingChunks);
 
     return client.bulkDelete(TYPE_NAME, paths).flatMap(bres -> {
       long stopTimeStamp = System.currentTimeMillis();
@@ -700,11 +719,13 @@ public class IndexerVerticle extends AbstractVerticle {
         String error = client.bulkResponseGetErrorMessage(bres);
         log.error("One or more chunks could not be deleted");
         log.error(error);
-        onDeletingFinished(stopTimeStamp - startTimeStamp, paths, error);
+        onDeletingFinished(stopTimeStamp - startTimeStamp, paths, totalChunks,
+            remainingChunks, error);
         return Observable.error(new NoStackTraceThrowable(
                 "One or more chunks could not be deleted"));
       } else {
-        onDeletingFinished(stopTimeStamp - startTimeStamp, paths, null);
+        onDeletingFinished(stopTimeStamp - startTimeStamp, paths, totalChunks,
+            remainingChunks, null);
         return Observable.just(null);
       }
     });

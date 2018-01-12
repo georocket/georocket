@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Queue;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Function;
 
 import io.georocket.storage.AsyncCursor;
 import org.bson.types.ObjectId;
@@ -94,7 +96,8 @@ public abstract class IndexedStore implements Store {
       } else {
         StoreCursor cursor = ar.result();
         Queue<String> paths = new ArrayDeque<>();
-        doDelete(cursor, paths, handler);
+        AtomicLong remaining = new AtomicLong(cursor.getInfo().getTotalHits());
+        doDelete(cursor, paths, remaining, handler);
       }
     });
   }
@@ -119,17 +122,22 @@ public abstract class IndexedStore implements Store {
    * and from the store.
    * @param cursor the cursor to iterate over
    * @param paths an empty queue (used internally for recursion)
+   * @param remainingChunks holds the remaining number of chunks to delete
+   * (used internally for recursion)
    * @param handler will be called when all chunks have been deleted
    */
   protected void doDelete(StoreCursor cursor, Queue<String> paths,
-      Handler<AsyncResult<Void>> handler) {
+      AtomicLong remainingChunks, Handler<AsyncResult<Void>> handler) {
     // handle response of bulk delete operation
-    Handler<AsyncResult<Void>> handleBulk = bulkAr -> {
-      if (bulkAr.failed()) {
-        handler.handle(Future.failedFuture(bulkAr.cause()));
-      } else {
-        doDelete(cursor, paths, handler);
-      }
+    Function<Integer, Handler<AsyncResult<Void>>> handleBulk = size -> {
+      return bulkAr -> {
+        remainingChunks.getAndAdd(-size);
+        if (bulkAr.failed()) {
+          handler.handle(Future.failedFuture(bulkAr.cause()));
+        } else {
+          doDelete(cursor, paths, remainingChunks, handler);
+        }
+      };
     };
     
     // while cursor has items ...
@@ -144,10 +152,11 @@ public abstract class IndexedStore implements Store {
 
           if (paths.size() >= size) {
             // if there are enough items in the queue, bulk delete them
-            doDeleteBulk(paths, handleBulk);
+            doDeleteBulk(paths, cursor.getInfo().getTotalHits(),
+                remainingChunks.get(), handleBulk.apply(size));
           } else {
             // otherwise proceed with next item from cursor
-            doDelete(cursor, paths, handler);
+            doDelete(cursor, paths, remainingChunks, handler);
           }
         }
       });
@@ -155,7 +164,8 @@ public abstract class IndexedStore implements Store {
       // cursor does not return any more items
       if (!paths.isEmpty()) {
         // bulk delete the remaining ones
-        doDeleteBulk(paths, handleBulk);
+        doDeleteBulk(paths, cursor.getInfo().getTotalHits(),
+            remainingChunks.get(), handleBulk.apply(paths.size()));
       } else {
         // end operation
         handler.handle(Future.succeededFuture());
@@ -168,14 +178,19 @@ public abstract class IndexedStore implements Store {
    * Remove all items from the given queue.
    * @param paths the queue of paths of chunks to delete (will be empty when
    * the operation has finished)
+   * @param totalChunks the total number of paths to delete (including this batch)
+   * @param remainingChunks the remaining chunks to delete (including this batch)
    * @param handler will be called when the operation has finished
    */
-  protected void doDeleteBulk(Queue<String> paths, Handler<AsyncResult<Void>> handler) {
+  protected void doDeleteBulk(Queue<String> paths, long totalChunks,
+      long remainingChunks, Handler<AsyncResult<Void>> handler) {
     // delete from index first so the chunks cannot be found anymore
     JsonArray jsonPaths = new JsonArray();
     paths.forEach(jsonPaths::add);
     JsonObject indexMsg = new JsonObject()
-        .put("paths", jsonPaths);
+        .put("paths", jsonPaths)
+        .put("totalChunks", totalChunks)
+        .put("remainingChunks", remainingChunks);
     vertx.eventBus().send(AddressConstants.INDEXER_DELETE, indexMsg, ar -> {
       if (ar.failed()) {
         handler.handle(Future.failedFuture(ar.cause()));
