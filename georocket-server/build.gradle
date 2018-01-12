@@ -163,10 +163,15 @@ task downloadElasticsearch {
 task extractElasticsearch(dependsOn: downloadElasticsearch, type: Copy) {
     from zipTree(new File(buildDir, elasticsearchArchiveName))
     into elasticsearchInstallDir
-    includeEmptyDirs = false
+    includeEmptyDirs = false // necessary to remove first path item
     eachFile { f ->
+        // remove first path item
         f.path = f.path.replaceFirst(/.+?\//, '')
     }
+} doLast {
+    // make sure 'plugins' directory exists (necessary to start Elasticsearch)
+    def pluginsDir = new File(elasticsearchInstallDir, 'plugins')
+    pluginsDir.mkdirs()
 }
 
 task cleanExtractedElasticsearch(type: Delete) {
