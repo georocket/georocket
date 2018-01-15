@@ -1,5 +1,11 @@
 package io.georocket.util;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -81,5 +87,25 @@ public class AsyncLocalMap<K, V> implements AsyncMap<K, V> {
   @Override
   public void size(Handler<AsyncResult<Integer>> handler) {
     handler.handle(Future.succeededFuture(delegate.size()));
+  }
+
+  @Override
+  public void entries(Handler<AsyncResult<Map<K, V>>> handler) {
+    Set<Map.Entry<K, V>> entries = delegate.entrySet();
+    Map<K, V> map = new LinkedHashMap<>();
+    for (Map.Entry<K, V> e : entries) {
+      map.put(e.getKey(), e.getValue());
+    }
+    handler.handle(Future.succeededFuture(map));
+  }
+
+  @Override
+  public void keys(Handler<AsyncResult<Set<K>>> handler) {
+    handler.handle(Future.succeededFuture(delegate.keySet()));
+  }
+
+  @Override
+  public void values(Handler<AsyncResult<List<V>>> handler) {
+    handler.handle(Future.succeededFuture(new ArrayList<>(delegate.values())));
   }
 }
