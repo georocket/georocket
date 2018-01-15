@@ -1,7 +1,5 @@
 package io.georocket;
 
-import org.apache.commons.io.IOUtils;
-
 import java.io.IOException;
 import java.net.ServerSocket;
 
@@ -16,14 +14,10 @@ public class NetUtils {
    * @return the number of the free port
    */
   public static int findPort() {
-    ServerSocket socket = null;
-    try {
-      socket = new ServerSocket(0);
+    try (ServerSocket socket = new ServerSocket(0)) {
       return socket.getLocalPort();
     } catch (IOException e) {
       throw new RuntimeException("Could not find a free port");
-    } finally {
-      IOUtils.closeQuietly(socket);
     }
   }
 }

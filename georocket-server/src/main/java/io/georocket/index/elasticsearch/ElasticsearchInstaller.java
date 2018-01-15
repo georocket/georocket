@@ -300,13 +300,9 @@ public class ElasticsearchInstaller {
         } else {
           // extract files
           dest.getParentFile().mkdirs();
-          InputStream in = zipFile.getInputStream(entry);
-          OutputStream out = new FileOutputStream(dest);
-          try {
+          try (InputStream in = zipFile.getInputStream(entry);
+              OutputStream out = new FileOutputStream(dest)) {
             IOUtils.copy(in, out);
-          } finally {
-            IOUtils.closeQuietly(in);
-            out.close();
           }
         }
         

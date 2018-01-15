@@ -7,9 +7,14 @@ import java.util.Queue;
 import com.amazonaws.ClientConfiguration;
 import com.amazonaws.ClientConfigurationFactory;
 import com.amazonaws.HttpMethod;
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
+import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3Client;
-import com.amazonaws.services.s3.S3ClientOptions;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.amazonaws.services.s3.internal.ServiceUtils;
+import com.amazonaws.util.AwsHostNameUtils;
 import com.google.common.base.Preconditions;
 
 import io.georocket.constants.ConfigConstants;
@@ -37,7 +42,7 @@ public class S3Store extends IndexedStore {
   private static Logger log = LoggerFactory.getLogger(S3Store.class);
 
   private final Vertx vertx;
-  private AmazonS3Client s3Client;
+  private AmazonS3 s3Client;
   private final String accessKey;
   private final String secretKey;
   private final String host;
@@ -92,25 +97,33 @@ public class S3Store extends IndexedStore {
    * {@link #s3Client} field and we're calling this method from a worker thread.
    * @return the S3 client
    */
-  private synchronized AmazonS3Client getS3Client() {
+  private synchronized AmazonS3 getS3Client() {
     if (s3Client == null) {
       BasicAWSCredentials credentials = new BasicAWSCredentials(accessKey, secretKey);
-      
+
+      AmazonS3ClientBuilder builder = AmazonS3ClientBuilder
+        .standard()
+        .withCredentials(new AWSStaticCredentialsProvider(credentials));
+
       if (forceSignatureV2) {
         ClientConfigurationFactory configFactory = new ClientConfigurationFactory();
         ClientConfiguration config = configFactory.getConfig();
         config.setSignerOverride("S3SignerType");
-        s3Client = new AmazonS3Client(credentials, config);
-      } else {
-        s3Client = new AmazonS3Client(credentials);
+        builder = builder.withClientConfiguration(config);
       }
-      
-      s3Client.setEndpoint("http://" + host + ":" + port);
-      
-      S3ClientOptions options = S3ClientOptions.builder()
-          .setPathStyleAccess(pathStyleAccess)
-          .build();
-      s3Client.setS3ClientOptions(options);
+
+      String endpoint = "http://" + host + ":" + port;
+      String clientRegion = null;
+      if (!ServiceUtils.isS3USStandardEndpoint(endpoint)) {
+        clientRegion = AwsHostNameUtils.parseRegion(host,
+            AmazonS3Client.S3_SERVICE_NAME);
+      }
+
+      builder = builder.withEndpointConfiguration(new EndpointConfiguration(
+          endpoint, clientRegion));
+      builder = builder.withPathStyleAccessEnabled(pathStyleAccess);
+
+      s3Client = builder.build();
     }
     return s3Client;
   }
