@@ -6,7 +6,6 @@ import java.util.Queue;
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.Store;
 import io.georocket.storage.indexed.IndexedStore;
-import io.georocket.util.AsyncLocalMap;
 import io.georocket.util.PathUtils;
 import io.georocket.util.io.DelegateChunkReadStream;
 import io.vertx.core.AsyncResult;
@@ -15,7 +14,6 @@ import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.shareddata.AsyncMap;
-import io.vertx.core.shareddata.LocalMap;
 
 /**
  * <p>Stores chunks in memory</p>
@@ -43,18 +41,12 @@ public class MemoryStore extends IndexedStore implements Store {
     }
     
     String name = getClass().getName() + ".STORE";
-    if (vertx.isClustered()) {
-      vertx.sharedData().<String, Buffer>getClusterWideMap(name, ar -> {
-        if (ar.succeeded()) {
-          store = ar.result();
-        }
-        handler.handle(ar);
-      });
-    } else {
-      LocalMap<String, Buffer> lm = vertx.sharedData().getLocalMap(name);
-      store = new AsyncLocalMap<String, Buffer>(lm);
-      handler.handle(Future.succeededFuture(store));
-    }
+    vertx.sharedData().<String, Buffer>getAsyncMap(name, ar -> {
+      if (ar.succeeded()) {
+        store = ar.result();
+      }
+      handler.handle(ar);
+    });
   }
   
   @Override
