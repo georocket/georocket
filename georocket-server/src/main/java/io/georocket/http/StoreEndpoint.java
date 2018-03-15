@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.text.StringEscapeUtils;
 import org.apache.http.ParseException;
@@ -367,11 +368,11 @@ public class StoreEndpoint extends AbstractEndpoint {
     String propertiesStr = request.getParam("props");
     String fallbackCRSString = request.getParam("fallbackCRS");
 
-    List<String> tags = tagsStr != null ? Splitter.on(',')
+    List<String> tags = StringUtils.isNotEmpty(tagsStr) ? Splitter.on(',')
         .trimResults().splitToList(tagsStr) : null;
 
     Map<String, Object> properties = new HashMap<>();
-    if (propertiesStr != null && !propertiesStr.isEmpty()) {
+    if (StringUtils.isNotEmpty(propertiesStr)) {
       String regex = "(?<!" + Pattern.quote("\\") + ")" + Pattern.quote(":");
       String[] parts = propertiesStr.split(",");
       for (String part : parts) {
@@ -547,13 +548,13 @@ public class StoreEndpoint extends AbstractEndpoint {
     String properties = request.getParam("properties");
     String tags = request.getParam("tags");
 
-    if (properties != null && tags != null) {
+    if (StringUtils.isNotEmpty(properties) && StringUtils.isNotEmpty(tags)) {
       response
         .setStatusCode(400)
         .end("You can only delete properties or tags, but not both");
-    } else if (properties != null) {
+    } else if (StringUtils.isNotEmpty(properties)) {
       removeProperties(search, path, properties, response);
-    } else if (tags != null) {
+    } else if (StringUtils.isNotEmpty(tags)) {
       removeTags(search, path, tags, response);
     } else {
       deleteChunks(search, path, response);
@@ -634,14 +635,14 @@ public class StoreEndpoint extends AbstractEndpoint {
     String properties = request.getParam("properties");
     String tags = request.getParam("tags");
 
-    if (properties != null || tags != null) {
+    if (StringUtils.isNotEmpty(properties) || StringUtils.isNotEmpty(tags)) {
       Single<Void> single = Single.just(null);
 
-      if (properties != null) {
+      if (StringUtils.isNotEmpty(properties)) {
         single = single.flatMap(v -> setProperties(search, path, properties));
       }
 
-      if (tags != null) {
+      if (StringUtils.isNotEmpty(tags)) {
         single = single.flatMap(v -> appendTags(search, path, tags));
       }
 

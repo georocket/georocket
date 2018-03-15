@@ -9,7 +9,6 @@ import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.shareddata.AsyncMap;
-import io.vertx.core.shareddata.LocalMap;
 import io.vertx.ext.unit.TestContext;
 
 /**
