@@ -22,7 +22,9 @@ import com.google.common.base.Splitter;
 import io.georocket.ServerAPIException;
 import io.georocket.constants.AddressConstants;
 import io.georocket.constants.ConfigConstants;
+import io.georocket.output.Merger;
 import io.georocket.output.MultiMerger;
+import io.georocket.storage.ChunkMeta;
 import io.georocket.storage.RxAsyncCursor;
 import io.georocket.storage.RxStore;
 import io.georocket.storage.RxStoreCursor;
@@ -92,6 +94,15 @@ public class StoreEndpoint extends AbstractEndpoint {
     router.delete("/*").handler(this::onDelete);
     return router;
   }
+
+  /**
+   * Create a new merger
+   * @param ctx routing context
+   * @return the new merger instance
+   */
+  protected Merger<ChunkMeta> createMerger(RoutingContext ctx) {
+    return new MultiMerger();
+  }
   
   /**
    * Initialize the given merger. Perform a search using the given search string
@@ -101,7 +112,7 @@ public class StoreEndpoint extends AbstractEndpoint {
    * @return an observable that will emit exactly one item when the merger
    * has been initialized with all results
    */
-  private Observable<Void> initializeMerger(MultiMerger merger, Single<StoreCursor> data) {
+  private Observable<Void> initializeMerger(Merger<ChunkMeta> merger, Single<StoreCursor> data) {
     return data
       .map(RxStoreCursor::new)
       .flatMapObservable(RxStoreCursor::toObservable)
@@ -118,7 +129,7 @@ public class StoreEndpoint extends AbstractEndpoint {
    * @param out the response to write the merged chunks to
    * @return a single that will emit one item when all chunks have been merged
    */
-  private Single<Void> doMerge(MultiMerger merger, Single<StoreCursor> data, WriteStream<Buffer> out) {
+  private Single<Void> doMerge(Merger<ChunkMeta> merger, Single<StoreCursor> data, WriteStream<Buffer> out) {
     return data
       .map(RxStoreCursor::new)
       .flatMapObservable(RxStoreCursor::toObservable)
@@ -242,7 +253,7 @@ public class StoreEndpoint extends AbstractEndpoint {
     
     // perform two searches: first initialize the merger and then
     // merge all retrieved chunks
-    MultiMerger merger = new MultiMerger();
+    Merger<ChunkMeta> merger = createMerger(context);
     initializeMerger(merger, data)
       .flatMapSingle(v -> doMerge(merger, data, response))
       .subscribe(v -> {
