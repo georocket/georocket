@@ -5,6 +5,10 @@ georocket:
   # The TCP port GeoRocket should listen on
   port: 63020
 
+  # Configuration for the HTTP interface
+  http:
+    compress: true
+
   # Log configuration at startup (useful for debugging)
   logConfig: false
 

@@ -153,8 +153,11 @@ public class GeoRocket extends AbstractVerticle {
    * @return the created {@link HttpServerOptions}
    */
   protected HttpServerOptions createHttpServerOptions() {
+    boolean compress = config().getBoolean(ConfigConstants.HTTP_COMPRESS, true);
+
     HttpServerOptions serverOptions = new HttpServerOptions()
-        .setCompressionSupported(true);
+        .setCompressionSupported(compress);
+
     return serverOptions;
   }
   

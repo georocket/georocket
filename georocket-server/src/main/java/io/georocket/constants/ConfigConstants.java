@@ -13,6 +13,8 @@ public final class ConfigConstants {
   public static final String HOME = "georocket.home";
   public static final String HOST = "georocket.host";
   public static final String PORT = "georocket.port";
+
+  public static final String HTTP_COMPRESS = "georocket.http.compress";
   
   public static final String LOG_CONFIG = "georocket.logConfig";
   public static final String REPORT_ACTIVITIES = "georocket.reportActivities"; // undocumented

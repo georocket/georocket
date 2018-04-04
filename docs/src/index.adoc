@@ -1079,6 +1079,9 @@ You may override items in your configuration file with environment variables. Th
 | *georocket.port* +
   _(default: 63020)_
 | The TCP port GeoRocket should listen on.
+| *georocket.http.compress* +
+  _(default: true)_
+| True if GeoRocket should compress responses with gzip/deflate if the client supports it.
 |===
 
 === Back-ends
