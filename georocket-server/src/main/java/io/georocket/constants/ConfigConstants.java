@@ -15,6 +15,10 @@ public final class ConfigConstants {
   public static final String PORT = "georocket.port";
 
   public static final String HTTP_COMPRESS = "georocket.http.compress";
+  public static final String HTTP_SSL = "georocket.http.ssl";
+  public static final String HTTP_CERT_PATH = "georocket.http.certPath";
+  public static final String HTTP_KEY_PATH = "georocket.http.keyPath";
+  public static final String HTTP_ALPN = "georocket.http.alpn";
   
   public static final String LOG_CONFIG = "georocket.logConfig";
   public static final String REPORT_ACTIVITIES = "georocket.reportActivities"; // undocumented

@@ -1081,7 +1081,19 @@ You may override items in your configuration file with environment variables. Th
 | The TCP port GeoRocket should listen on.
 | *georocket.http.compress* +
   _(default: true)_
-| True if GeoRocket should compress responses with gzip/deflate if the client supports it.
+| A boolean value (`true` or `false`) denoting whether GeoRocket should compress responses with gzip/deflate if the client supports it.
+| *georocket.http.ssl* +
+  _(default: false)_
+| A boolean value (`true` or `false`) denoting if HTTP connections should be encrypted via SSL/TLS. This feature requires `georocket.http.certPath` and `georocket.http.keyPath` to be set.
+| *georocket.http.certPath* +
+  _(optional)_
+| Path to a X.509 certificate file to be used for encryption. Only necessary if `georocket.http.ssl` is enabled.
+| *georocket.http.keyPath* +
+  _(optional)_
+| Path to a file containing a non-encrypted private key to be used for encryption. Only necessary if `georocket.http.ssl` is enabled.
+| *georocket.http.alpn* +
+  _(default: false)_
+| True if GeoRocket should support Application-Layer Protocol Negotiation (ALPN) and, hence, HTTP/2 connections. This feature requires `georocket.http.ssl` to be enabled.
 |===
 
 === Back-ends

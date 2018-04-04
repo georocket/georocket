@@ -12,6 +12,7 @@ import io.georocket.http.Endpoint;
 import io.georocket.http.GeneralEndpoint;
 import io.georocket.http.StoreEndpoint;
 import io.georocket.index.MetadataVerticle;
+import io.vertx.core.net.PemKeyCertOptions;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.BooleanUtils;
 import org.yaml.snakeyaml.Yaml;
@@ -95,11 +96,14 @@ public class GeoRocket extends AbstractVerticle {
 
     Router router = createRouter();
     HttpServerOptions serverOptions = createHttpServerOptions();
-    HttpServer server = vertx.createHttpServer(serverOptions);
-
-    ObservableFuture<HttpServer> observable = RxHelper.observableFuture();
-    server.requestHandler(router::accept).listen(port, host, observable.toHandler());
-    return observable.toSingle();
+    try {
+      HttpServer server = vertx.createHttpServer(serverOptions);
+      ObservableFuture<HttpServer> observable = RxHelper.observableFuture();
+      server.requestHandler(router::accept).listen(port, host, observable.toHandler());
+      return observable.toSingle();
+    } catch (Throwable t) {
+      return Single.error(t);
+    }
   }
   
   /**
@@ -147,9 +151,9 @@ public class GeoRocket extends AbstractVerticle {
   }
 
   /**
-   * Create a {@link HttpServerOptions} and set <code>Compression
-   * Support</code> as option. Sub-classes may override if they want to
-   * add further options
+   * Create an {@link HttpServerOptions} object and modify it according to the
+   * configuration. Sub-classes may override this method to further modify the
+   * object.
    * @return the created {@link HttpServerOptions}
    */
   protected HttpServerOptions createHttpServerOptions() {
@@ -157,6 +161,26 @@ public class GeoRocket extends AbstractVerticle {
 
     HttpServerOptions serverOptions = new HttpServerOptions()
         .setCompressionSupported(compress);
+
+    boolean ssl = config().getBoolean(ConfigConstants.HTTP_SSL, false);
+    if (ssl) {
+      serverOptions.setSsl(ssl);
+      String certPath = config().getString(ConfigConstants.HTTP_CERT_PATH, null);
+      String keyPath = config().getString(ConfigConstants.HTTP_KEY_PATH, null);
+      PemKeyCertOptions pemKeyCertOptions = new PemKeyCertOptions()
+          .setCertPath(certPath)
+          .setKeyPath(keyPath);
+      serverOptions.setPemKeyCertOptions(pemKeyCertOptions);
+    }
+
+    boolean alpn = config().getBoolean(ConfigConstants.HTTP_ALPN, false);
+    if (alpn) {
+      if (!ssl) {
+        log.warn("ALPN is enabled but SSL is not! In order for ALPN to work " +
+            "correctly, SSL is required.");
+      }
+      serverOptions.setUseAlpn(alpn);
+    }
 
     return serverOptions;
   }

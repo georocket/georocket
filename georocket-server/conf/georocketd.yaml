@@ -8,6 +8,10 @@ georocket:
   # Configuration for the HTTP interface
   http:
     compress: true
+    ssl: false
+    certPath: georocket.crt
+    keyPath: georocket.key
+    alpn: false
 
   # Log configuration at startup (useful for debugging)
   logConfig: false
