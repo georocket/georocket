@@ -1,5 +1,5 @@
 plugins {
-    id "de.undercouch.download" version "3.3.0"
+    id "de.undercouch.download" version "3.4.2"
 }
 
 apply plugin: 'java'
@@ -7,8 +7,6 @@ apply plugin: 'application'
 apply plugin: 'maven'
 apply plugin: 'checkstyle'
 apply plugin: 'de.undercouch.download'
-
-import de.undercouch.gradle.tasks.download.Download
 
 mainClassName = 'io.georocket.GeoRocket'
 
