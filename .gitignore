@@ -8,6 +8,7 @@
 bin/
 build/
 node_modules/
+out/
 src-gen/
 gradle.properties
 .gradletasknamecache
