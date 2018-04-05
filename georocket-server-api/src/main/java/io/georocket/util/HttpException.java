@@ -3,6 +3,7 @@ package io.georocket.util;
 /**
  * An exception that will be created if an HTTP error has happened
  * @author Michel Kraemer
+ * @since 1.2.0
  */
 public class HttpException extends Exception {
   private static final long serialVersionUID = -6784905885779199095L;

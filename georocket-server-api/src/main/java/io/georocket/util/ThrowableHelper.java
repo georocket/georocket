@@ -10,6 +10,7 @@ import io.vertx.core.eventbus.ReplyException;
 /**
  * Helper class for {@link Throwable}s
  * @author Michel Kraemer
+ * @since 1.2.0
  */
 public final class ThrowableHelper {
   private ThrowableHelper() {

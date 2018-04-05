@@ -5,22 +5,37 @@ import io.georocket.util.HttpException;
 import io.vertx.core.eventbus.ReplyException;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 
 import static io.georocket.util.ThrowableHelper.throwableToCode;
 import static io.georocket.util.ThrowableHelper.throwableToMessage;
 
 /**
- * An HTTP endpoint
- * @author Tim Hellhake
+ * An interface that can be used to add an HTTP endpoint to GeoRocket via the
+ * Service Provider Interface (SPI) API.
+ * @author Michel Kraemer
+ * @since 1.2.0
  */
-public abstract class AbstractEndpoint implements Endpoint {
+public interface Endpoint {
+  /**
+   * Return the path prefix where the endpoint should be mounted
+   * @return the path
+   */
+  String getMountPoint();
+
+  /**
+   * Create a router that handles HTTP requests for this endpoint
+   * @return the router
+   */
+  Router createRouter();
+
   /**
    * Get absolute data store path from request
    * @param context the current routing context
    * @return the absolute path (never null, default: "/")
    */
-  protected static String getEndpointPath(RoutingContext context) {
+  static String getEndpointPath(RoutingContext context) {
     String path = context.normalisedPath();
     String routePath = context.mountPoint();
     String result = null;
@@ -37,40 +52,37 @@ public abstract class AbstractEndpoint implements Endpoint {
   }
 
   /**
-   * Let the request fail by setting the correct http error code and an error
+   * Let the request fail by setting the correct HTTP error code and an error
    * description in the body
    * @param response the response object
    * @param throwable the cause of the error
    */
-  protected static void fail(HttpServerResponse response, Throwable throwable) {
+  static void fail(HttpServerResponse response, Throwable throwable) {
     response
       .setStatusCode(throwableToCode(throwable))
-      .end(errorResponse(throwable));
+      .end(throwableToJsonResponse(throwable).toString());
   }
 
   /**
-   * Generate the json error response for a failed request
+   * Generate the JSON error response for a failed request
    * @param throwable the cause of the error
    * @return the json string
    */
-  protected static String errorResponse(Throwable throwable) {
+  static JsonObject throwableToJsonResponse(Throwable throwable) {
     String msg = throwableToMessage(throwable, "");
 
     try {
-      return new JsonObject(msg).toString();
+      return new JsonObject(msg);
     } catch (Exception e) {
       if (throwable instanceof ReplyException) {
-        return ServerAPIException.toJson(ServerAPIException.GENERIC_ERROR, msg)
-          .toString();
+        return ServerAPIException.toJson(ServerAPIException.GENERIC_ERROR, msg);
       }
 
       if (throwable instanceof HttpException) {
-        return ServerAPIException.toJson(ServerAPIException.HTTP_ERROR, msg)
-          .toString();
+        return ServerAPIException.toJson(ServerAPIException.HTTP_ERROR, msg);
       }
 
-      return ServerAPIException.toJson(ServerAPIException.GENERIC_ERROR, msg)
-        .toString();
+      return ServerAPIException.toJson(ServerAPIException.GENERIC_ERROR, msg);
     }
   }
 }

@@ -16,7 +16,7 @@ import io.vertx.ext.web.RoutingContext;
  * An HTTP endpoint for general requests
  * @author Michel Kraemer
  */
-public class GeneralEndpoint extends AbstractEndpoint {
+public class GeneralEndpoint implements Endpoint {
   private final Vertx vertx;
   private final String version;
 
@@ -41,6 +41,11 @@ public class GeneralEndpoint extends AbstractEndpoint {
       throw new RuntimeException("Could not read version information", e);
     }
     return version;
+  }
+
+  @Override
+  public String getMountPoint() {
+    return "/";
   }
 
   @Override

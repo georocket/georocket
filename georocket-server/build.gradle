@@ -34,7 +34,6 @@ dependencies {
 
     compile "io.vertx:vertx-rx-java:$vertxVersion"
     compile "io.vertx:vertx-service-discovery:$vertxVersion"
-    compile "io.vertx:vertx-web:$vertxVersion"
 
     compile 'com.amazonaws:aws-java-sdk-s3:1.11.256'
     compile 'com.fasterxml:aalto-xml:1.0.0'

@@ -55,11 +55,14 @@ import io.vertx.rx.java.RxHelper;
 import rx.Observable;
 import rx.Single;
 
+import static io.georocket.http.Endpoint.fail;
+import static io.georocket.http.Endpoint.getEndpointPath;
+
 /**
  * An HTTP endpoint handling requests related to the GeoRocket data store
  * @author Michel Kraemer
  */
-public class StoreEndpoint extends AbstractEndpoint {
+public class StoreEndpoint implements Endpoint {
   private static Logger log = LoggerFactory.getLogger(StoreEndpoint.class);
   
   private final Vertx vertx;
@@ -83,6 +86,11 @@ public class StoreEndpoint extends AbstractEndpoint {
     store = new RxStore(StoreFactory.createStore(vertx));
     storagePath = vertx.getOrCreateContext().config()
         .getString(ConfigConstants.STORAGE_FILE_PATH);
+  }
+
+  @Override
+  public String getMountPoint() {
+    return "/store";
   }
 
   @Override
@@ -187,7 +195,7 @@ public class StoreEndpoint extends AbstractEndpoint {
     String path = getEndpointPath(context);
     String search = request.getParam("search");
     String strSize = request.getParam("size");
-    int size = strSize == null ? 100 : new Integer(strSize);
+    int size = strSize == null ? 100 : Integer.parseInt(strSize);
 
     return Single.<StoreCursor>defer(() -> {
       if (scrolling) {

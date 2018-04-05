@@ -135,10 +135,10 @@ public class GeoRocket extends AbstractVerticle {
     Router router = Router.router(vertx);
     
     Endpoint storeEndpoint = createStoreEndpoint();
-    router.mountSubRouter("/store", storeEndpoint.createRouter());
+    router.mountSubRouter(storeEndpoint.getMountPoint(), storeEndpoint.createRouter());
     
     Endpoint generalEndpoint = createGeneralEndpoint();
-    router.mountSubRouter("/", generalEndpoint.createRouter());
+    router.mountSubRouter(generalEndpoint.getMountPoint(), generalEndpoint.createRouter());
 
     router.route().handler(ctx -> {
       String reason = "The endpoint " + ctx.request().path() + " does not exist";
