@@ -9,9 +9,8 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import io.georocket.http.Endpoint;
-import io.georocket.http.GeneralEndpoint;
-import io.georocket.http.StoreEndpoint;
 import io.georocket.index.MetadataVerticle;
+import io.georocket.util.FilteredServiceLoader;
 import io.vertx.core.net.PemKeyCertOptions;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.BooleanUtils;
@@ -107,38 +106,16 @@ public class GeoRocket extends AbstractVerticle {
   }
   
   /**
-   * Creates the HTTP endpoint handling requests related to the data store.
-   * Returns {@link StoreEndpoint} by default. Subclasses may override if
-   * they want to return another implementation.
-   * @return the endpoint
-   */
-  protected Endpoint createStoreEndpoint() {
-    return new StoreEndpoint(vertx);
-  }
-  
-  /**
-   * Creates the HTTP endpoint handling general requests
-   * Returns {@link GeneralEndpoint} by default. Subclasses may override if
-   * they want to return another implementation.
-   * @return the endpoint
-   */
-  protected Endpoint createGeneralEndpoint() {
-    return new GeneralEndpoint(vertx);
-  }
-
-  /**
    * Create a {@link Router} and add routes for <code>/store/</code>
    * to it. Sub-classes may override if they want to add further routes
    * @return the created {@link Router}
    */
   protected Router createRouter() {
     Router router = Router.router(vertx);
-    
-    Endpoint storeEndpoint = createStoreEndpoint();
-    router.mountSubRouter(storeEndpoint.getMountPoint(), storeEndpoint.createRouter());
-    
-    Endpoint generalEndpoint = createGeneralEndpoint();
-    router.mountSubRouter(generalEndpoint.getMountPoint(), generalEndpoint.createRouter());
+
+    for (Endpoint ep : FilteredServiceLoader.load(Endpoint.class)) {
+      router.mountSubRouter(ep.getMountPoint(), ep.createRouter(vertx));
+    }
 
     router.route().handler(ctx -> {
       String reason = "The endpoint " + ctx.request().path() + " does not exist";

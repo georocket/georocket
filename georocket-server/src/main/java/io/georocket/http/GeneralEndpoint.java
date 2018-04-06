@@ -17,15 +17,12 @@ import io.vertx.ext.web.RoutingContext;
  * @author Michel Kraemer
  */
 public class GeneralEndpoint implements Endpoint {
-  private final Vertx vertx;
   private final String version;
 
   /**
    * Create the endpoint
-   * @param vertx the Vert.x instance
    */
-  public GeneralEndpoint(Vertx vertx) {
-    this.vertx = vertx;
+  public GeneralEndpoint() {
     version = getVersion();
   }
   
@@ -49,7 +46,7 @@ public class GeneralEndpoint implements Endpoint {
   }
 
   @Override
-  public Router createRouter() {
+  public Router createRouter(Vertx vertx) {
     Router router = Router.router(vertx);
     router.get("/").handler(this::onInfo);
     router.head("/").handler(this::onPing);

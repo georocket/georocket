@@ -65,28 +65,14 @@ import static io.georocket.http.Endpoint.getEndpointPath;
 public class StoreEndpoint implements Endpoint {
   private static Logger log = LoggerFactory.getLogger(StoreEndpoint.class);
   
-  private final Vertx vertx;
-  
+  private Vertx vertx;
   private RxStore store;
   private String storagePath;
 
   /**
    * True if the store should report activities to the Vert.x event bus
    */
-  private final boolean reportActivities;
-
-  /**
-   * Create the endpoint
-   * @param vertx the Vert.x instance
-   */
-  public StoreEndpoint(Vertx vertx) {
-    reportActivities = vertx.getOrCreateContext()
-        .config().getBoolean(ConfigConstants.REPORT_ACTIVITIES, false);
-    this.vertx = vertx;
-    store = new RxStore(StoreFactory.createStore(vertx));
-    storagePath = vertx.getOrCreateContext().config()
-        .getString(ConfigConstants.STORAGE_FILE_PATH);
-  }
+  private boolean reportActivities;
 
   @Override
   public String getMountPoint() {
@@ -94,12 +80,21 @@ public class StoreEndpoint implements Endpoint {
   }
 
   @Override
-  public Router createRouter() {
+  public Router createRouter(Vertx vertx) {
+    this.vertx = vertx;
+
+    reportActivities = vertx.getOrCreateContext()
+      .config().getBoolean(ConfigConstants.REPORT_ACTIVITIES, false);
+    store = new RxStore(StoreFactory.createStore(vertx));
+    storagePath = vertx.getOrCreateContext().config()
+      .getString(ConfigConstants.STORAGE_FILE_PATH);
+
     Router router = Router.router(vertx);
     router.get("/*").handler(this::onGet);
     router.put("/*").handler(this::onPut);
     router.post("/*").handler(this::onPost);
     router.delete("/*").handler(this::onDelete);
+
     return router;
   }
 
