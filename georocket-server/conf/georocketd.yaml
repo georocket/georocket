@@ -13,6 +13,11 @@ georocket:
     keyPath: georocket.key
     alpn: false
 
+    # Cross-Origin Resource Sharing (CORS)
+    cors:
+      enable: false
+      allowOrigin: https?://localhost(:[0-9]+)?
+
   # Log configuration at startup (useful for debugging)
   logConfig: false
 

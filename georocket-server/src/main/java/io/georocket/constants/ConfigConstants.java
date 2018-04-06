@@ -19,7 +19,15 @@ public final class ConfigConstants {
   public static final String HTTP_CERT_PATH = "georocket.http.certPath";
   public static final String HTTP_KEY_PATH = "georocket.http.keyPath";
   public static final String HTTP_ALPN = "georocket.http.alpn";
-  
+
+  public static final String HTTP_CORS_ENABLE = "georocket.http.cors.enable";
+  public static final String HTTP_CORS_ALLOW_ORIGIN = "georocket.http.cors.allowOrigin";
+  public static final String HTTP_CORS_ALLOW_CREDENTIALS = "georocket.http.cors.allowCredentials";
+  public static final String HTTP_CORS_ALLOW_HEADERS = "georocket.http.cors.allowHeaders";
+  public static final String HTTP_CORS_ALLOW_METHODS = "georocket.http.cors.allowMethods";
+  public static final String HTTP_CORS_EXPOSE_HEADERS = "georocket.http.cors.exposeHeaders";
+  public static final String HTTP_CORS_MAX_AGE = "georocket.http.cors.maxAge";
+
   public static final String LOG_CONFIG = "georocket.logConfig";
   public static final String REPORT_ACTIVITIES = "georocket.reportActivities"; // undocumented
   

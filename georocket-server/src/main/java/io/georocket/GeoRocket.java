@@ -11,9 +11,12 @@ import java.util.stream.Collectors;
 import io.georocket.http.Endpoint;
 import io.georocket.index.MetadataVerticle;
 import io.georocket.util.FilteredServiceLoader;
+import io.vertx.core.http.HttpMethod;
 import io.vertx.core.net.PemKeyCertOptions;
+import io.vertx.ext.web.handler.CorsHandler;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.BooleanUtils;
+import org.jooq.lambda.Seq;
 import org.yaml.snakeyaml.Yaml;
 
 import io.georocket.constants.ConfigConstants;
@@ -93,9 +96,9 @@ public class GeoRocket extends AbstractVerticle {
     String host = config().getString(ConfigConstants.HOST, ConfigConstants.DEFAULT_HOST);
     int port = config().getInteger(ConfigConstants.PORT, ConfigConstants.DEFAULT_PORT);
 
-    Router router = createRouter();
-    HttpServerOptions serverOptions = createHttpServerOptions();
     try {
+      Router router = createRouter();
+      HttpServerOptions serverOptions = createHttpServerOptions();
       HttpServer server = vertx.createHttpServer(serverOptions);
       ObservableFuture<HttpServer> observable = RxHelper.observableFuture();
       server.requestHandler(router::accept).listen(port, host, observable.toHandler());
@@ -103,6 +106,63 @@ public class GeoRocket extends AbstractVerticle {
     } catch (Throwable t) {
       return Single.error(t);
     }
+  }
+
+  /**
+   * Create and configure a {@link CorsHandler}
+   * @return the {@link CorsHandler}
+   */
+  protected CorsHandler createCorsHandler() {
+    String allowedOrigin = config().getString(
+      ConfigConstants.HTTP_CORS_ALLOW_ORIGIN, "$."); // match nothing by default
+    CorsHandler corsHandler = CorsHandler.create(allowedOrigin);
+
+    // configure whether the Access-Control-Allow-Credentials should be returned
+    if (config().getBoolean(ConfigConstants.HTTP_CORS_ALLOW_CREDENTIALS, false)) {
+      corsHandler.allowCredentials(true);
+    }
+
+    // configured allowed headers
+    Object allowHeaders = config().getValue(ConfigConstants.HTTP_CORS_ALLOW_HEADERS);
+    if (allowHeaders instanceof String) {
+      corsHandler.allowedHeader((String)allowHeaders);
+    } else if (allowHeaders instanceof JsonArray) {
+      corsHandler.allowedHeaders(Seq.seq((JsonArray)allowHeaders)
+        .cast(String.class).toSet());
+    } else if (allowHeaders != null) {
+      throw new IllegalArgumentException(ConfigConstants.HTTP_CORS_ALLOW_HEADERS
+        + " must either be a string or an array.");
+    }
+
+    // configured allowed methods
+    Object allowMethods = config().getValue(ConfigConstants.HTTP_CORS_ALLOW_METHODS);
+    if (allowMethods instanceof String) {
+      corsHandler.allowedMethod(HttpMethod.valueOf((String)allowMethods));
+    } else if (allowMethods instanceof JsonArray) {
+      corsHandler.allowedMethods(Seq.seq((JsonArray)allowMethods)
+        .cast(String.class).map(HttpMethod::valueOf).toSet());
+    } else if (allowMethods != null) {
+      throw new IllegalArgumentException(ConfigConstants.HTTP_CORS_ALLOW_METHODS
+        + " must either be a string or an array.");
+    }
+
+    // configured exposed headers
+    Object exposeHeaders = config().getValue(ConfigConstants.HTTP_CORS_EXPOSE_HEADERS);
+    if (exposeHeaders instanceof String) {
+      corsHandler.exposedHeader((String)exposeHeaders);
+    } else if (exposeHeaders instanceof JsonArray) {
+      corsHandler.exposedHeaders(Seq.seq((JsonArray)exposeHeaders)
+        .cast(String.class).toSet());
+    } else if (exposeHeaders != null) {
+      throw new IllegalArgumentException(ConfigConstants.HTTP_CORS_EXPOSE_HEADERS
+        + " must either be a string or an array.");
+    }
+
+    // configure max age in seconds
+    int maxAge = config().getInteger(ConfigConstants.HTTP_CORS_MAX_AGE, -1);
+    corsHandler.maxAgeSeconds(maxAge);
+
+    return corsHandler;
   }
   
   /**
@@ -112,6 +172,11 @@ public class GeoRocket extends AbstractVerticle {
    */
   protected Router createRouter() {
     Router router = Router.router(vertx);
+
+    boolean corsEnable = config().getBoolean(ConfigConstants.HTTP_CORS_ENABLE, false);
+    if (corsEnable) {
+      router.route().handler(createCorsHandler());
+    }
 
     for (Endpoint ep : FilteredServiceLoader.load(Endpoint.class)) {
       router.mountSubRouter(ep.getMountPoint(), ep.createRouter(vertx));

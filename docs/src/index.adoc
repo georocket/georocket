@@ -1079,6 +1079,10 @@ You may override items in your configuration file with environment variables. Th
 | *georocket.port* +
   _(default: 63020)_
 | The TCP port GeoRocket should listen on.
+|===
+
+[cols="1,2"]
+|===
 | *georocket.http.compress* +
   _(default: true)_
 | A boolean value (`true` or `false`) denoting whether GeoRocket should compress responses with gzip/deflate if the client supports it.
@@ -1094,6 +1098,31 @@ You may override items in your configuration file with environment variables. Th
 | *georocket.http.alpn* +
   _(default: false)_
 | True if GeoRocket should support Application-Layer Protocol Negotiation (ALPN) and, hence, HTTP/2 connections. This feature requires `georocket.http.ssl` to be enabled.
+|===
+
+[cols="1,2"]
+|===
+| *georocket.http.cors.enable* +
+  _(default: false)_
+| A boolean value (`true` or `false`) denoting whether Cross-Origin Resource Sharing (CORS) should be enabled (i.e. whether GeoRocket can be accessed by a browser on another origin).
+| *georocket.http.cors.allowOrigin* +
+  _(defaults to no allowed origins)_
+| A regular expression specifying allowed origins. Use `&#42;` to allow all origins.
+| *georocket.http.cors.allowCredentials* +
+  _(default: false)_
+| A boolean value (`true` or `false`) denoting whether the `Access-Control-Allow-Credentials` response header should be returned.
+| *georocket.http.cors.allowHeaders* +
+  _(optional)_
+| A string or an array indicating which header field names can be used during a request.
+| *georocket.http.cors.allowMethods* +
+  _(optional)_
+| A string or an array indicating which HTTP methods can be used during a request.
+| *georocket.http.cors.exposeHeaders* +
+  _(optional)_
+| A string or an array indicating which headers are safe to expose to the API of a CORS API specification.
+| *georocket.http.cors.maxAge* +
+  _(optional)_
+| The number of seconds the results of a preflight request can be cached in a preflight result cache.
 |===
 
 === Back-ends
