@@ -224,8 +224,8 @@ public class StoreEndpointTest {
    */
   private static Router getStoreEndpointRouter() {
     Router router = Router.router(vertxCore);
-    Endpoint storeEndpoint = new StoreEndpoint(vertxCore);
-    router.mountSubRouter("/", storeEndpoint.createRouter());
+    Endpoint storeEndpoint = new StoreEndpoint();
+    router.mountSubRouter("/", storeEndpoint.createRouter(vertxCore));
     return router;
   }
 
