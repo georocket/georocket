@@ -262,7 +262,7 @@ public class ImporterVerticle extends AbstractVerticle {
     AtomicInteger processing = new AtomicInteger(0);
     XMLCRSIndexer crsIndexer = new XMLCRSIndexer();
     return f.toObservable()
-        .map(buf -> (io.vertx.core.buffer.Buffer)buf.getDelegate())
+        .map(Buffer::getDelegate)
         .map(bomFilter::filter)
         .doOnNext(window::append)
         .lift(new XMLParserOperator())
@@ -304,7 +304,7 @@ public class ImporterVerticle extends AbstractVerticle {
     GeoJsonSplitter splitter = new GeoJsonSplitter(window);
     AtomicInteger processing = new AtomicInteger(0);
     return f.toObservable()
-        .map(buf -> (io.vertx.core.buffer.Buffer)buf.getDelegate())
+        .map(Buffer::getDelegate)
         .map(bomFilter::filter)
         .doOnNext(window::append)
         .lift(new JsonParserOperator())

@@ -16,7 +16,7 @@ import java.util.function.Predicate;
  */
 public class FilteredServiceLoader<S> implements Iterable<S> {
   private final ServiceLoader<S> loader;
-  private final Predicate filter;
+  private final Predicate<Object> filter;
 
   /**
    * Wrap around a {@link ServiceLoader}
@@ -26,7 +26,7 @@ public class FilteredServiceLoader<S> implements Iterable<S> {
     this.loader = loader;
 
     // load all service filters and combine to a single predicate
-    Predicate r = null;
+    Predicate<Object> r = null;
     for (ServiceFilter f : ServiceLoader.load(ServiceFilter.class)) {
       if (r == null) {
         r = f;
