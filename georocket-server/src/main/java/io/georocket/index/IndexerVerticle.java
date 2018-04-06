@@ -8,7 +8,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.ServiceLoader;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -39,6 +38,7 @@ import io.georocket.storage.JsonChunkMeta;
 import io.georocket.storage.RxStore;
 import io.georocket.storage.StoreFactory;
 import io.georocket.storage.XMLChunkMeta;
+import io.georocket.util.FilteredServiceLoader;
 import io.georocket.util.JsonParserOperator;
 import io.georocket.util.MapUtils;
 import io.georocket.util.RxUtils;
@@ -152,7 +152,7 @@ public class IndexerVerticle extends AbstractVerticle {
     
     // load and copy all indexer factories now and not lazily to avoid
     // concurrent modifications to the service loader's internal cache
-    indexerFactories = ImmutableList.copyOf(ServiceLoader.load(IndexerFactory.class));
+    indexerFactories = ImmutableList.copyOf(FilteredServiceLoader.load(IndexerFactory.class));
     xmlIndexerFactories = ImmutableList.copyOf(Seq.seq(indexerFactories)
       .filter(f -> f instanceof XMLIndexerFactory)
       .cast(XMLIndexerFactory.class));

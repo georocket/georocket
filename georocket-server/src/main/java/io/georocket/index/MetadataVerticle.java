@@ -8,6 +8,7 @@ import io.georocket.index.elasticsearch.ElasticsearchClient;
 import io.georocket.index.elasticsearch.ElasticsearchClientFactory;
 import io.georocket.index.generic.DefaultMetaIndexerFactory;
 import io.georocket.query.DefaultQueryCompiler;
+import io.georocket.util.FilteredServiceLoader;
 import io.georocket.util.MapUtils;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonArray;
@@ -26,7 +27,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.ServiceLoader;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -70,7 +70,7 @@ public class MetadataVerticle extends AbstractVerticle {
   public void start(Future<Void> startFuture) {
     // load and copy all indexer factories now and not lazily to avoid
     // concurrent modifications to the service loader's internal cache
-    indexerFactories = ImmutableList.copyOf(ServiceLoader.load(IndexerFactory.class));
+    indexerFactories = ImmutableList.copyOf(FilteredServiceLoader.load(IndexerFactory.class));
     queryCompiler = createQueryCompiler();
     queryCompiler.setQueryCompilers(indexerFactories);
 
