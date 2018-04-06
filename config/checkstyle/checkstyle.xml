@@ -21,7 +21,9 @@
         <module name="NoWhitespaceBefore" />
         <module name="LeftCurly" />
         <module name="ParenPad" />
+        <module name="RedundantImport" />
         <module name="RightCurly" />
+        <module name="UnusedImports" />
         <module name="WhitespaceAfter">
             <property name="tokens" value="COMMA, SEMI" />
         </module>
