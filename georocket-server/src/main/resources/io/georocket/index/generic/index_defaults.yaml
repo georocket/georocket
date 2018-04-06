@@ -2,10 +2,10 @@
 variables:
   integer_no_index: &integer_no_index
     type: integer
-    index: "no"
+    index: false
   keyword_no_index: &keyword_no_index
     type: keyword
-    index: "no"
+    index: false
 
 dynamic_templates:
   # properties attached to chunks

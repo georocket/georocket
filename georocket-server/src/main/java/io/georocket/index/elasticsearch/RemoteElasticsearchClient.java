@@ -376,6 +376,8 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
     if (body != null) {
       req.setChunked(false);
       Buffer buf = Buffer.buffer(body);
+      req.putHeader("Accept", "application/json");
+      req.putHeader("Content-Type", "application/json");
       req.putHeader("Content-Length", String.valueOf(buf.length()));
       req.end(buf);
     } else {
