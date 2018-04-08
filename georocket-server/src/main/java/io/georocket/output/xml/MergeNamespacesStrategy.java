@@ -203,12 +203,14 @@ public class MergeNamespacesStrategy extends AbstractMergeStrategy {
   
   @Override
   public Single<Boolean> canMerge(XMLChunkMeta meta) {
-    if (getParents() == null || canMerge(getParents(), meta.getParents(),
+    return Single.defer(() -> {
+      if (getParents() == null || canMerge(getParents(), meta.getParents(),
         !isHeaderWritten())) {
-      return Single.just(true);
-    } else {
-      return Single.just(false);
-    }
+        return Single.just(true);
+      } else {
+        return Single.just(false);
+      }
+    });
   }
   
   @Override

@@ -13,8 +13,6 @@ import io.vertx.core.buffer.Buffer;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import rx.Completable;
-import rx.Single;
 
 /**
  * Test {@link AllSameStrategy}
@@ -39,9 +37,9 @@ public class AllSameStrategyTest {
     MergeStrategy strategy = new AllSameStrategy();
     BufferWriteStream bws = new BufferWriteStream();
     strategy.init(cm)
-      .andThen(Completable.defer(() -> strategy.init(cm)))
-      .andThen(Completable.defer(() -> strategy.merge(new DelegateChunkReadStream(chunk1), cm, bws)))
-      .andThen(Completable.defer(() -> strategy.merge(new DelegateChunkReadStream(chunk2), cm, bws)))
+      .andThen(strategy.init(cm))
+      .andThen(strategy.merge(new DelegateChunkReadStream(chunk1), cm, bws))
+      .andThen(strategy.merge(new DelegateChunkReadStream(chunk2), cm, bws))
       .doOnCompleted(() -> strategy.finish(bws))
       .subscribe(() -> {
         context.assertEquals(XMLHEADER + "<root><test chunk=\"1\"></test><test chunk=\"2\"></test></root>",
@@ -61,8 +59,8 @@ public class AllSameStrategyTest {
     BufferWriteStream bws = new BufferWriteStream();
     strategy.init(cm)
       // skip second init
-      .andThen(Completable.defer(() -> strategy.merge(new DelegateChunkReadStream(chunk1), cm, bws)))
-      .andThen(Completable.defer(() -> strategy.merge(new DelegateChunkReadStream(chunk2), cm, bws)))
+      .andThen(strategy.merge(new DelegateChunkReadStream(chunk1), cm, bws))
+      .andThen(strategy.merge(new DelegateChunkReadStream(chunk2), cm, bws))
       .doOnCompleted(() -> strategy.finish(bws))
       .subscribe(() -> {
         context.assertEquals(XMLHEADER + "<root><test chunk=\"1\"></test><test chunk=\"2\"></test></root>",
@@ -87,7 +85,7 @@ public class AllSameStrategyTest {
     strategy.canMerge(cm)
       .doOnSuccess(context::assertTrue)
       .flatMapCompletable(v -> strategy.init(cm))
-      .andThen(Single.defer(() -> strategy.canMerge(cm)))
+      .andThen(strategy.canMerge(cm))
       .doOnSuccess(context::assertTrue)
       .flatMap(v -> strategy.canMerge(cm2))
       .doOnSuccess(context::assertFalse)
@@ -112,7 +110,7 @@ public class AllSameStrategyTest {
     MergeStrategy strategy = new AllSameStrategy();
     BufferWriteStream bws = new BufferWriteStream();
     strategy.init(cm)
-      .andThen(Completable.defer(() -> strategy.merge(new DelegateChunkReadStream(chunk2), cm2, bws)))
+      .andThen(strategy.merge(new DelegateChunkReadStream(chunk2), cm2, bws))
       .subscribe(context::fail, err -> {
         context.assertTrue(err instanceof IllegalArgumentException);
         async.complete();

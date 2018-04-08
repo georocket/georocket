@@ -11,11 +11,13 @@ import rx.Single;
 public class AllSameStrategy extends AbstractMergeStrategy {
   @Override
   public Single<Boolean> canMerge(XMLChunkMeta meta) {
-    if (getParents() == null || getParents().equals(meta.getParents())) {
-      return Single.just(Boolean.TRUE);
-    } else {
-      return Single.just(Boolean.FALSE);
-    }
+    return Single.defer(() -> {
+      if (getParents() == null || getParents().equals(meta.getParents())) {
+        return Single.just(Boolean.TRUE);
+      } else {
+        return Single.just(Boolean.FALSE);
+      }
+    });
   }
 
   @Override

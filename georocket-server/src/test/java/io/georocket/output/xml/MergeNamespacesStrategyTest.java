@@ -13,7 +13,6 @@ import io.vertx.core.buffer.Buffer;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import rx.Completable;
 
 /**
  * Test {@link MergeNamespacesStrategy}
@@ -64,9 +63,9 @@ public class MergeNamespacesStrategyTest {
     MergeStrategy strategy = new MergeNamespacesStrategy();
     BufferWriteStream bws = new BufferWriteStream();
     strategy.init(META1)
-      .andThen(Completable.defer(() -> strategy.init(META2)))
-      .andThen(Completable.defer(() -> strategy.merge(new DelegateChunkReadStream(CHUNK1), META1, bws)))
-      .andThen(Completable.defer(() -> strategy.merge(new DelegateChunkReadStream(CHUNK2), META2, bws)))
+      .andThen(strategy.init(META2))
+      .andThen(strategy.merge(new DelegateChunkReadStream(CHUNK1), META1, bws))
+      .andThen(strategy.merge(new DelegateChunkReadStream(CHUNK2), META2, bws))
       .doOnCompleted(() -> strategy.finish(bws))
       .subscribe(() -> {
         context.assertEquals(XMLHEADER + EXPECTEDROOT + CONTENTS1 + CONTENTS2 +
@@ -86,8 +85,8 @@ public class MergeNamespacesStrategyTest {
     BufferWriteStream bws = new BufferWriteStream();
     strategy.init(META1)
       // skip second init
-      .andThen(Completable.defer(() -> strategy.merge(new DelegateChunkReadStream(CHUNK1), META1, bws)))
-      .andThen(Completable.defer(() -> strategy.merge(new DelegateChunkReadStream(CHUNK2), META2, bws)))
+      .andThen(strategy.merge(new DelegateChunkReadStream(CHUNK1), META1, bws))
+      .andThen(strategy.merge(new DelegateChunkReadStream(CHUNK2), META2, bws))
       .subscribe(() -> context.fail(), err -> {
         context.assertTrue(err instanceof IllegalArgumentException);
         async.complete();

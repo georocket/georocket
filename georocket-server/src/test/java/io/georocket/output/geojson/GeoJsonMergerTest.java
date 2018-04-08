@@ -14,7 +14,6 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import rx.Completable;
 import rx.Observable;
 
 /**
@@ -237,8 +236,8 @@ public class GeoJsonMergerTest {
     BufferWriteStream bws = new BufferWriteStream();
     Async async = context.async();
     m.init(cm1)
-      .andThen(Completable.defer(() -> m.merge(new DelegateChunkReadStream(chunk1), cm1, bws)))
-      .andThen(Completable.defer(() -> m.merge(new DelegateChunkReadStream(chunk2), cm2, bws)))
+      .andThen(m.merge(new DelegateChunkReadStream(chunk1), cm1, bws))
+      .andThen(m.merge(new DelegateChunkReadStream(chunk2), cm2, bws))
       .subscribe(context::fail, err -> {
         context.assertTrue(err instanceof IllegalStateException);
         async.complete();
@@ -270,10 +269,10 @@ public class GeoJsonMergerTest {
     BufferWriteStream bws = new BufferWriteStream();
     Async async = context.async();
     m.init(cm1)
-      .andThen(Completable.defer(() -> m.init(cm2)))
-      .andThen(Completable.defer(() -> m.merge(new DelegateChunkReadStream(chunk1), cm1, bws)))
-      .andThen(Completable.defer(() -> m.merge(new DelegateChunkReadStream(chunk2), cm2, bws)))
-      .andThen(Completable.defer(() -> m.merge(new DelegateChunkReadStream(chunk3), cm3, bws)))
+      .andThen(m.init(cm2))
+      .andThen(m.merge(new DelegateChunkReadStream(chunk1), cm1, bws))
+      .andThen(m.merge(new DelegateChunkReadStream(chunk2), cm2, bws))
+      .andThen(m.merge(new DelegateChunkReadStream(chunk3), cm3, bws))
       .subscribe(() -> {
         m.finish(bws);
         context.assertEquals(jsonContents, bws.getBuffer().toString("utf-8"));

@@ -19,7 +19,6 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import rx.Completable;
 import rx.Observable;
 
 /**
@@ -115,7 +114,7 @@ public class MultiMergerTest {
     MultiMerger m = new MultiMerger();
     Async async = context.async();
     m.init(cm1)
-      .andThen(Completable.defer(() -> m.init(cm2)))
+      .andThen(m.init(cm2))
       .subscribe(context::fail, err -> {
         context.assertTrue(err instanceof IllegalStateException);
         async.complete();
@@ -141,8 +140,8 @@ public class MultiMergerTest {
     BufferWriteStream bws = new BufferWriteStream();
     Async async = context.async();
     m.init(cm1)
-      .andThen(Completable.defer(() -> m.merge(new DelegateChunkReadStream(chunk1), cm1, bws)))
-      .andThen(Completable.defer(() -> m.merge(new DelegateChunkReadStream(chunk2), cm2, bws)))
+      .andThen(m.merge(new DelegateChunkReadStream(chunk1), cm1, bws))
+      .andThen(m.merge(new DelegateChunkReadStream(chunk2), cm2, bws))
       .subscribe(context::fail, err -> {
         context.assertTrue(err instanceof IllegalStateException);
         async.complete();
