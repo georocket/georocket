@@ -1,18 +1,8 @@
 package io.georocket.http;
 
-import io.vertx.core.http.HttpServerOptions;
-import io.vertx.rx.java.ObservableFuture;
-import io.vertx.rx.java.RxHelper;
-import java.util.LinkedList;
-import java.util.List;
-
-import org.junit.After;
-import org.junit.BeforeClass;
-import org.junit.ClassRule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-
+import io.georocket.NetUtils;
 import io.georocket.constants.ConfigConstants;
+import io.georocket.http.mocks.MockIndexer;
 import io.vertx.core.Handler;
 import io.vertx.core.VertxOptions;
 import io.vertx.core.http.HttpClient;
@@ -20,15 +10,25 @@ import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.http.HttpServer;
+import io.vertx.core.http.HttpServerOptions;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.ext.web.Router;
+import io.vertx.rx.java.ObservableFuture;
+import io.vertx.rx.java.RxHelper;
 import io.vertx.rxjava.core.Vertx;
-import io.georocket.http.mocks.MockIndexer;
+import org.junit.After;
+import org.junit.BeforeClass;
+import org.junit.ClassRule;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 import rx.Observable;
+
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * Test class for {@link StoreEndpoint}
@@ -258,7 +258,7 @@ public class StoreEndpointTest {
     // Use mock store
     config.put(ConfigConstants.STORAGE_CLASS, "io.georocket.http.mocks.MockStore");
     config.put(ConfigConstants.HOST, ConfigConstants.DEFAULT_HOST);
-    config.put(ConfigConstants.PORT, ConfigConstants.DEFAULT_PORT);
+    config.put(ConfigConstants.PORT, NetUtils.findPort());
   }
 
   private final class HeaderConstants {
