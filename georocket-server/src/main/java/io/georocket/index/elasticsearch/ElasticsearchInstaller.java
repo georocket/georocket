@@ -29,7 +29,6 @@ import io.vertx.rxjava.core.file.AsyncFile;
 import io.vertx.rxjava.core.file.FileSystem;
 import io.vertx.rxjava.core.http.HttpClient;
 import io.vertx.rxjava.core.http.HttpClientRequest;
-import rx.Observable;
 import rx.Single;
 
 /**
@@ -56,9 +55,9 @@ public class ElasticsearchInstaller {
    * @param downloadUrl the URL to the ZIP file containing Elasticsearch
    * @param destPath the path to the destination folder where the downloaded ZIP
    * file should be extracted to
-   * @return an observable emitting the path to the extracted Elasticsearch
+   * @return a single emitting the path to the extracted Elasticsearch
    */
-  public Observable<String> download(String downloadUrl, String destPath) {
+  public Single<String> download(String downloadUrl, String destPath) {
     return download(downloadUrl, destPath, true);
   }
   
@@ -72,7 +71,7 @@ public class ElasticsearchInstaller {
    * ZIP file should be stripped away.
    * @return a single emitting the path to the extracted Elasticsearch
    */
-  public Observable<String> download(String downloadUrl, String destPath,
+  public Single<String> download(String downloadUrl, String destPath,
       boolean strip) {
     FileSystem fs = vertx.fileSystem();
     return fs.rxExists(destPath)
@@ -81,8 +80,7 @@ public class ElasticsearchInstaller {
             return Single.just(destPath);
           }
           return downloadNoCheck(downloadUrl, destPath, strip);
-        })
-        .toObservable();
+        });
   }
   
   /**

@@ -56,6 +56,7 @@ import io.vertx.rxjava.core.AbstractVerticle;
 import io.vertx.rxjava.core.eventbus.Message;
 import rx.Observable;
 import rx.Observable.Transformer;
+import rx.Single;
 import rx.functions.Func1;
 
 /**
@@ -169,7 +170,7 @@ public class IndexerVerticle extends AbstractVerticle {
     queryCompiler.setQueryCompilers(indexerFactories);
     
     new ElasticsearchClientFactory(vertx).createElasticsearchClient(INDEX_NAME)
-      .doOnNext(es -> {
+      .doOnSuccess(es -> {
         client = es;
       })
       .flatMap(v -> client.ensureIndex())
@@ -349,7 +350,7 @@ public class IndexerVerticle extends AbstractVerticle {
     }
   }
   
-  private Observable<Void> ensureMapping() {
+  private Single<Void> ensureMapping() {
     // merge mappings from all indexers
     Map<String, Object> mappings = new HashMap<>();
     indexerFactories.stream().filter(f -> f instanceof DefaultMetaIndexerFactory)
@@ -385,7 +386,7 @@ public class IndexerVerticle extends AbstractVerticle {
       .map(Tuple3::v3)
       .toList();
     
-    return client.bulkInsert(type, docsToInsert).flatMap(bres -> {
+    return client.bulkInsert(type, docsToInsert).flatMapObservable(bres -> {
       JsonArray items = bres.getJsonArray("items");
       for (int i = 0; i < items.size(); ++i) {
         JsonObject jo = items.getJsonObject(i);
@@ -645,7 +646,7 @@ public class IndexerVerticle extends AbstractVerticle {
    * @param body the message containing the query
    * @return an observable that emits the results of the query
    */
-  private Observable<JsonObject> onQuery(JsonObject body) {
+  private Single<JsonObject> onQuery(JsonObject body) {
     String search = body.getString("search");
     String path = body.getString("path");
     String scrollId = body.getString("scrollId");
@@ -655,7 +656,7 @@ public class IndexerVerticle extends AbstractVerticle {
     JsonObject parameters = new JsonObject()
       .put("size", pageSize);
 
-    Observable<JsonObject> observable;
+    Single<JsonObject> single;
     if (scrollId == null) {
       // Execute a new search. Use a post_filter because we only want to get
       // a yes/no answer and no scoring (i.e. we only want to get matching
@@ -665,15 +666,15 @@ public class IndexerVerticle extends AbstractVerticle {
       try {
         postFilter = queryCompiler.compileQuery(search, path);
       } catch (Throwable t) {
-        return Observable.error(t);
+        return Single.error(t);
       }
-      observable = client.beginScroll(TYPE_NAME, null, postFilter, parameters, timeout);
+      single = client.beginScroll(TYPE_NAME, null, postFilter, parameters, timeout);
     } else {
       // continue searching
-      observable = client.continueScroll(scrollId, timeout);
+      single = client.continueScroll(scrollId, timeout);
     }
 
-    return observable.map(sr -> {
+    return single.map(sr -> {
       // iterate through all hits and convert them to JSON
       JsonObject hits = sr.getJsonObject("hits");
       long totalHits = hits.getLong("total");
@@ -704,7 +705,7 @@ public class IndexerVerticle extends AbstractVerticle {
    * @return an observable that emits a single item when the chunks have
    * been deleted successfully
    */
-  private Observable<Void> onDelete(JsonObject body) {
+  private Single<Void> onDelete(JsonObject body) {
     JsonArray paths = body.getJsonArray("paths");
     long totalChunks = body.getLong("totalChunks", (long)paths.size());
     long remainingChunks = body.getLong("remainingChunks", (long)paths.size());
@@ -721,12 +722,12 @@ public class IndexerVerticle extends AbstractVerticle {
         log.error(error);
         onDeletingFinished(stopTimeStamp - startTimeStamp, paths, totalChunks,
             remainingChunks, error);
-        return Observable.error(new NoStackTraceThrowable(
+        return Single.error(new NoStackTraceThrowable(
                 "One or more chunks could not be deleted"));
       } else {
         onDeletingFinished(stopTimeStamp - startTimeStamp, paths, totalChunks,
             remainingChunks, null);
-        return Observable.just(null);
+        return Single.just(null);
       }
     });
   }
