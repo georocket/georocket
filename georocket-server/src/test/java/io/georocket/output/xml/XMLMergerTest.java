@@ -61,19 +61,17 @@ public class XMLMergerTest {
     BufferWriteStream bws = new BufferWriteStream();
     Async async = context.async();
     metas
-      .flatMap(meta -> m.init(meta).map(v -> meta))
+      .flatMapSingle(meta -> m.init(meta).toSingleDefault(meta))
       .toList()
       .flatMap(l -> chunks.map(DelegateChunkReadStream::new)
           .<XMLChunkMeta, Pair<ChunkReadStream, XMLChunkMeta>>zipWith(l, Pair::of))
-      .flatMap(p -> m.merge(p.getLeft(), p.getRight(), bws))
-      .last()
-      .subscribe(v -> {
+      .flatMapCompletable(p -> m.merge(p.getLeft(), p.getRight(), bws))
+      .toCompletable()
+      .subscribe(() -> {
         m.finish(bws);
         context.assertEquals(XMLHEADER + xmlContents, bws.getBuffer().toString("utf-8"));
         async.complete();
-      }, err -> {
-        context.fail(err);
-      });
+      }, context::fail);
   }
   
   /**

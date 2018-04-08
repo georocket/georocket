@@ -52,6 +52,7 @@ import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
+import rx.Completable;
 import rx.Observable;
 import rx.Single;
 
@@ -112,17 +113,16 @@ public class StoreEndpoint implements Endpoint {
    * and pass all chunk metadata retrieved to the merger.
    * @param merger the merger to initialize
    * @param data data to use for the initialization
-   * @return an observable that will emit exactly one item when the merger
-   * has been initialized with all results
+   * @return a Completable that will complete when the merger has been
+   * initialized with all results
    */
-  private Observable<Void> initializeMerger(Merger<ChunkMeta> merger, Single<StoreCursor> data) {
+  private Completable initializeMerger(Merger<ChunkMeta> merger, Single<StoreCursor> data) {
     return data
       .map(RxStoreCursor::new)
       .flatMapObservable(RxStoreCursor::toObservable)
       .map(Pair::getLeft)
-      .flatMap(merger::init)
-      .defaultIfEmpty(null)
-      .last();
+      .flatMapCompletable(merger::init)
+      .toCompletable();
   }
   
   /**
@@ -132,30 +132,30 @@ public class StoreEndpoint implements Endpoint {
    * @param out the response to write the merged chunks to
    * @return a single that will emit one item when all chunks have been merged
    */
-  private Single<Void> doMerge(Merger<ChunkMeta> merger, Single<StoreCursor> data, WriteStream<Buffer> out) {
+  private Completable doMerge(Merger<ChunkMeta> merger, Single<StoreCursor> data, WriteStream<Buffer> out) {
     return data
       .map(RxStoreCursor::new)
       .flatMapObservable(RxStoreCursor::toObservable)
-      .flatMap(p -> store.rxGetOne(p.getRight())
-        .flatMapObservable(crs -> merger.merge(crs, p.getLeft(), out)
-          .map(v -> Pair.of(1L, 0L)) // left: count, right: not_accepted
+      .flatMapSingle(p -> store.rxGetOne(p.getRight())
+        .flatMap(crs -> merger.merge(crs, p.getLeft(), out)
+          .toSingleDefault(Pair.of(1L, 0L)) // left: count, right: not_accepted
           .onErrorResumeNext(t -> {
             if (t instanceof IllegalStateException) {
               // Chunk cannot be merged. maybe it's a new one that has
               // been added after the merger was initialized. Just
               // ignore it, but emit a warning later
-              return Observable.just(Pair.of(0L, 1L));
+              return Single.just(Pair.of(0L, 1L));
             }
-            return Observable.error(t);
+            return Single.error(t);
           })
-          .doOnTerminate(() -> {
+          .doAfterTerminate(() -> {
             // don't forget to close the chunk!
             crs.close();
-          })), 1 /* write only one chunk concurrently to the output stream */)
+          })), false, 1 /* write only one chunk concurrently to the output stream */)
       .defaultIfEmpty(Pair.of(0L, 0L))
       .reduce((p1, p2) -> Pair.of(p1.getLeft() + p2.getLeft(),
           p1.getRight() + p2.getRight()))
-      .flatMap(p -> {
+      .flatMapCompletable(p -> {
         long count = p.getLeft();
         long notaccepted = p.getRight();
         if (notaccepted > 0) {
@@ -167,11 +167,12 @@ public class StoreEndpoint implements Endpoint {
         }
         if (count > 0) {
           merger.finish(out);
-          return Observable.just(null);
+          return Completable.complete();
         } else {
-          return Observable.error(new FileNotFoundException("Not Found"));
+          return Completable.error(new FileNotFoundException("Not Found"));
         }
-      }).toSingle().map(v -> null);
+      })
+      .toCompletable();
   }
 
   /**
@@ -192,7 +193,7 @@ public class StoreEndpoint implements Endpoint {
     String strSize = request.getParam("size");
     int size = strSize == null ? 100 : Integer.parseInt(strSize);
 
-    return Single.<StoreCursor>defer(() -> {
+    return Single.defer(() -> {
       if (scrolling) {
         if (scrollId == null) {
           return store.rxScroll(search, path, size);
@@ -258,10 +259,8 @@ public class StoreEndpoint implements Endpoint {
     // merge all retrieved chunks
     Merger<ChunkMeta> merger = createMerger(context);
     initializeMerger(merger, data)
-      .flatMapSingle(v -> doMerge(merger, data, response))
-      .subscribe(v -> {
-        response.end();
-      }, err -> {
+      .andThen(Completable.defer(() -> doMerge(merger, data, response)))
+      .subscribe(response::end, err -> {
         if (!(err instanceof FileNotFoundException)) {
           log.error("Could not perform query", err);
         }

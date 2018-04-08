@@ -22,6 +22,7 @@ import io.vertx.rxjava.core.Vertx;
 import io.vertx.rxjava.core.buffer.Buffer;
 import io.vertx.rxjava.core.http.HttpClient;
 import io.vertx.rxjava.core.http.HttpClientRequest;
+import rx.Completable;
 import rx.Observable;
 import rx.Single;
 
@@ -244,18 +245,18 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
    * been created or if it already exists
    */
   @Override
-  public Single<Void> ensureIndex() {
+  public Completable ensureIndex() {
     // check if the index exists
-    return indexExists().flatMap(exists -> {
+    return indexExists().flatMapCompletable(exists -> {
       if (exists) {
-        return Single.just(null);
+        return Completable.complete();
       } else {
         // index does not exist. create it.
-        return createIndex().flatMap(ack -> {
+        return createIndex().flatMapCompletable(ack -> {
           if (ack) {
-            return Single.just(null);
+            return Completable.complete();
           }
-          return Single.error(new NoStackTraceThrowable("Index creation "
+          return Completable.error(new NoStackTraceThrowable("Index creation "
             + "was not acknowledged by Elasticsearch"));
         });
       }
@@ -276,18 +277,18 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
    * been created or if it already exists
    */
   @Override
-  public Single<Void> ensureMapping(String type, JsonObject mapping) {
+  public Completable ensureMapping(String type, JsonObject mapping) {
     // check if the target type exists
-    return typeExists(type).flatMap(exists -> {
+    return typeExists(type).flatMapCompletable(exists -> {
       if (exists) {
-        return Single.just(null);
+        return Completable.complete();
       } else {
         // target type does not exist. create the mapping.
-        return putMapping(type, mapping).flatMap(ack -> {
+        return putMapping(type, mapping).flatMapCompletable(ack -> {
           if (ack) {
-            return Single.just(null);
+            return Completable.complete();
           }
-          return Single.error(new NoStackTraceThrowable("Mapping creation "
+          return Completable.error(new NoStackTraceThrowable("Mapping creation "
             + "was not acknowledged by Elasticsearch"));
         });
       }

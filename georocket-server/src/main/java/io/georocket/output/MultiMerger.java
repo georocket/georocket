@@ -8,7 +8,7 @@ import io.georocket.storage.GeoJsonChunkMeta;
 import io.georocket.storage.XMLChunkMeta;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.streams.WriteStream;
-import rx.Observable;
+import rx.Completable;
 
 /**
  * <p>A merger that either delegates to {@link XMLMerger} or
@@ -22,51 +22,51 @@ public class MultiMerger implements Merger<ChunkMeta> {
   private XMLMerger xmlMerger;
   private GeoJsonMerger geoJsonMerger;
   
-  private Observable<Void> ensureMerger(ChunkMeta meta) {
+  private Completable ensureMerger(ChunkMeta meta) {
     if (meta instanceof XMLChunkMeta) {
       if (xmlMerger == null) {
         if (geoJsonMerger != null) {
-          return Observable.error(new IllegalStateException("Cannot merge "
+          return Completable.error(new IllegalStateException("Cannot merge "
             + "XML chunk into a GeoJSON document."));
         }
         xmlMerger = new XMLMerger();
       }
-      return Observable.just(null);
+      return Completable.complete();
     } else if (meta instanceof GeoJsonChunkMeta) {
       if (geoJsonMerger == null) {
         if (xmlMerger != null) {
-          return Observable.error(new IllegalStateException("Cannot merge "
+          return Completable.error(new IllegalStateException("Cannot merge "
             + "GeoJSON chunk into an XML document."));
         }
         geoJsonMerger = new GeoJsonMerger();
       }
-      return Observable.just(null);
+      return Completable.complete();
     }
-    return Observable.error(new IllegalStateException("Cannot merge "
+    return Completable.error(new IllegalStateException("Cannot merge "
       + "chunk of type " + meta.getMimeType()));
   }
   
   @Override
-  public Observable<Void> init(ChunkMeta meta) {
+  public Completable init(ChunkMeta meta) {
     return ensureMerger(meta)
-      .flatMap(v -> {
+      .andThen(Completable.defer(() -> {
         if (meta instanceof XMLChunkMeta) {
           return xmlMerger.init((XMLChunkMeta)meta);
         }
         return geoJsonMerger.init((GeoJsonChunkMeta)meta);
-      });
+      }));
   }
 
   @Override
-  public Observable<Void> merge(ChunkReadStream chunk, ChunkMeta meta,
+  public Completable merge(ChunkReadStream chunk, ChunkMeta meta,
       WriteStream<Buffer> out) {
     return ensureMerger(meta)
-      .flatMap(v -> {
+      .andThen(Completable.defer(() -> {
         if (meta instanceof XMLChunkMeta) {
           return xmlMerger.merge(chunk, (XMLChunkMeta)meta, out);
         }
         return geoJsonMerger.merge(chunk, (GeoJsonChunkMeta)meta, out);
-      });
+      }));
   }
 
   @Override

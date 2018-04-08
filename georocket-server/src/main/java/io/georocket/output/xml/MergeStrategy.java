@@ -5,7 +5,7 @@ import java.util.List;
 import io.georocket.output.Merger;
 import io.georocket.storage.XMLChunkMeta;
 import io.georocket.util.XMLStartElement;
-import rx.Observable;
+import rx.Single;
 
 /**
  * A merge strategy for XML chunks
@@ -27,8 +27,8 @@ public interface MergeStrategy extends Merger<XMLChunkMeta> {
    * Check if a chunk with the given metadata can be merged and call a
    * handler with the result
    * @param meta the chunk metadata
-   * @return an observable that will emit <code>true</code> if the metadata
+   * @return a Single that will emit <code>true</code> if the metadata
    * can be merged and <code>false</code> otherwise
    */
-  Observable<Boolean> canMerge(XMLChunkMeta meta);
+  Single<Boolean> canMerge(XMLChunkMeta meta);
 }

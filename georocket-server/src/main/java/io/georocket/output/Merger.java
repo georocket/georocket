@@ -9,7 +9,7 @@ import io.vertx.core.buffer.Buffer;
 import io.vertx.core.streams.WriteStream;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
-import rx.Observable;
+import rx.Completable;
 
 /**
  * Merges chunks to create a valid output document
@@ -23,10 +23,10 @@ public interface Merger<T extends ChunkMeta> {
    * {@link #merge(ChunkReadStream, ChunkMeta, WriteStream)}
    * has been called this method must not be called any more.
    * @param meta the chunk metadata
-   * @return an observable that emits exactly one item when the merger has been
+   * @return a Completable that will complete when the merger has been
    * initialized with the given chunk
    */
-  Observable<Void> init(T meta);
+  Completable init(T meta);
   
   /**
    * Merge a chunk using the current merge strategy. The given chunk should
@@ -36,10 +36,9 @@ public interface Merger<T extends ChunkMeta> {
    * @param chunk the chunk to merge
    * @param meta the chunk's metadata
    * @param out the stream to write the merged result to
-   * @return an observable that emits exactly one item when the chunk has
-   * been merged
+   * @return a Completable that will complete when the chunk has been merged
    */
-  Observable<Void> merge(ChunkReadStream chunk, T meta,
+  Completable merge(ChunkReadStream chunk, T meta,
       WriteStream<Buffer> out);
   
   /**
@@ -53,9 +52,9 @@ public interface Merger<T extends ChunkMeta> {
    * @param chunk the chunk to write
    * @param meta the chunk's metadata
    * @param out the stream to write the chunk to
-   * @return an observable that will emit one item when the chunk has been written
+   * @return a Completable that will complete when the chunk has been written
    */
-  default Observable<Void> writeChunk(ChunkReadStream chunk, ChunkMeta meta,
+  default Completable writeChunk(ChunkReadStream chunk, ChunkMeta meta,
       WriteStream<Buffer> out) {
     // write chunk to output stream
     int[] start = new int[] { meta.getStart() };
@@ -80,6 +79,6 @@ public interface Merger<T extends ChunkMeta> {
     
     chunk.endHandler(v -> handler.handle(Future.succeededFuture()));
     
-    return o;
+    return o.toCompletable();
   }
 }

@@ -7,7 +7,7 @@ import io.georocket.storage.XMLChunkMeta;
 import io.georocket.util.XMLStartElement;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.streams.WriteStream;
-import rx.Observable;
+import rx.Completable;
 
 /**
  * Abstract base class for XML merge strategies
@@ -34,10 +34,9 @@ public abstract class AbstractMergeStrategy implements MergeStrategy {
    * Merge the parent elements of a given chunk into the current parent
    * elements. Perform no checks.
    * @param meta the chunk metadata containing the parents to merge
-   * @return an observable that will emit one item when the parents have
-   * been merged
+   * @return a Completable that will complete when the parents have been merged
    */
-  protected abstract Observable<Void> mergeParents(XMLChunkMeta meta);
+  protected abstract Completable mergeParents(XMLChunkMeta meta);
   
   /**
    * @return true if the header has already been write to the output stream
@@ -57,13 +56,13 @@ public abstract class AbstractMergeStrategy implements MergeStrategy {
   }
   
   @Override
-  public Observable<Void> init(XMLChunkMeta meta) {
+  public Completable init(XMLChunkMeta meta) {
     return canMerge(meta)
-      .flatMap(b -> {
+      .flatMapCompletable(b -> {
         if (b) {
           return mergeParents(meta);
         }
-        return Observable.error(new IllegalArgumentException(
+        return Completable.error(new IllegalArgumentException(
             "Chunk cannot be merged with this strategy"));
       });
   }
@@ -78,12 +77,12 @@ public abstract class AbstractMergeStrategy implements MergeStrategy {
   }
   
   @Override
-  public Observable<Void> merge(ChunkReadStream chunk, XMLChunkMeta meta,
+  public Completable merge(ChunkReadStream chunk, XMLChunkMeta meta,
       WriteStream<Buffer> out) {
     return canMerge(meta)
-      .flatMap(b -> {
+      .flatMapCompletable(b -> {
         if (!b) {
-          return Observable.error(new IllegalArgumentException(
+          return Completable.error(new IllegalArgumentException(
               "Chunk cannot be merged with this strategy"));
         }
         if (!headerWritten) {

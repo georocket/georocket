@@ -1,7 +1,8 @@
 package io.georocket.output.xml;
 
 import io.georocket.storage.XMLChunkMeta;
-import rx.Observable;
+import rx.Completable;
+import rx.Single;
 
 /**
  * Merge chunks whose root XML elements are all equal
@@ -9,19 +10,19 @@ import rx.Observable;
  */
 public class AllSameStrategy extends AbstractMergeStrategy {
   @Override
-  public Observable<Boolean> canMerge(XMLChunkMeta meta) {
+  public Single<Boolean> canMerge(XMLChunkMeta meta) {
     if (getParents() == null || getParents().equals(meta.getParents())) {
-      return Observable.just(Boolean.TRUE);
+      return Single.just(Boolean.TRUE);
     } else {
-      return Observable.just(Boolean.FALSE);
+      return Single.just(Boolean.FALSE);
     }
   }
 
   @Override
-  protected Observable<Void> mergeParents(XMLChunkMeta meta) {
+  protected Completable mergeParents(XMLChunkMeta meta) {
     if (getParents() == null) {
       setParents(meta.getParents());
     }
-    return Observable.just(null);
+    return Completable.complete();
   }
 }

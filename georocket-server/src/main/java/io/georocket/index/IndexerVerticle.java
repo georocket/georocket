@@ -54,6 +54,7 @@ import io.vertx.core.logging.LoggerFactory;
 import io.vertx.rx.java.RxHelper;
 import io.vertx.rxjava.core.AbstractVerticle;
 import io.vertx.rxjava.core.eventbus.Message;
+import rx.Completable;
 import rx.Observable;
 import rx.Observable.Transformer;
 import rx.Single;
@@ -173,9 +174,9 @@ public class IndexerVerticle extends AbstractVerticle {
       .doOnSuccess(es -> {
         client = es;
       })
-      .flatMap(v -> client.ensureIndex())
-      .flatMap(v -> ensureMapping())
-      .subscribe(es -> {
+      .flatMapCompletable(v -> client.ensureIndex())
+      .andThen(Completable.defer(() -> ensureMapping()))
+      .subscribe(() -> {
         registerMessageConsumers();
         startFuture.complete();
       }, err -> {
@@ -226,18 +227,19 @@ public class IndexerVerticle extends AbstractVerticle {
       })
       .buffer(BUFFER_TIMESPAN, TimeUnit.MILLISECONDS, maxBulkSize)
       .onBackpressureBuffer() // unlimited buffer
-      .flatMap(messages -> {
+      .flatMapCompletable(messages -> {
         queuedAddMessages -= messages.size();
         return onAdd(messages)
-          .onErrorReturn(err -> {
+          .onErrorComplete(err -> {
             // reply with error to all peers
             log.error("Could not index document", err);
             messages.forEach(msg -> msg.fail(throwableToCode(err), err.getMessage()));
             // ignore error
-            return null;
+            return true;
           });
-      }, maxParallelInserts)
-      .subscribe(v -> {
+      }, false, maxParallelInserts)
+      .toCompletable()
+      .subscribe(() -> {
         // ignore
       }, err -> {
         // This is bad. It will unsubscribe the consumer from the eventbus!
@@ -350,7 +352,7 @@ public class IndexerVerticle extends AbstractVerticle {
     }
   }
   
-  private Single<Void> ensureMapping() {
+  private Completable ensureMapping() {
     // merge mappings from all indexers
     Map<String, Object> mappings = new HashMap<>();
     indexerFactories.stream().filter(f -> f instanceof DefaultMetaIndexerFactory)
@@ -358,7 +360,7 @@ public class IndexerVerticle extends AbstractVerticle {
     indexerFactories.stream().filter(f -> !(f instanceof DefaultMetaIndexerFactory))
         .forEach(factory -> MapUtils.deepMerge(mappings, factory.getMapping()));
 
-    return client.putMapping(TYPE_NAME, new JsonObject(mappings)).map(r -> null);
+    return client.putMapping(TYPE_NAME, new JsonObject(mappings)).toCompletable();
   }
   
   /**
@@ -368,9 +370,9 @@ public class IndexerVerticle extends AbstractVerticle {
    * @param type Elasticsearch type for documents
    * @param documents a list of tuples containing document IDs, documents to
    * index, and the respective messages from which the documents were created
-   * @return an observable that completes when the operation has finished
+   * @return a Completable that completes when the operation has finished
    */
-  private Observable<Void> insertDocuments(String type,
+  private Completable insertDocuments(String type,
       List<Tuple3<String, JsonObject, Message<JsonObject>>> documents) {
     long startTimeStamp = System.currentTimeMillis();
     
@@ -386,7 +388,7 @@ public class IndexerVerticle extends AbstractVerticle {
       .map(Tuple3::v3)
       .toList();
     
-    return client.bulkInsert(type, docsToInsert).flatMapObservable(bres -> {
+    return client.bulkInsert(type, docsToInsert).flatMapCompletable(bres -> {
       JsonArray items = bres.getJsonArray("items");
       for (int i = 0; i < items.size(); ++i) {
         JsonObject jo = items.getJsonObject(i);
@@ -407,7 +409,7 @@ public class IndexerVerticle extends AbstractVerticle {
       onIndexingFinished(stopTimeStamp - startTimeStamp, correlationIds,
           chunkPaths, client.bulkResponseGetErrorMessage(bres));
 
-      return Observable.empty();
+      return Completable.complete();
     });
   }
 
@@ -582,9 +584,9 @@ public class IndexerVerticle extends AbstractVerticle {
    * Will be called when chunks should be added to the index
    * @param messages the list of add messages that contain the paths to
    * the chunks to be indexed
-   * @return an observable that completes when the operation has finished
+   * @return a Completable that completes when the operation has finished
    */
-  private Observable<Void> onAdd(List<Message<JsonObject>> messages) {
+  private Completable onAdd(List<Message<JsonObject>> messages) {
     return Observable.from(messages)
       .flatMap(msg -> {
         // get path to chunk from message
@@ -633,12 +635,13 @@ public class IndexerVerticle extends AbstractVerticle {
           });
       })
       .toList()
-      .flatMap(l -> {
+      .flatMapCompletable(l -> {
         if (!l.isEmpty()) {
           return insertDocuments(TYPE_NAME, l);
         }
-        return Observable.empty();
-      });
+        return Completable.complete();
+      })
+      .toCompletable();
   }
 
   /**

@@ -5,7 +5,7 @@ import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.GeoJsonChunkMeta;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.streams.WriteStream;
-import rx.Observable;
+import rx.Completable;
 
 /**
  * Merges chunks to valid GeoJSON documents
@@ -59,16 +59,16 @@ public class GeoJsonMerger implements Merger<GeoJsonChunkMeta> {
   }
 
   @Override
-  public Observable<Void> init(GeoJsonChunkMeta meta) {
+  public Completable init(GeoJsonChunkMeta meta) {
     if (mergeStarted) {
-      return Observable.error(new IllegalStateException("You cannot "
+      return Completable.error(new IllegalStateException("You cannot "
           + "initialize the merger anymore after merging has begun"));
     }
     
     if (mergedType == FEATURE_COLLECTION) {
       // shortcut: we don't need to analyse the other chunks anymore,
       // we already reached the most generic type
-      return Observable.just(null);
+      return Completable.complete();
     }
     
     // calculate the type of the merged document
@@ -78,11 +78,11 @@ public class GeoJsonMerger implements Merger<GeoJsonChunkMeta> {
       mergedType = TRANSITIONS[mergedType][1];
     }
     
-    return Observable.just(null);
+    return Completable.complete();
   }
 
   @Override
-  public Observable<Void> merge(ChunkReadStream chunk, GeoJsonChunkMeta meta,
+  public Completable merge(ChunkReadStream chunk, GeoJsonChunkMeta meta,
       WriteStream<Buffer> out) {
     mergeStarted = true;
     
@@ -93,7 +93,7 @@ public class GeoJsonMerger implements Merger<GeoJsonChunkMeta> {
       if (mergedType == FEATURE_COLLECTION || mergedType == GEOMETRY_COLLECTION) {
         out.write(Buffer.buffer(","));
       } else {
-        return Observable.error(new IllegalStateException(
+        return Completable.error(new IllegalStateException(
           "Trying to merge two or more chunks but the merger has only been "
           + "initialized with one chunk."));
       }
@@ -106,7 +106,7 @@ public class GeoJsonMerger implements Merger<GeoJsonChunkMeta> {
     }
     
     return writeChunk(chunk, meta, out)
-      .doOnNext(v -> {
+      .doOnCompleted(() -> {
         if (wrap) {
           out.write(Buffer.buffer("}"));
         }

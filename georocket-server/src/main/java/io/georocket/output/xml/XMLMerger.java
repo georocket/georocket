@@ -5,7 +5,7 @@ import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.XMLChunkMeta;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.streams.WriteStream;
-import rx.Observable;
+import rx.Completable;
 
 /**
  * Merges XML chunks using various strategies to create a valid XML document
@@ -37,9 +37,9 @@ public class XMLMerger implements Merger<XMLChunkMeta> {
   }
   
   @Override
-  public Observable<Void> init(XMLChunkMeta meta) {
+  public Completable init(XMLChunkMeta meta) {
     if (mergeStarted) {
-      return Observable.error(new IllegalStateException("You cannot "
+      return Completable.error(new IllegalStateException("You cannot "
           + "initialize the merger anymore after merging has begun"));
     }
     
@@ -48,7 +48,7 @@ public class XMLMerger implements Merger<XMLChunkMeta> {
     }
     
     return strategy.canMerge(meta)
-      .flatMap(canMerge -> {
+      .flatMapCompletable(canMerge -> {
         if (canMerge) {
           // current strategy is able to handle the chunk
           return strategy.init(meta);
@@ -57,7 +57,7 @@ public class XMLMerger implements Merger<XMLChunkMeta> {
         // current strategy cannot merge the chunk. select next one and retry.
         MergeStrategy ns = nextStrategy();
         if (ns == null) {
-          return Observable.error(new UnsupportedOperationException(
+          return Completable.error(new UnsupportedOperationException(
               "Cannot merge chunks. No valid strategy available."));
         }
         ns.setParents(strategy.getParents());
@@ -67,11 +67,11 @@ public class XMLMerger implements Merger<XMLChunkMeta> {
   }
   
   @Override
-  public Observable<Void> merge(ChunkReadStream chunk, XMLChunkMeta meta,
+  public Completable merge(ChunkReadStream chunk, XMLChunkMeta meta,
       WriteStream<Buffer> out) {
     mergeStarted = true;
     if (strategy == null) {
-      return Observable.error(new IllegalStateException(
+      return Completable.error(new IllegalStateException(
           "You must call init() at least once"));
     }
     return strategy.merge(chunk, meta, out);

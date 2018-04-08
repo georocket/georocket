@@ -6,6 +6,7 @@ import org.jooq.lambda.tuple.Tuple2;
 
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import rx.Completable;
 import rx.Single;
 
 /**
@@ -202,7 +203,7 @@ public interface ElasticsearchClient {
    * @return a single that will emit a single item when the index has
    * been created or if it already exists
    */
-  Single<Void> ensureIndex();
+  Completable ensureIndex();
   
   /**
    * Add mapping for the given type
@@ -222,7 +223,7 @@ public interface ElasticsearchClient {
    * @return a single that will emit a single item when the mapping has
    * been created or if it already exists
    */
-  Single<Void> ensureMapping(String type, JsonObject mapping);
+  Completable ensureMapping(String type, JsonObject mapping);
 
   /**
    * Get mapping for the given type

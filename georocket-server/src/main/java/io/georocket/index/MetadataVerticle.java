@@ -16,6 +16,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.rxjava.core.AbstractVerticle;
+import rx.Completable;
 import rx.Single;
 
 import java.io.FileNotFoundException;
@@ -77,9 +78,9 @@ public class MetadataVerticle extends AbstractVerticle {
       .doOnSuccess(es -> {
         client = es;
       })
-      .flatMap(v -> client.ensureIndex())
-      .flatMap(v -> ensureMapping())
-      .subscribe(es -> {
+      .flatMapCompletable(v -> client.ensureIndex())
+      .andThen(Completable.defer(() -> ensureMapping()))
+      .subscribe(() -> {
         registerMessageConsumers();
         startFuture.complete();
       }, startFuture::fail);
@@ -101,7 +102,7 @@ public class MetadataVerticle extends AbstractVerticle {
     }
   }
 
-  private Single<Void> ensureMapping() {
+  private Completable ensureMapping() {
     // merge mappings from all indexers
     Map<String, Object> mappings = new HashMap<>();
     indexerFactories.stream().filter(f -> f instanceof DefaultMetaIndexerFactory)
@@ -109,7 +110,7 @@ public class MetadataVerticle extends AbstractVerticle {
     indexerFactories.stream().filter(f -> !(f instanceof DefaultMetaIndexerFactory))
       .forEach(factory -> MapUtils.deepMerge(mappings, factory.getMapping()));
 
-    return client.putMapping(TYPE_NAME, new JsonObject(mappings)).map(r -> null);
+    return client.putMapping(TYPE_NAME, new JsonObject(mappings)).toCompletable();
   }
 
   /**

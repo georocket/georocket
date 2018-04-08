@@ -6,6 +6,7 @@ import org.jooq.lambda.tuple.Tuple2;
 
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import rx.Completable;
 import rx.Single;
 
 /**
@@ -94,7 +95,7 @@ public class EmbeddedElasticsearchClient implements ElasticsearchClient {
   }
 
   @Override
-  public Single<Void> ensureIndex() {
+  public Completable ensureIndex() {
     return delegate.ensureIndex();
   }
 
@@ -114,7 +115,7 @@ public class EmbeddedElasticsearchClient implements ElasticsearchClient {
   }
   
   @Override
-  public Single<Void> ensureMapping(String type, JsonObject mapping) {
+  public Completable ensureMapping(String type, JsonObject mapping) {
     return delegate.ensureMapping(type, mapping);
   }
 

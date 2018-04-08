@@ -42,7 +42,7 @@ import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
 import io.vertx.rxjava.core.Vertx;
 import io.vertx.rxjava.core.file.FileSystem;
-import rx.Observable;
+import rx.Completable;
 
 /**
  * Import one or more files into GeoRocket
@@ -259,7 +259,7 @@ public class ImportCommand extends AbstractGeoRocketCommand {
 
     // import file
     importFile(path, client, vertx)
-      .subscribe(v -> {
+      .subscribe(() -> {
         System.out.println("done");
         // import next file in the queue
         doImport(files, client, vertx, handler);
@@ -277,7 +277,7 @@ public class ImportCommand extends AbstractGeoRocketCommand {
    * @param vertx the Vert.x instance
    * @return an observable that will emit when the file has been uploaded
    */
-  protected Observable<Void> importFile(String path, GeoRocketClient client, Vertx vertx) {
+  protected Completable importFile(String path, GeoRocketClient client, Vertx vertx) {
     // open file
     FileSystem fs = vertx.fileSystem();
     OpenOptions openOptions = new OpenOptions().setCreate(false).setWrite(false);
@@ -285,7 +285,7 @@ public class ImportCommand extends AbstractGeoRocketCommand {
       // get file size
       .flatMap(f -> fs.rxProps(path).map(props -> Pair.of(f, props.size())))
       // import file
-      .flatMapObservable(f -> {
+      .flatMapCompletable(f -> {
         ObservableFuture<Void> o = RxHelper.observableFuture();
         Handler<AsyncResult<Void>> handler = o.toHandler();
         AsyncFile file = f.getLeft().getDelegate();
@@ -314,7 +314,7 @@ public class ImportCommand extends AbstractGeoRocketCommand {
         out.exceptionHandler(exceptionHandler);
 
         pump.start();
-        return o;
+        return o.toCompletable();
     });
   }
 }

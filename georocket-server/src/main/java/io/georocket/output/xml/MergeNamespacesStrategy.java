@@ -13,7 +13,8 @@ import com.google.common.base.Splitter;
 
 import io.georocket.storage.XMLChunkMeta;
 import io.georocket.util.XMLStartElement;
-import rx.Observable;
+import rx.Completable;
+import rx.Single;
 
 /**
  * Merge namespaces of XML root elements
@@ -201,21 +202,21 @@ public class MergeNamespacesStrategy extends AbstractMergeStrategy {
   }
   
   @Override
-  public Observable<Boolean> canMerge(XMLChunkMeta meta) {
+  public Single<Boolean> canMerge(XMLChunkMeta meta) {
     if (getParents() == null || canMerge(getParents(), meta.getParents(),
         !isHeaderWritten())) {
-      return Observable.just(true);
+      return Single.just(true);
     } else {
-      return Observable.just(false);
+      return Single.just(false);
     }
   }
   
   @Override
-  protected Observable<Void> mergeParents(XMLChunkMeta meta) {
+  protected Completable mergeParents(XMLChunkMeta meta) {
     if (getParents() == null) {
       // no merge necessary yet, just save the chunk's parents
       setParents(meta.getParents());
-      return Observable.just(null);
+      return Completable.complete();
     }
     
     // merge current parents and chunk parents
@@ -237,7 +238,7 @@ public class MergeNamespacesStrategy extends AbstractMergeStrategy {
       super.setParents(newParents);
     }
     
-    return Observable.just(null);
+    return Completable.complete();
   }
   
   /**
