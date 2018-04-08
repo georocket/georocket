@@ -1,27 +1,26 @@
 package io.georocket.util;
 
-import java.util.ArrayDeque;
-import java.util.Arrays;
-import java.util.Deque;
-import java.util.List;
-
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-
 import de.undercouch.actson.JsonEvent;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 import rx.Observable;
 
+import java.util.ArrayDeque;
+import java.util.Arrays;
+import java.util.Deque;
+import java.util.List;
+
 /**
- * Test {@link JsonParserOperator}
+ * Test {@link JsonParserTransformer}
  * @author Michel Kraemer
  */
 @RunWith(VertxUnitRunner.class)
-public class JsonParserOperatorTest {
+public class JsonParserTransformerTest {
   /**
    * Test input data
    */
@@ -70,7 +69,7 @@ public class JsonParserOperatorTest {
   public void parseSimple(TestContext context) {
     Async async = context.async();
     Observable.just(Buffer.buffer(JSON))
-      .lift(new JsonParserOperator())
+      .compose(new JsonParserTransformer())
       .doOnNext(e -> handler(e, expectedEvents, context))
       .last()
       .subscribe(r -> {
@@ -88,7 +87,7 @@ public class JsonParserOperatorTest {
   public void parseChunks(TestContext context) {
     Async async = context.async();
     Observable.just(Buffer.buffer(JSON_CHUNK1), Buffer.buffer(JSON_CHUNK2))
-      .lift(new JsonParserOperator())
+      .compose(new JsonParserTransformer())
       .doOnNext(e -> handler(e, expectedEvents, context))
       .last()
       .subscribe(r -> {
@@ -108,7 +107,7 @@ public class JsonParserOperatorTest {
     Observable.just(Buffer.buffer(JSON.substring(0, 3)),
         Buffer.buffer(JSON.substring(3, 12)),
         Buffer.buffer(JSON.substring(12)))
-      .lift(new JsonParserOperator())
+      .compose(new JsonParserTransformer())
       .doOnNext(e -> handler(e, expectedEvents, context))
       .last()
       .subscribe(r -> {

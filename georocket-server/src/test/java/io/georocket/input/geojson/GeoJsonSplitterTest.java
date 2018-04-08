@@ -14,7 +14,7 @@ import org.jooq.lambda.tuple.Tuple2;
 import org.junit.Test;
 
 import io.georocket.storage.GeoJsonChunkMeta;
-import io.georocket.util.JsonParserOperator;
+import io.georocket.util.JsonParserTransformer;
 import io.georocket.util.StringWindow;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonObject;
@@ -40,7 +40,7 @@ public class GeoJsonSplitterTest {
     Observable.just(json)
       .map(Buffer::buffer)
       .doOnNext(window::append)
-      .lift(new JsonParserOperator())
+      .compose(new JsonParserTransformer())
       .flatMap(splitter::onEventObservable)
       .toBlocking()
       .forEach(result -> {

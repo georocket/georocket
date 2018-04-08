@@ -12,7 +12,7 @@ import org.junit.runner.RunWith;
 
 import com.google.common.collect.ImmutableMap;
 
-import io.georocket.util.JsonParserOperator;
+import io.georocket.util.JsonParserTransformer;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -51,7 +51,7 @@ public class GeoJsonBoundingBoxIndexerTest {
 
     Async async = context.async();
     Observable.just(Buffer.buffer(json))
-      .lift(new JsonParserOperator())
+      .compose(new JsonParserTransformer())
       .doOnNext(indexer::onEvent)
       .last()
       .subscribe(r -> {

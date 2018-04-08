@@ -39,11 +39,11 @@ import io.georocket.storage.RxStore;
 import io.georocket.storage.StoreFactory;
 import io.georocket.storage.XMLChunkMeta;
 import io.georocket.util.FilteredServiceLoader;
-import io.georocket.util.JsonParserOperator;
+import io.georocket.util.JsonParserTransformer;
 import io.georocket.util.MapUtils;
 import io.georocket.util.RxUtils;
 import io.georocket.util.StreamEvent;
-import io.georocket.util.XMLParserOperator;
+import io.georocket.util.XMLParserTransformer;
 import io.vertx.core.Future;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.impl.NoStackTraceThrowable;
@@ -55,7 +55,7 @@ import io.vertx.rx.java.RxHelper;
 import io.vertx.rxjava.core.AbstractVerticle;
 import io.vertx.rxjava.core.eventbus.Message;
 import rx.Observable;
-import rx.Observable.Operator;
+import rx.Observable.Transformer;
 import rx.functions.Func1;
 
 /**
@@ -484,17 +484,17 @@ public class IndexerVerticle extends AbstractVerticle {
     return Observable.defer(() -> store.rxGetOne(path)
       .flatMapObservable(chunk -> {
         List<? extends IndexerFactory> factories;
-        Operator<? extends StreamEvent, Buffer> parserOperator;
+        Transformer<Buffer, ? extends StreamEvent> parserTransformer;
         
         // select indexers and parser depending on the mime type
         String mimeType = chunkMeta.getMimeType();
         if (belongsTo(mimeType, "application", "xml") ||
           belongsTo(mimeType, "text", "xml")) {
           factories = xmlIndexerFactories;
-          parserOperator = new XMLParserOperator();
+          parserTransformer = new XMLParserTransformer();
         } else if (belongsTo(mimeType, "application", "json")) {
           factories = jsonIndexerFactories;
-          parserOperator = new JsonParserOperator();
+          parserTransformer = new JsonParserTransformer();
         } else {
           return Observable.error(new NoStackTraceThrowable(String.format(
               "Unexpected mime type '%s' while trying to index "
@@ -511,7 +511,7 @@ public class IndexerVerticle extends AbstractVerticle {
 
         // convert chunk to document and close it
         return chunkToDocument(chunk, indexMeta.getFallbackCRSString(),
-            parserOperator, factories)
+            parserTransformer, factories)
           .doAfterTerminate(chunk::close)
           // add results from meta indexers to converted document
           .doOnNext(doc -> doc.putAll(metaResults));
@@ -525,8 +525,8 @@ public class IndexerVerticle extends AbstractVerticle {
    * @param fallbackCRSString a string representing the CRS that should be used
    * to index the chunk if it does not specify a CRS itself (may be null if no
    * CRS is available as fallback)
-   * @param parserOperator the operator used to parse the chunk stream into
-   * stream events
+   * @param parserTransformer the transformer used to parse the chunk stream
+   * into stream events
    * @param indexerFactories a sequence of indexer factories that should be
    * used to index the chunk
    * @param <T> the type of the stream events created by <code>parserOperator</code>
@@ -534,7 +534,7 @@ public class IndexerVerticle extends AbstractVerticle {
    */
   private <T extends StreamEvent> Observable<Map<String, Object>> chunkToDocument(
       ChunkReadStream chunk, String fallbackCRSString,
-      Operator<T, Buffer> parserOperator,
+      Transformer<Buffer, T> parserTransformer,
       List<? extends IndexerFactory> indexerFactories) {
     List<StreamIndexer<T>> indexers = new ArrayList<>();
     indexerFactories.forEach(factory -> {
@@ -547,7 +547,7 @@ public class IndexerVerticle extends AbstractVerticle {
     });
     
     return RxHelper.toObservable(chunk)
-      .lift(parserOperator)
+      .compose(parserTransformer)
       .doOnNext(e -> indexers.forEach(i -> i.onEvent(e)))
       .last() // "wait" until the whole chunk has been consumed
       .map(e -> {

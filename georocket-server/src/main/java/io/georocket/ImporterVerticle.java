@@ -19,12 +19,12 @@ import io.georocket.storage.ChunkMeta;
 import io.georocket.storage.IndexMeta;
 import io.georocket.storage.RxStore;
 import io.georocket.storage.StoreFactory;
-import io.georocket.util.JsonParserOperator;
+import io.georocket.util.JsonParserTransformer;
 import io.georocket.util.RxUtils;
 import io.georocket.util.StringWindow;
 import io.georocket.util.UTF8BomFilter;
 import io.georocket.util.Window;
-import io.georocket.util.XMLParserOperator;
+import io.georocket.util.XMLParserTransformer;
 import io.vertx.core.file.OpenOptions;
 import io.vertx.core.impl.NoStackTraceThrowable;
 import io.vertx.core.json.JsonArray;
@@ -265,7 +265,7 @@ public class ImporterVerticle extends AbstractVerticle {
         .map(Buffer::getDelegate)
         .map(bomFilter::filter)
         .doOnNext(window::append)
-        .lift(new XMLParserOperator())
+        .compose(new XMLParserTransformer())
         .doOnNext(e -> {
           // save the first CRS found in the file
           if (crsIndexer.getCRS() == null) {
@@ -307,7 +307,7 @@ public class ImporterVerticle extends AbstractVerticle {
         .map(Buffer::getDelegate)
         .map(bomFilter::filter)
         .doOnNext(window::append)
-        .lift(new JsonParserOperator())
+        .compose(new JsonParserTransformer())
         .flatMap(splitter::onEventObservable)
         .flatMapSingle(result -> {
           IndexMeta indexMeta = new IndexMeta(correlationId, filename,

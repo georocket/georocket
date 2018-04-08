@@ -1,28 +1,26 @@
 package io.georocket.util;
 
+import io.vertx.core.buffer.Buffer;
+import io.vertx.ext.unit.Async;
+import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import rx.Observable;
+
+import javax.xml.stream.events.XMLEvent;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
 
-import javax.xml.stream.events.XMLEvent;
-
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-
-import io.vertx.core.buffer.Buffer;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
-import rx.Observable;
-
 /**
- * Test {@link XMLParserOperator}
+ * Test {@link XMLParserTransformer}
  * @author Michel Kraemer
  */
 @RunWith(VertxUnitRunner.class)
-public class XMLParserOperatorTest {
+public class XMLParserTransformerTest {
   /**
    * Test input data
    */
@@ -70,7 +68,7 @@ public class XMLParserOperatorTest {
   public void parseSimple(TestContext context) {
     Async async = context.async();
     Observable.just(Buffer.buffer(XML))
-      .lift(new XMLParserOperator())
+      .compose(new XMLParserTransformer())
       .doOnNext(e -> handler(e, expectedEvents, context))
       .last()
       .subscribe(r -> {
@@ -88,7 +86,7 @@ public class XMLParserOperatorTest {
   public void parseChunks(TestContext context) {
     Async async = context.async();
     Observable.just(Buffer.buffer(XML_CHUNK1), Buffer.buffer(XML_CHUNK2))
-      .lift(new XMLParserOperator())
+      .compose(new XMLParserTransformer())
       .doOnNext(e -> handler(e, expectedEvents, context))
       .last()
       .subscribe(r -> {
@@ -108,7 +106,7 @@ public class XMLParserOperatorTest {
     Observable.just(Buffer.buffer(XML.substring(0, XMLHEADER.length() + 3)),
         Buffer.buffer(XML.substring(XMLHEADER.length() + 3, 64)),
         Buffer.buffer(XML.substring(64)))
-      .lift(new XMLParserOperator())
+      .compose(new XMLParserTransformer())
       .doOnNext(e -> handler(e, expectedEvents, context))
       .last()
       .subscribe(r -> {
