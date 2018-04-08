@@ -370,7 +370,11 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
           }
         });
       } else {
-        handler.handle(Future.failedFuture(new HttpException(code)));
+        Buffer buf = Buffer.buffer();
+        res.handler(buf::appendBuffer);
+        res.endHandler(v -> {
+          handler.handle(Future.failedFuture(new HttpException(code, buf.toString())));
+        });
       }
     });
     
