@@ -52,7 +52,7 @@ public interface Service {
    * service
    * @param vertx the Vert.x instance
    * @param address the service address on the event bus
-   * @return an single emitting one item when the service has been registered
+   * @return a single emitting one item when the service has been registered
    */
   static Single<Void> publishOnce(String name, String address,
       ServiceDiscovery discovery, Vertx vertx) {
@@ -140,7 +140,7 @@ public interface Service {
   /**
    * Unpublish this service
    * @param discovery the service discovery where this service is registered
-   * @return an single that emits one item when the operation has finished
+   * @return a single that emits one item when the operation has finished
    */
   Single<Void> unpublish(ServiceDiscovery discovery);
 }

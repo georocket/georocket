@@ -22,6 +22,7 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.rxjava.core.Vertx;
 import rx.Observable;
+import rx.Single;
 
 /**
  * Runs an Elasticsearch instance
@@ -47,9 +48,9 @@ public class ElasticsearchRunner {
    * @param host the host Elasticsearch should bind to
    * @param port the port Elasticsearch should listen on
    * @param elasticsearchInstallPath the path where Elasticsearch is installed
-   * @return an observable that emits exactly one item when Elasticsearch has started
+   * @return a single that emits exactly one item when Elasticsearch has started
    */
-  public Observable<Void> runElasticsearch(String host, int port,
+  public Single<Void> runElasticsearch(String host, int port,
       String elasticsearchInstallPath) {
     JsonObject config = vertx.getOrCreateContext().config();
     String storage = config.getString(ConfigConstants.STORAGE_FILE_PATH);
@@ -107,24 +108,24 @@ public class ElasticsearchRunner {
       } catch (IOException e) {
         f.fail(e);
       }
-    }).toObservable();
+    });
   }
   
   /**
    * Wait 60 seconds or until Elasticsearch is up and running, whatever
    * comes first
    * @param client the client to use to check if Elasticsearch is running
-   * @return an observable that emits exactly one item when Elasticsearch
+   * @return a single that emits exactly one item when Elasticsearch
    * is running
    */
-  public Observable<Void> waitUntilElasticsearchRunning(
+  public Single<Void> waitUntilElasticsearchRunning(
       ElasticsearchClient client) {
     final Throwable repeat = new NoStackTraceThrowable("");
-    return Observable.defer(client::isRunning).flatMap(running -> {
+    return Single.defer(client::isRunning).flatMap(running -> {
       if (!running) {
-        return Observable.error(repeat);
+        return Single.error(repeat);
       }
-      return Observable.just(running);
+      return Single.just(running);
     }).retryWhen(errors -> {
       Observable<Throwable> o = errors.flatMap(t -> {
         if (t == repeat) {
