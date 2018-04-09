@@ -36,6 +36,7 @@ import io.vertx.rxjava.core.buffer.Buffer;
 import io.vertx.rxjava.core.eventbus.Message;
 import io.vertx.rxjava.core.file.FileSystem;
 import io.vertx.rxjava.core.streams.ReadStream;
+import rx.Completable;
 import rx.Single;
 
 /**
@@ -69,9 +70,9 @@ public class ImporterVerticle extends AbstractVerticle {
     vertx.eventBus().<JsonObject>localConsumer(AddressConstants.IMPORTER_IMPORT)
       .toObservable()
       .onBackpressureBuffer() // unlimited buffer
-      .flatMapSingle(msg -> {
+      .flatMapCompletable(msg -> {
         // call onImport() but ignore errors. onImport() will handle errors for us.
-        return onImport(msg).onErrorReturn(err -> null);
+        return onImport(msg).onErrorComplete();
       }, false, MAX_PARALLEL_IMPORTS)
       .subscribe(v -> {
         // ignore
@@ -86,10 +87,9 @@ public class ImporterVerticle extends AbstractVerticle {
   /**
    * Receives a name of a file to import
    * @param msg the event bus message containing the filename
-   * @return a single that will emit an item when the file has
-   * been imported
+   * @return a Completable that will complete when the file has been imported
    */
-  protected Single<Void> onImport(Message<JsonObject> msg) {
+  protected Completable onImport(Message<JsonObject> msg) {
     JsonObject body = msg.body();
     String filename = body.getString("filename");
     String filepath = incoming + "/" + filename;
@@ -134,7 +134,7 @@ public class ImporterVerticle extends AbstractVerticle {
         onImportingFinished(correlationId, filepath, contentType, layer, null,
             System.currentTimeMillis() - timestamp, err);
       })
-      .map(count -> null);
+      .toCompletable();
   }
 
   /**
@@ -280,7 +280,8 @@ public class ImporterVerticle extends AbstractVerticle {
           }
           IndexMeta indexMeta = new IndexMeta(correlationId, filename,
               timestamp, tags, properties, crsString);
-          return addToStoreWithPause(result, layer, indexMeta, f, processing);
+          return addToStoreWithPause(result, layer, indexMeta, f, processing)
+              .toSingleDefault(1);
         })
         .count()
         .toSingle();
@@ -312,7 +313,8 @@ public class ImporterVerticle extends AbstractVerticle {
         .flatMapSingle(result -> {
           IndexMeta indexMeta = new IndexMeta(correlationId, filename,
               timestamp, tags, properties, null);
-          return addToStoreWithPause(result, layer, indexMeta, f, processing);
+          return addToStoreWithPause(result, layer, indexMeta, f, processing)
+              .toSingleDefault(1);
         })
         .count()
         .toSingle();
@@ -332,10 +334,9 @@ public class ImporterVerticle extends AbstractVerticle {
    * @param processing an AtomicInteger keeping the number of chunks currently
    * being written (should be initialized to <code>0</code> the first time this
    * method is called)
-   * @return a single that will emit exactly one item when the
-   * operation has finished
+   * @return a Completable that will complete when the operation has finished
    */
-  private Single<Void> addToStoreWithPause(Result<? extends ChunkMeta> chunk,
+  private Completable addToStoreWithPause(Result<? extends ChunkMeta> chunk,
       String layer, IndexMeta indexMeta, ReadStream<Buffer> f, AtomicInteger processing) {
     // pause stream while chunk is being written
     f.pause();
@@ -344,7 +345,7 @@ public class ImporterVerticle extends AbstractVerticle {
     processing.incrementAndGet();
 
     return addToStore(chunk.getChunk(), chunk.getMeta(), layer, indexMeta)
-        .doOnSuccess(v -> {
+        .doOnCompleted(() -> {
           // resume stream only after all chunks from the current
           // buffer have been stored
           if (processing.decrementAndGet() == 0) {
@@ -359,12 +360,11 @@ public class ImporterVerticle extends AbstractVerticle {
    * @param meta the chunk's metadata
    * @param layer the layer the chunk should be added to (may be null)
    * @param indexMeta metadata specifying how the chunk should be indexed
-   * @return a single that will emit exactly one item when the
-   * operation has finished
+   * @return a Completable that will complete when the operation has finished
    */
-  protected Single<Void> addToStore(String chunk, ChunkMeta meta,
+  protected Completable addToStore(String chunk, ChunkMeta meta,
       String layer, IndexMeta indexMeta) {
-    return Single.defer(() -> store.rxAdd(chunk, meta, layer, indexMeta))
+    return Completable.defer(() -> store.rxAdd(chunk, meta, layer, indexMeta))
         .retryWhen(RxUtils.makeRetry(MAX_RETRIES, RETRY_INTERVAL, log));
   }
 }

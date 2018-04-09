@@ -4,8 +4,8 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.rxjava.core.Vertx;
 import io.vertx.rxjava.servicediscovery.ServiceDiscovery;
 import io.vertx.servicediscovery.Record;
+import rx.Completable;
 import rx.Observable;
-import rx.Single;
 
 /**
  * Can be used to register a service by name and address, discover
@@ -52,19 +52,19 @@ public interface Service {
    * service
    * @param vertx the Vert.x instance
    * @param address the service address on the event bus
-   * @return a single emitting one item when the service has been registered
+   * @return a Completable that completes when the service has been registered
    */
-  static Single<Void> publishOnce(String name, String address,
+  static Completable publishOnce(String name, String address,
       ServiceDiscovery discovery, Vertx vertx) {
     Record record = new Record()
         .setName(name)
         .setLocation(new JsonObject().put(Record.ENDPOINT, address));
 
     if (name == null || name.trim().isEmpty()) {
-      return Single.error(new IllegalArgumentException("Missing service name"));
+      return Completable.error(new IllegalArgumentException("Missing service name"));
     }
     if (address == null || address.trim().isEmpty()) {
-      return Single.error(new IllegalArgumentException("Missing endpoint address"));
+      return Completable.error(new IllegalArgumentException("Missing endpoint address"));
     }
 
     return publishOnce(record, discovery, vertx);
@@ -80,19 +80,19 @@ public interface Service {
    * @param discovery the service discovery that should be used to publish the
    * service
    * @param vertx the Vert.x instance
-   * @return an observable emitting one item when the service has been registered
+   * @return a Completable that completes when the service has been registered
    */
-  static Single<Void> publishOnce(Record record, ServiceDiscovery discovery,
+  static Completable publishOnce(Record record, ServiceDiscovery discovery,
       Vertx vertx) {
     String address = record.getLocation().getString(Record.ENDPOINT);
     String name = record.getName();
 
     if (name == null || name.trim().isEmpty()) {
-      return Single.error(new IllegalArgumentException("Missing name in "
+      return Completable.error(new IllegalArgumentException("Missing name in "
           + "service record"));
     }
     if (address == null || address.trim().isEmpty()) {
-      return Single.error(new IllegalArgumentException("Missing endpoint "
+      return Completable.error(new IllegalArgumentException("Missing endpoint "
           + "address in service record"));
     }
 
@@ -100,14 +100,14 @@ public interface Service {
 
     return vertx.sharedData().rxGetCounter(key)
         .flatMap(counter -> counter.rxCompareAndSet(0, 1))
-        .flatMap(success -> {
+        .flatMapCompletable(success -> {
           if (success) {
             // we're the first one to increment the counter
             // service can be registered
-              return discovery.rxPublish(record).map(r -> null);
+            return discovery.rxPublish(record).toCompletable();
           }
           // service already published
-          return Single.just(null);
+          return Completable.complete();
         });
   }
 
@@ -140,7 +140,7 @@ public interface Service {
   /**
    * Unpublish this service
    * @param discovery the service discovery where this service is registered
-   * @return a single that emits one item when the operation has finished
+   * @return a Completable that completes when the operation has finished
    */
-  Single<Void> unpublish(ServiceDiscovery discovery);
+  Completable unpublish(ServiceDiscovery discovery);
 }

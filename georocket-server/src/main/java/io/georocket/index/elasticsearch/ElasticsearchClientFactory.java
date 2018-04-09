@@ -87,9 +87,9 @@ public class ElasticsearchClientFactory {
       ElasticsearchInstaller installer = new ElasticsearchInstaller(vertx);
       ElasticsearchRunner runner = new ElasticsearchRunner(vertx);
       return installer.download(elasticsearchDownloadUrl, elasticsearchInstallPath)
-        .flatMap(path -> runner.runElasticsearch(host, port, path))
-        .flatMap(v -> runner.waitUntilElasticsearchRunning(client))
-        .map(v -> new EmbeddedElasticsearchClient(client, runner));
+        .flatMapCompletable(path -> runner.runElasticsearch(host, port, path))
+        .andThen(runner.waitUntilElasticsearchRunning(client))
+        .toSingle(() -> new EmbeddedElasticsearchClient(client, runner));
     });
   }
 }

@@ -626,7 +626,7 @@ public class StoreEndpoint implements Endpoint {
    */
   private void deleteChunks(String search, String path, HttpServerResponse response) {
     store.rxDelete(search, path)
-      .subscribe(v -> {
+      .subscribe(() -> {
         response
           .setStatusCode(204)
           .end();
@@ -649,18 +649,18 @@ public class StoreEndpoint implements Endpoint {
     String tags = request.getParam("tags");
 
     if (StringUtils.isNotEmpty(properties) || StringUtils.isNotEmpty(tags)) {
-      Single<Void> single = Single.just(null);
+      Completable single = Completable.complete();
 
       if (StringUtils.isNotEmpty(properties)) {
-        single = single.flatMap(v -> setProperties(search, path, properties));
+        single = setProperties(search, path, properties);
       }
 
       if (StringUtils.isNotEmpty(tags)) {
-        single = single.flatMap(v -> appendTags(search, path, tags));
+        single = appendTags(search, path, tags);
       }
 
       single.subscribe(
-        v -> response
+        () -> response
           .setStatusCode(204)
           .end(),
         err -> fail(response, err)
@@ -677,9 +677,9 @@ public class StoreEndpoint implements Endpoint {
    * @param search the search query
    * @param path the path
    * @param properties the properties to set
-   * @return a Single with completes when the properties are set
+   * @return a Completable that completes when the properties have been set
    */
-  private Single<Void> setProperties(String search, String path, String properties) {
+  private Completable setProperties(String search, String path, String properties) {
     return Single.just(properties)
       .map(x -> x.split(","))
       .map(Arrays::asList)
@@ -690,7 +690,7 @@ public class StoreEndpoint implements Endpoint {
           return Single.error(e);
         }
       })
-      .flatMap(map -> store.rxSetProperties(search, path, map));
+      .flatMapCompletable(map -> store.rxSetProperties(search, path, map));
   }
 
   /**
@@ -698,13 +698,13 @@ public class StoreEndpoint implements Endpoint {
    * @param search the search query
    * @param path the path
    * @param tags the tags to append
-   * @return a Single with completes when the tags are appended
+   * @return a Completable that completes when the tags have been appended
    */
-  private Single<Void> appendTags(String search, String path, String tags) {
+  private Completable appendTags(String search, String path, String tags) {
     return Single.just(tags)
       .map(x -> x.split(","))
       .map(Arrays::asList)
-      .flatMap(tagList -> store.rxAppendTags(search, path, tagList));
+      .flatMapCompletable(tagList -> store.rxAppendTags(search, path, tagList));
   }
 
   /**

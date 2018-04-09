@@ -7,6 +7,8 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
+import io.vertx.rx.java.SingleOnSubscribeAdapter;
+import rx.Completable;
 import rx.Single;
 
 /**
@@ -43,13 +45,12 @@ public class RxStore implements Store {
    * @param chunkMeta the chunk's metadata
    * @param path the path where the chunk should be stored (may be null)
    * @param indexMeta metadata affecting the way the chunk will be indexed
-   * @return single that emits one item when the operation has completed
+   * @return a Completable that completes when the operation has finished
    */
-  public Single<Void> rxAdd(String chunk, ChunkMeta chunkMeta,
+  public Completable rxAdd(String chunk, ChunkMeta chunkMeta,
       String path, IndexMeta indexMeta) {
-    ObservableFuture<Void> o = RxHelper.observableFuture();
-    add(chunk, chunkMeta, path, indexMeta, o.toHandler());
-    return o.toSingle();
+    return Single.create(new SingleOnSubscribeAdapter<Void>(f ->
+        add(chunk, chunkMeta, path, indexMeta, f))).toCompletable();
   }
 
   @Override
@@ -78,12 +79,11 @@ public class RxStore implements Store {
    * Rx version of {@link #delete(String, String, Handler)}
    * @param search the search query
    * @param path the path where to search for the chunks (may be null)
-   * @return a Single that emits one item when the operation has completed
+   * @return a Completable that completes when the operation has finished
    */
-  public Single<Void> rxDelete(String search, String path) {
-    ObservableFuture<Void> o = RxHelper.observableFuture();
-    delete(search, path, o.toHandler());
-    return o.toSingle();
+  public Completable rxDelete(String search, String path) {
+    return Single.create(new SingleOnSubscribeAdapter<Void>(f ->
+        delete(search, path, f))).toCompletable();
   }
 
   @Override
@@ -151,7 +151,7 @@ public class RxStore implements Store {
    * @param search the search query
    * @param path the path where to search for the values (may be null)
    * @param attribute the name of the attribute
-   * @return emmits when the values have been retrieved from the store
+   * @return emits when the values have been retrieved from the store
    */
   public Single<AsyncCursor<String>> rxGetAttributeValues(String search,
       String path, String attribute) {
@@ -171,7 +171,7 @@ public class RxStore implements Store {
    * @param search the search query
    * @param path the path where to search for the values (may be null)
    * @param property the name of the property
-   * @return emmits when the values have been retrieved from the store
+   * @return emits when the values have been retrieved from the store
    */
   public Single<AsyncCursor<String>> rxGetPropertyValues(String search,
       String path, String property) {
@@ -191,13 +191,12 @@ public class RxStore implements Store {
    * @param search the search query
    * @param path the path where to search for the values (may be null)
    * @param properties the list of properties to set
-   * @return emmits when the properties are set
+   * @return a Completable that completes when the operation has finished
    */
-  public Single<Void> rxSetProperties(String search, String path,
+  public Completable rxSetProperties(String search, String path,
       Map<String, String> properties) {
-    ObservableFuture<Void> o = RxHelper.observableFuture();
-    setProperties(search, path, properties, o.toHandler());
-    return o.toSingle();
+    return Single.create(new SingleOnSubscribeAdapter<Void>(f ->
+        setProperties(search, path, properties, f))).toCompletable();
   }
 
   @Override
@@ -211,13 +210,12 @@ public class RxStore implements Store {
    * @param search the search query
    * @param path the path where to search for the values (may be null)
    * @param properties the list of properties to remove
-   * @return emmits when the properties are removed
+   * @return a Completable that completes when the operation has finished
    */
-  public Single<Void> rxRemoveProperties(String search, String path,
+  public Completable rxRemoveProperties(String search, String path,
       List<String> properties) {
-    ObservableFuture<Void> o = RxHelper.observableFuture();
-    removeProperties(search, path, properties, o.toHandler());
-    return o.toSingle();
+    return Single.create(new SingleOnSubscribeAdapter<Void>(f ->
+        removeProperties(search, path, properties, f))).toCompletable();
   }
 
   @Override
@@ -231,12 +229,11 @@ public class RxStore implements Store {
    * @param search the search query
    * @param path the path where to search for the values (may be null)
    * @param tags the list of tags to append
-   * @return emmits when the tags are appended
+   * @return a Completable that completes when the operation has finished
    */
-  public Single<Void> rxAppendTags(String search, String path, List<String> tags) {
-      ObservableFuture<Void> o = RxHelper.observableFuture();
-    appendTags(search, path, tags, o.toHandler());
-    return o.toSingle();
+  public Completable rxAppendTags(String search, String path, List<String> tags) {
+    return Single.create(new SingleOnSubscribeAdapter<Void>(f ->
+        appendTags(search, path, tags, f))).toCompletable();
   }
 
   @Override
@@ -250,11 +247,10 @@ public class RxStore implements Store {
    * @param search the search query
    * @param path the path where to search for the values (may be null)
    * @param tags the list of tags to remove
-   * @return emmits when the tags are removed
+   * @return a Completable that completes when the operation has finished
    */
-  public Single<Void> rxRemoveTags(String search, String path, List<String> tags) {
-    ObservableFuture<Void> o = RxHelper.observableFuture();
-    removeTags(search, path, tags, o.toHandler());
-    return o.toSingle();
+  public Completable rxRemoveTags(String search, String path, List<String> tags) {
+    return Single.create(new SingleOnSubscribeAdapter<Void>(f ->
+        removeTags(search, path, tags, f))).toCompletable();
   }
 }

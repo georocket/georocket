@@ -119,10 +119,14 @@ public class MetadataVerticle extends AbstractVerticle {
   private void registerMessageConsumers() {
     register(AddressConstants.METADATA_GET_ATTRIBUTE_VALUES, this::onGetAttributeValues);
     register(AddressConstants.METADATA_GET_PROPERTY_VALUES, this::onGetPropertyValues);
-    register(AddressConstants.METADATA_SET_PROPERTIES, this::onSetProperties);
-    register(AddressConstants.METADATA_REMOVE_PROPERTIES, this::onRemoveProperties);
-    register(AddressConstants.METADATA_APPEND_TAGS, this::onAppendTags);
-    register(AddressConstants.METADATA_REMOVE_TAGS, this::onRemoveTags);
+    registerCompletable(AddressConstants.METADATA_SET_PROPERTIES, this::onSetProperties);
+    registerCompletable(AddressConstants.METADATA_REMOVE_PROPERTIES, this::onRemoveProperties);
+    registerCompletable(AddressConstants.METADATA_APPEND_TAGS, this::onAppendTags);
+    registerCompletable(AddressConstants.METADATA_REMOVE_TAGS, this::onRemoveTags);
+  }
+
+  private <T> void registerCompletable(String address, Function<JsonObject, Completable> mapper) {
+    register(address, obj -> mapper.apply(obj).toSingleDefault(0));
   }
 
   private <T> void register(String address, Function<JsonObject, Single<T>> mapper) {
@@ -193,10 +197,10 @@ public class MetadataVerticle extends AbstractVerticle {
   /**
    * Set properties of a list of chunks
    * @param body the message containing the search, path and the properties
-   * @return a single that emits null when the properties have been set
+   * @return a Completable that will complete when the properties have been set
    * successfully
    */
-  private Single<Void> onSetProperties(JsonObject body) {
+  private Completable onSetProperties(JsonObject body) {
     JsonObject list = body.getJsonObject("properties");
     JsonObject params = new JsonObject().put("properties", list);
     return updateMetadata(body, "set_properties.txt", params);
@@ -205,10 +209,10 @@ public class MetadataVerticle extends AbstractVerticle {
   /**
    * Remove properties of a list of chunks
    * @param body the message containing the search, path and the properties
-   * @return a single that emits null when the properties have been deleted
-   * successfully
+   * @return a Completable that will complete when the properties have been
+   * deleted successfully
    */
-  private Single<Void> onRemoveProperties(JsonObject body) {
+  private Completable onRemoveProperties(JsonObject body) {
     JsonArray list = body.getJsonArray("properties");
     JsonObject params = new JsonObject().put("properties", list);
     return updateMetadata(body, "remove_properties.txt", params);
@@ -217,10 +221,10 @@ public class MetadataVerticle extends AbstractVerticle {
   /**
    * Append tags to a list of chunks
    * @param body the message containing the search, path and the tags
-   * @return a single that emits null when the tags have been set
+   * @return a Completable that will complete when the tags have been set
    * successfully
    */
-  private Single<Void> onAppendTags(JsonObject body) {
+  private Completable onAppendTags(JsonObject body) {
     JsonArray list = body.getJsonArray("tags");
     JsonObject params = new JsonObject().put("tags", list);
     return updateMetadata(body, "append_tags.txt", params);
@@ -229,10 +233,10 @@ public class MetadataVerticle extends AbstractVerticle {
   /**
    * Remove tags of a list of chunks
    * @param body the message containing the search, path and the tags
-   * @return a single that emits null when the tags have been set
+   * @return a Completable that will complete when the tags have been set
    * successfully
    */
-  private Single<Void> onRemoveTags(JsonObject body) {
+  private Completable onRemoveTags(JsonObject body) {
     JsonArray list = body.getJsonArray("tags");
     JsonObject params = new JsonObject().put("tags", list);
     return updateMetadata(body, "remove_tags.txt", params);
@@ -244,10 +248,10 @@ public class MetadataVerticle extends AbstractVerticle {
    * @param body the message containing the search and path
    * @param scriptName the name of the painscript file
    * @param params the parameters for the painscript
-   * @return an observable that emits a single item when the chunks have
-   * been updated successfully
+   * @return a Completable that will complete when the chunks have been updated
+   * successfully
    */
-  private Single<Void> updateMetadata(JsonObject body, String scriptName,
+  private Completable updateMetadata(JsonObject body, String scriptName,
     JsonObject params) {
     String search = body.getString("search", "");
     String path = body.getString("path", "");
@@ -267,7 +271,7 @@ public class MetadataVerticle extends AbstractVerticle {
       updateScript.put("inline", script);
       return updateDocuments(postFilter, updateScript);
     } catch (IOException e) {
-      return Single.error(e);
+      return Completable.error(e);
     }
   }
 
@@ -275,16 +279,16 @@ public class MetadataVerticle extends AbstractVerticle {
    * Update a document using a painless script
    * @param postFilter the filter to select the documents
    * @param updateScript the script which should be applied to the documents
-   * @return a Single which completes if the update is successful or fails if
-   * an error occurs
+   * @return a Completable that completes if the update is successful or fails
+   * if an error occurs
    */
-  private Single<Void> updateDocuments(JsonObject postFilter, JsonObject updateScript) {
+  private Completable updateDocuments(JsonObject postFilter, JsonObject updateScript) {
     return client.updateByQuery(TYPE_NAME, postFilter, updateScript)
-      .flatMap(sr -> {
+      .flatMapCompletable(sr -> {
         if (sr.getBoolean("timed_out", true)) {
-          return Single.error(new TimeoutException());
+          return Completable.error(new TimeoutException());
         }
-        return Single.just(null);
+        return Completable.complete();
       });
   }
 }

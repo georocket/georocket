@@ -256,8 +256,8 @@ public class IndexerVerticle extends AbstractVerticle {
     vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_DELETE)
       .toObservable()
       .subscribe(msg -> {
-        onDelete(msg.body()).subscribe(v -> {
-          msg.reply(v);
+        onDelete(msg.body()).subscribe(() -> {
+          msg.reply(null);
         }, err -> {
           log.error("Could not delete document", err);
           msg.fail(throwableToCode(err), throwableToMessage(err, ""));
@@ -705,10 +705,10 @@ public class IndexerVerticle extends AbstractVerticle {
   /**
    * Delete chunks from the index
    * @param body the message containing the paths to the chunks to delete
-   * @return an observable that emits a single item when the chunks have
-   * been deleted successfully
+   * @return a Completable that completes when the chunks have been deleted
+   * successfully
    */
-  private Single<Void> onDelete(JsonObject body) {
+  private Completable onDelete(JsonObject body) {
     JsonArray paths = body.getJsonArray("paths");
     long totalChunks = body.getLong("totalChunks", (long)paths.size());
     long remainingChunks = body.getLong("remainingChunks", (long)paths.size());
@@ -717,7 +717,7 @@ public class IndexerVerticle extends AbstractVerticle {
     long startTimeStamp = System.currentTimeMillis();
     onDeletingStarted(startTimeStamp, paths, totalChunks, remainingChunks);
 
-    return client.bulkDelete(TYPE_NAME, paths).flatMap(bres -> {
+    return client.bulkDelete(TYPE_NAME, paths).flatMapCompletable(bres -> {
       long stopTimeStamp = System.currentTimeMillis();
       if (client.bulkResponseHasErrors(bres)) {
         String error = client.bulkResponseGetErrorMessage(bres);
@@ -725,12 +725,12 @@ public class IndexerVerticle extends AbstractVerticle {
         log.error(error);
         onDeletingFinished(stopTimeStamp - startTimeStamp, paths, totalChunks,
             remainingChunks, error);
-        return Single.error(new NoStackTraceThrowable(
+        return Completable.error(new NoStackTraceThrowable(
                 "One or more chunks could not be deleted"));
       } else {
         onDeletingFinished(stopTimeStamp - startTimeStamp, paths, totalChunks,
             remainingChunks, null);
-        return Single.just(null);
+        return Completable.complete();
       }
     });
   }

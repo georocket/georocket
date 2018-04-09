@@ -29,6 +29,7 @@ import io.vertx.rxjava.core.file.AsyncFile;
 import io.vertx.rxjava.core.file.FileSystem;
 import io.vertx.rxjava.core.http.HttpClient;
 import io.vertx.rxjava.core.http.HttpClientRequest;
+import rx.Completable;
 import rx.Single;
 
 /**
@@ -138,7 +139,7 @@ public class ElasticsearchInstaller {
               file.flush();
               file.close();
             })
-            .map(v -> archivePath);
+            .toSingleDefault(archivePath);
         });
   }
   
@@ -146,10 +147,9 @@ public class ElasticsearchInstaller {
    * Download a file
    * @param downloadUrl the URL to download from
    * @param dest the destination file
-   * @return a single emitting exactly one item once the file has been
-   * downloaded
+   * @return a Completable that will complete once the file has been downloaded
    */
-  private Single<Void> doDownload(String downloadUrl, AsyncFile dest) {
+  private Completable doDownload(String downloadUrl, AsyncFile dest) {
     ObservableFuture<Void> observable = RxHelper.observableFuture();
     Handler<AsyncResult<Void>> handler = observable.toHandler();
     
@@ -200,7 +200,7 @@ public class ElasticsearchInstaller {
     
     req.end();
     
-    return observable.toSingle();
+    return observable.toCompletable();
   }
 
   /**
