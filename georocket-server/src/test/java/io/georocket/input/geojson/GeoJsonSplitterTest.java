@@ -74,6 +74,33 @@ public class GeoJsonSplitterTest {
     assertEquals("Feature", o1.getString("type"));
     assertEquals("Fraunhofer IGD", o1.getJsonObject("properties").getString("name"));
   }
+
+  /**
+   * Test if a Feature with a greek property can be split correctly
+   * @throws IOException if the test file could not be read
+   */
+  @Test
+  public void greek() throws IOException {
+    String filename = "greek.json";
+    long size = getFileSize(filename);
+
+    List<Tuple2<GeoJsonChunkMeta, JsonObject>> chunks = split(filename);
+    assertEquals(1, chunks.size());
+
+    Tuple2<GeoJsonChunkMeta, JsonObject> t1 = chunks.get(0);
+
+    GeoJsonChunkMeta m1 = t1.v1;
+    assertNull(m1.getParentFieldName());
+    assertEquals(0, m1.getStart());
+    assertEquals(size, m1.getEnd());
+    assertEquals("Feature", m1.getType());
+
+    JsonObject o1 = t1.v2;
+    assertEquals("Feature", o1.getString("type"));
+    assertEquals("\u03a1\u039f\u0394\u0391\u039a\u0399\u039d\u0399\u0395\u03a3 " +
+      "\u039c\u0395\u03a4\u0391\u03a0\u039f\u0399\u0397\u03a3\u0397\u03a3",
+      o1.getJsonObject("properties").getString("name"));
+  }
   
   /**
    * Test if a FeatureCollection can be split correctly

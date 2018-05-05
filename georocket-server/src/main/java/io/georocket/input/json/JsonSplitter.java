@@ -3,6 +3,7 @@ package io.georocket.input.json;
 import java.util.ArrayDeque;
 import java.util.Deque;
 
+import com.google.common.base.Utf8;
 import de.undercouch.actson.JsonEvent;
 import io.georocket.input.Splitter;
 import io.georocket.storage.JsonChunkMeta;
@@ -146,7 +147,7 @@ public class JsonSplitter implements Splitter<JsonStreamEvent, JsonChunkMeta> {
     resultsCreated = true;
     String chunk = window.getChars(mark, pos);
     window.advanceTo(pos);
-    JsonChunkMeta meta = new JsonChunkMeta(lastFieldName, 0, chunk.length());
+    JsonChunkMeta meta = new JsonChunkMeta(lastFieldName, 0, Utf8.encodedLength(chunk));
     return new Result<>(chunk, meta);
   }
 }
