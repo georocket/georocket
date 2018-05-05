@@ -9,6 +9,7 @@ import java.util.List;
 import javax.xml.stream.XMLStreamReader;
 import javax.xml.stream.events.XMLEvent;
 
+import com.google.common.base.Utf8;
 import io.georocket.input.Splitter;
 import io.georocket.storage.XMLChunkMeta;
 import io.georocket.util.Window;
@@ -128,11 +129,12 @@ public abstract class XMLSplitter implements Splitter<XMLStreamEvent, XMLChunkMe
     List<XMLStartElement> chunkParents = new ArrayList<>();
     startElements.descendingIterator().forEachRemaining(e -> {
       chunkParents.add(e);
-      sb.append(e + "\n");
+      sb.append(e);
+      sb.append("\n");
     });
     
     // get chunk start in bytes
-    int chunkStart = sb.toString().getBytes(StandardCharsets.UTF_8).length;
+    int chunkStart = Utf8.encodedLength(sb);
     
     // append current element
     byte[] bytes = window.getBytes(mark, pos);
@@ -145,10 +147,10 @@ public abstract class XMLSplitter implements Splitter<XMLStreamEvent, XMLChunkMe
     
     // append the full stack of end elements
     startElements.iterator().forEachRemaining(e ->
-      sb.append("\n</" + e.getName() + ">"));
+      sb.append("\n</").append(e.getName()).append(">"));
     
     XMLChunkMeta meta = new XMLChunkMeta(chunkParents, chunkStart, chunkEnd);
-    return new Result<XMLChunkMeta>(sb.toString(), meta);
+    return new Result<>(sb.toString(), meta);
   }
   
   /**
