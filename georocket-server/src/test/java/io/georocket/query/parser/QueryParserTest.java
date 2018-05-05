@@ -1,6 +1,7 @@
 package io.georocket.query.parser;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.net.URL;
@@ -10,6 +11,7 @@ import java.util.Deque;
 
 import org.antlr.v4.runtime.ANTLRInputStream;
 import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.tree.ErrorNode;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.apache.commons.io.IOUtils;
 import org.junit.Test;
@@ -176,6 +178,11 @@ public class QueryParserTest {
     @Override
     public void exitString(StringContext ctx) {
       tree.pop();
+    }
+
+    @Override
+    public void visitErrorNode(ErrorNode node) {
+      fail();
     }
   }
   
