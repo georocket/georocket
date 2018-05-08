@@ -53,16 +53,26 @@ public class GeneralEndpoint implements Endpoint {
     router.options("/").handler(this::onOptions);
     return router;
   }
+
+  /**
+   * Create a JSON object that can be returned by {@link #onInfo(RoutingContext)}
+   * @param context the current routing context
+   * @return the JSON object
+   */
+  protected JsonObject createInfo(RoutingContext context) {
+    JsonObject o = new JsonObject()
+      .put("name", "GeoRocket")
+      .put("version", version)
+      .put("tagline", "It's not rocket science!");
+    return o;
+  }
   
   /**
    * Send information about GeoRocket to the client
    * @param context the context for handling HTTP requests
    */
   protected void onInfo(RoutingContext context) {
-    JsonObject o = new JsonObject()
-        .put("name", "GeoRocket")
-        .put("version", version)
-        .put("tagline", "It's not rocket science!");
+    JsonObject o = createInfo(context);
     context.response()
       .setStatusCode(200)
       .putHeader("Content-Type", "application/json")
