@@ -85,7 +85,8 @@ public class StoreEndpointTest {
     MockIndexer.mockIndexerQuery(vertx);
     
     doScrolledStorepointRequest(context, "/?search=DUMMY_QUERY&scroll=true&size=100", true, true, response -> {
-      context.assertEquals(MockIndexer.FIRST_RETURNED_SCROLL_ID, response.getHeader(HeaderConstants.SCROLL_ID));
+      String si = MockIndexer.FIRST_RETURNED_SCROLL_ID + ":" + MockIndexer.FIRST_RETURNED_SCROLL_ID;
+      context.assertEquals(si, response.getHeader(HeaderConstants.SCROLL_ID));
       checkGeoJsonResponse(response, context, returned -> {
         checkGeoJsonSize(context, response, returned, MockIndexer.HITS_PER_PAGE, true, "The size of the returned elements on the first page should be the page size.");
         async.complete();
@@ -101,8 +102,10 @@ public class StoreEndpointTest {
   public void testScrollingWithGivenScrollId(TestContext context) {
     Async async = context.async();
     MockIndexer.mockIndexerQuery(vertx);
-    doScrolledStorepointRequest(context, "/?search=DUMMY_QUERY&scroll=true&scrollId=" + MockIndexer.FIRST_RETURNED_SCROLL_ID, true, true, response -> {
-      context.assertEquals(MockIndexer.INVALID_SCROLLID, response.getHeader(HeaderConstants.SCROLL_ID), "The second scrollId should be invalid if there a no elements left.");
+    String si = MockIndexer.FIRST_RETURNED_SCROLL_ID + ":" + MockIndexer.FIRST_RETURNED_SCROLL_ID;
+    doScrolledStorepointRequest(context, "/?search=DUMMY_QUERY&scroll=true&scrollId=" + si, true, true, response -> {
+      String isi = MockIndexer.INVALID_SCROLLID + ":" + MockIndexer.INVALID_SCROLLID;
+      context.assertEquals(isi, response.getHeader(HeaderConstants.SCROLL_ID), "The second scrollId should be invalid if there a no elements left.");
       checkGeoJsonResponse(response, context, returned -> {
         checkGeoJsonSize(context, response, returned, MockIndexer.TOTAL_HITS - MockIndexer.HITS_PER_PAGE, true, "The size of the returned elements on the second page should be (TOTAL_HITS - HITS_PER_PAGE)");
         async.complete();
