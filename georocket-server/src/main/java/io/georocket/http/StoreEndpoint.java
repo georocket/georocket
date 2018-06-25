@@ -233,7 +233,7 @@ public class StoreEndpoint implements Endpoint {
           if (oldScrollId == null) {
             throw new IllegalStateException("A preview must be generated " +
               "before the actual request can be made. This usually happens " +
-              "when the merger is initialized.")
+              "when the merger is initialized.");
           }
           newScrollId = oldScrollId + ":" + newScrollId;
         }
