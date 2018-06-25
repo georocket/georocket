@@ -176,17 +176,37 @@ public class StoreEndpoint implements Endpoint {
   }
 
   /**
-   * Read the context, select the right StoreCursor and set the response header
+   * Read the context, select the right StoreCursor and set the response header.
+   * For the first call to this method within a request the <code>preview</code>
+   * parameter must equal <code>true</code> and for the second one (if there
+   * is one) the parameter must equal <code>false</code>. This method must not
+   * be called more than two times within a request.
    * @param context the routing context
+   * @param preview <code>true</code> if the cursor should be used to generate
+   * a preview or to initialize the merger
    * @return a Single providing a StoreCursor
    */
-  protected Single<StoreCursor> prepareCursor(RoutingContext context) {
+  protected Single<StoreCursor> prepareCursor(RoutingContext context, boolean preview) {
     HttpServerRequest request = context.request();
     HttpServerResponse response = context.response();
     
     String scroll = request.getParam("scroll");
-    String scrollId = request.getParam("scrollId");
-    Boolean scrolling = Boolean.parseBoolean(scroll) || scrollId != null;
+    String scrollIdParam = request.getParam("scrollId");
+    Boolean scrolling = Boolean.parseBoolean(scroll) || scrollIdParam != null;
+
+    // if we're generating a preview, split the scrollId param at ':' and
+    // use the first part. Otherwise use the second one.
+    String scrollId;
+    if (scrollIdParam != null) {
+      String[] scrollIdParts = scrollIdParam.split(":");
+      if (preview) {
+        scrollId = scrollIdParts[0];
+      } else {
+        scrollId = scrollIdParts[1];
+      }
+    } else {
+      scrollId = null;
+    }
 
     String path = getEndpointPath(context);
     String search = request.getParam("search");
@@ -205,8 +225,20 @@ public class StoreEndpoint implements Endpoint {
       }
     }).doOnSuccess(cursor -> {
       if (scrolling) {
+        // create a new scrollId consisting of the one used for the preview and
+        // the other one used for the real query
+        String newScrollId = cursor.getInfo().getScrollId();
+        if (!preview) {
+          String oldScrollId = response.headers().get("X-Scroll-Id");
+          if (oldScrollId == null) {
+            throw new IllegalStateException("A preview must be generated " +
+              "before the actual request can be made. This usually happens " +
+              "when the merger is initialized.")
+          }
+          newScrollId = oldScrollId + ":" + newScrollId;
+        }
         response
-          .putHeader("X-Scroll-Id", cursor.getInfo().getScrollId())
+          .putHeader("X-Scroll-Id", newScrollId)
           .putHeader("X-Total-Hits", String.valueOf(cursor.getInfo().getTotalHits()))
           .putHeader("X-Hits", String.valueOf(cursor.getInfo().getCurrentHits()));
       }
@@ -245,8 +277,7 @@ public class StoreEndpoint implements Endpoint {
    */
   private void getChunks(RoutingContext context) {
     HttpServerResponse response = context.response();
-    Single<StoreCursor> data = prepareCursor(context);
-    
+
     // Our responses must always be chunked because we cannot calculate
     // the exact content-length beforehand. We perform two searches, one to
     // initialize the merger and one to do the actual merge. The problem is
@@ -258,8 +289,8 @@ public class StoreEndpoint implements Endpoint {
     // perform two searches: first initialize the merger and then
     // merge all retrieved chunks
     Merger<ChunkMeta> merger = createMerger(context);
-    initializeMerger(merger, data)
-      .andThen(Completable.defer(() -> doMerge(merger, data, response)))
+    initializeMerger(merger, prepareCursor(context, true))
+      .andThen(Completable.defer(() -> doMerge(merger, prepareCursor(context, false), response)))
       .subscribe(response::end, err -> {
         if (!(err instanceof FileNotFoundException)) {
           log.error("Could not perform query", err);
