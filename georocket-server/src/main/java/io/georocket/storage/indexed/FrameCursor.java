@@ -132,12 +132,14 @@ public class FrameCursor implements StoreCursor {
 
   @Override
   public void next(Handler<AsyncResult<ChunkMeta>> handler) {
-    ++pos;
-    if (pos >= metas.length) {
-      handler.handle(Future.failedFuture(new IndexOutOfBoundsException("Cursor out of bound.")));
-    } else {
-      handler.handle(Future.succeededFuture(metas[pos]));
-    }
+    vertx.runOnContext(v -> {
+      ++pos;
+      if (pos >= metas.length) {
+        handler.handle(Future.failedFuture(new IndexOutOfBoundsException("Cursor out of bound.")));
+      } else {
+        handler.handle(Future.succeededFuture(metas[pos]));
+      }
+    });
   }
 
   @Override
