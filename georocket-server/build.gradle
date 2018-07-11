@@ -178,38 +178,10 @@ task cleanExtractedElasticsearch(type: Delete) {
     delete 'elasticsearch'
 }
 
-task generateVersionFile {
-    doLast {
-        def dstRes = new File(project.projectDir, 'src-gen/main/resources')
-        def dst = new File(dstRes, 'io/georocket')
-        dst.mkdirs()
-        def versionFile = new File(dst, 'version.dat')
-        versionFile.withWriter { w ->
-            w << project.version
-        }
-    }
-}
-
-task generateSources(dependsOn: generateVersionFile)
-
-task cleanGeneratedSources(type: Delete) {
-    delete 'src-gen'
-}
-
 processResources.dependsOn(extractElasticsearch)
-processResources.dependsOn(generateSources)
-
 eclipseClasspath.dependsOn(extractElasticsearch)
-eclipseClasspath.dependsOn(generateSources)
-
-ideaModule.dependsOn(generateSources)
 
 clean.dependsOn(cleanExtractedElasticsearch)
-clean.dependsOn(cleanGeneratedSources)
-
-// include generated sources
-sourceSets.main.java.srcDirs 'src-gen/main/java'
-sourceSets.main.resources.srcDirs 'src-gen/main/resources'
 
 // Fix command-length issue in windows startscript
 // see https://issues.gradle.org/browse/GRADLE-2992
