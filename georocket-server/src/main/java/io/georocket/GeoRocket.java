@@ -29,6 +29,8 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.BooleanUtils;
 import org.jooq.lambda.Seq;
 import org.yaml.snakeyaml.Yaml;
+import rx.Completable;
+import rx.Observable;
 import rx.Single;
 import rx.plugins.RxJavaHooks;
 
@@ -57,10 +59,30 @@ public class GeoRocket extends AbstractVerticle {
    * @return a single that will carry the verticle's deployment id
    */
   protected Single<String> deployVerticle(Class<? extends Verticle> cls) {
-    ObservableFuture<String> observable = RxHelper.observableFuture();
-    DeploymentOptions options = new DeploymentOptions().setConfig(config());
-    vertx.deployVerticle(cls.getName(), options, observable.toHandler());
-    return observable.toSingle();
+    return Single.defer(() -> {
+      ObservableFuture<String> observable = RxHelper.observableFuture();
+      DeploymentOptions options = new DeploymentOptions().setConfig(config());
+      vertx.deployVerticle(cls.getName(), options, observable.toHandler());
+      return observable.toSingle();
+    });
+  }
+
+  /**
+   * Deploys all verticles from GeoRocket extensions (registered through Java
+   * Service Provider Interface)
+   * @return a completable that completes when all verticles have been deployed
+   */
+  protected Completable deployExtensionVerticles() {
+    return Completable.defer(() -> {
+      DeploymentOptions options = new DeploymentOptions().setConfig(config());
+      return Observable.from(FilteredServiceLoader.load(ExtensionVerticle.class))
+        .flatMap(verticle -> {
+          ObservableFuture<String> observable = RxHelper.observableFuture();
+          vertx.deployVerticle(verticle, options, observable.toHandler());
+          return observable;
+        })
+        .toCompletable();
+    });
   }
 
   /**
@@ -233,11 +255,19 @@ public class GeoRocket extends AbstractVerticle {
   public void start(Future<Void> startFuture) {
     log.info("Launching GeoRocket " + getVersion() + " ...");
 
-    deployIndexer()
-      .flatMap(v -> deployImporter())
-      .flatMap(v -> deployMetadata())
-      .flatMap(v -> deployHttpServer())
+    deployExtensionVerticles()
+      .doOnCompleted(() -> {
+        vertx.eventBus().publish(ExtensionVerticle.EXTENSION_VERTICLE_ADDRESS,
+            new JsonObject().put("type", ExtensionVerticle.MESSAGE_ON_INIT));
+      })
+      .andThen(deployIndexer()
+        .flatMap(v -> deployImporter())
+        .flatMap(v -> deployMetadata())
+        .flatMap(v -> deployHttpServer())
+      )
       .subscribe(id -> {
+        vertx.eventBus().publish(ExtensionVerticle.EXTENSION_VERTICLE_ADDRESS,
+            new JsonObject().put("type", ExtensionVerticle.MESSAGE_POST_INIT));
         log.info("GeoRocket launched successfully.");
         startFuture.complete();
       }, startFuture::fail);
