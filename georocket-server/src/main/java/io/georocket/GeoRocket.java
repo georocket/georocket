@@ -1,32 +1,17 @@
 package io.georocket;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
+import io.georocket.constants.ConfigConstants;
 import io.georocket.http.Endpoint;
+import io.georocket.index.IndexerVerticle;
 import io.georocket.index.MetadataVerticle;
 import io.georocket.util.FilteredServiceLoader;
-import io.vertx.core.http.HttpMethod;
-import io.vertx.core.net.PemKeyCertOptions;
-import io.vertx.ext.web.handler.CorsHandler;
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang.BooleanUtils;
-import org.jooq.lambda.Seq;
-import org.yaml.snakeyaml.Yaml;
-
-import io.georocket.constants.ConfigConstants;
-import io.georocket.index.IndexerVerticle;
 import io.georocket.util.JsonUtils;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
 import io.vertx.core.Verticle;
 import io.vertx.core.Vertx;
+import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.http.HttpServerOptions;
 import io.vertx.core.json.DecodeException;
@@ -34,11 +19,28 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.core.net.PemKeyCertOptions;
 import io.vertx.ext.web.Router;
+import io.vertx.ext.web.handler.CorsHandler;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.BooleanUtils;
+import org.jooq.lambda.Seq;
+import org.yaml.snakeyaml.Yaml;
 import rx.Single;
 import rx.plugins.RxJavaHooks;
+
+import java.io.File;
+import java.io.IOException;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * GeoRocket - A high-performance database for geospatial files
@@ -414,6 +416,15 @@ public class GeoRocket extends AbstractVerticle {
    * @param args the command line arguments
    */
   public static void main(String[] args) {
+    // print banner
+    try {
+      URL u = GeoRocket.class.getResource("georocket_banner.txt");
+      String banner = IOUtils.toString(u, StandardCharsets.UTF_8);
+      System.out.println(banner);
+    } catch (IOException e) {
+      // ignore
+    }
+
     Vertx vertx = Vertx.vertx();
 
     // register schedulers that run Rx operations on the Vert.x event bus
