@@ -143,6 +143,8 @@ public class IndexerVerticle extends AbstractVerticle {
   
   @Override
   public void start(Future<Void> startFuture) {
+    log.info("Launching indexer ...");
+
     // True if the indexer and other verticles should report their activities
     // to the Vert.x event bus (mostly useful for GeoRocket plug-ins)
     reportActivities = config().getBoolean(ConfigConstants.REPORT_ACTIVITIES, false);

@@ -43,4 +43,23 @@ dependencies {
     antlr 'org.antlr:antlr4:4.5.3'
 }
 
+task generateVersionFile {
+    doLast {
+        def dst = new File(project.buildDir, 'generated-src/main/resources/io/georocket')
+        dst.mkdirs()
+        def versionFile = new File(dst, 'version.dat')
+        versionFile.withWriter { w ->
+            w << project.version
+        }
+    }
+}
+
+task generateSources(dependsOn: generateVersionFile)
+
+processResources.dependsOn(generateSources)
+eclipseClasspath.dependsOn(generateSources)
 eclipseClasspath.dependsOn(generateGrammarSource)
+
+// include generated sources
+sourceSets.main.java.srcDirs "$buildDir/generated-src/main/java"
+sourceSets.main.resources.srcDirs "$buildDir/generated-src/main/resources"

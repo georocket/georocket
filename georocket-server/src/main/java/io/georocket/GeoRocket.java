@@ -231,7 +231,7 @@ public class GeoRocket extends AbstractVerticle {
   
   @Override
   public void start(Future<Void> startFuture) {
-    log.info("Launching GeoRocket ...");
+    log.info("Launching GeoRocket " + getVersion() + " ...");
 
     deployIndexer()
       .flatMap(v -> deployImporter())
@@ -409,6 +409,20 @@ public class GeoRocket extends AbstractVerticle {
       return bool;
     }
     return val;    
+  }
+
+  /**
+   * @return the tool's version string
+   */
+  public static String getVersion() {
+    URL u = GeoRocket.class.getResource("version.dat");
+    String version;
+    try {
+      version = IOUtils.toString(u, StandardCharsets.UTF_8);
+    } catch (IOException e) {
+      throw new RuntimeException("Could not read version information", e);
+    }
+    return version;
   }
 
   /**
