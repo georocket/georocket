@@ -1,6 +1,6 @@
 = GeoRocket User Documentation
 Michel Krämer <michel.kraemer@igd.fraunhofer.de>
-v1.1.1
+v1.2.0-SNAPSHOT
 :toc: right
 :homepage: http://georocket.io
 :numbered:
@@ -8,7 +8,7 @@ v1.1.1
 :icons: font
 :source-highlighter: highlight.js
 
-Copyright (C) 2015-2017 Fraunhofer Institute for Computer Graphics Research IGD
+Copyright (C) 2015-2018 Fraunhofer Institute for Computer Graphics Research IGD
 
 == Introduction
 
