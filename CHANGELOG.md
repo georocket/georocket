@@ -1,5 +1,5 @@
 <a name="1.2.0"></a>
-## [1.2.0](https://github.com/georocket/georocket/compare/v1.1.0...master) (unreleased)
+## [1.2.0](https://github.com/georocket/georocket/compare/v1.1.0...v1.2.0) (2018-07-13)
 
 ### New features:
 
