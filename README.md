@@ -1,13 +1,34 @@
-# GeoRocket [![Apache License, Version 2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0) [![Build Status](https://travis-ci.org/georocket/georocket.svg?branch=master)](https://travis-ci.org/georocket/georocket)
+<h1 align="center">
+	<br>
+	<br>
+	<img width="500" src="https://georocket.io/images/logo.svg" alt="GeoRocket">
+	<br>
+	<br>
+	<br>
+</h1>
 
-*GeoRocket is a high-performance data store for geospatial files.* It is schema
-agnostic and format preserving. This means it supports a wide range of
-geospatial formats and schemas. Any file you store in GeoRocket can be
-completely restored later. No information is lost.
+> A high-performance data store for geospatial files
 
-GeoRocket is ready for the Cloud. It is event-driven and scalable. GeoRocket
-offers APIs and an HTTP interface which allows it to be integrated in existing
-applications.
+[![Apache License, Version 2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0) [![Build Status](https://travis-ci.org/georocket/georocket.svg?branch=master)](https://travis-ci.org/georocket/georocket)
+
+GeoRocket can store geospatial files such as *3D city models (CityGML)*, *GML*
+and *GeoJSON* files. Any file saved in GeoRocket can be completely restored
+later. No information is lost.
+
+Powered by popular Open-Source framework [Elasticsearch](https://www.elastic.co/),
+GeoRocket offers a wide range of *high-speed search features*. You can perform
+spatial queries and search for attributes, layers and tags.
+
+GeoRocket is *ready for the Cloud*. It is event-driven and designed for
+*high performance* and *scalability*. GeoRocket offers APIs and an HTTP
+interface which allows it to be integrated in existing applications.
+
+## Official website
+
+For more information about GeoRocket including comprehensive documentation,
+visit the official website:
+
+&#128640; https://georocket.io
 
 ## Building
 
@@ -36,7 +57,7 @@ commands:
 
 ## Running GeoRocket
 
-First follow the instructions on building the GeoRocket distribution above.
+First, follow the instructions on building the GeoRocket distribution above.
 
 Then start the GeoRocket server with the following command:
 
