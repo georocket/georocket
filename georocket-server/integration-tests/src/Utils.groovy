@@ -67,7 +67,7 @@ class Utils {
     }
 
     /**
-     * Wait for an HTTP server to become alive. Try for 60 seconds and
+     * Wait for an HTTP server to become alive. Try for 180 seconds and
      * if the server still does not respond exit the program with exit
      * code 1.
      * @param url the URL the HTTP server listens to

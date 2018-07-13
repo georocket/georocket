@@ -27,7 +27,7 @@ abstract class StoreTests {
      * @param waitIterations the number times the test should be tried
      */
     protected def testUntilOK(test, String waitFor, String errorMessage,
-                              int waitTime = 1000, int waitIterations = 20) {
+            int waitTime = 2000, int waitIterations = 90) {
         for (int i = 0; i < waitIterations; ++i) {
             if (test()) {
                 return
