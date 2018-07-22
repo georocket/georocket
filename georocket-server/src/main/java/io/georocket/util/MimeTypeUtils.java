@@ -4,6 +4,8 @@ import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.util.zip.GZIPInputStream;
 
 import org.apache.commons.io.input.BOMInputStream;
 
@@ -75,12 +77,35 @@ public class MimeTypeUtils {
    * @throws IOException if the input stream could not be read
    */
   public static String detect(File f) throws IOException {
+    return detect(f, false);
+  }
+
+  /**
+   * Read the first bytes of the given file and try to determine the file
+   * format. Read up to 100 KB before giving up.
+   * @param f the file to read
+   * @param gzip true if the file is compressed with GZIP
+   * @return the file format (or <code>null</code> if the format
+   * could not be determined)
+   * @throws IOException if the input stream could not be read
+   */
+  public static String detect(File f, boolean gzip) throws IOException {
     if (!f.exists()) {
       return null;
     }
-    try (BufferedInputStream bis = new BufferedInputStream(new BOMInputStream(
-        new FileInputStream(f)))) {
-      return determineFileFormat(bis);
+    InputStream is = null;
+    try {
+      is = new FileInputStream(f);
+      if (gzip) {
+        is = new GZIPInputStream(is);
+      }
+      try (BufferedInputStream bis = new BufferedInputStream(new BOMInputStream(is))) {
+        return determineFileFormat(bis);
+      }
+    } finally {
+      if (is != null) {
+        is.close();
+      }
     }
   }
 

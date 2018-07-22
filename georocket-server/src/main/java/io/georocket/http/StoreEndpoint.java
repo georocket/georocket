@@ -364,16 +364,17 @@ public class StoreEndpoint implements Endpoint {
   /**
    * Try to detect the content type of a file
    * @param filepath the absolute path to the file to analyse
+   * @param gzip true if the file is compressed with GZIP
    * @return an observable emitting either the detected content type or an error
    * if the content type could not be detected or the file could not be read
    */
-  private Observable<String> detectContentType(String filepath) {
+  private Observable<String> detectContentType(String filepath, boolean gzip) {
     ObservableFuture<String> result = RxHelper.observableFuture();
     Handler<AsyncResult<String>> resultHandler = result.toHandler();
     
     vertx.<String>executeBlocking(f -> {
       try {
-        String mimeType = MimeTypeUtils.detect(new File(filepath));
+        String mimeType = MimeTypeUtils.detect(new File(filepath), gzip);
         if (mimeType == null) {
           log.warn("Could not detect file type for " + filepath + ". Using "
             + "application/octet-stream.");
@@ -484,16 +485,22 @@ public class StoreEndpoint implements Endpoint {
           // mimeType already null
         }
 
+        String contentEncoding = request.getHeader("Content-Encoding");
+        boolean gzip = false;
+        if ("gzip".equals(contentEncoding)) {
+          gzip = true;
+        }
+
         // detect content type of file to import
         if (mimeType == null || mimeType.trim().isEmpty() ||
             mimeType.equals("application/octet-stream") ||
             mimeType.equals("application/x-www-form-urlencoded")) {
           // fallback: if the client has not sent a Content-Type or if it's
           // a generic one, then try to guess it
-          log.debug("Mime type '" + mimeType + "' is invalid or generic. "
+          log.info("Mime type '" + mimeType + "' is invalid or generic. "
               + "Trying to guess the right type.");
-          return detectContentType(filepath).doOnNext(guessedType -> {
-            log.debug("Guessed mime type '" + guessedType + "'.");
+          return detectContentType(filepath, gzip).doOnNext(guessedType -> {
+            log.info("Guessed mime type '" + guessedType + "'.");
           });
         }
 
@@ -503,12 +510,15 @@ public class StoreEndpoint implements Endpoint {
         long duration = System.currentTimeMillis() - startTime;
         this.onReceivingFileFinished(correlationId, duration, layer, null);
 
+        String contentEncoding = request.getHeader("Content-Encoding");
+
         // run importer
         JsonObject msg = new JsonObject()
             .put("filename", filename)
             .put("layer", layer)
             .put("contentType", detectedContentType)
-            .put("correlationId", correlationId);
+            .put("correlationId", correlationId)
+            .put("contentEncoding", contentEncoding);
 
         if (tags != null) {
           msg.put("tags", new JsonArray(tags));

@@ -1,13 +1,5 @@
 package io.georocket;
 
-import static io.georocket.util.MimeTypeUtils.belongsTo;
-
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
 import io.georocket.constants.AddressConstants;
 import io.georocket.constants.ConfigConstants;
 import io.georocket.index.xml.XMLCRSIndexer;
@@ -25,6 +17,7 @@ import io.georocket.util.StringWindow;
 import io.georocket.util.UTF8BomFilter;
 import io.georocket.util.Window;
 import io.georocket.util.XMLParserTransformer;
+import io.georocket.util.io.RxGzipReadStream;
 import io.vertx.core.file.OpenOptions;
 import io.vertx.core.impl.NoStackTraceThrowable;
 import io.vertx.core.json.JsonArray;
@@ -38,6 +31,14 @@ import io.vertx.rxjava.core.file.FileSystem;
 import io.vertx.rxjava.core.streams.ReadStream;
 import rx.Completable;
 import rx.Single;
+
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static io.georocket.util.MimeTypeUtils.belongsTo;
 
 /**
  * Imports file in the background
@@ -97,6 +98,7 @@ public class ImporterVerticle extends AbstractVerticle {
     String contentType = body.getString("contentType");
     String correlationId = body.getString("correlationId");
     String fallbackCRSString = body.getString("fallbackCRSString");
+    String contentEncoding = body.getString("contentEncoding");
 
     // get tags
     JsonArray tagsArr = body.getJsonArray("tags");
@@ -116,7 +118,7 @@ public class ImporterVerticle extends AbstractVerticle {
     OpenOptions openOptions = new OpenOptions().setCreate(false).setWrite(false);
     return fs.rxOpen(filepath, openOptions)
       .flatMap(f -> importFile(contentType, f, correlationId, filename, timestamp,
-        layer, tags, properties, fallbackCRSString)
+        layer, tags, properties, fallbackCRSString, contentEncoding)
       .doAfterTerminate(() -> {
         // delete file from 'incoming' folder
         log.info("Deleting " + filepath + " from incoming folder");
@@ -221,12 +223,21 @@ public class ImporterVerticle extends AbstractVerticle {
    * @param properties the map of properties to attach to the file (may be null)
    * @param fallbackCRSString the CRS which should be used if the imported
    * file does not specify one (may be <code>null</code>)
+   * @param contentEncoding the content encoding of the file to be
+   * imported (e.g. "gzip"). May be <code>null</code>.
    * @return a single that will emit with the number if chunks imported
    * when the file has been imported
    */
   protected Single<Integer> importFile(String contentType, ReadStream<Buffer> f,
       String correlationId, String filename, long timestamp, String layer,
-      List<String> tags, Map<String, Object> properties, String fallbackCRSString) {
+      List<String> tags, Map<String, Object> properties, String fallbackCRSString,
+      String contentEncoding) {
+    if ("gzip".equals(contentEncoding)) {
+      log.info("Importing file compressed with GZIP");
+      f = new RxGzipReadStream(f);
+    } else if (contentEncoding != null && !contentEncoding.isEmpty()) {
+      log.warn("Unknown content encoding: `" + contentEncoding + "'. Trying anyway.");
+    }
     if (belongsTo(contentType, "application", "xml") ||
         belongsTo(contentType, "text", "xml")) {
       return importXML(f, correlationId, filename, timestamp, layer, tags,

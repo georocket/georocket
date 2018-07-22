@@ -9,8 +9,8 @@ import io.vertx.core.streams.ReadStream;
  * @param <T> the type of the objects that can be read from the stream
  */
 public class DelegateReadStream<T> implements ReadStream<T> {
-  private final ReadStream<T> delegate;
-  
+  protected final ReadStream<T> delegate;
+
   /**
    * Constructs a new read stream
    * @param delegate the stream to delegate to
