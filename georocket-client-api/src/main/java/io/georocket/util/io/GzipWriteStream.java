@@ -3,6 +3,7 @@ package io.georocket.util.io;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
+import io.vertx.core.file.AsyncFile;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.core.streams.WriteStream;
@@ -142,17 +143,31 @@ public class GzipWriteStream implements WriteStream<Buffer> {
       Buffer b = ar.result();
       b.appendIntLE((int)crc.getValue());
       b.appendIntLE(deflater.getTotalIn());
-      delegate.end(b);
+      delegate.write(b);
 
       // close compressor
       deflater.end();
 
-      // close stream
-      closed = true;
-      if (closeHandler != null) {
-        Handler<Void> handler = closeHandler;
-        closeHandler = null;
-        handler.handle(null);
+      Runnable closer = () -> {
+        // close stream
+        closed = true;
+        if (closeHandler != null) {
+          Handler<Void> handler = closeHandler;
+          closeHandler = null;
+          handler.handle(null);
+        }
+      };
+
+      if (delegate instanceof AsyncFile) {
+        ((AsyncFile)delegate).close(closeAr -> {
+          if (closeAr.failed()) {
+            handleException(closeAr.cause());
+          } else {
+            closer.run();
+          }
+        });
+      } else {
+        closer.run();
       }
     });
   }
