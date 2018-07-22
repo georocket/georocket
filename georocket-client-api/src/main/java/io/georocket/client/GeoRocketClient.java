@@ -56,7 +56,8 @@ public class GeoRocketClient implements Closeable {
   public GeoRocketClient(String host, int port, Vertx vertx) {
     this(vertx.createHttpClient(new HttpClientOptions()
         .setDefaultHost(host)
-        .setDefaultPort(port)));
+        .setDefaultPort(port)
+        .setTryUseCompression(true)));
   }
 
   /**

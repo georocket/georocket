@@ -8,12 +8,15 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import io.georocket.util.io.GzipWriteStream;
+import io.georocket.client.ImportOptions;
+import io.georocket.client.ImportOptions.Compression;
+import io.georocket.client.StoreClient;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -76,7 +79,7 @@ public class ImportCommand extends AbstractGeoRocketCommand {
       this.tags = null;
     } else {
       this.tags = Stream.of(tags.split(","))
-        .map(t -> t.trim())
+        .map(String::trim)
         .collect(Collectors.toList());
     }
   }
@@ -246,13 +249,12 @@ public class ImportCommand extends AbstractGeoRocketCommand {
    */
   private void doImport(Queue<String> files, GeoRocketClient client,
       Vertx vertx, Handler<Integer> handler) {
-    if (files.isEmpty()) {
+    // get the first file to import
+    String path = files.poll();
+    if (path == null) {
       handler.handle(0);
       return;
     }
-
-    // get the first file to import
-    String path = files.poll();
 
     // print file name
     System.out.print("Importing " + Paths.get(path).getFileName() + " ... ");
@@ -290,9 +292,22 @@ public class ImportCommand extends AbstractGeoRocketCommand {
         Handler<AsyncResult<Void>> handler = o.toHandler();
         AsyncFile file = f.getLeft().getDelegate();
 
-        WriteStream<Buffer> out = client.getStore()
-          .startImport(layer, tags, properties, Optional.of(f.getRight()),
-            fallbackCRS, handler);
+        ImportOptions options = new ImportOptions()
+          .setLayer(layer)
+          .setTags(tags)
+          .setProperties(properties)
+          .setFallbackCRS(fallbackCRS)
+          .setCompression(Compression.GZIP);
+
+        StoreClient store = client.getStore();
+        WriteStream<Buffer> out;
+        boolean alreadyCompressed = path.toLowerCase().endsWith(".gz");
+        if (alreadyCompressed) {
+          options.setSize(f.getRight());
+          out = store.startImport(options, handler);
+        } else {
+          out = new GzipWriteStream(store.startImport(options, handler));
+        }
 
         AtomicBoolean fileClosed = new AtomicBoolean();
 

@@ -130,7 +130,7 @@ public class StoreClient extends AbstractClient {
    * @return a {@link WriteStream} that can be used to send data
    */
   public WriteStream<Buffer> startImport(Handler<AsyncResult<Void>> handler) {
-    return startImport(null, null, null, Optional.empty(), null, handler);
+    return startImport(new ImportOptions(), handler);
   }
   
   /**
@@ -148,7 +148,7 @@ public class StoreClient extends AbstractClient {
    */
   public WriteStream<Buffer> startImport(String layer,
       Handler<AsyncResult<Void>> handler) {
-    return startImport(layer, null, null, Optional.empty(), null, handler);
+    return startImport(new ImportOptions().setLayer(layer), handler);
   }
   
   /**
@@ -165,10 +165,15 @@ public class StoreClient extends AbstractClient {
    * @param handler a handler that will be called when the data has been
    * imported by the GeoRocket server
    * @return a {@link WriteStream} that can be used to send data
+   * @deprecated Use {@link #startImport(ImportOptions, Handler)} instead
    */
+  @Deprecated
   public WriteStream<Buffer> startImport(String layer, Collection<String> tags,
       Handler<AsyncResult<Void>> handler) {
-    return startImport(layer, tags, null, Optional.empty(), null, handler);
+    return startImport(new ImportOptions()
+        .setLayer(layer)
+        .setTags(tags),
+      handler);
   }
 
   /**
@@ -188,10 +193,16 @@ public class StoreClient extends AbstractClient {
    * imported by the GeoRocket server
    * @return a {@link WriteStream} that can be used to send data
    * @since 1.1.0
+   * @deprecated Use {@link #startImport(ImportOptions, Handler)} instead
    */
+  @Deprecated
   public WriteStream<Buffer> startImport(String layer, Collection<String> tags,
       Collection<String> properties, Handler<AsyncResult<Void>> handler) {
-    return startImport(layer, tags, properties, Optional.empty(), null, handler);
+    return startImport(new ImportOptions()
+        .setLayer(layer)
+        .setTags(tags)
+        .setProperties(properties),
+      handler);
   }
   
   /**
@@ -209,10 +220,16 @@ public class StoreClient extends AbstractClient {
    * @param handler a handler that will be called when the data has been
    * imported by the GeoRocket server
    * @return a {@link WriteStream} that can be used to send data
+   * @deprecated Use {@link #startImport(ImportOptions, Handler)} instead
    */
+  @Deprecated
   public WriteStream<Buffer> startImport(String layer, Collection<String> tags,
       long size, Handler<AsyncResult<Void>> handler) {
-    return startImport(layer, tags, null, size, handler);
+    return startImport(new ImportOptions()
+        .setLayer(layer)
+        .setTags(tags)
+        .setSize(size),
+      handler);
   }
 
   /**
@@ -233,10 +250,17 @@ public class StoreClient extends AbstractClient {
    * imported by the GeoRocket server
    * @return a {@link WriteStream} that can be used to send data
    * @since 1.1.0
+   * @deprecated Use {@link #startImport(ImportOptions, Handler)} instead
    */
+  @Deprecated
   public WriteStream<Buffer> startImport(String layer, Collection<String> tags,
       Collection<String> properties, long size, Handler<AsyncResult<Void>> handler) {
-    return startImport(layer, tags, properties, Optional.of(size), null, handler);
+    return startImport(new ImportOptions()
+        .setLayer(layer)
+        .setTags(tags)
+        .setProperties(properties)
+        .setSize(size),
+      handler);
   }
   
   /**
@@ -254,10 +278,16 @@ public class StoreClient extends AbstractClient {
    * @param handler a handler that will be called when the data has been
    * imported by the GeoRocket server
    * @return a {@link WriteStream} that can be used to send data
+   * @deprecated Use {@link #startImport(ImportOptions, Handler)} instead
    */
+  @Deprecated
   public WriteStream<Buffer> startImport(String layer, Collection<String> tags,
       Optional<Long> size, Handler<AsyncResult<Void>> handler) {
-    return startImport(layer, tags, null, size, null, handler);
+    return startImport(new ImportOptions()
+        .setLayer(layer)
+        .setTags(tags)
+        .setSize(size.orElse(null)),
+      handler);
   }
 
   /**
@@ -278,10 +308,17 @@ public class StoreClient extends AbstractClient {
    * imported by the GeoRocket server
    * @return a {@link WriteStream} that can be used to send data
    * @since 1.1.0
+   * @deprecated Use {@link #startImport(ImportOptions, Handler)} instead
    */
+  @Deprecated
   public WriteStream<Buffer> startImport(String layer, Collection<String> tags,
       Collection<String> properties, Optional<Long> size, Handler<AsyncResult<Void>> handler) {
-    return startImport(layer, tags, properties, size, null, handler);
+    return startImport(new ImportOptions()
+        .setLayer(layer)
+        .setTags(tags)
+        .setProperties(properties)
+        .setSize(size.orElse(null)),
+      handler);
   }
 
   /**
@@ -304,18 +341,49 @@ public class StoreClient extends AbstractClient {
    * imported by the GeoRocket server
    * @return a {@link WriteStream} that can be used to send data
    * @since 1.1.0
+   * @deprecated Use {@link #startImport(ImportOptions, Handler)} instead
    */
+  @Deprecated
   public WriteStream<Buffer> startImport(String layer, Collection<String> tags,
       Collection<String> properties, Optional<Long> size,
-    String fallbackCRS, Handler<AsyncResult<Void>> handler) {
-    String path = prepareImport(layer, tags, properties, fallbackCRS);
+      String fallbackCRS, Handler<AsyncResult<Void>> handler) {
+    return startImport(new ImportOptions()
+        .setLayer(layer)
+        .setTags(tags)
+        .setProperties(properties)
+        .setSize(size.orElse(null))
+        .setFallbackCRS(fallbackCRS),
+      handler);
+  }
+
+  /**
+   * <p>Start importing data to GeoRocket. The method opens a connection to the
+   * GeoRocket server and returns a {@link WriteStream} that can be used to
+   * send data.</p>
+   * <p>The caller is responsible for closing the stream (and ending
+   * the import process) through {@link WriteStream#end()} and handling
+   * exceptions through {@link WriteStream#exceptionHandler(Handler)}.</p>
+   * @param options import parameters
+   * @param handler a handler that will be called when the data has been
+   * imported by the GeoRocket server
+   * @return a {@link WriteStream} that can be used to send data
+   * @since 1.3.0
+   */
+  public WriteStream<Buffer> startImport(ImportOptions options,
+      Handler<AsyncResult<Void>> handler) {
+    String path = prepareImport(options.getLayer(), options.getTags(),
+        options.getProperties(), options.getFallbackCRS());
     HttpClientRequest request = client.post(path);
 
-    if (size.isPresent() && size.get() != null) {
-      request.putHeader("Content-Length", size.get().toString());
+    if (options.getSize() != null) {
+      request.putHeader("Content-Length", options.getSize().toString());
     } else {
       // content length is not set, therefore chunked encoding must be set
       request.setChunked(true);
+    }
+
+    if (options.getCompression() == ImportOptions.Compression.GZIP) {
+      request.putHeader("Content-Encoding", "gzip");
     }
 
     request.handler(response -> {
