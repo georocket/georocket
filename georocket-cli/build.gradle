@@ -18,6 +18,7 @@ dependencies {
 
     compile 'commons-io:commons-io:2.6'
     compile 'de.undercouch:underline:1.0.0'
+    compile 'me.tongfei:progressbar:0.7.0'
     compile 'net.time4j:time4j-core:4.33'
     compile 'org.apache.ant:ant:1.10.1'
     compile 'org.yaml:snakeyaml:1.19'

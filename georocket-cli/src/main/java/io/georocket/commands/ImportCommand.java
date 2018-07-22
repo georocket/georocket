@@ -1,5 +1,39 @@
 package io.georocket.commands;
 
+import com.google.common.base.Splitter;
+import de.undercouch.underline.InputReader;
+import de.undercouch.underline.Option.ArgumentType;
+import de.undercouch.underline.OptionDesc;
+import de.undercouch.underline.OptionParserException;
+import de.undercouch.underline.UnknownAttributes;
+import io.georocket.client.GeoRocketClient;
+import io.georocket.client.ImportOptions;
+import io.georocket.client.ImportOptions.Compression;
+import io.georocket.client.StoreClient;
+import io.georocket.util.DurationFormat;
+import io.georocket.util.io.GzipWriteStream;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.file.AsyncFile;
+import io.vertx.core.file.OpenOptions;
+import io.vertx.core.streams.WriteStream;
+import io.vertx.rx.java.ObservableFuture;
+import io.vertx.rx.java.RxHelper;
+import io.vertx.rxjava.core.Vertx;
+import io.vertx.rxjava.core.file.FileSystem;
+import me.tongfei.progressbar.ProgressBar;
+import me.tongfei.progressbar.ProgressBarBuilder;
+import me.tongfei.progressbar.ProgressBarStyle;
+import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang3.SystemUtils;
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.tools.ant.DirectoryScanner;
+import org.apache.tools.ant.Project;
+import org.apache.tools.ant.types.FileSet;
+import rx.Completable;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -10,42 +44,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import io.georocket.util.io.GzipWriteStream;
-import io.georocket.client.ImportOptions;
-import io.georocket.client.ImportOptions.Compression;
-import io.georocket.client.StoreClient;
-import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.lang3.SystemUtils;
-import org.apache.commons.lang3.tuple.Pair;
-import org.apache.tools.ant.DirectoryScanner;
-import org.apache.tools.ant.Project;
-import org.apache.tools.ant.types.FileSet;
-
-import com.google.common.base.Splitter;
-
-import de.undercouch.underline.InputReader;
-import de.undercouch.underline.Option.ArgumentType;
-import de.undercouch.underline.OptionDesc;
-import de.undercouch.underline.OptionParserException;
-import de.undercouch.underline.UnknownAttributes;
-import io.georocket.client.GeoRocketClient;
-import io.georocket.util.DurationFormat;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.buffer.Buffer;
-import io.vertx.core.file.AsyncFile;
-import io.vertx.core.file.OpenOptions;
-import io.vertx.core.streams.Pump;
-import io.vertx.core.streams.WriteStream;
-import io.vertx.rx.java.ObservableFuture;
-import io.vertx.rx.java.RxHelper;
-import io.vertx.rxjava.core.Vertx;
-import io.vertx.rxjava.core.file.FileSystem;
-import rx.Completable;
 
 /**
  * Import one or more files into GeoRocket
@@ -257,12 +258,17 @@ public class ImportCommand extends AbstractGeoRocketCommand {
     }
 
     // print file name
-    System.out.print("Importing " + Paths.get(path).getFileName() + " ... ");
+    System.out.print("Importing " + Paths.get(path).getFileName() + " ...");
+    if (!isDumbTerm()) {
+      System.out.println();
+    }
 
     // import file
     importFile(path, client, vertx)
       .subscribe(() -> {
-        System.out.println("done");
+        if (isDumbTerm()) {
+          System.out.println("done");
+        }
         // import next file in the queue
         doImport(files, client, vertx, handler);
       }, err -> {
@@ -270,6 +276,10 @@ public class ImportCommand extends AbstractGeoRocketCommand {
         error(err.getMessage());
         handler.handle(1);
       });
+  }
+
+  private boolean isDumbTerm() {
+    return "dumb".equalsIgnoreCase(System.getenv("TERM"));
   }
 
   /**
@@ -291,7 +301,27 @@ public class ImportCommand extends AbstractGeoRocketCommand {
         ObservableFuture<Void> o = RxHelper.observableFuture();
         Handler<AsyncResult<Void>> handler = o.toHandler();
         AsyncFile file = f.getLeft().getDelegate();
+        long size = f.getRight();
 
+        // initialize progress bar
+        ProgressBar progressBar;
+        if (!isDumbTerm()) {
+          ProgressBarBuilder progressBarBuilder = new ProgressBarBuilder()
+              .setInitialMax(size)
+              .setStyle(ProgressBarStyle.ASCII)
+              .setUpdateIntervalMillis(500)
+              .setUnit(" MB", 1024 * 1024);
+
+          if (size < 10 * 1024 * 1024) {
+            progressBarBuilder.setUnit(" KB", 1024);
+          }
+
+          progressBar = progressBarBuilder.build();
+        } else {
+          progressBar = null;
+        }
+
+        // start import
         ImportOptions options = new ImportOptions()
           .setLayer(layer)
           .setTags(tags)
@@ -303,19 +333,23 @@ public class ImportCommand extends AbstractGeoRocketCommand {
         WriteStream<Buffer> out;
         boolean alreadyCompressed = path.toLowerCase().endsWith(".gz");
         if (alreadyCompressed) {
-          options.setSize(f.getRight());
+          options.setSize(size);
           out = store.startImport(options, handler);
         } else {
           out = new GzipWriteStream(store.startImport(options, handler));
         }
 
         AtomicBoolean fileClosed = new AtomicBoolean();
+        AtomicLong bytesWritten = new AtomicLong();
 
-        Pump pump = Pump.pump(file, out);
         file.endHandler(v -> {
           file.close();
           out.end();
           fileClosed.set(true);
+          if (progressBar != null) {
+            progressBar.stepTo(bytesWritten.get());
+            progressBar.close();
+          }
         });
 
         Handler<Throwable> exceptionHandler = t -> {
@@ -328,7 +362,17 @@ public class ImportCommand extends AbstractGeoRocketCommand {
         file.exceptionHandler(exceptionHandler);
         out.exceptionHandler(exceptionHandler);
 
-        pump.start();
+        file.handler(data -> {
+          out.write(data);
+          if (progressBar != null) {
+            progressBar.stepTo(bytesWritten.getAndAdd(data.length()));
+          }
+          if (out.writeQueueFull()) {
+            file.pause();
+            out.drainHandler(v -> file.resume());
+          }
+        });
+
         return o.toCompletable();
     });
   }
