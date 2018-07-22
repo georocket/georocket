@@ -167,6 +167,7 @@ public class GzipWriteStream implements WriteStream<Buffer> {
           }
         });
       } else {
+        delegate.end();
         closer.run();
       }
     });
