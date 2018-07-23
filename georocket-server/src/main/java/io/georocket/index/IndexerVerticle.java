@@ -661,6 +661,9 @@ public class IndexerVerticle extends AbstractVerticle {
     JsonObject parameters = new JsonObject()
       .put("size", pageSize);
 
+    // We only need the chunk meta. Exclude all other source fields.
+    parameters.put("_source", "chunkMeta");
+
     Single<JsonObject> single;
     if (scrollId == null) {
       // Execute a new search. Use a post_filter because we only want to get

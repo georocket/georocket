@@ -29,6 +29,7 @@ public class RxGzipReadStream implements ReadStream<Buffer> {
    * Creates new stream that wraps around another one
    * @param delegate the stream to wrap around
    */
+  @SuppressWarnings("unchecked")
   public RxGzipReadStream(ReadStream<Buffer> delegate) {
     this(new GzipReadStream(delegate.getDelegate()));
   }
