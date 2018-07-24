@@ -66,6 +66,19 @@ import static io.georocket.http.Endpoint.getEndpointPath;
  */
 public class StoreEndpoint implements Endpoint {
   private static Logger log = LoggerFactory.getLogger(StoreEndpoint.class);
+
+  /**
+   * <p>Name of the HTTP trailer that tells the client how many chunks could not
+   * be merged. Possible reasons for unmerged chunks are:</p>
+   * <ul>
+   * <li>New chunks were added to the store while merging was in progress.</li>
+   * <li>Optimistic merging was enabled and some chunks could not be merged.</li>
+   * </ul>
+   * <p>The trailer will contain the number of chunks that could not be
+   * merged. The client can decide whether to repeat the request to fetch
+   * the missing chunks (e.g. with optimistic merging disabled) or not.</p>
+   */
+  private static String TRAILER_UNMERGED_CHUNKS = "GeoRocket-Unmerged-Chunks";
   
   private Vertx vertx;
   private RxStore store;
@@ -133,9 +146,11 @@ public class StoreEndpoint implements Endpoint {
    * @param merger the merger
    * @param data Data to merge into the response
    * @param out the response to write the merged chunks to
+   * @param trailersAllowed {@code true} if the HTTP client accepts trailers
    * @return a single that will emit one item when all chunks have been merged
    */
-  private Completable doMerge(Merger<ChunkMeta> merger, Single<StoreCursor> data, WriteStream<Buffer> out) {
+  private Completable doMerge(Merger<ChunkMeta> merger, Single<StoreCursor> data,
+      HttpServerResponse out, boolean trailersAllowed) {
     return data
       .map(RxStoreCursor::new)
       .flatMapObservable(RxStoreCursor::toObservable)
@@ -165,8 +180,12 @@ public class StoreEndpoint implements Endpoint {
           log.warn("Could not merge " + notaccepted + " chunks "
               + "because the merger did not accept them. Most likely "
               + "these are new chunks that were added while the "
-              + "merge was in progress. If this worries you, just "
-              + "repeat the request.");
+              + "merge was in progress or those that were ignored "
+              + "during match optimistic merging. If this worries you, "
+              + "just repeat the request.");
+        }
+        if (trailersAllowed) {
+          out.putTrailer(TRAILER_UNMERGED_CHUNKS, String.valueOf(notaccepted));
         }
         if (count > 0) {
           merger.finish(out);
@@ -286,6 +305,16 @@ public class StoreEndpoint implements Endpoint {
   }
 
   /**
+   * Checks if the client accepts an HTTP trailer
+   * @param request the HTTP request
+   * @return {@code true} if the client accepts a trailer, {@code false} otherwise
+   */
+  private boolean isTrailerAccepted(HttpServerRequest request) {
+    String te = request.getHeader("TE");
+    return (te != null && te.toLowerCase().contains("trailers"));
+  }
+
+  /**
    * Retrieve all chunks matching the specified query and path
    * @param context the routing context
    */
@@ -302,6 +331,11 @@ public class StoreEndpoint implements Endpoint {
     response.setChunked(true);
 
     boolean optimisticMerging = isOptimisticMerging(request);
+    boolean isTrailerAccepted = isTrailerAccepted(request);
+
+    if (isTrailerAccepted) {
+      response.putHeader("Trailer", TRAILER_UNMERGED_CHUNKS);
+    }
 
     // perform two searches: first initialize the merger and then
     // merge all retrieved chunks
@@ -315,7 +349,8 @@ public class StoreEndpoint implements Endpoint {
       c = initializeMerger(merger, prepareCursor(context, true));
     }
 
-    c.andThen(Completable.defer(() -> doMerge(merger, prepareCursor(context, false), response)))
+    c.andThen(Completable.defer(() -> doMerge(merger, prepareCursor(context, false),
+        response, isTrailerAccepted)))
       .subscribe(response::end, err -> {
         if (!(err instanceof FileNotFoundException)) {
           log.error("Could not perform query", err);
