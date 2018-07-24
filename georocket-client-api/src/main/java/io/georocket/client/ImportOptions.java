@@ -1,13 +1,12 @@
 package io.georocket.client;
 
-import io.vertx.core.Handler;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Objects;
 
 /**
- * Parameters that can be passed to {@link StoreClient#startImport(ImportOptions, Handler)}
+ * Parameters that can be passed to {@link StoreClient#startImport(ImportOptions, io.vertx.core.Handler)}
  * @since 1.3.0
  * @author Michel Kraemer
  */
@@ -56,7 +55,7 @@ public class ImportOptions {
 
   /**
    * Set a collection of tags to attach to the imported data
-   * @param tags the tags (may be <code>null</code> if no tags should
+   * @param tags the tags (may be {@code null} if no tags should
    * be attached)
    * @return a reference to this, so the API can be used fluently
    */
@@ -109,7 +108,7 @@ public class ImportOptions {
 
   /**
    * Get the collection of tags to attach to the imported data
-   * @return the tags to attach to the imported data (<code>null</code>
+   * @return the tags to attach to the imported data ({@code null}
    * if no tags will be attached)
    */
   public Collection<String> getTags() {
@@ -118,7 +117,7 @@ public class ImportOptions {
 
   /**
    * Set a collection of properties to attach to the imported data
-   * @param properties the properties (may be <code>null</code> if no
+   * @param properties the properties (may be {@code null} if no
    * properties should be attached)
    * @return a reference to this, so the API can be used fluently
    */
@@ -174,7 +173,7 @@ public class ImportOptions {
 
   /**
    * Get the collection of properties to attach to the imported data
-   * @return the properties to attach to the imported data (<code>null</code>
+   * @return the properties to attach to the imported data ({@code null}
    * if no properties will be attached)
    */
   public Collection<String> getProperties() {
@@ -227,9 +226,9 @@ public class ImportOptions {
   /**
    * Set the compression method that is applied to the data that will be
    * sent to the {@link io.vertx.core.streams.WriteStream} returned by
-   * {@link StoreClient#startImport(ImportOptions, Handler)}. The caller
-   * is responsible for compressing the data, for example by wrapping
-   * the {@link io.vertx.core.streams.WriteStream} into a
+   * {@link StoreClient#startImport(ImportOptions, io.vertx.core.Handler)}.
+   * The caller is responsible for compressing the data, for example by
+   * wrapping the {@link io.vertx.core.streams.WriteStream} into a
    * {@link io.georocket.util.io.GzipWriteStream}.
    * @param compression the compression method (may be {@code null} if
    * no compression should be used)
@@ -250,5 +249,27 @@ public class ImportOptions {
    */
   public Compression getCompression() {
     return compression;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    ImportOptions that = (ImportOptions)o;
+    return Objects.equals(layer, that.layer) &&
+      Objects.equals(tags, that.tags) &&
+      Objects.equals(properties, that.properties) &&
+      Objects.equals(size, that.size) &&
+      Objects.equals(fallbackCRS, that.fallbackCRS) &&
+      compression == that.compression;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(layer, tags, properties, size, fallbackCRS, compression);
   }
 }

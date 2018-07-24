@@ -5,10 +5,13 @@ import java.io.PrintWriter;
 import java.util.NoSuchElementException;
 
 import io.georocket.client.GeoRocketClient;
+import io.georocket.client.SearchOptions;
 import io.vertx.core.Handler;
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.impl.NoStackTraceThrowable;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.core.streams.ReadStream;
 
 /**
  * Abstract base class for commands that need to export data
@@ -29,7 +32,7 @@ public abstract class AbstractQueryCommand extends AbstractGeoRocketCommand {
   protected void query(String query, String layer, PrintWriter out,
       Handler<Integer> handler) throws IOException {
     GeoRocketClient client = createClient();
-    client.getStore().search(query, layer, ar -> {
+    client.getStore().search(new SearchOptions().setQuery(query).setLayer(layer), ar -> {
       if (ar.failed()) {
         error(ar.cause().getMessage());
         if (!(ar.cause() instanceof NoSuchElementException)
@@ -38,10 +41,9 @@ public abstract class AbstractQueryCommand extends AbstractGeoRocketCommand {
         }
         handler.handle(1);
       } else {
-        ar.result().handler(buf -> {
-          out.write(buf.toString("utf-8"));
-        });
-        ar.result().endHandler(v -> {
+        ReadStream<Buffer> r = ar.result().getResponse();
+        r.handler(buf -> out.write(buf.toString("utf-8")));
+        r.endHandler(v -> {
           client.close();
           handler.handle(0);
         });

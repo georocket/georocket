@@ -119,6 +119,22 @@ public class StoreClient extends AbstractClient {
   }
 
   /**
+   * Converts a handler with a result to one without a result
+   * @param handler the handler to convert
+   * @param <T> the type of the result
+   * @return the converted handler
+   */
+  private <T> Handler<AsyncResult<T>> ignoreResult(Handler<AsyncResult<Void>> handler) {
+    return ar -> {
+      if (ar.failed()) {
+        handler.handle(Future.failedFuture(ar.cause()));
+      } else {
+        handler.handle(Future.succeededFuture());
+      }
+    };
+  }
+
+  /**
    * <p>Start importing data to GeoRocket. The method opens a connection to the
    * GeoRocket server and returns a {@link WriteStream} that can be used to
    * send data.</p>
@@ -130,7 +146,7 @@ public class StoreClient extends AbstractClient {
    * @return a {@link WriteStream} that can be used to send data
    */
   public WriteStream<Buffer> startImport(Handler<AsyncResult<Void>> handler) {
-    return startImport(new ImportOptions(), handler);
+    return startImport(new ImportOptions(), ignoreResult(handler));
   }
   
   /**
@@ -148,7 +164,7 @@ public class StoreClient extends AbstractClient {
    */
   public WriteStream<Buffer> startImport(String layer,
       Handler<AsyncResult<Void>> handler) {
-    return startImport(new ImportOptions().setLayer(layer), handler);
+    return startImport(new ImportOptions().setLayer(layer), ignoreResult(handler));
   }
   
   /**
@@ -173,7 +189,7 @@ public class StoreClient extends AbstractClient {
     return startImport(new ImportOptions()
         .setLayer(layer)
         .setTags(tags),
-      handler);
+      ignoreResult(handler));
   }
 
   /**
@@ -202,7 +218,7 @@ public class StoreClient extends AbstractClient {
         .setLayer(layer)
         .setTags(tags)
         .setProperties(properties),
-      handler);
+      ignoreResult(handler));
   }
   
   /**
@@ -229,7 +245,7 @@ public class StoreClient extends AbstractClient {
         .setLayer(layer)
         .setTags(tags)
         .setSize(size),
-      handler);
+      ignoreResult(handler));
   }
 
   /**
@@ -260,7 +276,7 @@ public class StoreClient extends AbstractClient {
         .setTags(tags)
         .setProperties(properties)
         .setSize(size),
-      handler);
+      ignoreResult(handler));
   }
   
   /**
@@ -287,7 +303,7 @@ public class StoreClient extends AbstractClient {
         .setLayer(layer)
         .setTags(tags)
         .setSize(size.orElse(null)),
-      handler);
+      ignoreResult(handler));
   }
 
   /**
@@ -318,7 +334,7 @@ public class StoreClient extends AbstractClient {
         .setTags(tags)
         .setProperties(properties)
         .setSize(size.orElse(null)),
-      handler);
+      ignoreResult(handler));
   }
 
   /**
@@ -353,7 +369,7 @@ public class StoreClient extends AbstractClient {
         .setProperties(properties)
         .setSize(size.orElse(null))
         .setFallbackCRS(fallbackCRS),
-      handler);
+      ignoreResult(handler));
   }
 
   /**
@@ -370,7 +386,10 @@ public class StoreClient extends AbstractClient {
    * @since 1.3.0
    */
   public WriteStream<Buffer> startImport(ImportOptions options,
-      Handler<AsyncResult<Void>> handler) {
+      Handler<AsyncResult<ImportResult>> handler) {
+    if (options == null) {
+      options = new ImportOptions();
+    }
     String path = prepareImport(options.getLayer(), options.getTags(),
         options.getProperties(), options.getFallbackCRS());
     HttpClientRequest request = client.post(path);
@@ -400,7 +419,7 @@ public class StoreClient extends AbstractClient {
           return new ClientAPIException(e.getType(), msg);
         });
       } else {
-        handler.handle(Future.succeededFuture());
+        handler.handle(Future.succeededFuture(new ImportResult()));
       }
     });
 
@@ -415,7 +434,13 @@ public class StoreClient extends AbstractClient {
    * @param handler a handler that will receive the {@link ReadStream}
    */
   public void search(Handler<AsyncResult<ReadStream<Buffer>>> handler) {
-    search(null, null, handler);
+    search(new SearchOptions(), ar -> {
+      if (ar.failed()) {
+        handler.handle(Future.failedFuture(ar.cause()));
+      } else {
+        handler.handle(Future.succeededFuture(ar.result().getResponse()));
+      }
+    });
   }
   
   /**
@@ -431,7 +456,13 @@ public class StoreClient extends AbstractClient {
    * which the merged chunks matching the given criteria can be read
    */
   public void search(String query, Handler<AsyncResult<ReadStream<Buffer>>> handler) {
-    search(query, null, handler);
+    search(new SearchOptions().setQuery(query), ar -> {
+      if (ar.failed()) {
+        handler.handle(Future.failedFuture(ar.cause()));
+      } else {
+        handler.handle(Future.succeededFuture(ar.result().getResponse()));
+      }
+    });
   }
   
   /**
@@ -449,9 +480,38 @@ public class StoreClient extends AbstractClient {
    * (may be <code>null</code>)
    * @param handler a handler that will receive the {@link ReadStream} from
    * which the merged chunks matching the given criteria can be read
+   * @deprecated Use {@link #search(SearchOptions, Handler)} instead
    */
+  @Deprecated
   public void search(String query, String layer,
       Handler<AsyncResult<ReadStream<Buffer>>> handler) {
+    search(new SearchOptions().setQuery(query).setLayer(layer), ar -> {
+      if (ar.failed()) {
+        handler.handle(Future.failedFuture(ar.cause()));
+      } else {
+        handler.handle(Future.succeededFuture(ar.result().getResponse()));
+      }
+    });
+  }
+
+  /**
+   * <p>Search the GeoRocket data store and return a {@link SearchResult}
+   * containing a {@link ReadStream} of merged chunks matching the given options.</p>
+   * <p>If {@link SearchOptions#getQuery()} returns {@code null} or an empty
+   * String, all chunks from the the layer returned by {@link SearchOptions#getLayer()}
+   * (and all sub-layers) will be returned. If the layer is also {@code null}
+   * or empty, the contents of the whole data store will be returned.</p>
+   * <p>The caller is responsible for handling exceptions through
+   * {@link ReadStream#exceptionHandler(Handler)}.</p>
+   * @param options search parameters
+   * @param handler a handler that will receive the {@link SearchResult} object
+   */
+  public void search(SearchOptions options, Handler<AsyncResult<SearchResult>> handler) {
+    if (options == null) {
+      options = new SearchOptions();
+    }
+    String query = options.getQuery();
+    String layer = options.getLayer();
     if ((query == null || query.isEmpty()) && (layer == null || layer.isEmpty())) {
       handler.handle(Future.failedFuture("No search query and no layer given. "
           + "Do you really wish to export/query the whole data store? If so, "
@@ -467,7 +527,7 @@ public class StoreClient extends AbstractClient {
       } else if (response.statusCode() != 200) {
         fail(response, handler);
       } else {
-        handler.handle(Future.succeededFuture(response));
+        handler.handle(Future.succeededFuture(new SearchResult(response)));
       }
     });
     configureRequest(request).end();

@@ -9,6 +9,7 @@ import de.undercouch.underline.UnknownAttributes;
 import io.georocket.client.GeoRocketClient;
 import io.georocket.client.ImportOptions;
 import io.georocket.client.ImportOptions.Compression;
+import io.georocket.client.ImportResult;
 import io.georocket.client.StoreClient;
 import io.georocket.util.DurationFormat;
 import io.georocket.util.io.GzipWriteStream;
@@ -298,8 +299,8 @@ public class ImportCommand extends AbstractGeoRocketCommand {
       .flatMap(f -> fs.rxProps(path).map(props -> Pair.of(f, props.size())))
       // import file
       .flatMapCompletable(f -> {
-        ObservableFuture<Void> o = RxHelper.observableFuture();
-        Handler<AsyncResult<Void>> handler = o.toHandler();
+        ObservableFuture<ImportResult> o = RxHelper.observableFuture();
+        Handler<AsyncResult<ImportResult>> handler = o.toHandler();
         AsyncFile file = f.getLeft().getDelegate();
         long size = f.getRight();
 

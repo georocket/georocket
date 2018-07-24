@@ -21,10 +21,11 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
  */
 @RunWith(VertxUnitRunner.class)
 public class StoreClientSearchTest extends StoreClientTestBase {
-  private Handler<ReadStream<Buffer>> assertExport(String url, String XML,
+  private Handler<SearchResult> assertExport(String url, String XML,
       TestContext context, Async async) {
-    return r -> {
+    return res -> {
       Buffer response = Buffer.buffer();
+      ReadStream<Buffer> r = res.getResponse();
       r.handler(response::appendBuffer);
       r.endHandler(v -> {
         context.assertEquals(XML, response.toString());
@@ -48,8 +49,8 @@ public class StoreClientSearchTest extends StoreClientTestBase {
             .withBody(XML)));
     
     Async async = context.async();
-    client.getStore().search(null, "/", context.asyncAssertSuccess(
-        assertExport(url, XML, context, async)));
+    client.getStore().search(new SearchOptions().setLayer("/"),
+        context.asyncAssertSuccess(assertExport(url, XML, context, async)));
   }
 
   /**
@@ -64,8 +65,8 @@ public class StoreClientSearchTest extends StoreClientTestBase {
         .willReturn(aResponse()
             .withStatus(200)
             .withBody(XML)));
-    client.getStore().search(null, "/hello/world", context.asyncAssertSuccess(
-        assertExport(url, XML, context, context.async())));
+    client.getStore().search(new SearchOptions().setLayer("/hello/world"),
+        context.asyncAssertSuccess(assertExport(url, XML, context, context.async())));
   }
   
   /**
@@ -80,8 +81,8 @@ public class StoreClientSearchTest extends StoreClientTestBase {
         .willReturn(aResponse()
             .withStatus(200)
             .withBody(XML)));
-    client.getStore().search("test", context.asyncAssertSuccess(
-        assertExport(url, XML, context, context.async())));
+    client.getStore().search(new SearchOptions().setQuery("test"),
+        context.asyncAssertSuccess(assertExport(url, XML, context, context.async())));
   }
 
   /**
@@ -96,8 +97,8 @@ public class StoreClientSearchTest extends StoreClientTestBase {
         .willReturn(aResponse()
             .withStatus(200)
             .withBody(XML)));
-    client.getStore().search("test1 test2", context.asyncAssertSuccess(
-        assertExport(url, XML, context, context.async())));
+    client.getStore().search(new SearchOptions().setQuery("test1 test2"),
+        context.asyncAssertSuccess(assertExport(url, XML, context, context.async())));
   }
   
   /**
@@ -112,8 +113,8 @@ public class StoreClientSearchTest extends StoreClientTestBase {
         .willReturn(aResponse()
             .withStatus(200)
             .withBody(XML)));
-    client.getStore().search("test", "hello/world", context.asyncAssertSuccess(
-        assertExport(url, XML, context, context.async())));
+    client.getStore().search(new SearchOptions().setQuery("test").setLayer("hello/world"),
+        context.asyncAssertSuccess(assertExport(url, XML, context, context.async())));
   }
 
   /**
@@ -128,7 +129,7 @@ public class StoreClientSearchTest extends StoreClientTestBase {
         .willReturn(aResponse()
             .withStatus(200)
             .withBody(XML)));
-    client.getStore().search("test", "he+llo/world", context.asyncAssertSuccess(
-        assertExport(url, XML, context, context.async())));
+    client.getStore().search(new SearchOptions().setQuery("test").setLayer("he+llo/world"),
+        context.asyncAssertSuccess(assertExport(url, XML, context, context.async())));
   }
 }
