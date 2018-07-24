@@ -37,7 +37,7 @@ public class MultiMergerTest {
   
   private void doMerge(TestContext context, Observable<Buffer> chunks,
       Observable<ChunkMeta> metas, String jsonContents) {
-    MultiMerger m = new MultiMerger();
+    MultiMerger m = new MultiMerger(false);
     BufferWriteStream bws = new BufferWriteStream();
     Async async = context.async();
     metas
@@ -111,7 +111,7 @@ public class MultiMergerTest {
     XMLChunkMeta cm2 = new XMLChunkMeta(Arrays.asList(new XMLStartElement("root")),
       XMLHEADER.length() + 6, chunk2.length() - 7);
     
-    MultiMerger m = new MultiMerger();
+    MultiMerger m = new MultiMerger(false);
     Async async = context.async();
     m.init(cm1)
       .andThen(m.init(cm2))
@@ -136,7 +136,7 @@ public class MultiMergerTest {
     XMLChunkMeta cm2 = new XMLChunkMeta(Arrays.asList(new XMLStartElement("root")),
       XMLHEADER.length() + 6, chunk2.length() - 7);
     
-    MultiMerger m = new MultiMerger();
+    MultiMerger m = new MultiMerger(false);
     BufferWriteStream bws = new BufferWriteStream();
     Async async = context.async();
     m.init(cm1)

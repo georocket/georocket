@@ -45,6 +45,18 @@ public class GeoJsonMerger implements Merger<GeoJsonChunkMeta> {
    * The GeoJSON object type the merged result should have
    */
   private int mergedType = NOT_SPECIFIED;
+
+  /**
+   * Create a new merger
+   * @param optimistic {@code true} if chunks should be merged optimistically
+   * without prior initialization. In this mode, the merger will always return
+   * FeatureCollections.
+   */
+  public GeoJsonMerger(boolean optimistic) {
+    if (optimistic) {
+      mergedType = FEATURE_COLLECTION;
+    }
+  }
   
   /**
    * Write the header

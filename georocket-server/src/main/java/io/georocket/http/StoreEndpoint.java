@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.text.StringEscapeUtils;
@@ -102,12 +103,14 @@ public class StoreEndpoint implements Endpoint {
   /**
    * Create a new merger
    * @param ctx routing context
+   * @param {@code true} if optimistic merging is enabled
    * @return the new merger instance
    */
-  protected Merger<ChunkMeta> createMerger(RoutingContext ctx) {
-    return new MultiMerger();
+  protected Merger<ChunkMeta> createMerger(RoutingContext ctx,
+      boolean optimisticMerging) {
+    return new MultiMerger(optimisticMerging);
   }
-  
+
   /**
    * Initialize the given merger. Perform a search using the given search string
    * and pass all chunk metadata retrieved to the merger.
@@ -192,7 +195,7 @@ public class StoreEndpoint implements Endpoint {
     
     String scroll = request.getParam("scroll");
     String scrollIdParam = request.getParam("scrollId");
-    Boolean scrolling = Boolean.parseBoolean(scroll) || scrollIdParam != null;
+    boolean scrolling = BooleanUtils.toBoolean(scroll) || scrollIdParam != null;
 
     // if we're generating a preview, split the scrollId param at ':' and
     // use the first part. Otherwise use the second one.
@@ -230,7 +233,9 @@ public class StoreEndpoint implements Endpoint {
         String newScrollId = cursor.getInfo().getScrollId();
         if (!preview) {
           String oldScrollId = response.headers().get("X-Scroll-Id");
-          if (oldScrollId == null) {
+          if (isOptimisticMerging(request)) {
+            oldScrollId = "0";
+          } else if (oldScrollId == null) {
             throw new IllegalStateException("A preview must be generated " +
               "before the actual request can be made. This usually happens " +
               "when the merger is initialized.");
@@ -272,10 +277,20 @@ public class StoreEndpoint implements Endpoint {
   }
 
   /**
+   * Checks if optimistic merging is enabled
+   * @param request the HTTP request
+   * @return {@code true} if optimistic is enabled, {@code false} otherwise
+   */
+  private boolean isOptimisticMerging(HttpServerRequest request) {
+    return BooleanUtils.toBoolean(request.getParam("optimisticMerging"));
+  }
+
+  /**
    * Retrieve all chunks matching the specified query and path
    * @param context the routing context
    */
   private void getChunks(RoutingContext context) {
+    HttpServerRequest request = context.request();
     HttpServerResponse response = context.response();
 
     // Our responses must always be chunked because we cannot calculate
@@ -285,12 +300,22 @@ public class StoreEndpoint implements Endpoint {
     // cannot calculate the content-length just from looking at the result
     // from the first search.
     response.setChunked(true);
-    
+
+    boolean optimisticMerging = isOptimisticMerging(request);
+
     // perform two searches: first initialize the merger and then
     // merge all retrieved chunks
-    Merger<ChunkMeta> merger = createMerger(context);
-    initializeMerger(merger, prepareCursor(context, true))
-      .andThen(Completable.defer(() -> doMerge(merger, prepareCursor(context, false), response)))
+    Merger<ChunkMeta> merger = createMerger(context, optimisticMerging);
+
+    Completable c;
+    if (optimisticMerging) {
+      // skip initialization if optimistic merging is enabled
+      c = Completable.complete();
+    } else {
+      c = initializeMerger(merger, prepareCursor(context, true));
+    }
+
+    c.andThen(Completable.defer(() -> doMerge(merger, prepareCursor(context, false), response)))
       .subscribe(response::end, err -> {
         if (!(err instanceof FileNotFoundException)) {
           log.error("Could not perform query", err);

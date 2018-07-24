@@ -1,12 +1,5 @@
 package io.georocket.output.xml;
 
-import java.util.Arrays;
-
-import org.apache.commons.lang3.tuple.Pair;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.XMLChunkMeta;
 import io.georocket.util.XMLStartElement;
@@ -17,7 +10,13 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import org.apache.commons.lang3.tuple.Pair;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 import rx.Observable;
+
+import java.util.Collections;
 
 /**
  * Test {@link XMLMerger}
@@ -54,24 +53,43 @@ public class XMLMergerTest {
    */
   @Rule
   public RunTestOnContext rule = new RunTestOnContext();
+
+  private void doMerge(TestContext context, Observable<Buffer> chunks,
+    Observable<XMLChunkMeta> metas, String xmlContents, boolean optimistic) {
+    doMerge(context, chunks, metas, xmlContents, optimistic, null);
+  }
   
   private void doMerge(TestContext context, Observable<Buffer> chunks,
-      Observable<XMLChunkMeta> metas, String xmlContents) {
-    XMLMerger m = new XMLMerger();
+      Observable<XMLChunkMeta> metas, String xmlContents, boolean optimistic,
+      Class<? extends Throwable> expected) {
+    XMLMerger m = new XMLMerger(optimistic);
     BufferWriteStream bws = new BufferWriteStream();
     Async async = context.async();
-    metas
-      .flatMapSingle(meta -> m.init(meta).toSingleDefault(meta))
-      .toList()
+    Observable<XMLChunkMeta> s;
+    if (optimistic) {
+      s = metas;
+    } else {
+      s = metas.flatMapSingle(meta -> m.init(meta).toSingleDefault(meta));
+    }
+    s.toList()
       .flatMap(l -> chunks.map(DelegateChunkReadStream::new)
           .<XMLChunkMeta, Pair<ChunkReadStream, XMLChunkMeta>>zipWith(l, Pair::of))
       .flatMapCompletable(p -> m.merge(p.getLeft(), p.getRight(), bws))
       .toCompletable()
       .subscribe(() -> {
-        m.finish(bws);
-        context.assertEquals(XMLHEADER + xmlContents, bws.getBuffer().toString("utf-8"));
+        if (expected != null) {
+          context.fail("Expected: " + expected.getName());
+        } else {
+          m.finish(bws);
+          context.assertEquals(XMLHEADER + xmlContents, bws.getBuffer().toString("utf-8"));
+        }
         async.complete();
-      }, context::fail);
+      }, e -> {
+        if (!e.getClass().equals(expected)) {
+          context.fail(e);
+        }
+        async.complete();
+      });
   }
   
   /**
@@ -82,18 +100,14 @@ public class XMLMergerTest {
   public void simple(TestContext context) {
     Buffer chunk1 = Buffer.buffer(XMLHEADER + "<root><test chunk=\"1\"></test></root>");
     Buffer chunk2 = Buffer.buffer(XMLHEADER + "<root><test chunk=\"2\"></test></root>");
-    XMLChunkMeta cm = new XMLChunkMeta(Arrays.asList(new XMLStartElement("root")),
+    XMLChunkMeta cm = new XMLChunkMeta(Collections.singletonList(new XMLStartElement("root")),
         XMLHEADER.length() + 6, chunk1.length() - 7);
     doMerge(context, Observable.just(chunk1, chunk2), Observable.just(cm, cm),
-        "<root><test chunk=\"1\"></test><test chunk=\"2\"></test></root>");
+        "<root><test chunk=\"1\"></test><test chunk=\"2\"></test></root>", false);
   }
 
-  /**
-   * Test if chunks with different namespaces can be merged
-   * @param context the Vert.x test context
-   */
-  @Test
-  public void mergeNamespaces(TestContext context) {
+  private void mergeNamespaces(TestContext context, boolean optimistic,
+      Class<? extends Throwable> expected) {
     XMLStartElement root1 = new XMLStartElement(null, "CityModel",
         new String[] { "", "gml", "gen", XSI },
         new String[] { NS_CITYGML_1_0, NS_GML, NS_CITYGML_1_0_GENERICS, NS_SCHEMA_INSTANCE },
@@ -112,10 +126,10 @@ public class XMLMergerTest {
     String contents2 = "<cityObjectMember><bldg:Building></bldg:Building></cityObjectMember>";
     Buffer chunk2 = Buffer.buffer(XMLHEADER + root2 + contents2 + "</" + root2.getName() + ">");
     
-    XMLChunkMeta cm1 = new XMLChunkMeta(Arrays.asList(root1),
+    XMLChunkMeta cm1 = new XMLChunkMeta(Collections.singletonList(root1),
         XMLHEADER.length() + root1.toString().length(),
         chunk1.length() - root1.getName().length() - 3);
-    XMLChunkMeta cm2 = new XMLChunkMeta(Arrays.asList(root2),
+    XMLChunkMeta cm2 = new XMLChunkMeta(Collections.singletonList(root2),
         XMLHEADER.length() + root2.toString().length(),
         chunk2.length() - root2.getName().length() - 3);
     
@@ -127,6 +141,55 @@ public class XMLMergerTest {
         new String[] { NS_CITYGML_1_0_GENERICS_SCHEMA_LOCATION + " " + NS_CITYGML_1_0_BUILDING_SCHEMA_LOCATION });
     
     doMerge(context, Observable.just(chunk1, chunk2), Observable.just(cm1, cm2),
-        expectedRoot + contents1 + contents2 + "</" + expectedRoot.getName() + ">");
+        expectedRoot + contents1 + contents2 + "</" + expectedRoot.getName() + ">",
+        optimistic, expected);
+  }
+
+  /**
+   * Test if chunks with different namespaces can be merged
+   * @param context the Vert.x test context
+   */
+  @Test
+  public void mergeNamespaces(TestContext context) {
+    mergeNamespaces(context, false, null);
+  }
+
+  /**
+   * Make sure chunks with different namespaces cannot be merged in
+   * optimistic mode
+   * @param context the Vert.x test context
+   */
+  @Test
+  public void mergeNamespacesOptimistic(TestContext context) {
+    mergeNamespaces(context, true, IllegalStateException.class);
+  }
+
+  /**
+   * Test if chunks with the same namespaces can be merged in optimistic mode
+   * @param context the Vert.x test context
+   */
+  @Test
+  public void mergeOptimistic(TestContext context) {
+    XMLStartElement root1 = new XMLStartElement(null, "CityModel",
+      new String[] { "", "gml", "gen", XSI },
+      new String[] { NS_CITYGML_1_0, NS_GML, NS_CITYGML_1_0_GENERICS, NS_SCHEMA_INSTANCE },
+      new String[] { XSI },
+      new String[] { SCHEMA_LOCATION },
+      new String[] { NS_CITYGML_1_0_GENERICS_SCHEMA_LOCATION });
+
+    String contents1 = "<cityObjectMember><gen:GenericCityObject></gen:GenericCityObject></cityObjectMember>";
+    Buffer chunk1 = Buffer.buffer(XMLHEADER + root1 + contents1 + "</" + root1.getName() + ">");
+    String contents2 = "<cityObjectMember><gen:Building></gen:Building></cityObjectMember>";
+    Buffer chunk2 = Buffer.buffer(XMLHEADER + root1 + contents2 + "</" + root1.getName() + ">");
+
+    XMLChunkMeta cm1 = new XMLChunkMeta(Collections.singletonList(root1),
+      XMLHEADER.length() + root1.toString().length(),
+      chunk1.length() - root1.getName().length() - 3);
+    XMLChunkMeta cm2 = new XMLChunkMeta(Collections.singletonList(root1),
+      XMLHEADER.length() + root1.toString().length(),
+      chunk2.length() - root1.getName().length() - 3);
+
+    doMerge(context, Observable.just(chunk1, chunk2), Observable.just(cm1, cm2),
+      root1 + contents1 + contents2 + "</" + root1.getName() + ">", true);
   }
 }

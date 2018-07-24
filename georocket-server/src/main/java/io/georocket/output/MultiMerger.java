@@ -21,6 +21,21 @@ import rx.Completable;
 public class MultiMerger implements Merger<ChunkMeta> {
   private XMLMerger xmlMerger;
   private GeoJsonMerger geoJsonMerger;
+
+  /**
+   * {@code true} if chunks should be merged optimistically without
+   * prior initialization
+   */
+  private final boolean optimistic;
+
+  /**
+   * Creates a new merger
+   * @param optimistic {@code true} if chunks should be merged optimistically
+   * without prior initialization
+   */
+  public MultiMerger(boolean optimistic) {
+    this.optimistic = optimistic;
+  }
   
   private Completable ensureMerger(ChunkMeta meta) {
     if (meta instanceof XMLChunkMeta) {
@@ -29,7 +44,7 @@ public class MultiMerger implements Merger<ChunkMeta> {
           return Completable.error(new IllegalStateException("Cannot merge "
             + "XML chunk into a GeoJSON document."));
         }
-        xmlMerger = new XMLMerger();
+        xmlMerger = new XMLMerger(optimistic);
       }
       return Completable.complete();
     } else if (meta instanceof GeoJsonChunkMeta) {
@@ -38,7 +53,7 @@ public class MultiMerger implements Merger<ChunkMeta> {
           return Completable.error(new IllegalStateException("Cannot merge "
             + "GeoJSON chunk into an XML document."));
         }
-        geoJsonMerger = new GeoJsonMerger();
+        geoJsonMerger = new GeoJsonMerger(optimistic);
       }
       return Completable.complete();
     }

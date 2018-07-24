@@ -97,7 +97,8 @@ public class IndexedStoreCursor implements StoreCursor {
   public void next(Handler<AsyncResult<ChunkMeta>> handler) {
     ++pos;
     if (pos >= totalHits) {
-      handler.handle(Future.failedFuture(new IndexOutOfBoundsException("Curser is out of a valid position.")));
+      handler.handle(Future.failedFuture(new IndexOutOfBoundsException(
+          "Cursor is beyond a valid position.")));
     } else if (this.currentFrameCursor.hasNext()) {
       this.currentFrameCursor.next(handler);
     } else {

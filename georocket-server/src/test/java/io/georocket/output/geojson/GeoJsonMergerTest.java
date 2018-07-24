@@ -1,10 +1,5 @@
 package io.georocket.output.geojson;
 
-import org.apache.commons.lang3.tuple.Pair;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.GeoJsonChunkMeta;
 import io.georocket.util.io.BufferWriteStream;
@@ -14,6 +9,10 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import org.apache.commons.lang3.tuple.Pair;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 import rx.Observable;
 
 /**
@@ -27,15 +26,24 @@ public class GeoJsonMergerTest {
    */
   @Rule
   public RunTestOnContext rule = new RunTestOnContext();
+
+  private void doMerge(TestContext context, Observable<Buffer> chunks,
+    Observable<GeoJsonChunkMeta> metas, String jsonContents) {
+    doMerge(context, chunks, metas, jsonContents, false);
+  }
   
   private void doMerge(TestContext context, Observable<Buffer> chunks,
-      Observable<GeoJsonChunkMeta> metas, String jsonContents) {
-    GeoJsonMerger m = new GeoJsonMerger();
+      Observable<GeoJsonChunkMeta> metas, String jsonContents, boolean optimistic) {
+    GeoJsonMerger m = new GeoJsonMerger(optimistic);
     BufferWriteStream bws = new BufferWriteStream();
     Async async = context.async();
-    metas
-      .flatMapSingle(meta -> m.init(meta).toSingleDefault(meta))
-      .toList()
+    Observable<GeoJsonChunkMeta> s;
+    if (optimistic) {
+      s = metas;
+    } else {
+      s = metas.flatMapSingle(meta -> m.init(meta).toSingleDefault(meta));
+    }
+    s.toList()
       .flatMap(l -> chunks.map(DelegateChunkReadStream::new)
           .<GeoJsonChunkMeta, Pair<ChunkReadStream, GeoJsonChunkMeta>>zipWith(l, Pair::of))
       .flatMapCompletable(p -> m.merge(p.getLeft(), p.getRight(), bws))
@@ -58,6 +66,20 @@ public class GeoJsonMergerTest {
     GeoJsonChunkMeta cm1 = new GeoJsonChunkMeta("Polygon", "geometries", 0, chunk1.length());
     doMerge(context, Observable.just(chunk1), Observable.just(cm1), strChunk1);
   }
+
+  /**
+   * Test if one geometry can be merged in optimistic mode
+   * @param context the Vert.x test context
+   */
+  @Test
+  public void oneGeometryOptimistic(TestContext context) {
+    String strChunk1 = "{\"type\":\"Polygon\"}";
+    String expected = "{\"type\":\"FeatureCollection\",\"features\":" +
+      "[{\"type\":\"Feature\",\"geometry\":" + strChunk1 + "}]}";
+    Buffer chunk1 = Buffer.buffer(strChunk1);
+    GeoJsonChunkMeta cm1 = new GeoJsonChunkMeta("Polygon", "geometries", 0, chunk1.length());
+    doMerge(context, Observable.just(chunk1), Observable.just(cm1), expected, true);
+  }
   
   /**
    * Test if one feature is rendered directly
@@ -69,6 +91,19 @@ public class GeoJsonMergerTest {
     Buffer chunk1 = Buffer.buffer(strChunk1);
     GeoJsonChunkMeta cm1 = new GeoJsonChunkMeta("Feature", "features", 0, chunk1.length());
     doMerge(context, Observable.just(chunk1), Observable.just(cm1), strChunk1);
+  }
+
+  /**
+   * Test if one feature can be merged in optimistic mode
+   * @param context the Vert.x test context
+   */
+  @Test
+  public void oneFeatureOptimistic(TestContext context) {
+    String strChunk1 = "{\"type\":\"Feature\"}";
+    String expected = "{\"type\":\"FeatureCollection\",\"features\":[" + strChunk1 + "]}";
+    Buffer chunk1 = Buffer.buffer(strChunk1);
+    GeoJsonChunkMeta cm1 = new GeoJsonChunkMeta("Feature", "features", 0, chunk1.length());
+    doMerge(context, Observable.just(chunk1), Observable.just(cm1), expected, true);
   }
   
   /**
@@ -85,6 +120,24 @@ public class GeoJsonMergerTest {
     GeoJsonChunkMeta cm2 = new GeoJsonChunkMeta("Point", "geometries", 0, chunk2.length());
     doMerge(context, Observable.just(chunk1, chunk2), Observable.just(cm1, cm2),
       "{\"type\":\"GeometryCollection\",\"geometries\":[" + strChunk1 + "," + strChunk2 + "]}");
+  }
+
+  /**
+   * Test if two geometries can be merged in optimistic mode
+   * @param context the Vert.x test context
+   */
+  @Test
+  public void twoGeometriesOptimistic(TestContext context) {
+    String strChunk1 = "{\"type\":\"Polygon\"}";
+    String strChunk2 = "{\"type\":\"Point\"}";
+    String expected = "{\"type\":\"FeatureCollection\",\"features\":" +
+      "[{\"type\":\"Feature\",\"geometry\":" + strChunk1 + "}," +
+      "{\"type\":\"Feature\",\"geometry\":" + strChunk2 + "}]}";
+    Buffer chunk1 = Buffer.buffer(strChunk1);
+    Buffer chunk2 = Buffer.buffer(strChunk2);
+    GeoJsonChunkMeta cm1 = new GeoJsonChunkMeta("Polygon", "geometries", 0, chunk1.length());
+    GeoJsonChunkMeta cm2 = new GeoJsonChunkMeta("Point", "geometries", 0, chunk2.length());
+    doMerge(context, Observable.just(chunk1, chunk2), Observable.just(cm1, cm2), expected, true);
   }
   
   /**
@@ -121,6 +174,22 @@ public class GeoJsonMergerTest {
     GeoJsonChunkMeta cm2 = new GeoJsonChunkMeta("Feature", "features", 0, chunk2.length());
     doMerge(context, Observable.just(chunk1, chunk2), Observable.just(cm1, cm2),
       "{\"type\":\"FeatureCollection\",\"features\":[" + strChunk1 + "," + strChunk2 + "]}");
+  }
+
+  /**
+   * Test if two features can be merged in optimistic mode
+   * @param context the Vert.x test context
+   */
+  @Test
+  public void twoFeaturesOptimistic(TestContext context) {
+    String strChunk1 = "{\"type\":\"Feature\"}";
+    String strChunk2 = "{\"type\":\"Feature\",\"properties\":{}}";
+    Buffer chunk1 = Buffer.buffer(strChunk1);
+    Buffer chunk2 = Buffer.buffer(strChunk2);
+    GeoJsonChunkMeta cm1 = new GeoJsonChunkMeta("Feature", "features", 0, chunk1.length());
+    GeoJsonChunkMeta cm2 = new GeoJsonChunkMeta("Feature", "features", 0, chunk2.length());
+    doMerge(context, Observable.just(chunk1, chunk2), Observable.just(cm1, cm2),
+      "{\"type\":\"FeatureCollection\",\"features\":[" + strChunk1 + "," + strChunk2 + "]}", true);
   }
   
   /**
@@ -232,7 +301,7 @@ public class GeoJsonMergerTest {
     GeoJsonChunkMeta cm1 = new GeoJsonChunkMeta("Feature", "features", 0, chunk1.length());
     GeoJsonChunkMeta cm2 = new GeoJsonChunkMeta("Feature", "features", 0, chunk2.length());
     
-    GeoJsonMerger m = new GeoJsonMerger();
+    GeoJsonMerger m = new GeoJsonMerger(false);
     BufferWriteStream bws = new BufferWriteStream();
     Async async = context.async();
     m.init(cm1)
@@ -265,7 +334,7 @@ public class GeoJsonMergerTest {
     String jsonContents = "{\"type\":\"FeatureCollection\",\"features\":[" + strChunk1 +
       "," + strChunk2 + ",{\"type\":\"Feature\",\"geometry\":" + strChunk3 + "}]}";
     
-    GeoJsonMerger m = new GeoJsonMerger();
+    GeoJsonMerger m = new GeoJsonMerger(false);
     BufferWriteStream bws = new BufferWriteStream();
     Async async = context.async();
     m.init(cm1)

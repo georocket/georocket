@@ -88,7 +88,7 @@ public class MergeNamespacesStrategyTest {
       .andThen(strategy.merge(new DelegateChunkReadStream(CHUNK1), META1, bws))
       .andThen(strategy.merge(new DelegateChunkReadStream(CHUNK2), META2, bws))
       .subscribe(() -> context.fail(), err -> {
-        context.assertTrue(err instanceof IllegalArgumentException);
+        context.assertTrue(err instanceof IllegalStateException);
         async.complete();
       });
   }

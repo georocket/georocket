@@ -112,7 +112,7 @@ public class AllSameStrategyTest {
     strategy.init(cm)
       .andThen(strategy.merge(new DelegateChunkReadStream(chunk2), cm2, bws))
       .subscribe(context::fail, err -> {
-        context.assertTrue(err instanceof IllegalArgumentException);
+        context.assertTrue(err instanceof IllegalStateException);
         async.complete();
       });
   }

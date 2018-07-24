@@ -22,6 +22,21 @@ public class XMLMerger implements Merger<XMLChunkMeta> {
    * has been called at least once
    */
   private boolean mergeStarted = false;
+
+  /**
+   * {@code true} if chunks should be merged optimistically without
+   * prior initialization
+   */
+  private final boolean optimistic;
+
+  /**
+   * Creates a new merger
+   * @param optimistic {@code true} if chunks should be merged optimistically
+   * without prior initialization
+   */
+  public XMLMerger(boolean optimistic) {
+    this.optimistic = optimistic;
+  }
   
   /**
    * @return the next merge strategy (depending on the current one) or
@@ -70,11 +85,17 @@ public class XMLMerger implements Merger<XMLChunkMeta> {
   public Completable merge(ChunkReadStream chunk, XMLChunkMeta meta,
       WriteStream<Buffer> out) {
     mergeStarted = true;
+    Completable c = Completable.complete();
     if (strategy == null) {
-      return Completable.error(new IllegalStateException(
-          "You must call init() at least once"));
+      if (optimistic) {
+        strategy = new AllSameStrategy();
+        c = strategy.init(meta);
+      } else {
+        return Completable.error(new IllegalStateException(
+            "You must call init() at least once"));
+      }
     }
-    return strategy.merge(chunk, meta, out);
+    return c.andThen(strategy.merge(chunk, meta, out));
   }
   
   @Override

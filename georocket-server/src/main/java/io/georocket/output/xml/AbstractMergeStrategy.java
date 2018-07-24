@@ -82,7 +82,7 @@ public abstract class AbstractMergeStrategy implements MergeStrategy {
     return canMerge(meta)
       .flatMapCompletable(b -> {
         if (!b) {
-          return Completable.error(new IllegalArgumentException(
+          return Completable.error(new IllegalStateException(
               "Chunk cannot be merged with this strategy"));
         }
         if (!headerWritten) {
