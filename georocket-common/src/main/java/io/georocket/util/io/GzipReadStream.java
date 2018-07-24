@@ -6,6 +6,7 @@ import io.vertx.core.buffer.Buffer;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.core.streams.ReadStream;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.zip.CRC32;
 import java.util.zip.DataFormatException;
@@ -105,10 +106,11 @@ public class GzipReadStream extends DelegateReadStream<Buffer> {
 
       final int finalStart = start;
       final Buffer finalData = data;
-      Vertx.currentContext().<Buffer>executeBlocking(f -> {
+      Vertx.currentContext().<Pair<Buffer, Buffer>>executeBlocking(f -> {
         byte[] currentData = finalData.getBytes(finalStart, finalData.length());
         try {
           Buffer r = Buffer.buffer();
+          Buffer remainingBytes = null;
           while (true) {
             int n;
             while ((n = inflater.inflate(buf, 0, buf.length)) == 0) {
@@ -116,7 +118,7 @@ public class GzipReadStream extends DelegateReadStream<Buffer> {
                 int remaining = inflater.getRemaining();
                 if (remaining > 0) {
                   // save remaining bytes to parse the trailer
-                  trailerBuffer = finalData.getBuffer(finalData.length() - remaining,
+                  remainingBytes = finalData.getBuffer(finalData.length() - remaining,
                     finalData.length());
                 }
                 break;
@@ -137,7 +139,7 @@ public class GzipReadStream extends DelegateReadStream<Buffer> {
             crc.update(buf, 0, n);
             r.appendBytes(buf, 0, n);
           }
-          f.complete(r);
+          f.complete(Pair.of(r, remainingBytes));
         } catch (DataFormatException e) {
           f.fail(e);
         }
@@ -148,9 +150,16 @@ public class GzipReadStream extends DelegateReadStream<Buffer> {
         }
 
         // forward uncompressed data
-        Buffer b = ar.result();
+        Pair<Buffer, Buffer> r = ar.result();
+        Buffer b = r.getLeft();
         if (b != null && b.length() > 0) {
           handler.handle(b);
+        }
+
+        // initialize trailerBuffer to collect remaining bytes if
+        // inflater has finished
+        if (r.getRight() != null) {
+          trailerBuffer = r.getRight();
         }
 
         // try to parse trailer if we're already at the end of the file
