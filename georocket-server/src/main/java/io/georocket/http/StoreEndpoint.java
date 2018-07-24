@@ -1,25 +1,6 @@
 package io.georocket.http;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.regex.Pattern;
-
-import org.apache.commons.lang3.BooleanUtils;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
-import org.apache.commons.text.StringEscapeUtils;
-import org.apache.http.ParseException;
-import org.apache.http.entity.ContentType;
-import org.bson.types.ObjectId;
-
 import com.google.common.base.Splitter;
-
 import io.georocket.ServerAPIException;
 import io.georocket.constants.AddressConstants;
 import io.georocket.constants.ConfigConstants;
@@ -37,7 +18,6 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import io.vertx.core.buffer.Buffer;
 import io.vertx.core.file.AsyncFile;
 import io.vertx.core.file.FileSystem;
 import io.vertx.core.file.OpenOptions;
@@ -48,14 +28,30 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.core.streams.Pump;
-import io.vertx.core.streams.WriteStream;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
+import org.apache.commons.lang3.BooleanUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.text.StringEscapeUtils;
+import org.apache.http.ParseException;
+import org.apache.http.entity.ContentType;
+import org.bson.types.ObjectId;
 import rx.Completable;
 import rx.Observable;
 import rx.Single;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.regex.Pattern;
 
 import static io.georocket.http.Endpoint.fail;
 import static io.georocket.http.Endpoint.getEndpointPath;
