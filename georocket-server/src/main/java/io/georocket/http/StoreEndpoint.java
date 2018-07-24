@@ -103,7 +103,7 @@ public class StoreEndpoint implements Endpoint {
   /**
    * Create a new merger
    * @param ctx routing context
-   * @param {@code true} if optimistic merging is enabled
+   * @param optimisticMerging {@code true} if optimistic merging is enabled
    * @return the new merger instance
    */
   protected Merger<ChunkMeta> createMerger(RoutingContext ctx,

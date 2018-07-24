@@ -1,5 +1,14 @@
 package io.georocket.client;
 
+import com.github.tomakehurst.wiremock.client.VerificationException;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.streams.WriteStream;
+import io.vertx.ext.unit.Async;
+import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
@@ -7,20 +16,6 @@ import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
-
-import java.util.Arrays;
-import java.util.Optional;
-
-import org.junit.Test;
-import org.junit.runner.RunWith;
-
-import com.github.tomakehurst.wiremock.client.VerificationException;
-
-import io.vertx.core.buffer.Buffer;
-import io.vertx.core.streams.WriteStream;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 /**
  * Tests {@link StoreClient#startImport(String, java.util.Collection, java.util.Optional, io.vertx.core.Handler)}
@@ -121,8 +116,8 @@ public class StoreClientImportTest extends StoreClientTestBase {
             .withStatus(202)));
     
     Async async = context.async();
-    WriteStream<Buffer> w = client.getStore().startImport(null,
-        Arrays.asList("hello", "world"), context.asyncAssertSuccess(v -> {
+    WriteStream<Buffer> w = client.getStore().startImport(new ImportOptions()
+        .addTags("hello", "world"), context.asyncAssertSuccess(v -> {
       verifyPosted(url, XML, context);
       async.complete();
     }));
@@ -142,8 +137,8 @@ public class StoreClientImportTest extends StoreClientTestBase {
             .withStatus(202)));
 
     Async async = context.async();
-    WriteStream<Buffer> w = client.getStore().startImport(null, null,
-        Arrays.asList("hello:world", "key:value"), context.asyncAssertSuccess(v -> {
+    WriteStream<Buffer> w = client.getStore().startImport(new ImportOptions()
+        .addProperties("hello:world", "key:value"), context.asyncAssertSuccess(v -> {
       verifyPosted(url, XML, context);
       async.complete();
     }));
@@ -163,8 +158,8 @@ public class StoreClientImportTest extends StoreClientTestBase {
             .withStatus(202)));
 
     Async async = context.async();
-    WriteStream<Buffer> w = client.getStore().startImport(null,
-      Arrays.asList("testTag", "testTag2"), Arrays.asList("hello:wo\\:rld", "hallo2:world2"),
+    WriteStream<Buffer> w = client.getStore().startImport(new ImportOptions()
+        .addTags("testTag", "testTag2").addProperties("hello:wo\\:rld", "hallo2:world2"),
       context.asyncAssertSuccess(v -> {
         verifyPosted(url, XML, context);
         async.complete();
@@ -186,7 +181,7 @@ public class StoreClientImportTest extends StoreClientTestBase {
 
     Async async = context.async();
     WriteStream<Buffer> w = client.getStore()
-      .startImport(null, null, null, Optional.empty(), "test",
+      .startImport(new ImportOptions().setFallbackCRS("test"),
         context.asyncAssertSuccess(v -> {
           verifyPosted(url, XML, context);
           async.complete();
@@ -209,9 +204,9 @@ public class StoreClientImportTest extends StoreClientTestBase {
 
     Async async = context.async();
     WriteStream<Buffer> w = client.getStore()
-      .startImport(null, Arrays.asList("testTag", "testTag2"),
-        Arrays.asList("hello:wo\\:rld", "hallo2:world2"), Optional.empty(),
-        "test", context.asyncAssertSuccess(v -> {
+      .startImport(new ImportOptions().addTags("testTag", "testTag2")
+          .addProperties("hello:wo\\:rld", "hallo2:world2")
+          .setFallbackCRS("test"), context.asyncAssertSuccess(v -> {
           verifyPosted(url, XML, context);
           async.complete();
         }));
