@@ -13,7 +13,7 @@ public class SearchOptions {
 
   /**
    * Set a search query specifying which chunks to return
-   * @param query the query (may be {@link null} if all chunks should
+   * @param query the query (may be {@code null} if all chunks should
    * be returned)
    * @return a reference to this, so the API can be used fluently
    */
@@ -24,7 +24,7 @@ public class SearchOptions {
 
   /**
    * Get the search query specifying which chunks will be returned
-   * @return the query (may be {@link null} if all chunks will
+   * @return the query (may be {@code null} if all chunks will
    * be returned)
    */
   public String getQuery() {
