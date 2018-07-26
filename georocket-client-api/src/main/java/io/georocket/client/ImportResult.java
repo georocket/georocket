@@ -1,7 +1,7 @@
 package io.georocket.client;
 
 /**
- * Results returned by {@link StoreClient#startImport(ImportOptions, io.vertx.core.Handler)}
+ * Results returned by {@link StoreClient#startImport(ImportParams, io.vertx.core.Handler)}
  * when the data has been imported into GeoRocket
  * @since 1.3.0
  * @author Michel Kraemer

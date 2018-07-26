@@ -3,11 +3,11 @@ package io.georocket.client;
 import java.util.Objects;
 
 /**
- * Parameters that can be passed to {@link StoreClient#search(SearchOptions, io.vertx.core.Handler)}
+ * Parameters that can be passed to {@link StoreClient#search(SearchParams, io.vertx.core.Handler)}
  * @since 1.3.0
  * @author Michel Kraemer
  */
-public class SearchOptions {
+public class SearchParams {
   private String query;
   private String layer;
 
@@ -17,7 +17,7 @@ public class SearchOptions {
    * be returned)
    * @return a reference to this, so the API can be used fluently
    */
-  public SearchOptions setQuery(String query) {
+  public SearchParams setQuery(String query) {
     this.query = query;
     return this;
   }
@@ -37,7 +37,7 @@ public class SearchOptions {
    * searched in the root layer recursively)
    * @return a reference to this, so the API can be used fluently
    */
-  public SearchOptions setLayer(String layer) {
+  public SearchParams setLayer(String layer) {
     this.layer = layer;
     return this;
   }
@@ -59,7 +59,7 @@ public class SearchOptions {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    SearchOptions that = (SearchOptions)o;
+    SearchParams that = (SearchParams)o;
     return Objects.equals(query, that.query) &&
       Objects.equals(layer, that.layer);
   }

@@ -116,7 +116,7 @@ public class StoreClientImportTest extends StoreClientTestBase {
             .withStatus(202)));
     
     Async async = context.async();
-    WriteStream<Buffer> w = client.getStore().startImport(new ImportOptions()
+    WriteStream<Buffer> w = client.getStore().startImport(new ImportParams()
         .addTags("hello", "world"), context.asyncAssertSuccess(v -> {
       verifyPosted(url, XML, context);
       async.complete();
@@ -137,7 +137,7 @@ public class StoreClientImportTest extends StoreClientTestBase {
             .withStatus(202)));
 
     Async async = context.async();
-    WriteStream<Buffer> w = client.getStore().startImport(new ImportOptions()
+    WriteStream<Buffer> w = client.getStore().startImport(new ImportParams()
         .addProperties("hello:world", "key:value"), context.asyncAssertSuccess(v -> {
       verifyPosted(url, XML, context);
       async.complete();
@@ -158,7 +158,7 @@ public class StoreClientImportTest extends StoreClientTestBase {
             .withStatus(202)));
 
     Async async = context.async();
-    WriteStream<Buffer> w = client.getStore().startImport(new ImportOptions()
+    WriteStream<Buffer> w = client.getStore().startImport(new ImportParams()
         .addTags("testTag", "testTag2").addProperties("hello:wo\\:rld", "hallo2:world2"),
       context.asyncAssertSuccess(v -> {
         verifyPosted(url, XML, context);
@@ -181,7 +181,7 @@ public class StoreClientImportTest extends StoreClientTestBase {
 
     Async async = context.async();
     WriteStream<Buffer> w = client.getStore()
-      .startImport(new ImportOptions().setFallbackCRS("test"),
+      .startImport(new ImportParams().setFallbackCRS("test"),
         context.asyncAssertSuccess(v -> {
           verifyPosted(url, XML, context);
           async.complete();
@@ -204,7 +204,7 @@ public class StoreClientImportTest extends StoreClientTestBase {
 
     Async async = context.async();
     WriteStream<Buffer> w = client.getStore()
-      .startImport(new ImportOptions().addTags("testTag", "testTag2")
+      .startImport(new ImportParams().addTags("testTag", "testTag2")
           .addProperties("hello:wo\\:rld", "hallo2:world2")
           .setFallbackCRS("test"), context.asyncAssertSuccess(v -> {
           verifyPosted(url, XML, context);

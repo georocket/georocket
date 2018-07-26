@@ -146,7 +146,7 @@ public class StoreClient extends AbstractClient {
    * @return a {@link WriteStream} that can be used to send data
    */
   public WriteStream<Buffer> startImport(Handler<AsyncResult<Void>> handler) {
-    return startImport(new ImportOptions(), ignoreResult(handler));
+    return startImport(new ImportParams(), ignoreResult(handler));
   }
   
   /**
@@ -164,7 +164,7 @@ public class StoreClient extends AbstractClient {
    */
   public WriteStream<Buffer> startImport(String layer,
       Handler<AsyncResult<Void>> handler) {
-    return startImport(new ImportOptions().setLayer(layer), ignoreResult(handler));
+    return startImport(new ImportParams().setLayer(layer), ignoreResult(handler));
   }
   
   /**
@@ -181,12 +181,12 @@ public class StoreClient extends AbstractClient {
    * @param handler a handler that will be called when the data has been
    * imported by the GeoRocket server
    * @return a {@link WriteStream} that can be used to send data
-   * @deprecated Use {@link #startImport(ImportOptions, Handler)} instead
+   * @deprecated Use {@link #startImport(ImportParams, Handler)} instead
    */
   @Deprecated
   public WriteStream<Buffer> startImport(String layer, Collection<String> tags,
       Handler<AsyncResult<Void>> handler) {
-    return startImport(new ImportOptions()
+    return startImport(new ImportParams()
         .setLayer(layer)
         .setTags(tags),
       ignoreResult(handler));
@@ -209,12 +209,12 @@ public class StoreClient extends AbstractClient {
    * imported by the GeoRocket server
    * @return a {@link WriteStream} that can be used to send data
    * @since 1.1.0
-   * @deprecated Use {@link #startImport(ImportOptions, Handler)} instead
+   * @deprecated Use {@link #startImport(ImportParams, Handler)} instead
    */
   @Deprecated
   public WriteStream<Buffer> startImport(String layer, Collection<String> tags,
       Collection<String> properties, Handler<AsyncResult<Void>> handler) {
-    return startImport(new ImportOptions()
+    return startImport(new ImportParams()
         .setLayer(layer)
         .setTags(tags)
         .setProperties(properties),
@@ -236,12 +236,12 @@ public class StoreClient extends AbstractClient {
    * @param handler a handler that will be called when the data has been
    * imported by the GeoRocket server
    * @return a {@link WriteStream} that can be used to send data
-   * @deprecated Use {@link #startImport(ImportOptions, Handler)} instead
+   * @deprecated Use {@link #startImport(ImportParams, Handler)} instead
    */
   @Deprecated
   public WriteStream<Buffer> startImport(String layer, Collection<String> tags,
       long size, Handler<AsyncResult<Void>> handler) {
-    return startImport(new ImportOptions()
+    return startImport(new ImportParams()
         .setLayer(layer)
         .setTags(tags)
         .setSize(size),
@@ -266,12 +266,12 @@ public class StoreClient extends AbstractClient {
    * imported by the GeoRocket server
    * @return a {@link WriteStream} that can be used to send data
    * @since 1.1.0
-   * @deprecated Use {@link #startImport(ImportOptions, Handler)} instead
+   * @deprecated Use {@link #startImport(ImportParams, Handler)} instead
    */
   @Deprecated
   public WriteStream<Buffer> startImport(String layer, Collection<String> tags,
       Collection<String> properties, long size, Handler<AsyncResult<Void>> handler) {
-    return startImport(new ImportOptions()
+    return startImport(new ImportParams()
         .setLayer(layer)
         .setTags(tags)
         .setProperties(properties)
@@ -294,12 +294,12 @@ public class StoreClient extends AbstractClient {
    * @param handler a handler that will be called when the data has been
    * imported by the GeoRocket server
    * @return a {@link WriteStream} that can be used to send data
-   * @deprecated Use {@link #startImport(ImportOptions, Handler)} instead
+   * @deprecated Use {@link #startImport(ImportParams, Handler)} instead
    */
   @Deprecated
   public WriteStream<Buffer> startImport(String layer, Collection<String> tags,
       Optional<Long> size, Handler<AsyncResult<Void>> handler) {
-    return startImport(new ImportOptions()
+    return startImport(new ImportParams()
         .setLayer(layer)
         .setTags(tags)
         .setSize(size.orElse(null)),
@@ -324,12 +324,12 @@ public class StoreClient extends AbstractClient {
    * imported by the GeoRocket server
    * @return a {@link WriteStream} that can be used to send data
    * @since 1.1.0
-   * @deprecated Use {@link #startImport(ImportOptions, Handler)} instead
+   * @deprecated Use {@link #startImport(ImportParams, Handler)} instead
    */
   @Deprecated
   public WriteStream<Buffer> startImport(String layer, Collection<String> tags,
       Collection<String> properties, Optional<Long> size, Handler<AsyncResult<Void>> handler) {
-    return startImport(new ImportOptions()
+    return startImport(new ImportParams()
         .setLayer(layer)
         .setTags(tags)
         .setProperties(properties)
@@ -357,13 +357,13 @@ public class StoreClient extends AbstractClient {
    * imported by the GeoRocket server
    * @return a {@link WriteStream} that can be used to send data
    * @since 1.1.0
-   * @deprecated Use {@link #startImport(ImportOptions, Handler)} instead
+   * @deprecated Use {@link #startImport(ImportParams, Handler)} instead
    */
   @Deprecated
   public WriteStream<Buffer> startImport(String layer, Collection<String> tags,
       Collection<String> properties, Optional<Long> size,
       String fallbackCRS, Handler<AsyncResult<Void>> handler) {
-    return startImport(new ImportOptions()
+    return startImport(new ImportParams()
         .setLayer(layer)
         .setTags(tags)
         .setProperties(properties)
@@ -385,10 +385,10 @@ public class StoreClient extends AbstractClient {
    * @return a {@link WriteStream} that can be used to send data
    * @since 1.3.0
    */
-  public WriteStream<Buffer> startImport(ImportOptions options,
+  public WriteStream<Buffer> startImport(ImportParams options,
       Handler<AsyncResult<ImportResult>> handler) {
     if (options == null) {
-      options = new ImportOptions();
+      options = new ImportParams();
     }
     String path = prepareImport(options.getLayer(), options.getTags(),
         options.getProperties(), options.getFallbackCRS());
@@ -401,7 +401,7 @@ public class StoreClient extends AbstractClient {
       request.setChunked(true);
     }
 
-    if (options.getCompression() == ImportOptions.Compression.GZIP) {
+    if (options.getCompression() == ImportParams.Compression.GZIP) {
       request.putHeader("Content-Encoding", "gzip");
     }
 
@@ -434,7 +434,7 @@ public class StoreClient extends AbstractClient {
    * @param handler a handler that will receive the {@link ReadStream}
    */
   public void search(Handler<AsyncResult<ReadStream<Buffer>>> handler) {
-    search(new SearchOptions(), ar -> {
+    search(new SearchParams(), ar -> {
       if (ar.failed()) {
         handler.handle(Future.failedFuture(ar.cause()));
       } else {
@@ -456,7 +456,7 @@ public class StoreClient extends AbstractClient {
    * which the merged chunks matching the given criteria can be read
    */
   public void search(String query, Handler<AsyncResult<ReadStream<Buffer>>> handler) {
-    search(new SearchOptions().setQuery(query), ar -> {
+    search(new SearchParams().setQuery(query), ar -> {
       if (ar.failed()) {
         handler.handle(Future.failedFuture(ar.cause()));
       } else {
@@ -480,12 +480,12 @@ public class StoreClient extends AbstractClient {
    * (may be <code>null</code>)
    * @param handler a handler that will receive the {@link ReadStream} from
    * which the merged chunks matching the given criteria can be read
-   * @deprecated Use {@link #search(SearchOptions, Handler)} instead
+   * @deprecated Use {@link #search(SearchParams, Handler)} instead
    */
   @Deprecated
   public void search(String query, String layer,
       Handler<AsyncResult<ReadStream<Buffer>>> handler) {
-    search(new SearchOptions().setQuery(query).setLayer(layer), ar -> {
+    search(new SearchParams().setQuery(query).setLayer(layer), ar -> {
       if (ar.failed()) {
         handler.handle(Future.failedFuture(ar.cause()));
       } else {
@@ -497,8 +497,8 @@ public class StoreClient extends AbstractClient {
   /**
    * <p>Search the GeoRocket data store and return a {@link SearchResult}
    * containing a {@link ReadStream} of merged chunks matching the given options.</p>
-   * <p>If {@link SearchOptions#getQuery()} returns {@code null} or an empty
-   * String, all chunks from the the layer returned by {@link SearchOptions#getLayer()}
+   * <p>If {@link SearchParams#getQuery()} returns {@code null} or an empty
+   * String, all chunks from the the layer returned by {@link SearchParams#getLayer()}
    * (and all sub-layers) will be returned. If the layer is also {@code null}
    * or empty, the contents of the whole data store will be returned.</p>
    * <p>The caller is responsible for handling exceptions through
@@ -506,9 +506,9 @@ public class StoreClient extends AbstractClient {
    * @param options search parameters
    * @param handler a handler that will receive the {@link SearchResult} object
    */
-  public void search(SearchOptions options, Handler<AsyncResult<SearchResult>> handler) {
+  public void search(SearchParams options, Handler<AsyncResult<SearchResult>> handler) {
     if (options == null) {
-      options = new SearchOptions();
+      options = new SearchParams();
     }
     String query = options.getQuery();
     String layer = options.getLayer();

@@ -7,8 +7,8 @@ import de.undercouch.underline.OptionDesc;
 import de.undercouch.underline.OptionParserException;
 import de.undercouch.underline.UnknownAttributes;
 import io.georocket.client.GeoRocketClient;
-import io.georocket.client.ImportOptions;
-import io.georocket.client.ImportOptions.Compression;
+import io.georocket.client.ImportParams;
+import io.georocket.client.ImportParams.Compression;
 import io.georocket.client.ImportResult;
 import io.georocket.client.StoreClient;
 import io.georocket.util.DurationFormat;
@@ -323,7 +323,7 @@ public class ImportCommand extends AbstractGeoRocketCommand {
         }
 
         // start import
-        ImportOptions options = new ImportOptions()
+        ImportParams options = new ImportParams()
           .setLayer(layer)
           .setTags(tags)
           .setProperties(properties)

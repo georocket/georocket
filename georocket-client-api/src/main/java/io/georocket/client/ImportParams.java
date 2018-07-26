@@ -6,11 +6,11 @@ import java.util.Collection;
 import java.util.Objects;
 
 /**
- * Parameters that can be passed to {@link StoreClient#startImport(ImportOptions, io.vertx.core.Handler)}
+ * Parameters that can be passed to {@link StoreClient#startImport(ImportParams, io.vertx.core.Handler)}
  * @since 1.3.0
  * @author Michel Kraemer
  */
-public class ImportOptions {
+public class ImportParams {
   /**
    * A compression method
    */
@@ -39,7 +39,7 @@ public class ImportOptions {
    * should be imported to the root layer)
    * @return a reference to this, so the API can be used fluently
    */
-  public ImportOptions setLayer(String layer) {
+  public ImportParams setLayer(String layer) {
     this.layer = layer;
     return this;
   }
@@ -59,7 +59,7 @@ public class ImportOptions {
    * be attached)
    * @return a reference to this, so the API can be used fluently
    */
-  public ImportOptions setTags(Collection<String> tags) {
+  public ImportParams setTags(Collection<String> tags) {
     this.tags = tags;
     return this;
   }
@@ -69,7 +69,7 @@ public class ImportOptions {
    * @param tags the tags to add
    * @return a reference to this, so the API can be used fluently
    */
-  public ImportOptions addTags(Collection<String> tags) {
+  public ImportParams addTags(Collection<String> tags) {
     if (tags == null || tags.isEmpty()) {
       return this;
     }
@@ -85,7 +85,7 @@ public class ImportOptions {
    * @param tags the tags to add
    * @return a reference to this, so the API can be used fluently
    */
-  public ImportOptions addTags(String... tags) {
+  public ImportParams addTags(String... tags) {
     if (tags == null || tags.length == 0) {
       return this;
     }
@@ -101,7 +101,7 @@ public class ImportOptions {
    * @param tag the tag to add
    * @return a reference to this, so the API can be used fluently
    */
-  public ImportOptions addTag(String tag) {
+  public ImportParams addTag(String tag) {
     addTags(tag);
     return this;
   }
@@ -121,7 +121,7 @@ public class ImportOptions {
    * properties should be attached)
    * @return a reference to this, so the API can be used fluently
    */
-  public ImportOptions setProperties(Collection<String> properties) {
+  public ImportParams setProperties(Collection<String> properties) {
     this.properties = properties;
     return this;
   }
@@ -132,7 +132,7 @@ public class ImportOptions {
    * @param properties the properties to add
    * @return a reference to this, so the API can be used fluently
    */
-  public ImportOptions addProperties(Collection<String> properties) {
+  public ImportParams addProperties(Collection<String> properties) {
     if (properties == null || properties.isEmpty()) {
       return this;
     }
@@ -149,7 +149,7 @@ public class ImportOptions {
    * @param properties the properties to add
    * @return a reference to this, so the API can be used fluently
    */
-  public ImportOptions addProperties(String... properties) {
+  public ImportParams addProperties(String... properties) {
     if (properties == null || properties.length == 0) {
       return this;
     }
@@ -166,7 +166,7 @@ public class ImportOptions {
    * @param property the property to add
    * @return a reference to this, so the API can be used fluently
    */
-  public ImportOptions addProperty(String property) {
+  public ImportParams addProperty(String property) {
     addProperties(property);
     return this;
   }
@@ -188,7 +188,7 @@ public class ImportOptions {
    * if unknown)
    * @return a reference to this, so the API can be used fluently
    */
-  public ImportOptions setSize(Long size) {
+  public ImportParams setSize(Long size) {
     this.size = size;
     return this;
   }
@@ -209,7 +209,7 @@ public class ImportOptions {
    * @param fallbackCRS the CRS (may be {@code null})
    * @return a reference to this, so the API can be used fluently
    */
-  public ImportOptions setFallbackCRS(String fallbackCRS) {
+  public ImportParams setFallbackCRS(String fallbackCRS) {
     this.fallbackCRS = fallbackCRS;
     return this;
   }
@@ -226,7 +226,7 @@ public class ImportOptions {
   /**
    * Set the compression method that is applied to the data that will be
    * sent to the {@link io.vertx.core.streams.WriteStream} returned by
-   * {@link StoreClient#startImport(ImportOptions, io.vertx.core.Handler)}.
+   * {@link StoreClient#startImport(ImportParams, io.vertx.core.Handler)}.
    * The caller is responsible for compressing the data, for example by
    * wrapping the {@link io.vertx.core.streams.WriteStream} into a
    * {@link io.georocket.util.io.GzipWriteStream}.
@@ -234,7 +234,7 @@ public class ImportOptions {
    * no compression should be used)
    * @return a reference to this, so the API can be used fluently
    */
-  public ImportOptions setCompression(Compression compression) {
+  public ImportParams setCompression(Compression compression) {
     if (compression == null) {
       this.compression = Compression.NONE;
     } else {
@@ -259,7 +259,7 @@ public class ImportOptions {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    ImportOptions that = (ImportOptions)o;
+    ImportParams that = (ImportParams)o;
     return Objects.equals(layer, that.layer) &&
       Objects.equals(tags, that.tags) &&
       Objects.equals(properties, that.properties) &&
