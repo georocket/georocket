@@ -527,7 +527,7 @@ public class StoreClient extends AbstractClient {
       } else if (response.statusCode() != 200) {
         fail(response, handler);
       } else {
-        handler.handle(Future.succeededFuture(new SearchResult(response)));
+        handler.handle(Future.succeededFuture(new SearchResult(response, 0)));
       }
     });
     configureRequest(request).end();
