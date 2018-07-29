@@ -100,4 +100,28 @@ public class ExportCommandTest extends CommandTestBase<ExportCommand> {
     
     cmd.run(new String[] { "/hello/world" }, in, out);
   }
+
+  /**
+   * Test if a layer can be exported with optimistic merging
+   * @param context the test context
+   * @throws Exception if something goes wrong
+   */
+  @Test
+  public void optimisticMerging(TestContext context) throws Exception {
+    String XML = "<test></test>";
+    String url = "/store/hello/world/?optimisticMerging=true";
+    stubFor(get(urlEqualTo(url))
+      .willReturn(aResponse()
+        .withStatus(200)
+        .withBody(XML)));
+
+    Async async = context.async();
+    cmd.setEndHandler(exitCode -> {
+      context.assertEquals(0, exitCode);
+      verifyRequested(url, context);
+      async.complete();
+    });
+
+    cmd.run(new String[] { "--optimistic-merging", "/hello/world" }, in, out);
+  }
 }

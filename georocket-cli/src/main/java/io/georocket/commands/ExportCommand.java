@@ -1,13 +1,15 @@
 package io.georocket.commands;
 
+import de.undercouch.underline.InputReader;
+import de.undercouch.underline.OptionDesc;
+import de.undercouch.underline.OptionParserException;
+import de.undercouch.underline.UnknownAttributes;
+import io.georocket.client.SearchParams;
+import io.vertx.core.Handler;
+
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.List;
-
-import de.undercouch.underline.InputReader;
-import de.undercouch.underline.OptionParserException;
-import de.undercouch.underline.UnknownAttributes;
-import io.vertx.core.Handler;
 
 /**
  * Exports a layer or the whole data store
@@ -15,6 +17,7 @@ import io.vertx.core.Handler;
  */
 public class ExportCommand extends AbstractQueryCommand {
   protected String layer;
+  protected boolean optimisticMerging;
   
   /**
    * Set the absolute path to the layer to export
@@ -32,6 +35,17 @@ public class ExportCommand extends AbstractQueryCommand {
       }
     }
   }
+
+  /**
+   * Enable optimistic merging
+   * @param optimisticMerging {@code true} if optimistic merging should
+   * be enabled
+   */
+  @OptionDesc(longName = "optimistic-merging",
+      description = "enable optimistic merging")
+  public void setOptimisticMerging(boolean optimisticMerging) {
+    this.optimisticMerging = optimisticMerging;
+  }
   
   @Override
   public String getUsageName() {
@@ -46,6 +60,9 @@ public class ExportCommand extends AbstractQueryCommand {
   @Override
   public void doRun(String[] remainingArgs, InputReader in, PrintWriter out, Handler<Integer> handler)
       throws OptionParserException, IOException {
-    query(null, layer, out, handler);
+    SearchParams params = new SearchParams()
+        .setLayer(layer)
+        .setOptimisticMerging(optimisticMerging);
+    query(params, out, handler);
   }
 }

@@ -127,4 +127,29 @@ public class SearchCommandTest extends CommandTestBase<SearchCommand> {
     
     cmd.run(new String[] { "-l", "hello/world", "test" }, in, out);
   }
+
+  /**
+   * Test a query with a layer and optimistic merging
+   * @param context the test context
+   * @throws Exception if something goes wrong
+   */
+  @Test
+  public void optimisticMerging(TestContext context) throws Exception {
+    String XML = "<test></test>";
+    String url = "/store/hello/world/?search=test&optimisticMerging=true";
+    stubFor(get(urlEqualTo(url))
+      .willReturn(aResponse()
+        .withStatus(200)
+        .withBody(XML)));
+
+    Async async = context.async();
+    cmd.setEndHandler(exitCode -> {
+      context.assertEquals(0, exitCode);
+      context.assertEquals(XML, writer.toString());
+      verifyRequested(url, context);
+      async.complete();
+    });
+
+    cmd.run(new String[] { "-l", "hello/world", "--optimistic-merging", "test" }, in, out);
+  }
 }
