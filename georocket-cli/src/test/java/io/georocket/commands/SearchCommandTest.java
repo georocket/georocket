@@ -86,7 +86,7 @@ public class SearchCommandTest extends CommandTestBase<SearchCommand> {
   @Test
   public void twoTermsQuery(TestContext context) throws Exception {
     String XML = "<test></test>";
-    String url = "/store/?search=test1+test2";
+    String url = "/store/?search=test1%20test2";
     stubFor(get(urlEqualTo(url))
         .willReturn(aResponse()
             .withStatus(200)

@@ -1,5 +1,6 @@
 package io.georocket.client;
 
+import io.netty.handler.codec.http.QueryStringEncoder;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -137,6 +138,18 @@ public class AbstractClient {
    * @return the query path
    */
   protected String prepareQuery(String query, String layer) {
+    return prepareQuery(query, layer, false);
+  }
+
+  /**
+   * Prepare a query. Generate a query path for the given search query and layer.
+   * @param query the search query (may be <code>null</code>)
+   * @param layer the layer to export (may be <code>null</code>)
+   * @param optimisticMerging {@code true} if optimistic merging should be enabled
+   * @return the query path
+   */
+  protected String prepareQuery(String query, String layer,
+      boolean optimisticMerging) {
     if (layer == null || layer.isEmpty()) {
       layer = "/";
     } else {
@@ -152,12 +165,17 @@ public class AbstractClient {
       layer = "/" + layer;
     }
 
-    String urlQuery = "";
+    QueryStringEncoder encoder = new QueryStringEncoder(layer);
+
     if (query != null && !query.isEmpty()) {
-      urlQuery = "?search=" + urlencode(query);
+      encoder.addParam("search", query);
     }
 
-    return layer + urlQuery;
+    if (optimisticMerging) {
+      encoder.addParam("optimisticMerging", "true");
+    }
+
+    return encoder.toString();
   }
 
   /**

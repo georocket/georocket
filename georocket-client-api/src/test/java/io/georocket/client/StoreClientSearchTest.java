@@ -92,7 +92,7 @@ public class StoreClientSearchTest extends StoreClientTestBase {
   @Test
   public void twoTermsQuery(TestContext context) {
     String XML = "<test></test>";
-    String url = "/store/?search=test1+test2";
+    String url = "/store/?search=test1%20test2";
     stubFor(get(urlEqualTo(url))
         .willReturn(aResponse()
             .withStatus(200)
@@ -131,5 +131,21 @@ public class StoreClientSearchTest extends StoreClientTestBase {
             .withBody(XML)));
     client.getStore().search(new SearchParams().setQuery("test").setLayer("he+llo/world"),
         context.asyncAssertSuccess(assertExport(url, XML, context, context.async())));
+  }
+
+  /**
+   * Test a simple query with optimistic merging
+   * @param context the test context
+   */
+  @Test
+  public void optimisticMerging(TestContext context) {
+    String XML = "<test></test>";
+    String url = "/store/?search=test&optimisticMerging=true";
+    stubFor(get(urlEqualTo(url))
+      .willReturn(aResponse()
+        .withStatus(200)
+        .withBody(XML)));
+    client.getStore().search(new SearchParams().setQuery("test").setOptimisticMerging(true),
+      context.asyncAssertSuccess(assertExport(url, XML, context, context.async())));
   }
 }

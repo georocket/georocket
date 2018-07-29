@@ -1,12 +1,5 @@
 package io.georocket.client;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -16,6 +9,13 @@ import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.streams.ReadStream;
 import io.vertx.core.streams.WriteStream;
+
+import java.util.Collection;
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * A client connecting to the GeoRocket data store
@@ -379,29 +379,29 @@ public class StoreClient extends AbstractClient {
    * <p>The caller is responsible for closing the stream (and ending
    * the import process) through {@link WriteStream#end()} and handling
    * exceptions through {@link WriteStream#exceptionHandler(Handler)}.</p>
-   * @param options import parameters
+   * @param params import parameters
    * @param handler a handler that will be called when the data has been
    * imported by the GeoRocket server
    * @return a {@link WriteStream} that can be used to send data
    * @since 1.3.0
    */
-  public WriteStream<Buffer> startImport(ImportParams options,
+  public WriteStream<Buffer> startImport(ImportParams params,
       Handler<AsyncResult<ImportResult>> handler) {
-    if (options == null) {
-      options = new ImportParams();
+    if (params == null) {
+      params = new ImportParams();
     }
-    String path = prepareImport(options.getLayer(), options.getTags(),
-        options.getProperties(), options.getFallbackCRS());
+    String path = prepareImport(params.getLayer(), params.getTags(),
+        params.getProperties(), params.getFallbackCRS());
     HttpClientRequest request = client.post(path);
 
-    if (options.getSize() != null) {
-      request.putHeader("Content-Length", options.getSize().toString());
+    if (params.getSize() != null) {
+      request.putHeader("Content-Length", params.getSize().toString());
     } else {
       // content length is not set, therefore chunked encoding must be set
       request.setChunked(true);
     }
 
-    if (options.getCompression() == ImportParams.Compression.GZIP) {
+    if (params.getCompression() == ImportParams.Compression.GZIP) {
       request.putHeader("Content-Encoding", "gzip");
     }
 
@@ -503,22 +503,22 @@ public class StoreClient extends AbstractClient {
    * or empty, the contents of the whole data store will be returned.</p>
    * <p>The caller is responsible for handling exceptions through
    * {@link ReadStream#exceptionHandler(Handler)}.</p>
-   * @param options search parameters
+   * @param params search parameters
    * @param handler a handler that will receive the {@link SearchResult} object
    */
-  public void search(SearchParams options, Handler<AsyncResult<SearchResult>> handler) {
-    if (options == null) {
-      options = new SearchParams();
+  public void search(SearchParams params, Handler<AsyncResult<SearchResult>> handler) {
+    if (params == null) {
+      params = new SearchParams();
     }
-    String query = options.getQuery();
-    String layer = options.getLayer();
+    String query = params.getQuery();
+    String layer = params.getLayer();
     if ((query == null || query.isEmpty()) && (layer == null || layer.isEmpty())) {
       handler.handle(Future.failedFuture("No search query and no layer given. "
           + "Do you really wish to export/query the whole data store? If so, "
           + "set the layer to '/'."));
       return;
     }
-    String queryPath = prepareQuery(query, layer);
+    String queryPath = prepareQuery(query, layer, params.isOptimisticMerging());
     HttpClientRequest request = client.get(getEndpoint() + queryPath);
     request.exceptionHandler(t -> handler.handle(Future.failedFuture(t)));
     request.handler(response -> {

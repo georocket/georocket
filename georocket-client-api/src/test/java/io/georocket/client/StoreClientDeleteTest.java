@@ -86,7 +86,7 @@ public class StoreClientDeleteTest extends StoreClientTestBase {
    */
   @Test
   public void twoTermsQueryDelete(TestContext context) {
-    String url = "/store/?search=test1+test2";
+    String url = "/store/?search=test1%20test2";
     stubFor(delete(urlEqualTo(url))
         .willReturn(aResponse()
             .withStatus(204)));

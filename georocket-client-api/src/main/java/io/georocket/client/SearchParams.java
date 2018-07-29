@@ -10,6 +10,7 @@ import java.util.Objects;
 public class SearchParams {
   private String query;
   private String layer;
+  private boolean optimisticMerging;
 
   /**
    * Set a search query specifying which chunks to return
@@ -49,6 +50,43 @@ public class SearchParams {
    */
   public String getLayer() {
     return layer;
+  }
+
+  /**
+   * <p>Enable or disable optimistic merging.</p>
+   * <p>Optimistic merging can tremendously reduce search latency by
+   * immediately returning chunks as soon as they have been fetched
+   * from GeoRocket's store without initialization. This is particularly
+   * useful if the data is homogeneous. The drawback is that GeoRocket might
+   * not be able to merge chunks that do not fit to the overall search result.
+   * For example, if the store contains XML files and all chunks are
+   * homogeneous and have the same XML namespaces they can be merged perfectly
+   * with optimistic merging enabled. However, if some chunks have different
+   * namespaces, GeoRocket will not be able to merge them if the XML header
+   * of the search result has already been sent to the client.</p>
+   * <p>Chunks that cannot be merged will be ignored by GeoRocket and the
+   * operation will succeed. The number of chunks that could not be merged
+   * can be obtained with {@link SearchResult#getUnmergedChunks()}. The
+   * caller can then decide whether to repeat the query with optimistic
+   * merging disabled or not.</p>
+   * @see SearchResult#getUnmergedChunks()
+   * @param optimisticMerging {@code true} if optimistic merging should be
+   * enabled, {@code false} otherwise.
+   * @return a reference to this, so the API can be used fluently
+   */
+  public SearchParams setOptimisticMerging(boolean optimisticMerging) {
+    this.optimisticMerging = optimisticMerging;
+    return this;
+  }
+
+  /**
+   * Get whether optimistic merging is enabled or not. See
+   * {@link #setOptimisticMerging(boolean)}.
+   * @return {@code true} if optimistic merging is enabled, {@code false}
+   * otherwise.
+   */
+  public boolean isOptimisticMerging() {
+    return optimisticMerging;
   }
 
   @Override

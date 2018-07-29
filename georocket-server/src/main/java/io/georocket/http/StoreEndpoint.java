@@ -175,9 +175,9 @@ public class StoreEndpoint implements Endpoint {
         if (notaccepted > 0) {
           log.warn("Could not merge " + notaccepted + " chunks "
               + "because the merger did not accept them. Most likely "
-              + "these are new chunks that were added while the "
-              + "merge was in progress or those that were ignored "
-              + "during match optimistic merging. If this worries you, "
+              + "these are new chunks that were added while "
+              + "merging was in progress or those that were ignored "
+              + "during optimistic merging. If this worries you, "
               + "just repeat the request.");
         }
         if (trailersAllowed) {
