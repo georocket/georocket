@@ -1,25 +1,14 @@
 package io.georocket.index.elasticsearch;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
-import static com.github.tomakehurst.wiremock.client.WireMock.configureFor;
-import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
-import static com.github.tomakehurst.wiremock.client.WireMock.equalToJson;
-import static com.github.tomakehurst.wiremock.client.WireMock.head;
-import static com.github.tomakehurst.wiremock.client.WireMock.headRequestedFor;
-import static com.github.tomakehurst.wiremock.client.WireMock.post;
-import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
-import static com.github.tomakehurst.wiremock.client.WireMock.put;
-import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
-import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
-import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
-import static com.github.tomakehurst.wiremock.client.WireMock.verify;
-import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options;
-
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
+import com.github.tomakehurst.wiremock.junit.WireMockRule;
+import com.github.tomakehurst.wiremock.stubbing.StubMapping;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.unit.Async;
+import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.RunTestOnContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.rxjava.core.Vertx;
 import org.jooq.lambda.tuple.Tuple;
 import org.jooq.lambda.tuple.Tuple2;
 import org.junit.After;
@@ -28,16 +17,27 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import com.github.tomakehurst.wiremock.junit.WireMockRule;
-import com.github.tomakehurst.wiremock.stubbing.StubMapping;
+import java.net.URI;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.RunTestOnContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
-import io.vertx.rxjava.core.Vertx;
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalToJson;
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.head;
+import static com.github.tomakehurst.wiremock.client.WireMock.headRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.post;
+import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.put;
+import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options;
 
 /**
  * Test for {@link RemoteElasticsearchClient}
@@ -92,17 +92,22 @@ public class RemoteElasticsearchClientTest {
    * Run a mock HTTP server
    */
   @Rule
-  public WireMockRule wireMockRule = new WireMockRule(options().dynamicPort(), false);
-  
+  public WireMockRule wireMockRule1 = new WireMockRule(options().dynamicPort(), false);
+
+  /**
+   * Run another mock HTTP server
+   */
+  @Rule
+  public WireMockRule wireMockRule2 = new WireMockRule(options().dynamicPort(), false);
+
   /**
    * Create the Elasticsearch client
    */
   @Before
   public void setUp() {
-    configureFor("localhost", wireMockRule.port());
     List<URI> hosts = Collections.singletonList(URI.create("http://localhost:"
-        + wireMockRule.port()));
-    client = new RemoteElasticsearchClient(hosts, INDEX, new Vertx(rule.vertx()));
+        + wireMockRule1.port()));
+    client = new RemoteElasticsearchClient(hosts, INDEX, null, new Vertx(rule.vertx()));
   }
   
   /**
@@ -120,7 +125,7 @@ public class RemoteElasticsearchClientTest {
    */
   @Test
   public void indexExistsFalse(TestContext context) {
-    stubFor(head(urlEqualTo("/" + INDEX))
+    wireMockRule1.stubFor(head(urlEqualTo("/" + INDEX))
         .willReturn(aResponse()
             .withStatus(404)));
     
@@ -138,7 +143,7 @@ public class RemoteElasticsearchClientTest {
    */
   @Test
   public void typeIndexExistsFalse(TestContext context) {
-    stubFor(head(urlEqualTo("/" + INDEX + "/" + TYPE))
+    wireMockRule1.stubFor(head(urlEqualTo("/" + INDEX + "/" + TYPE))
       .willReturn(aResponse()
         .withStatus(404)));
 
@@ -156,7 +161,7 @@ public class RemoteElasticsearchClientTest {
    */
   @Test
   public void indexExistsTrue(TestContext context) {
-    stubFor(head(urlEqualTo("/" + INDEX))
+    wireMockRule1.stubFor(head(urlEqualTo("/" + INDEX))
         .willReturn(aResponse()
             .withStatus(200)));
     
@@ -174,7 +179,7 @@ public class RemoteElasticsearchClientTest {
    */
   @Test
   public void typeIndexExistsTrue(TestContext context) {
-    stubFor(head(urlEqualTo("/" + INDEX + "/_mapping/" + TYPE))
+    wireMockRule1.stubFor(head(urlEqualTo("/" + INDEX + "/_mapping/" + TYPE))
       .willReturn(aResponse()
         .withStatus(200)));
 
@@ -191,7 +196,7 @@ public class RemoteElasticsearchClientTest {
    */
   @Test
   public void putMapping(TestContext context) {
-    stubFor(put(urlEqualTo("/" + INDEX + "/_mapping/" + TYPE))
+    wireMockRule1.stubFor(put(urlEqualTo("/" + INDEX + "/_mapping/" + TYPE))
       .willReturn(aResponse()
         .withStatus(200)
         .withBody(ACKNOWLEDGED.encode())));
@@ -203,7 +208,7 @@ public class RemoteElasticsearchClientTest {
 
     Async async = context.async();
     client.putMapping(TYPE, mappings).subscribe(ack -> {
-      verify(putRequestedFor(urlEqualTo("/" + INDEX + "/_mapping/" + TYPE))
+      wireMockRule1.verify(putRequestedFor(urlEqualTo("/" + INDEX + "/_mapping/" + TYPE))
         .withRequestBody(equalToJson("{\"properties\":{\"name\":{\"type\":\"text\"}}}}}")));
       context.assertTrue(ack);
       async.complete();
@@ -216,7 +221,7 @@ public class RemoteElasticsearchClientTest {
    */
   @Test
   public void createIndex(TestContext context) {
-    StubMapping settings = stubFor(put(urlEqualTo("/" + INDEX))
+    StubMapping settings = wireMockRule1.stubFor(put(urlEqualTo("/" + INDEX))
       .withRequestBody(equalTo(""))
       .willReturn(aResponse()
         .withBody(ACKNOWLEDGED.encode())
@@ -225,7 +230,7 @@ public class RemoteElasticsearchClientTest {
     Async async = context.async();
     client.createIndex().subscribe(ok -> {
       context.assertTrue(ok);
-      verify(putRequestedFor(settings.getRequest().getUrlMatcher()));
+      wireMockRule1.verify(putRequestedFor(settings.getRequest().getUrlMatcher()));
       async.complete();
     }, context::fail);
   }
@@ -236,7 +241,7 @@ public class RemoteElasticsearchClientTest {
    */
   @Test
   public void createIndexWithSettings(TestContext context) {
-    StubMapping settings = stubFor(put(urlEqualTo("/" + INDEX))
+    StubMapping settings = wireMockRule1.stubFor(put(urlEqualTo("/" + INDEX))
       .withRequestBody(equalToJson(SETTINGS_WRAPPER.encode()))
       .willReturn(aResponse()
         .withBody(ACKNOWLEDGED.encode())
@@ -245,7 +250,7 @@ public class RemoteElasticsearchClientTest {
     Async async = context.async();
     client.createIndex(SETTINGS).subscribe(ok -> {
       context.assertTrue(ok);
-      verify(putRequestedFor(settings.getRequest().getUrlMatcher()));
+      wireMockRule1.verify(putRequestedFor(settings.getRequest().getUrlMatcher()));
       async.complete();
     }, context::fail);
   }
@@ -257,8 +262,8 @@ public class RemoteElasticsearchClientTest {
   @Test
   public void bulkInsert(TestContext context) {
     String url = "/" + INDEX + "/" + TYPE + "/_bulk";
-    
-    stubFor(post(urlEqualTo(url))
+
+    wireMockRule1.stubFor(post(urlEqualTo(url))
         .willReturn(aResponse()
             .withStatus(200)
             .withBody("{}")));
@@ -269,7 +274,7 @@ public class RemoteElasticsearchClientTest {
     
     Async async = context.async();
     client.bulkInsert(TYPE, documents).subscribe(res -> {
-      verify(postRequestedFor(urlEqualTo(url))
+      wireMockRule1.verify(postRequestedFor(urlEqualTo(url))
           .withRequestBody(equalToJson("{\"index\":{\"_id\":\"A\"}}\n" + 
               "{\"name\":\"Elvis\"}\n" + 
               "{\"index\":{\"_id\":\"B\"}}\n" + 
@@ -300,14 +305,14 @@ public class RemoteElasticsearchClientTest {
    */
   @Test
   public void isRunning(TestContext context) {
-    stubFor(head(urlEqualTo("/"))
+    wireMockRule1.stubFor(head(urlEqualTo("/"))
         .willReturn(aResponse()
             .withStatus(200)));
     
     Async async = context.async();
     client.isRunning().subscribe(r -> {
       context.assertTrue(r);
-      verify(headRequestedFor(urlEqualTo("/")));
+      wireMockRule1.verify(headRequestedFor(urlEqualTo("/")));
       async.complete();
     }, context::fail);
   }
@@ -337,5 +342,83 @@ public class RemoteElasticsearchClientTest {
         + "reason: [Field name [nam.e] cannot contain '.']]";
     context.assertEquals(expected,
         client.bulkResponseGetErrorMessage(BULK_RESPONSE_ERROR));
+  }
+
+  /**
+   * Test if the client can connect to multiple hosts
+   * @param context the test context
+   */
+  @Test
+  public void multipleHosts(TestContext context) {
+    List<URI> hosts = Arrays.asList(URI.create("http://localhost:" + wireMockRule1.port()),
+        URI.create("http://localhost:" + wireMockRule2.port()));
+    client = new RemoteElasticsearchClient(hosts, INDEX, null, new Vertx(rule.vertx()));
+
+    wireMockRule1.stubFor(head(urlEqualTo("/" + INDEX))
+      .willReturn(aResponse()
+        .withStatus(200)));
+    wireMockRule2.stubFor(head(urlEqualTo("/" + INDEX))
+      .willReturn(aResponse()
+        .withStatus(404)));
+
+    Async async = context.async();
+    client.indexExists()
+      .doOnSuccess(context::assertTrue)
+      .flatMap(v -> client.indexExists())
+      .doOnSuccess(context::assertFalse)
+      .subscribe(v -> async.complete(), context::fail);
+  }
+
+  /**
+   * Test if the client can auto-detect multiple hosts
+   * @param context the test context
+   */
+  @Test
+  public void autoDetectHosts(TestContext context) {
+    List<URI> hosts = Arrays.asList(URI.create("http://localhost:" + wireMockRule1.port()));
+    client.close();
+    client = new RemoteElasticsearchClient(hosts, INDEX, Duration.ofMillis(222), new Vertx(rule.vertx()));
+
+    JsonObject nodes = new JsonObject()
+      .put("nodes", new JsonObject()
+        .put("A", new JsonObject()
+          .put("http", new JsonObject()
+            .put("publish_address", "localhost:" + wireMockRule1.port())))
+        .put("B", new JsonObject()
+          .put("http", new JsonObject()
+            .put("publish_address", "localhost:" + wireMockRule2.port()))));
+
+
+    wireMockRule1.stubFor(get(urlEqualTo("/_nodes/http"))
+      .willReturn(aResponse()
+        .withStatus(200)
+        .withBody(nodes.encode())));
+    wireMockRule2.stubFor(get(urlEqualTo("/_nodes/http"))
+      .willReturn(aResponse()
+        .withStatus(200)
+        .withBody(nodes.encode())));
+
+    wireMockRule1.stubFor(head(urlEqualTo("/" + INDEX))
+      .willReturn(aResponse()
+        .withStatus(200)));
+    wireMockRule2.stubFor(head(urlEqualTo("/" + INDEX))
+      .willReturn(aResponse()
+        .withStatus(404)));
+
+    Set<Boolean> expected = new HashSet<>();
+    expected.add(Boolean.TRUE);
+    expected.add(Boolean.FALSE);
+    Async async = context.async(expected.size());
+    rule.vertx().setPeriodic(100, id -> {
+      client.indexExists()
+        .subscribe(e -> {
+          if (expected.remove(e)) {
+            if (expected.isEmpty()) {
+              rule.vertx().cancelTimer(id);
+            }
+            async.countDown();
+          }
+        }, context::fail);
+    });
   }
 }

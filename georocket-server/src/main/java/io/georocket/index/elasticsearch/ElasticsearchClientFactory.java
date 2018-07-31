@@ -1,23 +1,23 @@
 package io.georocket.index.elasticsearch;
 
+import io.georocket.constants.ConfigConstants;
+import io.vertx.core.impl.NoStackTraceThrowable;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
+import io.vertx.rxjava.core.Vertx;
+import org.apache.commons.io.IOUtils;
+import rx.Single;
+
 import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-import org.apache.commons.io.IOUtils;
-
-import io.georocket.constants.ConfigConstants;
-import io.vertx.core.impl.NoStackTraceThrowable;
-import io.vertx.core.json.JsonObject;
-import io.vertx.rxjava.core.Vertx;
-import rx.Single;
 
 /**
  * A factory for {@link ElasticsearchClient} instances. Either starts an
@@ -26,7 +26,7 @@ import rx.Single;
  * @author Michel Kraemer
  */
 public class ElasticsearchClientFactory {
-  private static Logger log = LoggerFactory.getLogger(RemoteElasticsearchClient.class);
+  private static Logger log = LoggerFactory.getLogger(ElasticsearchClientFactory.class);
 
   private final Vertx vertx;
   
@@ -81,7 +81,15 @@ public class ElasticsearchClientFactory {
         .map(h -> URI.create("http://" + h))
         .collect(Collectors.toList());
 
-    ElasticsearchClient client = new RemoteElasticsearchClient(uris, indexName, vertx);
+    long autoUpdateHostsIntervalSeconds = config.getLong(
+        ConfigConstants.INDEX_ELASTICSEARCH_AUTO_UPDATE_HOSTS_INTERVAL_SECONDS, -1L);
+    Duration autoUpdateHostsInterval = null;
+    if (autoUpdateHostsIntervalSeconds > 0) {
+      autoUpdateHostsInterval = Duration.ofSeconds(autoUpdateHostsIntervalSeconds);
+    }
+
+    ElasticsearchClient client = new RemoteElasticsearchClient(uris, indexName,
+        autoUpdateHostsInterval, vertx);
     
     if (!embedded) {
       // just return the client

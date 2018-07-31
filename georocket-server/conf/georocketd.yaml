@@ -73,4 +73,5 @@ georocket:
     elasticsearch:
       embedded: true
       hosts: ["localhost:9200"]
+      autoUpdateHostsIntervalSeconds: -1
       javaOpts: "-Xms6g -Xmx6g"

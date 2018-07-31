@@ -83,6 +83,14 @@ public class LoadBalancingHttpClient {
   }
 
   /**
+   * Get a copy of the list of hosts to communicate with
+   * @return a copy of the list of hosts
+   */
+  public List<URI> getHosts() {
+    return new ArrayList<>(hosts);
+  }
+
+  /**
    * Set default HTTP client options. Must be called before {@link #setHosts(List)}.
    * @param options the options
    */

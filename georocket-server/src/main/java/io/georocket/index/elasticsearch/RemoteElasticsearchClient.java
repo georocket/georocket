@@ -5,12 +5,17 @@ import io.vertx.core.http.HttpMethod;
 import io.vertx.core.impl.NoStackTraceThrowable;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import io.vertx.rxjava.core.Vertx;
+import org.apache.commons.collections.CollectionUtils;
 import org.jooq.lambda.tuple.Tuple2;
 import rx.Completable;
 import rx.Single;
 
 import java.net.URI;
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -18,6 +23,13 @@ import java.util.List;
  * @author Michel Kraemer
  */
 public class RemoteElasticsearchClient implements ElasticsearchClient {
+  private static Logger log = LoggerFactory.getLogger(RemoteElasticsearchClient.class);
+
+  /**
+   * The vertx instance
+   */
+  private final Vertx vertx;
+
   /**
    * The index to query against
    */
@@ -27,22 +39,77 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
    * The HTTP client used to talk to Elasticsearch
    */
   private final LoadBalancingHttpClient client;
+
+  /**
+   * The ID of the periodic timer that automatically updates the hosts
+   * to connect to
+   */
+  private long autoUpdateHostsTimerId = -1;
   
   /**
    * Connect to an Elasticsearch instance
    * @param hosts the hosts to connect to
    * @param index the index to query against
+   * @param autoUpdateHostsInterval interval of a periodic timer that
+   * automatically updates the list of hosts to connect to (may be {@code null}
+   * if the list of hosts should never be updated)
    * @param vertx a Vert.x instance
    */
-  public RemoteElasticsearchClient(List<URI> hosts, String index, Vertx vertx) {
+  public RemoteElasticsearchClient(List<URI> hosts, String index,
+      Duration autoUpdateHostsInterval, Vertx vertx) {
+    this.vertx = vertx;
     this.index = index;
     client = new LoadBalancingHttpClient(vertx);
     client.setHosts(hosts);
+
+    if (autoUpdateHostsInterval != null) {
+      autoUpdateHostsTimerId = vertx.setPeriodic(
+          autoUpdateHostsInterval.toMillis(), id -> updateHosts());
+    }
   }
 
   @Override
   public void close() {
     client.close();
+    if (autoUpdateHostsTimerId != -1) {
+      vertx.cancelTimer(autoUpdateHostsTimerId);
+    }
+  }
+
+  /**
+   * Asynchronously update the list of Elasticsearch hosts
+   */
+  private void updateHosts() {
+    client.performRequest("/_nodes/http").subscribe(response -> {
+      JsonObject nodes = response.getJsonObject("nodes");
+
+      List<URI> hosts = new ArrayList<>();
+      for (String nodeId : nodes.fieldNames()) {
+        JsonObject node = nodes.getJsonObject(nodeId);
+        JsonObject http = node.getJsonObject("http");
+        if (http == null) {
+          // ignore this host. it does not have HTTP enabled
+          continue;
+        }
+
+        String publishAddress = http.getString("publish_address");
+        if (publishAddress == null) {
+          // ignore this host. it does not have a publish address
+          continue;
+        }
+
+        URI uri = URI.create("http://" + publishAddress);
+        hosts.add(uri);
+      }
+
+      if (!CollectionUtils.isEqualCollection(hosts, client.getHosts())) {
+        log.info("Updated list of Elasticsearch hosts: " + hosts);
+      }
+
+      client.setHosts(hosts);
+    }, err ->
+      log.error("Could not update list of Elasticsearch hosts", err)
+    );
   }
   
   @Override
