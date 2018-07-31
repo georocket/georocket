@@ -5,15 +5,12 @@ import io.vertx.core.http.HttpMethod;
 import io.vertx.core.impl.NoStackTraceThrowable;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 import io.vertx.rxjava.core.Vertx;
 import org.jooq.lambda.tuple.Tuple2;
 import rx.Completable;
 import rx.Single;
 
 import java.net.URI;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -21,8 +18,6 @@ import java.util.List;
  * @author Michel Kraemer
  */
 public class RemoteElasticsearchClient implements ElasticsearchClient {
-  private static Logger log = LoggerFactory.getLogger(RemoteElasticsearchClient.class);
-  
   /**
    * The index to query against
    */
@@ -35,17 +30,14 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
   
   /**
    * Connect to an Elasticsearch instance
-   * @param host the host to connect to
-   * @param port the port on which Elasticsearch is listening for HTTP
-   * requests (most likely 9200)
+   * @param hosts the hosts to connect to
    * @param index the index to query against
    * @param vertx a Vert.x instance
    */
-  public RemoteElasticsearchClient(String host, int port, String index,
-      Vertx vertx) {
+  public RemoteElasticsearchClient(List<URI> hosts, String index, Vertx vertx) {
     this.index = index;
     client = new LoadBalancingHttpClient(vertx);
-    client.setHosts(Collections.singletonList(URI.create("http://" + host + ":" + port)));
+    client.setHosts(hosts);
   }
 
   @Override
@@ -65,7 +57,11 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
       String id = e.v1;
       String source = e.v2.encode();
       JsonObject subject = new JsonObject().put("_id", id);
-      body.append("{\"index\":" + subject.encode() + "}\n" + source + "\n");
+      body.append("{\"index\":")
+          .append(subject.encode())
+          .append("}\n")
+          .append(source)
+          .append("\n");
     }
     
     return client.performRequest(HttpMethod.POST, uri, body.toString());
@@ -176,7 +172,9 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
     for (int i = 0; i < ids.size(); ++i) {
       String id = ids.getString(i);
       JsonObject subject = new JsonObject().put("_id", id);
-      body.append("{\"delete\":" + subject.encode() + "}\n");
+      body.append("{\"delete\":")
+          .append(subject.encode())
+          .append("}\n");
     }
     
     return client.performRequest(HttpMethod.POST, uri, body.toString());

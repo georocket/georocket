@@ -15,7 +15,9 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options;
 
+import java.net.URI;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.jooq.lambda.tuple.Tuple;
@@ -98,8 +100,9 @@ public class RemoteElasticsearchClientTest {
   @Before
   public void setUp() {
     configureFor("localhost", wireMockRule.port());
-    client = new RemoteElasticsearchClient("localhost", wireMockRule.port(),
-        INDEX, new Vertx(rule.vertx()));
+    List<URI> hosts = Collections.singletonList(URI.create("http://localhost:"
+        + wireMockRule.port()));
+    client = new RemoteElasticsearchClient(hosts, INDEX, new Vertx(rule.vertx()));
   }
   
   /**

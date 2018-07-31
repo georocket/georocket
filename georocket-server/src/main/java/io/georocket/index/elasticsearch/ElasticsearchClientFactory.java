@@ -1,10 +1,16 @@
 package io.georocket.index.elasticsearch;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.io.IOUtils;
 
 import io.georocket.constants.ConfigConstants;
@@ -20,6 +26,8 @@ import rx.Single;
  * @author Michel Kraemer
  */
 public class ElasticsearchClientFactory {
+  private static Logger log = LoggerFactory.getLogger(RemoteElasticsearchClient.class);
+
   private final Vertx vertx;
   
   /**
@@ -41,10 +49,39 @@ public class ElasticsearchClientFactory {
     JsonObject config = vertx.getOrCreateContext().config();
     
     boolean embedded = config.getBoolean(ConfigConstants.INDEX_ELASTICSEARCH_EMBEDDED, true);
-    String host = config.getString(ConfigConstants.INDEX_ELASTICSEARCH_HOST, "localhost");
-    int port = config.getInteger(ConfigConstants.INDEX_ELASTICSEARCH_PORT, 9200);
 
-    ElasticsearchClient client = new RemoteElasticsearchClient(host, port, indexName, vertx);
+    if (config.containsKey(ConfigConstants.INDEX_ELASTICSEARCH_HOST)) {
+      log.warn("The configuration item `" + ConfigConstants.INDEX_ELASTICSEARCH_HOST
+        + "' is deprecated and will be removed in a future release. Please use `"
+        + ConfigConstants.INDEX_ELASTICSEARCH_HOSTS + "' instead.");
+    }
+    if (config.containsKey(ConfigConstants.INDEX_ELASTICSEARCH_PORT)) {
+      log.warn("The configuration item `" + ConfigConstants.INDEX_ELASTICSEARCH_PORT
+          + "' is deprecated and will be removed in a future release. Please use `"
+          + ConfigConstants.INDEX_ELASTICSEARCH_HOSTS + "' instead.");
+    }
+
+    JsonArray hosts = config.getJsonArray(ConfigConstants.INDEX_ELASTICSEARCH_HOSTS);
+    if (hosts == null || hosts.isEmpty()) {
+      String host = config.getString(ConfigConstants.INDEX_ELASTICSEARCH_HOST, "localhost");
+      int port = config.getInteger(ConfigConstants.INDEX_ELASTICSEARCH_PORT, 9200);
+      log.warn("Configuration item `" + ConfigConstants.INDEX_ELASTICSEARCH_HOSTS
+          + "' not set. Using " + host + ":" + port);
+      hosts = new JsonArray().add(host + ":" + port);
+    }
+
+    if (embedded && hosts.size() > 1) {
+      log.warn("There are more than one Elasticsearch hosts configured in `"
+         + ConfigConstants.INDEX_ELASTICSEARCH_HOSTS + "' but embedded mode is "
+         + "enabled. Only the first host will be considered.");
+      hosts = new JsonArray().add(hosts.getString(0));
+    }
+
+    List<URI> uris = hosts.stream()
+        .map(h -> URI.create("http://" + h))
+        .collect(Collectors.toList());
+
+    ElasticsearchClient client = new RemoteElasticsearchClient(uris, indexName, vertx);
     
     if (!embedded) {
       // just return the client
@@ -82,6 +119,9 @@ public class ElasticsearchClientFactory {
       String elasticsearchInstallPath = config.getString(
               ConfigConstants.INDEX_ELASTICSEARCH_INSTALL_PATH,
               home + "/elasticsearch/" + elasticsearchVersion);
+
+      String host = uris.get(0).getHost();
+      int port = uris.get(0).getPort();
 
       // install Elasticsearch, start it and then create the client
       ElasticsearchInstaller installer = new ElasticsearchInstaller(vertx);

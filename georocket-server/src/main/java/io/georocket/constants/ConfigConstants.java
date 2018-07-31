@@ -54,6 +54,7 @@ public final class ConfigConstants {
   public static final String INDEX_ELASTICSEARCH_EMBEDDED = "georocket.index.elasticsearch.embedded";
   public static final String INDEX_ELASTICSEARCH_HOST = "georocket.index.elasticsearch.host";
   public static final String INDEX_ELASTICSEARCH_PORT = "georocket.index.elasticsearch.port";
+  public static final String INDEX_ELASTICSEARCH_HOSTS = "georocket.index.elasticsearch.hosts";
   public static final String INDEX_ELASTICSEARCH_JAVA_OPTS = "georocket.index.elasticsearch.javaOpts";
   public static final String INDEX_ELASTICSEARCH_DOWNLOAD_URL = "georocket.index.elasticsearch.downloadUrl"; // undocumented
   public static final String INDEX_ELASTICSEARCH_INSTALL_PATH = "georocket.index.elasticsearch.installPath"; // undocumented

@@ -72,6 +72,5 @@ georocket:
     # Configuration for the Elasticsearch client
     elasticsearch:
       embedded: true
-      host: localhost
-      port: 9200
+      hosts: ["localhost:9200"]
       javaOpts: "-Xms6g -Xmx6g"
