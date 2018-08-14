@@ -8,6 +8,7 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.core.streams.WriteStream;
 
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.zip.CRC32;
 import java.util.zip.Deflater;
 
@@ -32,6 +33,7 @@ public class GzipWriteStream implements WriteStream<Buffer> {
   private boolean closed;
   private int writesOutstanding;
   private int maxWrites = 1024 * 1024;
+  private AtomicLong bytesWritten = new AtomicLong();
 
   /**
    * Creates new stream that wraps around another one
@@ -42,6 +44,14 @@ public class GzipWriteStream implements WriteStream<Buffer> {
     deflater = new Deflater(Deflater.DEFAULT_COMPRESSION, true);
     crc = new CRC32();
     buf = new byte[512];
+  }
+
+  /**
+   * Get the number of compressed bytes written to the delegate stream so far
+   * @return the number of compressed bytes written
+   */
+  public long getBytesWritten() {
+    return bytesWritten.get();
   }
 
   @Override
@@ -181,6 +191,7 @@ public class GzipWriteStream implements WriteStream<Buffer> {
     int len = deflater.deflate(buf, 0, buf.length);
     if (len > 0) {
       b.appendBytes(buf, 0, len);
+      bytesWritten.addAndGet(len);
     }
   }
 

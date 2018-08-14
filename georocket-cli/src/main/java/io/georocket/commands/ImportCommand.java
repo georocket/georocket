@@ -12,6 +12,7 @@ import io.georocket.client.ImportParams.Compression;
 import io.georocket.client.ImportResult;
 import io.georocket.client.StoreClient;
 import io.georocket.util.DurationFormat;
+import io.georocket.util.SizeFormat;
 import io.georocket.util.io.GzipWriteStream;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -33,7 +34,8 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.tools.ant.DirectoryScanner;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.types.FileSet;
-import rx.Completable;
+import rx.Observable;
+import rx.Single;
 
 import java.io.File;
 import java.io.IOException;
@@ -59,6 +61,16 @@ public class ImportCommand extends AbstractGeoRocketCommand {
   protected List<String> properties;
   protected String layer;
   protected String fallbackCRS;
+
+  private static class Metrics {
+    final long bytesImported;
+    final long bytesTransferred;
+
+    Metrics(long bytesImported, long bytesTransferred) {
+      this.bytesImported = bytesImported;
+      this.bytesTransferred = bytesTransferred;
+    }
+  }
   
   /**
    * Set the patterns of the files to import
@@ -226,20 +238,22 @@ public class ImportCommand extends AbstractGeoRocketCommand {
     GeoRocketClient client = createClient();
     
     int queueSize = queue.size();
-    doImport(queue, client, vertx, exitCode -> {
-      client.close();
-      
-      if (exitCode == 0) {
+    doImport(queue, client, vertx)
+      .doAfterTerminate(client::close)
+      .subscribe(metrics -> {
         String m = "file";
         if (queueSize > 1) {
           m += "s";
         }
-        System.out.println("Successfully imported " + queueSize + " " +
-            m + " in " + DurationFormat.formatUntilNow(start));
-      }
-      
-      handler.handle(exitCode);
-    });
+        System.out.println("Successfully imported " + queueSize + " " + m);
+        System.out.println("  Total time:         " + DurationFormat.formatUntilNow(start));
+        System.out.println("  Total data size:    " + SizeFormat.format(metrics.bytesImported));
+        System.out.println("  Transferred size:   " + SizeFormat.format(metrics.bytesTransferred));
+        handler.handle(0);
+      }, err -> {
+        error(err.getMessage());
+        handler.handle(1);
+      });
   }
 
   /**
@@ -247,36 +261,33 @@ public class ImportCommand extends AbstractGeoRocketCommand {
    * @param files the files to import
    * @param client the GeoRocket client
    * @param vertx the Vert.x instance
-   * @param handler the handler to call when all files have been imported
+   * @return an observable that will emit metrics when all files have been imported
    */
-  private void doImport(Queue<String> files, GeoRocketClient client,
-      Vertx vertx, Handler<Integer> handler) {
-    // get the first file to import
-    String path = files.poll();
-    if (path == null) {
-      handler.handle(0);
-      return;
-    }
-
-    // print file name
-    System.out.print("Importing " + Paths.get(path).getFileName() + " ...");
-    if (!isDumbTerm()) {
-      System.out.println();
-    }
-
-    // import file
-    importFile(path, client, vertx)
-      .subscribe(() -> {
-        if (isDumbTerm()) {
-          System.out.println("done");
+  private Single<Metrics> doImport(Queue<String> files, GeoRocketClient client,
+      Vertx vertx) {
+    return Observable.from(files)
+      .flatMapSingle(path -> {
+        // print file name
+        System.out.print("Importing " + Paths.get(path).getFileName() + " ...");
+        if (!isDumbTerm()) {
+          System.out.println();
         }
-        // import next file in the queue
-        doImport(files, client, vertx, handler);
-      }, err -> {
-        System.out.println("error");
-        error(err.getMessage());
-        handler.handle(1);
-      });
+
+        // import file
+        return importFile(path, client, vertx)
+          .doOnSuccess(metrics -> {
+            if (isDumbTerm()) {
+              System.out.println("done");
+            }
+          })
+          .doOnError(err -> {
+            System.out.println("error");
+          });
+      }, false, 1)
+      .reduce(new Metrics(0L, 0L), (a, b) ->
+        new Metrics(a.bytesImported + b.bytesImported, a.bytesTransferred + b.bytesTransferred)
+      )
+      .toSingle();
   }
 
   private boolean isDumbTerm() {
@@ -288,9 +299,9 @@ public class ImportCommand extends AbstractGeoRocketCommand {
    * @param path path to file to import
    * @param client the GeoRocket client
    * @param vertx the Vert.x instance
-   * @return an observable that will emit when the file has been uploaded
+   * @return an observable that will emit metrics when the file has been uploaded
    */
-  protected Completable importFile(String path, GeoRocketClient client, Vertx vertx) {
+  protected Single<Metrics> importFile(String path, GeoRocketClient client, Vertx vertx) {
     // open file
     FileSystem fs = vertx.fileSystem();
     OpenOptions openOptions = new OpenOptions().setCreate(false).setWrite(false);
@@ -298,7 +309,7 @@ public class ImportCommand extends AbstractGeoRocketCommand {
       // get file size
       .flatMap(f -> fs.rxProps(path).map(props -> Pair.of(f, props.size())))
       // import file
-      .flatMapCompletable(f -> {
+      .flatMap(f -> {
         ObservableFuture<ImportResult> o = RxHelper.observableFuture();
         Handler<AsyncResult<ImportResult>> handler = o.toHandler();
         AsyncFile file = f.getLeft().getDelegate();
@@ -374,7 +385,12 @@ public class ImportCommand extends AbstractGeoRocketCommand {
           }
         });
 
-        return o.toCompletable();
+        return o.map(v -> {
+          if (alreadyCompressed) {
+            return new Metrics(size, size);
+          }
+          return new Metrics(size, ((GzipWriteStream)out).getBytesWritten());
+        }).toSingle();
     });
   }
 }
