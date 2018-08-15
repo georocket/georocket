@@ -35,6 +35,7 @@ RUN mkdir -p /data/georocket/storage && \
 # create a temporary folder for Elasticsearch ourselves
 # see https://github.com/elastic/elasticsearch/pull/27659
 RUN mkdir -p /tmp/elasticsearch
+RUN chown -R georocket:georocket /tmp/elasticsearch
 ENV ES_TMPDIR=/tmp/elasticsearch
 
 # remove x-pack-ml module
