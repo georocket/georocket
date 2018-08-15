@@ -84,7 +84,7 @@ public class ElasticsearchClientFactory {
     long autoUpdateHostsIntervalSeconds = config.getLong(
         ConfigConstants.INDEX_ELASTICSEARCH_AUTO_UPDATE_HOSTS_INTERVAL_SECONDS, -1L);
     Duration autoUpdateHostsInterval = null;
-    if (autoUpdateHostsIntervalSeconds > 0) {
+    if (!embedded && autoUpdateHostsIntervalSeconds > 0) {
       autoUpdateHostsInterval = Duration.ofSeconds(autoUpdateHostsIntervalSeconds);
     }
 
