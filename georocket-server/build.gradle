@@ -172,6 +172,10 @@ task extractElasticsearch(dependsOn: downloadElasticsearch, type: Copy) {
     // make sure 'plugins' directory exists (necessary to start Elasticsearch)
     def pluginsDir = new File(elasticsearchInstallDir, 'plugins')
     pluginsDir.mkdirs()
+
+    // make sure 'logs' directory exists
+    def logsDir = new File(elasticsearchInstallDir, 'logs')
+    logsDir.mkdirs()
 }
 
 task cleanExtractedElasticsearch(type: Delete) {

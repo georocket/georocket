@@ -32,6 +32,15 @@ RUN mkdir -p /data/georocket/storage && \
         chown -R georocket:georocket $dirs; \
     done
 
+# create a temporary folder for Elasticsearch ourselves
+# see https://github.com/elastic/elasticsearch/pull/27659
+RUN mkdir -p /tmp/elasticsearch
+ENV ES_TMPDIR=/tmp/elasticsearch
+
+# remove x-pack-ml module
+# RUN find /usr/local/georocket-server/elasticsearch/ -type d -name x-pack-ml -delete
+RUN rm -rf /usr/local/georocket-server/elasticsearch/*/modules/x-pack/x-pack-ml
+
 # configure GeoRocket
 RUN sed -i -e 's/\$GEOROCKET_HOME\/storage/\/data\/georocket\/storage/g' /usr/local/georocket-server/conf/georocketd.yaml && \
     sed -i -e 's/host: 127\.0\.0\.1/host: 0.0.0.0/' /usr/local/georocket-server/conf/georocketd.yaml
