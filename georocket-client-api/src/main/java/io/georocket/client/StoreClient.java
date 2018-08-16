@@ -520,14 +520,17 @@ public class StoreClient extends AbstractClient {
     }
     String queryPath = prepareQuery(query, layer, params.isOptimisticMerging());
     HttpClientRequest request = client.get(getEndpoint() + queryPath);
+    request.putHeader("TE", "trailers");
     request.exceptionHandler(t -> handler.handle(Future.failedFuture(t)));
     request.handler(response -> {
       if (response.statusCode() == 404) {
-        fail(response, handler, message -> new NoSuchElementException(ClientAPIException.parse(message).getMessage()));
+        fail(response, handler, message -> new NoSuchElementException(
+            ClientAPIException.parse(message).getMessage()));
       } else if (response.statusCode() != 200) {
         fail(response, handler);
       } else {
-        handler.handle(Future.succeededFuture(new SearchResult(response, 0)));
+        handler.handle(Future.succeededFuture(new SearchResult(
+            new SearchReadStream(response))));
       }
     });
     configureRequest(request).end();

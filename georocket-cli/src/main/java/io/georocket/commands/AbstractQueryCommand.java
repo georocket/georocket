@@ -2,12 +2,12 @@ package io.georocket.commands;
 
 import io.georocket.client.GeoRocketClient;
 import io.georocket.client.SearchParams;
+import io.georocket.client.SearchReadStream;
+import io.georocket.client.SearchResult;
 import io.vertx.core.Handler;
-import io.vertx.core.buffer.Buffer;
 import io.vertx.core.impl.NoStackTraceThrowable;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.core.streams.ReadStream;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -54,9 +54,28 @@ public abstract class AbstractQueryCommand extends AbstractGeoRocketCommand {
         }
         handler.handle(1);
       } else {
-        ReadStream<Buffer> r = ar.result().getResponse();
+        SearchResult sr = ar.result();
+        SearchReadStream r = sr.getResponse();
         r.handler(buf -> out.write(buf.toString("utf-8")));
-        r.endHandler(v -> {
+        r.endHandlerWithResult(srsr -> {
+          if (srsr.getUnmergedChunks() > 0) {
+            System.err.println(srsr.getUnmergedChunks() + " chunks could not " +
+              "be merged. This usually has one of the following causes:\n" +
+              "\n" +
+              "* Chunks were added to GeoRocket's store while merging was " +
+              "in progress\n" +
+              "* Optimistic merging was enabled and some chunks did not fit " +
+              "to the search\n" +
+              "  result\n");
+            if (params.isOptimisticMerging()) {
+              System.err.println("Optimistic merging was enabled. Repeat the " +
+                "request with optimistic merging\n" +
+                "disabled if you want to get all chunks.");
+            } else {
+              System.err.println("Repeat the request if you want to get all chunks.");
+            }
+          }
+
           client.close();
           handler.handle(0);
         });
