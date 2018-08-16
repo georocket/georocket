@@ -23,6 +23,11 @@ dependencies {
     compile 'org.apache.ant:ant:1.10.1'
     compile 'org.yaml:snakeyaml:1.19'
 
+    // BEGIN WORKAROUND-VERTX-2562: REMOVE THIS ONCE
+    // https://github.com/eclipse/vert.x/issues/2562 HAS BEEN RESOLVED
+    compile 'org.javassist:javassist:3.23.1-GA'
+    // END WORKAROUND-VERTX-2562
+
     testCompile 'com.github.tomakehurst:wiremock:2.12.0'
     testCompile "io.vertx:vertx-unit:$vertxVersion"
     testCompile 'org.slf4j:slf4j-jcl:1.7.25'

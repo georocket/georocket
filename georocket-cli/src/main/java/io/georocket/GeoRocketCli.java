@@ -1,17 +1,5 @@
 package io.georocket;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
-import java.util.Map;
-
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.IOUtils;
-import org.yaml.snakeyaml.Yaml;
-
 import de.undercouch.underline.CommandDesc;
 import de.undercouch.underline.CommandDescList;
 import de.undercouch.underline.InputReader;
@@ -33,6 +21,22 @@ import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
+import javassist.CannotCompileException;
+import javassist.ClassPool;
+import javassist.CtClass;
+import javassist.CtMethod;
+import javassist.NotFoundException;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
+import org.yaml.snakeyaml.Yaml;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
 
 /**
  * GeoRocket command-line interface
@@ -212,6 +216,21 @@ public class GeoRocketCli extends AbstractGeoRocketCommand {
    * @throws IOException if a stream could not be read
    */
   public static void main(String[] args) throws IOException {
+    // BEGIN WORKAROUND-VERTX-2562: REMOVE THIS ONCE
+    // https://github.com/eclipse/vert.x/issues/2562 HAS BEEN RESOLVED
+    ClassPool cp = ClassPool.getDefault();
+    try {
+      CtClass cc = cp.get("io.netty.handler.codec.http.ComposedLastHttpContent");
+      CtMethod m = cc.getDeclaredMethod("decoderResult");
+      m.insertBefore("{ if (result == null) result = io.netty.handler.codec.DecoderResult.SUCCESS; }");
+      cc.toClass();
+    } catch (NotFoundException | CannotCompileException e) {
+      System.err.println("Could not patch ComposedLastHttpContent. Optimistic " +
+        "merging will not work properly.");
+      e.printStackTrace();
+    }
+    // END WORKAROUND-VERTX-2562
+
     // start CLI
     GeoRocketCli cli = new GeoRocketCli();
     cli.setup();
