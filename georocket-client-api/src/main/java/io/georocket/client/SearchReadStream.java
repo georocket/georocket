@@ -8,7 +8,7 @@ import io.vertx.core.logging.LoggerFactory;
 import io.vertx.core.streams.ReadStream;
 
 /**
- * A read stream from which the merged chunks can be read
+ * A read stream from which merged chunks can be read
  * @since 1.3.0
  * @author Michel Kraemer
  */

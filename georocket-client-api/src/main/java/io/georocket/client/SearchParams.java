@@ -66,10 +66,10 @@ public class SearchParams {
    * of the search result has already been sent to the client.</p>
    * <p>Chunks that cannot be merged will be ignored by GeoRocket and the
    * operation will succeed. The number of chunks that could not be merged
-   * can be obtained with {@link SearchResult#getUnmergedChunks()}. The
+   * can be obtained with {@link SearchReadStreamResult#getUnmergedChunks()}. The
    * caller can then decide whether to repeat the query with optimistic
    * merging disabled or not.</p>
-   * @see SearchResult#getUnmergedChunks()
+   * @see SearchReadStreamResult#getUnmergedChunks()
    * @param optimisticMerging {@code true} if optimistic merging should be
    * enabled, {@code false} otherwise.
    * @return a reference to this, so the API can be used fluently

@@ -3,6 +3,7 @@ package io.georocket.client;
 /**
  * Results that become available after a {@link SearchReadStream} has been
  * read completely
+ * @see SearchReadStream#endHandlerWithResult(io.vertx.core.Handler)
  * @since 1.3.0
  * @author Michel Kraemer
  */
