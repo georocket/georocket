@@ -2,6 +2,7 @@ package io.georocket.index.elasticsearch;
 
 import io.georocket.util.HttpException;
 import io.georocket.util.RxUtils;
+import io.georocket.util.io.GzipWriteStream;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -36,13 +37,22 @@ import java.util.Set;
 public class LoadBalancingHttpClient {
   private static Logger log = LoggerFactory.getLogger(LoadBalancingHttpClient.class);
 
+  /**
+   * The minimum number of bytes a body must have for it to be compressed with
+   * GZIP when posting to the server. The value is smaller than the default
+   * MTU (1500 bytes) to reduce compression overhead for very small bodies that
+   * fit into one TCP packet.
+   */
+  private static final int MIN_COMPRESSED_BODY_SIZE = 1400;
+
   private final Vertx vertx;
   private int currentHost = -1;
   private List<URI> hosts = new ArrayList<>();
   private final Map<URI, HttpClient> hostsToClients = new HashMap<>();
 
   private HttpClientOptions defaultOptions = new HttpClientOptions()
-      .setKeepAlive(true);
+      .setKeepAlive(true)
+      .setTryUseCompression(true);
 
   /**
    * Constructs a new load-balancing HTTP client
@@ -154,12 +164,19 @@ public class LoadBalancingHttpClient {
     });
 
     if (body != null) {
-      req.setChunked(false);
       Buffer buf = Buffer.buffer(body);
       req.putHeader("Accept", "application/json");
       req.putHeader("Content-Type", "application/json");
-      req.putHeader("Content-Length", String.valueOf(buf.length()));
-      req.end(buf);
+      if (buf.length() >= MIN_COMPRESSED_BODY_SIZE) {
+        req.setChunked(true);
+        req.putHeader("Content-Encoding", "gzip");
+        GzipWriteStream gws = new GzipWriteStream(req.getDelegate());
+        gws.end(buf.getDelegate());
+      } else {
+        req.setChunked(false);
+        req.putHeader("Content-Length", String.valueOf(buf.length()));
+        req.end(buf);
+      }
     } else {
       req.end();
     }
