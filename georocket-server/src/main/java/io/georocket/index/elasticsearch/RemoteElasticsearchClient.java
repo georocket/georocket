@@ -1,13 +1,14 @@
 package io.georocket.index.elasticsearch;
 
 import io.georocket.util.HttpException;
+import io.vertx.core.Vertx;
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.impl.NoStackTraceThrowable;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.rxjava.core.Vertx;
 import org.apache.commons.collections.CollectionUtils;
 import org.jooq.lambda.tuple.Tuple2;
 import rx.Completable;
@@ -119,19 +120,19 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
     
     // prepare the whole body now because it's much faster to send
     // it at once instead of using HTTP chunked mode.
-    StringBuilder body = new StringBuilder();
+    Buffer body = Buffer.buffer();
     for (Tuple2<String, JsonObject> e : documents) {
       String id = e.v1;
-      String source = e.v2.encode();
+      Buffer source = e.v2.toBuffer();
       JsonObject subject = new JsonObject().put("_id", id);
-      body.append("{\"index\":")
-          .append(subject.encode())
-          .append("}\n")
-          .append(source)
-          .append("\n");
+      body.appendString("{\"index\":")
+          .appendBuffer(subject.toBuffer())
+          .appendString("}\n")
+          .appendBuffer(source)
+          .appendString("\n");
     }
     
-    return client.performRequest(HttpMethod.POST, uri, body.toString());
+    return client.performRequest(HttpMethod.POST, uri, body);
   }
   
   @Override
@@ -157,7 +158,7 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
     // sort by doc (fastest way to scroll)
     source.put("sort", new JsonArray().add("_doc"));
     
-    return client.performRequest(HttpMethod.GET, uri, source.encode());
+    return client.performRequest(HttpMethod.GET, uri, source.toBuffer());
   }
   
   @Override
@@ -168,7 +169,7 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
     source.put("scroll", timeout);
     source.put("scroll_id", scrollId);
     
-    return client.performRequest(HttpMethod.GET, uri, source.encode());
+    return client.performRequest(HttpMethod.GET, uri, source.toBuffer());
   }
   
   @Override
@@ -190,7 +191,7 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
       source.put("aggs", aggregations);
     }
     
-    return client.performRequest(HttpMethod.GET, uri, source.encode());
+    return client.performRequest(HttpMethod.GET, uri, source.toBuffer());
   }
 
   @Override
@@ -202,7 +203,7 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
       source.put("query", query);
     }
 
-    return client.performRequest(HttpMethod.GET, uri, source.encode())
+    return client.performRequest(HttpMethod.GET, uri, source.toBuffer())
       .flatMap(sr -> {
         Long l = sr.getLong("count");
         if (l == null) {
@@ -226,7 +227,7 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
       source.put("script", script);
     }
 
-    return client.performRequest(HttpMethod.POST, uri, source.encode());
+    return client.performRequest(HttpMethod.POST, uri, source.toBuffer());
   }
   
   @Override
@@ -235,16 +236,16 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
     
     // prepare the whole body now because it's much faster to send
     // it at once instead of using HTTP chunked mode.
-    StringBuilder body = new StringBuilder();
+    Buffer body = Buffer.buffer();
     for (int i = 0; i < ids.size(); ++i) {
       String id = ids.getString(i);
       JsonObject subject = new JsonObject().put("_id", id);
-      body.append("{\"delete\":")
-          .append(subject.encode())
-          .append("}\n");
+      body.appendString("{\"delete\":")
+          .appendBuffer(subject.toBuffer())
+          .appendString("}\n");
     }
     
-    return client.performRequest(HttpMethod.POST, uri, body.toString());
+    return client.performRequest(HttpMethod.POST, uri, body);
   }
   
   @Override
@@ -264,7 +265,7 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
    * was successful or <code>false</code> otherwise
    */
   private Single<Boolean> exists(String uri) {
-    return client.performRequest(HttpMethod.HEAD, uri, null)
+    return client.performRequest(HttpMethod.HEAD, uri)
       .map(o -> true)
       .onErrorResumeNext(t -> {
         if (t instanceof HttpException && ((HttpException)t).getStatusCode() == 404) {
@@ -283,8 +284,8 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
   public Single<Boolean> createIndex(JsonObject settings) {
     String uri = "/" + index;
 
-    String body = settings == null ? null :
-      new JsonObject().put("settings", settings).encode();
+    Buffer body = settings == null ? null :
+      new JsonObject().put("settings", settings).toBuffer();
 
     return client.performRequest(HttpMethod.PUT, uri, body)
         .map(res -> res.getBoolean("acknowledged", true));
@@ -317,7 +318,7 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
   @Override
   public Single<Boolean> putMapping(String type, JsonObject mapping) {
     String uri = "/" + index + "/_mapping/" + type;
-    return client.performRequest(HttpMethod.PUT, uri, mapping.encode())
+    return client.performRequest(HttpMethod.PUT, uri, mapping.toBuffer())
       .map(res -> res.getBoolean("acknowledged", true));
   }
   
@@ -357,7 +358,7 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
     if (field != null) {
       uri += "/field/" + field;
     }
-    return client.performRequest(HttpMethod.GET, uri, "");
+    return client.performRequest(HttpMethod.GET, uri);
   }
 
   @Override

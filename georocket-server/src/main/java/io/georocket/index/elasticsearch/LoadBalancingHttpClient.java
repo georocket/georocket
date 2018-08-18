@@ -6,17 +6,17 @@ import io.georocket.util.io.GzipWriteStream;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientOptions;
+import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
-import io.vertx.rxjava.core.Vertx;
-import io.vertx.rxjava.core.buffer.Buffer;
-import io.vertx.rxjava.core.http.HttpClient;
-import io.vertx.rxjava.core.http.HttpClientRequest;
 import rx.Observable;
 import rx.Single;
 
@@ -137,7 +137,7 @@ public class LoadBalancingHttpClient {
    * @return an observable emitting the parsed response body (may be
    * {@code null} if no body was received)
    */
-  private Single<JsonObject> performRequest(HttpClientRequest req, String body) {
+  private Single<JsonObject> performRequest(HttpClientRequest req, Buffer body) {
     ObservableFuture<JsonObject> observable = RxHelper.observableFuture();
     Handler<AsyncResult<JsonObject>> handler = observable.toHandler();
 
@@ -164,18 +164,17 @@ public class LoadBalancingHttpClient {
     });
 
     if (body != null) {
-      Buffer buf = Buffer.buffer(body);
       req.putHeader("Accept", "application/json");
       req.putHeader("Content-Type", "application/json");
-      if (buf.length() >= MIN_COMPRESSED_BODY_SIZE) {
+      if (body.length() >= MIN_COMPRESSED_BODY_SIZE) {
         req.setChunked(true);
         req.putHeader("Content-Encoding", "gzip");
-        GzipWriteStream gws = new GzipWriteStream(req.getDelegate());
-        gws.end(buf.getDelegate());
+        GzipWriteStream gws = new GzipWriteStream(req);
+        gws.end(body);
       } else {
         req.setChunked(false);
-        req.putHeader("Content-Length", String.valueOf(buf.length()));
-        req.end(buf);
+        req.putHeader("Content-Length", String.valueOf(body.length()));
+        req.end(body);
       }
     } else {
       req.end();
@@ -213,7 +212,7 @@ public class LoadBalancingHttpClient {
    * @return a single emitting the parsed response body (may be
    * {@code null} if no body was received)
    */
-  public Single<JsonObject> performRequest(HttpMethod method, String uri, String body) {
+  public Single<JsonObject> performRequest(HttpMethod method, String uri, Buffer body) {
     return performRequestNoRetry(method, uri, body).retryWhen(errors -> {
       Observable<Throwable> o = errors.flatMap(error -> {
         if (error instanceof HttpException) {
@@ -235,7 +234,7 @@ public class LoadBalancingHttpClient {
    * @return a single emitting the parsed response body (may be
    * {@code null} if no body was received)
    */
-  public Single<JsonObject> performRequestNoRetry(HttpMethod method, String uri, String body) {
+  public Single<JsonObject> performRequestNoRetry(HttpMethod method, String uri, Buffer body) {
     return Single.defer(() -> {
       HttpClient client = nextClient();
       HttpClientRequest req = client.request(method, uri);

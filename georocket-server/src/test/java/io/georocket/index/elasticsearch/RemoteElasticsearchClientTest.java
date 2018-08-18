@@ -8,7 +8,6 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import io.vertx.rxjava.core.Vertx;
 import org.jooq.lambda.tuple.Tuple;
 import org.jooq.lambda.tuple.Tuple2;
 import org.junit.After;
@@ -107,7 +106,7 @@ public class RemoteElasticsearchClientTest {
   public void setUp() {
     List<URI> hosts = Collections.singletonList(URI.create("http://localhost:"
         + wireMockRule1.port()));
-    client = new RemoteElasticsearchClient(hosts, INDEX, null, new Vertx(rule.vertx()));
+    client = new RemoteElasticsearchClient(hosts, INDEX, null, rule.vertx());
   }
   
   /**
@@ -352,7 +351,7 @@ public class RemoteElasticsearchClientTest {
   public void multipleHosts(TestContext context) {
     List<URI> hosts = Arrays.asList(URI.create("http://localhost:" + wireMockRule1.port()),
         URI.create("http://localhost:" + wireMockRule2.port()));
-    client = new RemoteElasticsearchClient(hosts, INDEX, null, new Vertx(rule.vertx()));
+    client = new RemoteElasticsearchClient(hosts, INDEX, null, rule.vertx());
 
     wireMockRule1.stubFor(head(urlEqualTo("/" + INDEX))
       .willReturn(aResponse()
@@ -377,7 +376,7 @@ public class RemoteElasticsearchClientTest {
   public void autoDetectHosts(TestContext context) {
     List<URI> hosts = Arrays.asList(URI.create("http://localhost:" + wireMockRule1.port()));
     client.close();
-    client = new RemoteElasticsearchClient(hosts, INDEX, Duration.ofMillis(222), new Vertx(rule.vertx()));
+    client = new RemoteElasticsearchClient(hosts, INDEX, Duration.ofMillis(222), rule.vertx());
 
     JsonObject nodes = new JsonObject()
       .put("nodes", new JsonObject()

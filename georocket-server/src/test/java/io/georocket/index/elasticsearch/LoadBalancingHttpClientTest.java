@@ -7,7 +7,6 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import io.vertx.rxjava.core.Vertx;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -70,7 +69,7 @@ public class LoadBalancingHttpClientTest {
 
   @Before
   public void setUp() {
-    client = new LoadBalancingHttpClient(new Vertx(rule.vertx()));
+    client = new LoadBalancingHttpClient(rule.vertx());
 
     wireMockRule1.stubFor(get(urlEqualTo("/"))
       .willReturn(aResponse()

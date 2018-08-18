@@ -89,7 +89,7 @@ public class ElasticsearchClientFactory {
     }
 
     ElasticsearchClient client = new RemoteElasticsearchClient(uris, indexName,
-        autoUpdateHostsInterval, vertx);
+        autoUpdateHostsInterval, vertx.getDelegate());
     
     if (!embedded) {
       // just return the client
