@@ -43,7 +43,7 @@ public class GzipWriteStream implements WriteStream<Buffer> {
     this.delegate = delegate;
     deflater = new Deflater(Deflater.DEFAULT_COMPRESSION, true);
     crc = new CRC32();
-    buf = new byte[512];
+    buf = new byte[1024 * 16 - 64 + 4]; // optimal packet size for TCP
   }
 
   /**
