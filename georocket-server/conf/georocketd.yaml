@@ -74,4 +74,5 @@ georocket:
       embedded: true
       hosts: ["localhost:9200"]
       autoUpdateHostsIntervalSeconds: -1
+      compressRequestBodies: false
       javaOpts: "-Xms6g -Xmx6g"

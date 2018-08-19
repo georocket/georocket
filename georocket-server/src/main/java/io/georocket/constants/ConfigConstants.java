@@ -56,6 +56,7 @@ public final class ConfigConstants {
   public static final String INDEX_ELASTICSEARCH_PORT = "georocket.index.elasticsearch.port";
   public static final String INDEX_ELASTICSEARCH_HOSTS = "georocket.index.elasticsearch.hosts";
   public static final String INDEX_ELASTICSEARCH_AUTO_UPDATE_HOSTS_INTERVAL_SECONDS = "georocket.index.elasticsearch.autoUpdateHostsIntervalSeconds";
+  public static final String INDEX_ELASTICSEARCH_COMPRESS_REQUEST_BODIES = "georocket.index.elasticsearch.compressRequestBodies";
   public static final String INDEX_ELASTICSEARCH_JAVA_OPTS = "georocket.index.elasticsearch.javaOpts";
   public static final String INDEX_ELASTICSEARCH_DOWNLOAD_URL = "georocket.index.elasticsearch.downloadUrl"; // undocumented
   public static final String INDEX_ELASTICSEARCH_INSTALL_PATH = "georocket.index.elasticsearch.installPath"; // undocumented
@@ -66,10 +67,10 @@ public final class ConfigConstants {
 
   public static final String DEFAULT_HOST = "127.0.0.1";
   public static final int DEFAULT_PORT = 63020;
-  
+
   public static final int DEFAULT_INDEX_MAX_BULK_SIZE = 200;
   public static final int DEFAULT_INDEX_MAX_PARALLEL_INSERTS = 5;
-  
+
   private ConfigConstants() {
     // hidden constructor
   }

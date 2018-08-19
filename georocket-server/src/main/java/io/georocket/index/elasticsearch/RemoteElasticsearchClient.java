@@ -54,13 +54,15 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
    * @param autoUpdateHostsInterval interval of a periodic timer that
    * automatically updates the list of hosts to connect to (may be {@code null}
    * if the list of hosts should never be updated)
+   * @param compressRequestBodies {@code true} if bodies of HTTP requests
+   * should be compressed with GZIP
    * @param vertx a Vert.x instance
    */
   public RemoteElasticsearchClient(List<URI> hosts, String index,
-      Duration autoUpdateHostsInterval, Vertx vertx) {
+      Duration autoUpdateHostsInterval, boolean compressRequestBodies, Vertx vertx) {
     this.vertx = vertx;
     this.index = index;
-    client = new LoadBalancingHttpClient(vertx);
+    client = new LoadBalancingHttpClient(vertx, compressRequestBodies);
     client.setHosts(hosts);
 
     if (autoUpdateHostsInterval != null) {

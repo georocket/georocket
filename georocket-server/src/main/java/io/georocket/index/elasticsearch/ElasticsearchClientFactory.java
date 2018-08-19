@@ -88,8 +88,11 @@ public class ElasticsearchClientFactory {
       autoUpdateHostsInterval = Duration.ofSeconds(autoUpdateHostsIntervalSeconds);
     }
 
+    boolean compressRequestBodies = config.getBoolean(
+      ConfigConstants.INDEX_ELASTICSEARCH_COMPRESS_REQUEST_BODIES, false);
+
     ElasticsearchClient client = new RemoteElasticsearchClient(uris, indexName,
-        autoUpdateHostsInterval, vertx.getDelegate());
+        autoUpdateHostsInterval, compressRequestBodies, vertx.getDelegate());
     
     if (!embedded) {
       // just return the client

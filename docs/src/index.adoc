@@ -1308,6 +1308,9 @@ if it should connect to an existing instance.
 | *georocket.index.elasticsearch.autoUpdateHostsIntervalSeconds* +
   _(default: -1)_
 | If this configuration item is greater than `0`, GeoRocket will regularly poll the configured Elasticsearch cluster and automatically update the list of nodes (`georocket.index.elasticsearch.hosts`). This is useful if you have a dynamic cluster with a changing number of hosts or if you do not want to specify all nodes in `georocket.index.elasticsearch.hosts` and wish GeoRocket to fill it automatically for you. For example, you may only specify the Elasticsearch master nodes and let GeoRocket discover the data nodes automatically. The configuration item specifies the update interval in seconds. A reasonable number is `300`, which equals 5 minutes. Note that this configuration item will be ignored if `georocket.index.elasticsearch.embedded` is `true`.
+| *georocket.index.elasticsearch.compressRequestBodies* +
+  _(default: false)_
+| `true` if bodies of HTTP requests sent to Elasticsearch should be compressed with GZIP. This can save bandwidth but only works if HTTP compression is enabled in Elasticsearch.
 | *georocket.index.elasticsearch.javaOpts* +
   _(optional)_
 | JVM options for the embedded Elasticsearch instance. This configuration item will only be taken into account if `georocket.index.elasticsearch.embedded` is `true`. It can be overridden through the environment variable `ES_JAVA_OPTS`. See the https://www.elastic.co/guide/en/elasticsearch/reference/current/setting-system-settings.html#jvm-options[Elasticsearch documentation] for more information about `ES_JAVA_OPTS` and reasonable values for the https://www.elastic.co/guide/en/elasticsearch/reference/master/heap-size.html[heap size].

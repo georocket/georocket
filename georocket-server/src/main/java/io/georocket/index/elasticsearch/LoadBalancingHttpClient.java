@@ -42,10 +42,12 @@ public class LoadBalancingHttpClient {
    * GZIP when posting to the server. The value is smaller than the default
    * MTU (1500 bytes) to reduce compression overhead for very small bodies that
    * fit into one TCP packet.
+   * @see #compressRequestBodies
    */
   private static final int MIN_COMPRESSED_BODY_SIZE = 1400;
 
   private final Vertx vertx;
+  private final boolean compressRequestBodies;
   private int currentHost = -1;
   private List<URI> hosts = new ArrayList<>();
   private final Map<URI, HttpClient> hostsToClients = new HashMap<>();
@@ -59,8 +61,20 @@ public class LoadBalancingHttpClient {
    * @param vertx the current Vert.x instance
    */
   public LoadBalancingHttpClient(Vertx vertx) {
-    this.vertx = vertx;
+    this(vertx, false);
   }
+
+  /**
+   * Constructs a new load-balancing HTTP client
+   * @param vertx the current Vert.x instance
+   * @param compressRequestBodies {@code true} if bodies of HTTP requests
+   * should be compressed with GZIP
+   */
+  public LoadBalancingHttpClient(Vertx vertx, boolean compressRequestBodies) {
+    this.vertx = vertx;
+    this.compressRequestBodies = compressRequestBodies;
+  }
+
 
   /**
    * Set the hosts to communicate with
@@ -166,7 +180,7 @@ public class LoadBalancingHttpClient {
     if (body != null) {
       req.putHeader("Accept", "application/json");
       req.putHeader("Content-Type", "application/json");
-      if (body.length() >= MIN_COMPRESSED_BODY_SIZE) {
+      if (compressRequestBodies && body.length() >= MIN_COMPRESSED_BODY_SIZE) {
         req.setChunked(true);
         req.putHeader("Content-Encoding", "gzip");
         GzipWriteStream gws = new GzipWriteStream(req);

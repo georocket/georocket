@@ -1,7 +1,9 @@
 package io.georocket.index.elasticsearch;
 
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpClientOptions;
+import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -15,9 +17,14 @@ import org.junit.runner.RunWith;
 
 import java.net.URI;
 import java.util.Arrays;
+import java.util.Collections;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.absent;
+import static com.github.tomakehurst.wiremock.client.WireMock.binaryEqualTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options;
 
@@ -177,6 +184,59 @@ public class LoadBalancingHttpClientTest {
     Async async = ctx.async();
     client.performRequest("/")
       .doOnSuccess(o -> ctx.assertEquals(expected2, o))
+      .subscribe(o -> async.complete());
+  }
+
+  /**
+   * Test if request bodies can be compressed
+   */
+  @Test
+  public void compressRequestBodies(TestContext ctx) {
+    client.close();
+    client = new LoadBalancingHttpClient(rule.vertx(), true);
+
+    Buffer body = Buffer.buffer();
+    for (int i = 0; i < 150; ++i) {
+      body.appendString("Hello world");
+    }
+
+    wireMockRule1.stubFor(post(urlEqualTo("/"))
+      .withHeader("Content-Encoding", equalTo("gzip"))
+      .withRequestBody(binaryEqualTo(body.getBytes()))
+      .willReturn(aResponse()
+        .withBody(expected1.encode())));
+
+    client.setHosts(Collections.singletonList(
+      URI.create("http://localhost:" + wireMockRule1.port())));
+
+    Async async = ctx.async();
+    client.performRequest(HttpMethod.POST, "/", body)
+      .doOnSuccess(o -> ctx.assertEquals(expected1, o))
+      .subscribe(o -> async.complete());
+  }
+
+  /**
+   * Make sure request bodies that are too small are not compressed
+   */
+  @Test
+  public void compressRequestBodiesMessageTooSmall(TestContext ctx) {
+    client.close();
+    client = new LoadBalancingHttpClient(rule.vertx(), true);
+
+    Buffer body = Buffer.buffer("Hello World");
+
+    wireMockRule1.stubFor(post(urlEqualTo("/"))
+      .withHeader("Content-Encoding", absent())
+      .withRequestBody(binaryEqualTo(body.getBytes()))
+      .willReturn(aResponse()
+        .withBody(expected1.encode())));
+
+    client.setHosts(Collections.singletonList(
+      URI.create("http://localhost:" + wireMockRule1.port())));
+
+    Async async = ctx.async();
+    client.performRequest(HttpMethod.POST, "/", body)
+      .doOnSuccess(o -> ctx.assertEquals(expected1, o))
       .subscribe(o -> async.complete());
   }
 }
