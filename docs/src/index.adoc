@@ -1221,6 +1221,15 @@ Store chunks in a https://www.mongodb.com/[MongoDB] database. GeoRocket uses Mon
 | The database where the chunks should be stored
 |===
 
+[NOTE]
+====
+It is possible to compress the communication between GeoRocket and MongoDB by specifying the `compressors` option as part of the connection string. The following connection string enables the fast https://google.github.io/snappy/[Snappy] compression algorithm:
+
+  mongodb://localhost:27017/?compressors=snappy
+
+This can save a lot of bandwidth since the chunks managed by GeoRocket can typically be compressed very effectively. It is recommended to enable this option all the time. See the http://mongodb.github.io/mongo-java-driver/3.6/driver/tutorials/compression/[MongoDB Java driver documentation] for more information.
+====
+
 ==== Amazon S3
 
 Store chunks in an Amazon S3 bucket. Each chunk will be written to a separate object.
