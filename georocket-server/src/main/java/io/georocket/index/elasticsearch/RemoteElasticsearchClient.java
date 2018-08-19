@@ -103,11 +103,15 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
         hosts.add(uri);
       }
 
-      if (!CollectionUtils.isEqualCollection(hosts, client.getHosts())) {
-        log.info("Updated list of Elasticsearch hosts: " + hosts);
-      }
+      if (hosts.isEmpty()) {
+        log.warn("Retrieved empty list of hosts from Elasticsearch");
+      } else {
+        if (!CollectionUtils.isEqualCollection(hosts, client.getHosts())) {
+          log.info("Updated list of Elasticsearch hosts: " + hosts);
+        }
 
-      client.setHosts(hosts);
+        client.setHosts(hosts);
+      }
     }, err ->
       log.error("Could not update list of Elasticsearch hosts", err)
     );
