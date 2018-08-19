@@ -57,9 +57,12 @@ dependencies {
         exclude group: 'javax.servlet', module: 'servlet-api'
     }
     compile 'org.jooq:jool:0.9.12'
+    compile 'org.yaml:snakeyaml:1.19'
+
+    // mongodb driver + snappy compression
     compile 'org.mongodb:bson:3.6.1'
     compile 'org.mongodb:mongodb-driver-async:3.6.1'
-    compile 'org.yaml:snakeyaml:1.19'
+    compile 'org.xerial.snappy:snappy-java:1.1.4'
 
     // necessary for ALPN / HTTP/2
     runtime "io.netty:netty-tcnative-boringssl-static:2.0.7.Final"

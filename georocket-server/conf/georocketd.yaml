@@ -46,7 +46,7 @@ georocket:
 
     # Configuration for the MongoDB back-end
     mongodb:
-      connectionString: mongodb://localhost:27017
+      connectionString: mongodb://localhost:27017/?compressors=snappy
       database: georocket
 
     # Configuration for the S3 back-end
