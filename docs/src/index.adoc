@@ -1047,7 +1047,7 @@ is identical to:
     storage:
       class: io.georocket.storage.file.FileStore
 
-You may override items in your configuration file with environment variables. This is particularly useful if you are using GeoRocket inside a https://hub.docker.com/r/georocket/georocket/[Docker container]. The environment variables use a slightly different naming scheme. All variables are in capital letters and dots are replaced by underscores. For example, the configuration key `georocket.storage.class` becomes `GEOROCKET_STORAGE_CLASS` and `georocket.storage.mongodb.database` becomes `GEOROCKET_STORAGE_MONGODB_DATABASE`.
+You may override items in your configuration file with environment variables. This is particularly useful if you are using GeoRocket inside a https://hub.docker.com/r/georocket/georocket/[Docker container]. The environment variables use a slightly different naming scheme. All variables are in capital letters and dots are replaced by underscores. For example, the configuration key `georocket.storage.class` becomes `GEOROCKET_STORAGE_CLASS` and `georocket.storage.mongodb.database` becomes `GEOROCKET_STORAGE_MONGODB_DATABASE`. You may use YAML syntax to specify the environment variable values.
 
 === General
 

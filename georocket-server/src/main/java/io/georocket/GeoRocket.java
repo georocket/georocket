@@ -412,33 +412,11 @@ public class GeoRocket extends AbstractVerticle {
     env.forEach((key, val) -> {
       String name = names.get(key.toUpperCase());
       if (name != null) {
-        Object newVal = toJsonType(val);
+        Yaml yaml = new Yaml();
+        Object newVal = yaml.load(val);
         conf.put(name, newVal);
       }
     });
-  }
-
-  /**
-   * Parse a string into int, double, boolean or keep it as String.
-   * @param val The string to parse
-   * @return The parsed value as object.
-   */
-  private static Object toJsonType(String val) {
-    try {
-      return Integer.parseInt(val);
-    } catch (NumberFormatException ex) {
-      // ok
-    }
-    try {
-      return Double.parseDouble(val);
-    } catch (NumberFormatException ex) {
-      // ok
-    }
-    Boolean bool = BooleanUtils.toBooleanObject(val);
-    if (bool != null) {
-      return bool;
-    }
-    return val;    
   }
 
   /**
