@@ -26,7 +26,6 @@ import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.BooleanUtils;
 import org.jooq.lambda.Seq;
 import org.yaml.snakeyaml.Yaml;
 import rx.Completable;
