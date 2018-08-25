@@ -12,8 +12,9 @@ RUN adduser -D -u 1000 -h /usr/local/georocket-server georocket
 ADD georocket-server/build/install/georocket-server/elasticsearch /usr/local/georocket-server/elasticsearch
 
 # install required packages
+# (libc6-compat is required for snappy compression used by the mongodb driver)
 RUN apk update && \
-    apk add bash sed && \
+    apk add bash sed libc6-compat && \
     rm -rf /var/cache/apk/*
 
 # add GeoRocket distribution (everything except Elasticsearch)
