@@ -210,7 +210,7 @@ public class ImportCommand extends AbstractGeoRocketCommand {
       } else {
         // string contains a glob pattern
         if (roots.isEmpty()) {
-          // there are not paths in the string. start from the current
+          // there are no paths in the string. start from the current
           // working directory
           roots.add(".");
         }
@@ -266,9 +266,19 @@ public class ImportCommand extends AbstractGeoRocketCommand {
   private Single<Metrics> doImport(Queue<String> files, GeoRocketClient client,
       Vertx vertx) {
     return Observable.from(files)
-      .flatMapSingle(path -> {
+      .zipWith(Observable.range(1, Integer.MAX_VALUE), Pair::of)
+      .flatMapSingle(pair -> {
+        String path = pair.getKey();
+        Integer index = pair.getValue();
+
         // print file name
-        System.out.print("Importing " + Paths.get(path).getFileName() + " ...");
+        System.out.print("Importing " + Paths.get(path).getFileName());
+        if (files.size() > 10) {
+          System.out.print(" (" + index + "/" + files.size() + ") ...");
+        } else {
+          System.out.print(" ...");
+        }
+
         if (!isDumbTerm()) {
           System.out.println();
         }
