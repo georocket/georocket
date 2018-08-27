@@ -523,10 +523,7 @@ public class StoreEndpoint implements Endpoint {
         };
         f.exceptionHandler(errHandler);
         request.exceptionHandler(errHandler);
-        request.endHandler(v -> {
-          f.close();
-          pumpHandler.handle(Future.succeededFuture());
-        });
+        request.endHandler(v -> f.close(v2 -> pumpHandler.handle(Future.succeededFuture())));
         request.resume();
         return pumpObservable;
       })
