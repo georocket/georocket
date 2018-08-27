@@ -62,6 +62,7 @@ public class SearchReadStream implements ReadStream<Buffer> {
    * to be read, this handler will be called. The handler will receive a
    * result object with information that is only available after the stream has
    * ended.
+   * @param endHandler the handler to call
    * @return a reference to this, so the API can be used fluently
    */
   public SearchReadStream endHandlerWithResult(Handler<SearchReadStreamResult> endHandler) {
