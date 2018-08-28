@@ -188,7 +188,7 @@ public class GzipWriteStream implements WriteStream<Buffer> {
    * @param b the buffer to append the compressed data to
    */
   private void deflate(Buffer b) {
-    int len = deflater.deflate(buf, 0, buf.length);
+    int len = deflater.deflate(buf, 0, buf.length, Deflater.SYNC_FLUSH);
     if (len > 0) {
       b.appendBytes(buf, 0, len);
       bytesWritten.addAndGet(len);
