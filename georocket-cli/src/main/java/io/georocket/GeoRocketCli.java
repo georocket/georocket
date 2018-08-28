@@ -28,6 +28,7 @@ import javassist.CtMethod;
 import javassist.NotFoundException;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.fusesource.jansi.AnsiConsole;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.File;
@@ -231,6 +232,8 @@ public class GeoRocketCli extends AbstractGeoRocketCommand {
     }
     // END WORKAROUND-VERTX-2562
 
+    AnsiConsole.systemInstall();
+
     // start CLI
     GeoRocketCli cli = new GeoRocketCli();
     cli.setup();
@@ -239,11 +242,13 @@ public class GeoRocketCli extends AbstractGeoRocketCommand {
           System.out, StandardCharsets.UTF_8));
       cli.setEndHandler(exitCode -> {
         out.flush();
+        AnsiConsole.systemUninstall();
         System.exit(exitCode);
       });
       cli.run(args, new StandardInputReader(), out);
     } catch (OptionParserException e) {
       cli.error(e.getMessage());
+      AnsiConsole.systemUninstall();
       System.exit(1);
     }
   }
