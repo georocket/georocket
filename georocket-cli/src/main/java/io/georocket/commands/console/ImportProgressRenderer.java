@@ -3,6 +3,7 @@ package io.georocket.commands.console;
 import io.georocket.util.DurationFormat;
 import io.georocket.util.SizeFormat;
 import io.vertx.core.Vertx;
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.fusesource.jansi.Ansi;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
@@ -46,6 +47,11 @@ public class ImportProgressRenderer {
    * ID of the refresh timer
    */
   private final long timerId;
+
+  /**
+   * The interval of the refresh timer
+   */
+  private final long interval;
 
   /**
    * The determined terminal width
@@ -104,14 +110,9 @@ public class ImportProgressRenderer {
   private String lastRenderedOutput = "";
 
   /**
-   * The last upload rate
+   * A sliding window to calculate the mean upload rate
    */
-  private long lastRate = 0;
-
-  /**
-   * The time the upload rate was last updated
-   */
-  private long lastRateUpdated;
+  private DescriptiveStatistics rateAvg = new DescriptiveStatistics(50);
 
   /**
    * Create a new renderer
@@ -124,7 +125,7 @@ public class ImportProgressRenderer {
     this.vertx = vertx;
     this.terminalWidth = terminalWidth;
     this.startTime = System.currentTimeMillis();
-    this.lastRateUpdated = this.startTime;
+    this.interval = interval;
 
     // render once and then start periodic timer
     render(false);
@@ -189,18 +190,10 @@ public class ImportProgressRenderer {
    */
   private void render(boolean resetCursor) {
     // calculate upload rate
-    long rate;
     long currentTotalProgress = totalProgress + current;
-    if (currentTotalProgress > lastTotalProgress) {
-      long now = System.currentTimeMillis();
-      long elapsed = now - lastRateUpdated;
-      rate = (currentTotalProgress - lastTotalProgress) * 1000 / elapsed;
-      lastTotalProgress = currentTotalProgress;
-      lastRate = rate;
-      lastRateUpdated = now;
-    } else {
-      rate = lastRate;
-    }
+    rateAvg.addValue(currentTotalProgress - lastTotalProgress);
+    long rate = Math.round(rateAvg.getSum() / (rateAvg.getN() / (1000.0  / interval)));
+    lastTotalProgress = currentTotalProgress;
 
     // create first line consisting of filename and index
     StringBuilder line1 = new StringBuilder();
@@ -262,6 +255,7 @@ public class ImportProgressRenderer {
     String output = ansi.toString();
     if (!lastRenderedOutput.equals(output)) {
       System.out.print(output);
+      System.out.flush();
     }
     lastRenderedOutput = output;
   }

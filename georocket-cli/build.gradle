@@ -20,6 +20,7 @@ dependencies {
     compile 'de.undercouch:underline:1.0.0'
     compile 'net.time4j:time4j-core:4.33'
     compile 'org.apache.ant:ant:1.10.1'
+    compile 'org.apache.commons:commons-math3:3.6.1'
     compile 'org.fusesource.jansi:jansi:1.17.1'
     compile 'org.jline:jline:3.9.0'
     compile 'org.pcollections:pcollections:2.1.3'
