@@ -17,16 +17,17 @@ public class SizeFormatTest {
     assertEquals("0 B", SizeFormat.format(-1));
     assertEquals("0 B", SizeFormat.format(0));
     assertEquals("100 B", SizeFormat.format(100));
-    assertEquals("1 KB", SizeFormat.format(1024));
-    assertEquals("1.1 KB", SizeFormat.format(1024 + 100));
-    assertEquals("1.2 KB", SizeFormat.format(1024 + 200));
-    assertEquals("1.3 KB", SizeFormat.format(1024 + 260));
-    assertEquals("1 MB", SizeFormat.format(1024 * 1024));
-    assertEquals("2.5 MB", SizeFormat.format(1024 * 1024 * 2 + 1024 * 500));
-    assertEquals("1 GB", SizeFormat.format(1024 * 1024 * 1024));
-    assertEquals("1 TB", SizeFormat.format(1024L * 1024 * 1024 * 1024));
-    assertEquals("1 PB", SizeFormat.format(1024L * 1024 * 1024 * 1024 * 1024));
-    assertEquals("1 EB", SizeFormat.format(1024L * 1024 * 1024 * 1024 * 1024 * 1024));
-    assertEquals("8 EB", SizeFormat.format(Long.MAX_VALUE));
+    assertEquals("1 kB", SizeFormat.format(1000));
+    assertEquals("1 kB", SizeFormat.format(1024));
+    assertEquals("1.1 kB", SizeFormat.format(1000 + 100));
+    assertEquals("1.2 kB", SizeFormat.format(1000 + 200));
+    assertEquals("1.3 kB", SizeFormat.format(1000 + 260));
+    assertEquals("1 MB", SizeFormat.format(1000 * 1000));
+    assertEquals("2.5 MB", SizeFormat.format(1000 * 1000 * 2 + 1000 * 500));
+    assertEquals("1 GB", SizeFormat.format(1000 * 1000 * 1000));
+    assertEquals("1 TB", SizeFormat.format(1000L * 1000 * 1000 * 1000));
+    assertEquals("1 PB", SizeFormat.format(1000L * 1000 * 1000 * 1000 * 1000));
+    assertEquals("1 EB", SizeFormat.format(1000L * 1000 * 1000 * 1000 * 1000 * 1000));
+    assertEquals("9.2 EB", SizeFormat.format(Long.MAX_VALUE));
   }
 }

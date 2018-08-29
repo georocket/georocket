@@ -8,12 +8,13 @@ import java.util.Locale;
  * <p>Convert data sizes to human-readable strings. Used by all commands that
  * output sizes, so the output always looks the same.</p>
  * <p>Code has been adapted from
- * <a href="https://stackoverflow.com/questions/3263892/format-file-size-as-mb-gb-etc">https://stackoverflow.com/questions/3263892/format-file-size-as-mb-gb-etc</a>.</p>
+ * <a href="https://stackoverflow.com/questions/3263892/format-file-size-as-mb-gb-etc">https://stackoverflow.com/questions/3263892/format-file-size-as-mb-gb-etc</a>
+ * and corrected in a way that it displays correct SI units.</p>
  * @author Michel Kraemer
  */
 public class SizeFormat {
   private static final String[] UNITS = new String[] {
-    "B", "KB", "MB", "GB", "TB", "PB", "EB"
+    "B", "kB", "MB", "GB", "TB", "PB", "EB"
   };
   private static final DecimalFormat FORMATTER = new DecimalFormat("#,##0.#",
       DecimalFormatSymbols.getInstance(Locale.ENGLISH));
@@ -27,7 +28,7 @@ public class SizeFormat {
     if (size <= 0) {
       return "0 B";
     }
-    int d = (int)(Math.log10(size) / Math.log10(1024));
-    return FORMATTER.format(size / Math.pow(1024, d)) + " " + UNITS[d];
+    int d = (int)(Math.log10(size) / 3);
+    return FORMATTER.format(size / Math.pow(1000, d)) + " " + UNITS[d];
   }
 }
