@@ -134,12 +134,25 @@ public class IndexerVerticle extends AbstractVerticle {
    * number of parallel bulk inserts into Elasticsearch.
    */
   private int maxParallelInserts;
+
+  /**
+   * The maximum number of chunks the indexer queues due to backpressure before
+   * it tells the importer to pause (see {@link #queuedAddMessages}). If this
+   * happens, the indexer will later unpause the importer as soon as at least
+   * half of the queued chunks have been indexed.
+   */
+  private int maxQueuedChunks;
   
   /**
    * The number of add message currently queued due to backpressure
    * (see {@link #onAdd(List)})
    */
   private int queuedAddMessages;
+
+  /**
+   * {@code true} if the importer is currently paused due to backpressure
+   */
+  private boolean pauseImport;
   
   @Override
   public void start(Future<Void> startFuture) {
@@ -153,6 +166,8 @@ public class IndexerVerticle extends AbstractVerticle {
         ConfigConstants.DEFAULT_INDEX_MAX_BULK_SIZE);
     maxParallelInserts = config().getInteger(ConfigConstants.INDEX_MAX_PARALLEL_INSERTS,
         ConfigConstants.DEFAULT_INDEX_MAX_PARALLEL_INSERTS);
+    maxQueuedChunks = config().getInteger(ConfigConstants.INDEX_MAX_QUEUED_CHUNKS,
+        ConfigConstants.DEFAULT_INDEX_MAX_QUEUED_CHUNKS);
     
     // load and copy all indexer factories now and not lazily to avoid
     // concurrent modifications to the service loader's internal cache
@@ -226,11 +241,24 @@ public class IndexerVerticle extends AbstractVerticle {
       .toObservable()
       .doOnNext(v -> {
         queuedAddMessages++;
+
+        // pause import if necessary
+        if (queuedAddMessages > maxQueuedChunks && !pauseImport) {
+          pauseImport = true;
+          vertx.eventBus().send(AddressConstants.IMPORTER_PAUSE, pauseImport);
+        }
       })
       .buffer(BUFFER_TIMESPAN, TimeUnit.MILLISECONDS, maxBulkSize)
       .onBackpressureBuffer() // unlimited buffer
       .flatMapCompletable(messages -> {
         queuedAddMessages -= messages.size();
+
+        // resume import if possible
+        if (pauseImport && queuedAddMessages <= maxQueuedChunks / 2) {
+          pauseImport = false;
+          vertx.eventBus().send(AddressConstants.IMPORTER_PAUSE, pauseImport);
+        }
+
         return onAdd(messages)
           .onErrorComplete(err -> {
             // reply with error to all peers

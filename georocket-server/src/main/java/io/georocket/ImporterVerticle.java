@@ -27,13 +27,16 @@ import io.vertx.core.logging.LoggerFactory;
 import io.vertx.rxjava.core.AbstractVerticle;
 import io.vertx.rxjava.core.buffer.Buffer;
 import io.vertx.rxjava.core.eventbus.Message;
+import io.vertx.rxjava.core.file.AsyncFile;
 import io.vertx.rxjava.core.file.FileSystem;
 import io.vertx.rxjava.core.streams.ReadStream;
 import rx.Completable;
 import rx.Single;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -53,6 +56,8 @@ public class ImporterVerticle extends AbstractVerticle {
   
   protected RxStore store;
   private String incoming;
+  private boolean paused;
+  private Set<AsyncFile> filesBeingImported = new HashSet<>();
 
   /**
    * True if the importer should report activities to the Vert.x event bus
@@ -83,8 +88,10 @@ public class ImporterVerticle extends AbstractVerticle {
         // completely gone wrong.
         log.fatal("Could not import file", err);
       });
+
+    vertx.eventBus().localConsumer(AddressConstants.IMPORTER_PAUSE, this::onPause);
   }
-  
+
   /**
    * Receives a name of a file to import
    * @param msg the event bus message containing the filename
@@ -117,17 +124,21 @@ public class ImporterVerticle extends AbstractVerticle {
     FileSystem fs = vertx.fileSystem();
     OpenOptions openOptions = new OpenOptions().setCreate(false).setWrite(false);
     return fs.rxOpen(filepath, openOptions)
-      .flatMap(f -> importFile(contentType, f, correlationId, filename, timestamp,
-        layer, tags, properties, fallbackCRSString, contentEncoding)
-      .doAfterTerminate(() -> {
-        // delete file from 'incoming' folder
-        log.info("Deleting " + filepath + " from incoming folder");
-        f.rxClose()
-          .flatMap(v -> fs.rxDelete(filepath))
-          .subscribe(v -> {}, err -> {
-            log.error("Could not delete file from 'incoming' folder", err);
+      .flatMap(f -> {
+        filesBeingImported.add(f);
+        return importFile(contentType, f, correlationId, filename, timestamp,
+            layer, tags, properties, fallbackCRSString, contentEncoding)
+          .doAfterTerminate(() -> {
+            // delete file from 'incoming' folder
+            log.info("Deleting " + filepath + " from incoming folder");
+            filesBeingImported.remove(f);
+            f.rxClose()
+              .flatMap(v -> fs.rxDelete(filepath))
+              .subscribe(v -> {}, err -> {
+                log.error("Could not delete file from 'incoming' folder", err);
+              });
           });
-      }))
+      })
       .doOnSuccess(chunkCount -> {
         onImportingFinished(correlationId, filepath, contentType, layer, chunkCount,
            System.currentTimeMillis() - timestamp, null);
@@ -330,7 +341,32 @@ public class ImporterVerticle extends AbstractVerticle {
         .count()
         .toSingle();
   }
-  
+
+  /**
+   * Handle a pause message
+   * @param msg the message
+   */
+  private void onPause(Message<Boolean> msg) {
+    Boolean paused = msg.body();
+    if (paused == null || !paused) {
+      if (this.paused) {
+        log.info("Resuming import");
+        this.paused = false;
+        for (AsyncFile f : filesBeingImported) {
+          f.resume();
+        }
+      }
+    } else {
+      if (!this.paused) {
+        log.info("Pausing import");
+        this.paused = true;
+        for (AsyncFile f : filesBeingImported) {
+          f.pause();
+        }
+      }
+    }
+  }
+
   /**
    * Add a chunk to the store. Pause the given read stream before adding and
    * increase the given counter. Decrease the counter after the chunk has been
@@ -359,7 +395,7 @@ public class ImporterVerticle extends AbstractVerticle {
         .doOnCompleted(() -> {
           // resume stream only after all chunks from the current
           // buffer have been stored
-          if (processing.decrementAndGet() == 0) {
+          if (processing.decrementAndGet() == 0 && !paused) {
             f.resume();
           }
         });

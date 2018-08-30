@@ -51,6 +51,7 @@ public final class ConfigConstants {
   
   public static final String INDEX_MAX_BULK_SIZE = "georocket.index.maxBulkSize";
   public static final String INDEX_MAX_PARALLEL_INSERTS = "georocket.index.maxParallelInserts";
+  public static final String INDEX_MAX_QUEUED_CHUNKS = "georocket.index.maxQueuedChunks";
   public static final String INDEX_ELASTICSEARCH_EMBEDDED = "georocket.index.elasticsearch.embedded";
   public static final String INDEX_ELASTICSEARCH_HOST = "georocket.index.elasticsearch.host";
   public static final String INDEX_ELASTICSEARCH_PORT = "georocket.index.elasticsearch.port";
@@ -70,6 +71,7 @@ public final class ConfigConstants {
 
   public static final int DEFAULT_INDEX_MAX_BULK_SIZE = 200;
   public static final int DEFAULT_INDEX_MAX_PARALLEL_INSERTS = 5;
+  public static final int DEFAULT_INDEX_MAX_QUEUED_CHUNKS = 10000;
 
   private ConfigConstants() {
     // hidden constructor
