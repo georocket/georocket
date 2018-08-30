@@ -1278,6 +1278,9 @@ Store chunks in an Amazon S3 bucket. Each chunk will be written to a separate ob
 | *georocket.index.maxParallelInserts* +
   _(default: 5)_
 | The maximum number of files GeoRocket imports in parallel. If more files are sent to GeoRocket they will be put into a queue. Tweak this parameter if you experience problems with Elasticsearch or GeoRocket being too busy and occupying too many resources.
+| *georocket.index.maxQueuedChunks* +
+  _(default: 10000)_
+| The maximum number of chunks the indexer queues due to backpressure before it pauses the import. If this happens, the indexer will later unpause the import as soon as at least half of the queued chunks have been indexed. Lower this value if you are importing a large amount of data and GeoRocket uses too much memory.
 | *georocket.index.spatial.precision* +
   _(default: maximum)_
 | The desired precision for the spatial indexer in GeoRocket. The value should be a number followed by a distance unit (e.g. `1m`, `2km`, `10cm`, `1mi`). Note that the higher the precision, the more memory GeoRocket will use. Set this configuration item to a value that is reasonable for your application. The default value is the highest precision GeoRocket (or Elasticsearch) can achieve. However, this value might not work well for geometries that cover a large area such as a whole country (or even the world). Reduce the precision in such a case to save memory and to avoid crashes. +
