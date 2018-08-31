@@ -533,9 +533,12 @@ Transfer-Encoding: chunked
 ["Main Street", "Main Street", "5th Avenue", "Lake Street", ... "5th Avenue", "5th Avenue", "Lake Street", "Main Street"]
 ----
 
+[[post-file]]
 === POST file
 
 Import a file into GeoRocket. Split the file into chunks and put them into the data store.
+
+NOTE: This operation supports GZIP. Clients may upload compressed files to GeoRocket by including a `Content-Encoding` header in the request with a value of `gzip`.
 
 ===== Resource URL
 
@@ -836,6 +839,12 @@ HTTP/1.1 204 No Content
 Content-Length: 0
 ----
 
+=== Compression
+
+The GeoRocket HTTP interface supports GZIP compression. If the configuration item <<config-http-interface, `georocket.http.compress`>> is set to `true` (default), GeoRocket is able to compress responses of all operations described above. Note that this will only work if the client advertises that it understands `gzip` by sending an appropriate `Accept-Encoding` HTTP header.
+
+In addition, the <<post-file, POST file>> operation supports GZIP compression. Clients can upload compressed files to GeoRocket by including a `Content-Encoding` header in the request with a value of `gzip`.
+
 === Error responses
 
 All endpoints described above return standardised HTTP status codes. With these status codes you are able to determine if an operation was successful or not. The error codes are descriptive (see https://tools.ietf.org/html/rfc7231[RFC7231]), but sometimes more information is needed. Whenever an error occurs, GeoRocket returns a JSON object providing additional details. The JSON object always has the same structure:
@@ -1071,6 +1080,7 @@ You may override items in your configuration file with environment variables. Th
 | A coordinate reference system (CRS) that should be used by default for all queries. CRS strings should be given in the form `EPSG:<code>` (e.g.  `EPSG:25832`). See the http://www.epsg-registry.org/[EPSG registry] for more information. The default value refers to World Geodetic System 1984 (WGS 84), which is the reference coordinate system used by the Global Positioning System (GPS) based on longitude and latitude.
 |===
 
+[[config-http-interface]]
 === HTTP interface
 
 [cols="1,2"]
