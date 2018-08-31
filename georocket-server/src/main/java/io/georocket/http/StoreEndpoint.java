@@ -550,7 +550,7 @@ public class StoreEndpoint implements Endpoint {
             mimeType.equals("application/x-www-form-urlencoded")) {
           // fallback: if the client has not sent a Content-Type or if it's
           // a generic one, then try to guess it
-          log.info("Mime type '" + mimeType + "' is invalid or generic. "
+          log.debug("Mime type '" + mimeType + "' is invalid or generic. "
               + "Trying to guess the right type.");
           return detectContentType(filepath, gzip).doOnNext(guessedType -> {
             log.info("Guessed mime type '" + guessedType + "'.");
@@ -620,11 +620,11 @@ public class StoreEndpoint implements Endpoint {
   private void onReceivingFileFinished(String correlationId, long duration,
       String layer, Throwable error) {
     if (error == null) {
-      log.info(String.format("Finished receiving file [%s] to layer '%s' after '%d' ms",
-          correlationId, layer, duration));
+      log.info(String.format("Finished receiving file [%s] after '%d' ms",
+          correlationId, duration));
     } else {
-      log.error(String.format("Failed receiving file [%s] to layer '%s' after %d ms",
-          correlationId, layer, duration), error);
+      log.error(String.format("Failed receiving file [%s] after %d ms",
+          correlationId, duration), error);
     }
 
     if (reportActivities) {

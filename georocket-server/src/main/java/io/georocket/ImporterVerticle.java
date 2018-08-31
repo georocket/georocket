@@ -130,7 +130,7 @@ public class ImporterVerticle extends AbstractVerticle {
             layer, tags, properties, fallbackCRSString, contentEncoding)
           .doAfterTerminate(() -> {
             // delete file from 'incoming' folder
-            log.info("Deleting " + filepath + " from incoming folder");
+            log.debug("Deleting " + filepath + " from incoming folder");
             filesBeingImported.remove(f);
             f.rxClose()
               .flatMap(v -> fs.rxDelete(filepath))
@@ -244,7 +244,7 @@ public class ImporterVerticle extends AbstractVerticle {
       List<String> tags, Map<String, Object> properties, String fallbackCRSString,
       String contentEncoding) {
     if ("gzip".equals(contentEncoding)) {
-      log.info("Importing file compressed with GZIP");
+      log.debug("Importing file compressed with GZIP");
       f = new RxGzipReadStream(f);
     } else if (contentEncoding != null && !contentEncoding.isEmpty()) {
       log.warn("Unknown content encoding: `" + contentEncoding + "'. Trying anyway.");
