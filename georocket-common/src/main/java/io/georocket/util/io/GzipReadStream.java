@@ -97,19 +97,18 @@ public class GzipReadStream extends DelegateReadStream<Buffer> {
         }
       }
 
-      if (trailerBuffer != null) {
-        // save remaining bytes to parse the trailer
-        trailerBuffer.appendBuffer(data);
-        tryParseTrailer();
-        return;
-      }
-
       final int finalStart = start;
       final Buffer finalData = data;
       Vertx.currentContext().<Pair<Buffer, Buffer>>executeBlocking(f -> {
+        if (inflater.finished()) {
+          // inflater does not want any more data - just forward it
+          f.complete(Pair.of(null, finalData));
+          return;
+        }
+
         byte[] currentData = finalData.getBytes(finalStart, finalData.length());
         try {
-          Buffer r = Buffer.buffer();
+          Buffer r = null;
           Buffer remainingBytes = null;
           while (true) {
             int n;
@@ -137,6 +136,9 @@ public class GzipReadStream extends DelegateReadStream<Buffer> {
               break;
             }
             crc.update(buf, 0, n);
+            if (r == null) {
+              r = Buffer.buffer();
+            }
             r.appendBytes(buf, 0, n);
           }
           f.complete(Pair.of(r, remainingBytes));
@@ -159,7 +161,11 @@ public class GzipReadStream extends DelegateReadStream<Buffer> {
         // initialize trailerBuffer to collect remaining bytes if
         // inflater has finished
         if (r.getRight() != null) {
-          trailerBuffer = r.getRight();
+          if (trailerBuffer != null) {
+            trailerBuffer.appendBuffer(r.getRight());
+          } else {
+            trailerBuffer = r.getRight();
+          }
         }
 
         // try to parse trailer if we're already at the end of the file
