@@ -1,3 +1,47 @@
+<a name="1.3.0"></a>
+## [1.3.0-SNAPSHOT](https://github.com/georocket/georocket/compare/v1.2.0...master) (Upcoming)
+
+### New features:
+
+* Add low-latency optimistic merging
+* Improve query performance
+* Improve indexer performance
+* Improve scalability during import/indexing
+* Add possibility to POST compressed files (GZIP)
+* Add support for multiple Elasticsearch hosts (i.e. Elasticsearch cluster)
+* Add possibility to automatically update the list of Elasticsearch hosts
+* Return number of unmerged chunks in HTTP trailer
+* Compress communication between GeoRocket and Elasticsearch (configurable)
+* Enable snappy compression for MongoDB connection
+* Support YAML syntax in environment variables
+
+### Command-line application
+
+* Display progress while importing
+* Print metrics at the end of import process
+* Compress communication with the GeoRocket server
+* Add options to enable low-latency optimistic merging
+* Print number of unmerged chunks
+
+### Server API
+
+* Improve usability of server API
+
+### Client API
+
+* Add possibility to enable low-latency optimistic merging
+* Add API to get number of unmerged chunks
+
+### Bug fixes
+
+* Import a file only after it has been written/closed completely
+
+### Internal
+
+* Update Vert.x to 3.5.3
+* Upgrade Elasticsearch to 6.3.2
+* Reduce log output
+
 <a name="1.2.0"></a>
 ## [1.2.0](https://github.com/georocket/georocket/compare/v1.1.0...v1.2.0) (2018-07-13)
 
@@ -7,7 +51,7 @@
 * Add support for SSL/TLS and HTTP/2
 * Add support for Cross-Origin Resource Sharing (CORS)
 * Allow HTTP compression to be configured
-* Improved performance of XML splitter
+* Improve performance of XML splitter
 * Allow users to search for `gmlId` specifically
 * Add support for `gml:id` from GML 3.2
 * Upgrade embedded Elasticsearch to version 5.6.5
