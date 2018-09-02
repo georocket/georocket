@@ -40,6 +40,7 @@
 
 * Update Vert.x to 3.5.3
 * Upgrade Elasticsearch to 6.3.2
+* Upgrade Gradle Wrapper to 4.10
 * Reduce log output
 
 <a name="1.2.0"></a>

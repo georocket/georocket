@@ -125,8 +125,8 @@ distributions {
 
 // do not upload ZIP and TAR distributions to Maven repo
 configurations.archives.with {
-    artifacts.remove artifacts.find { it.archiveTask.is distTar }
-    artifacts.remove artifacts.find { it.archiveTask.is distZip }
+    artifacts.removeAll { it.file =~ 'tar' }
+    artifacts.removeAll { it.file =~ 'zip' }
 }
 
 /**
