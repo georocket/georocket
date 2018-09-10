@@ -1,24 +1,6 @@
 package io.georocket.index;
 
-import static io.georocket.util.MimeTypeUtils.belongsTo;
-import static io.georocket.util.ThrowableHelper.throwableToCode;
-import static io.georocket.util.ThrowableHelper.throwableToMessage;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import org.jooq.lambda.Seq;
-import org.jooq.lambda.tuple.Tuple;
-import org.jooq.lambda.tuple.Tuple2;
-import org.jooq.lambda.tuple.Tuple3;
-
 import com.google.common.collect.ImmutableList;
-
 import io.georocket.constants.AddressConstants;
 import io.georocket.constants.ConfigConstants;
 import io.georocket.index.elasticsearch.ElasticsearchClient;
@@ -44,6 +26,7 @@ import io.georocket.util.MapUtils;
 import io.georocket.util.RxUtils;
 import io.georocket.util.StreamEvent;
 import io.georocket.util.XMLParserTransformer;
+import io.georocket.util.io.DelegateChunkReadStream;
 import io.vertx.core.Future;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.impl.NoStackTraceThrowable;
@@ -54,11 +37,27 @@ import io.vertx.core.logging.LoggerFactory;
 import io.vertx.rx.java.RxHelper;
 import io.vertx.rxjava.core.AbstractVerticle;
 import io.vertx.rxjava.core.eventbus.Message;
+import org.jooq.lambda.Seq;
+import org.jooq.lambda.tuple.Tuple;
+import org.jooq.lambda.tuple.Tuple2;
+import org.jooq.lambda.tuple.Tuple3;
 import rx.Completable;
 import rx.Observable;
 import rx.Observable.Transformer;
 import rx.Single;
 import rx.functions.Func1;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static io.georocket.util.MimeTypeUtils.belongsTo;
+import static io.georocket.util.ThrowableHelper.throwableToCode;
+import static io.georocket.util.ThrowableHelper.throwableToMessage;
 
 /**
  * Generic methods for background indexing of any messages
@@ -503,7 +502,20 @@ public class IndexerVerticle extends AbstractVerticle {
       vertx.eventBus().publish(AddressConstants.ACTIVITIES, msg);
     }
   }
-  
+
+  /**
+   * Get a chunk from the store but first look into the cache of indexable chunks
+   * @param path the chunk's path
+   * @return the chunk
+   */
+  private Single<ChunkReadStream> getChunkFromStore(String path) {
+    Buffer chunk = IndexableChunkCache.getInstance().get(path);
+    if (chunk != null) {
+      return Single.just(new DelegateChunkReadStream(chunk));
+    }
+    return store.rxGetOne(path);
+  }
+
   /**
    * Open a chunk and convert it to an Elasticsearch document. Retry operation
    * several times before failing.
@@ -514,7 +526,7 @@ public class IndexerVerticle extends AbstractVerticle {
    */
   private Observable<Map<String, Object>> openChunkToDocument(
       String path, ChunkMeta chunkMeta, IndexMeta indexMeta) {
-    return Observable.defer(() -> store.rxGetOne(path)
+    return Observable.defer(() -> getChunkFromStore(path)
       .flatMapObservable(chunk -> {
         List<? extends IndexerFactory> factories;
         Transformer<Buffer, ? extends StreamEvent> parserTransformer;

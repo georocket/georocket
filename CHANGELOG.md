@@ -7,6 +7,7 @@
 * Improve query performance
 * Improve indexer performance
 * Improve scalability during import/indexing
+* Add cache for indexable chunks to reduce network load
 * Add possibility to POST compressed files (GZIP)
 * Add support for multiple Elasticsearch hosts (i.e. Elasticsearch cluster)
 * Add possibility to automatically update the list of Elasticsearch hosts

@@ -74,6 +74,14 @@ georocket:
     # import as soon as at least half of the queued chunks have been indexed.
     maxQueuedChunks: 10000
 
+    # After chunks have been imported into the store and before they are
+    # indexed, they are temporarily put into a cache to save bandwidth and time.
+    indexableChunkCache:
+      # The cache's maximum size in bytes (the default value equals 64 MB)
+      maxSize: 67108864
+      # The maximum number of seconds a chunk stays in the cache
+      maxTimeSeconds: 60
+
     # Configuration for the Elasticsearch client
     elasticsearch:
       embedded: true

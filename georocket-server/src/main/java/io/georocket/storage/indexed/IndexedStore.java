@@ -1,17 +1,8 @@
 package io.georocket.storage.indexed;
 
-import java.util.ArrayDeque;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Queue;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Function;
-
-import io.georocket.storage.AsyncCursor;
-import org.bson.types.ObjectId;
-
 import io.georocket.constants.AddressConstants;
+import io.georocket.index.IndexableChunkCache;
+import io.georocket.storage.AsyncCursor;
 import io.georocket.storage.ChunkMeta;
 import io.georocket.storage.IndexMeta;
 import io.georocket.storage.Store;
@@ -20,9 +11,19 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.eventbus.ReplyException;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import org.bson.types.ObjectId;
+
+import java.util.ArrayDeque;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Queue;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Function;
 
 /**
  * An abstract base class for chunk stores that are backed by an indexer
@@ -70,6 +71,8 @@ public abstract class IndexedStore implements Store {
           }
         }
 
+        // save chunk to cache and then let indexer know about it
+        IndexableChunkCache.getInstance().put(ar.result(), Buffer.buffer(chunk));
         vertx.eventBus().send(AddressConstants.INDEXER_ADD, indexMsg);
         
         // tell sender that writing was successful
