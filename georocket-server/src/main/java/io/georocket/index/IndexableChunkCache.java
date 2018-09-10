@@ -89,13 +89,24 @@ public class IndexableChunkCache {
     long chunkSize = chunk.length();
     long oldSize;
     long newSize;
-    do {
+    boolean cleanUpCalled = false;
+    while (true) {
       oldSize = size.get();
       newSize = oldSize + chunkSize;
       if (newSize > maximumSize) {
+        // make sure the chunk can be added if there were still some
+        // removal events pending
+        if (!cleanUpCalled) {
+          cleanUpCalled = true;
+          cache.cleanUp();
+          continue;
+        }
         return;
       }
-    } while (!size.compareAndSet(oldSize, newSize));
+      if (size.compareAndSet(oldSize, newSize)) {
+        break;
+      }
+    }
     cache.put(path, chunk);
   }
 

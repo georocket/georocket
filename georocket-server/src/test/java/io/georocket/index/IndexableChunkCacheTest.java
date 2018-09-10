@@ -89,4 +89,34 @@ public class IndexableChunkCacheTest {
     ctx.assertEquals(0L, c.getSize());
     ctx.assertEquals(0L, c.getNumberOfChunks());
   }
+
+  /**
+   * Test if a second chunk can be added after the first has been evicted due to
+   * timeout if the sizes of both chunks would exceed the cache's maximum size
+   * @param ctx the current test context
+   */
+  @Test
+  public void maxSizeAndTimeout(TestContext ctx) {
+    IndexableChunkCache c = new IndexableChunkCache(1024, 1);
+    String path1 = "path1";
+    String path2 = "path2";
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i < 1023; ++i) {
+      sb.append((char)('a' + (i % 26)));
+    }
+    Buffer chunk1 = Buffer.buffer(sb.toString());
+    Buffer chunk2 = Buffer.buffer(sb.toString() + "2");
+    c.put(path1, chunk1);
+    Async async = ctx.async();
+    rule.vertx().setTimer(1100, l -> {
+      ctx.assertNull(c.get(path1));
+      c.put(path2, chunk2);
+      ctx.assertEquals((long)chunk2.length(), c.getSize());
+      ctx.assertEquals(1L, c.getNumberOfChunks());
+      ctx.assertEquals(chunk2, c.get(path2));
+      ctx.assertEquals(0L, c.getSize());
+      ctx.assertEquals(0L, c.getNumberOfChunks());
+      async.complete();
+    });
+  }
 }
