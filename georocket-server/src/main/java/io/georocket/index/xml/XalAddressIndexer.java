@@ -12,18 +12,18 @@ import java.util.Map;
  * <p>Indexes XAL 2.0 addresses. Currently it supports the following structure:</p>
  *
  * <pre>
- * &lt;xal:AddressDetails>
- *   &lt;xal:Country>
- *     &lt;xal:CountryName>My Country&lt;/xal:CountryName>
- *     &lt;xal:Locality Type="Town">
- *       &lt;xal:LocalityName>My City&lt;/xal:LocalityName>
- *       &lt;xal:Thoroughfare Type="Street">
- *         &lt;xal:ThoroughfareName>My Street&lt;/xal:ThoroughfareName>
- *         &lt;xal:ThoroughfareNumber>1&lt;/xal:ThoroughfareNumber>
- *       &lt;/xal:Thoroughfare>
- *     &lt;/xal:Locality>
- *   &lt;/xal:Country>
- * &lt;/xal:AddressDetails>
+ * &lt;xal:AddressDetails&gt;
+ *   &lt;xal:Country&gt;
+ *     &lt;xal:CountryName&gt;My Country&lt;/xal:CountryName&gt;
+ *     &lt;xal:Locality Type="Town"&gt;
+ *       &lt;xal:LocalityName&gt;My City&lt;/xal:LocalityName&gt;
+ *       &lt;xal:Thoroughfare Type="Street"&gt;
+ *         &lt;xal:ThoroughfareName&gt;My Street&lt;/xal:ThoroughfareName&gt;
+ *         &lt;xal:ThoroughfareNumber&gt;1&lt;/xal:ThoroughfareNumber&gt;
+ *       &lt;/xal:Thoroughfare&gt;
+ *     &lt;/xal:Locality&gt;
+ *   &lt;/xal:Country&gt;
+ * &lt;/xal:AddressDetails&gt;
  * </pre>
  *
  * <p>The following attributes will be extracted from this structure:</p>
