@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Adress xmlns:xal="urn:oasis:names:tc:ciq:xsdschema:xAL:2.0">
+    <xal:AddressDetails>
+        <xal:Country>
+            <xal:CountryName>Germany</xal:CountryName>
+            <xal:Locality Type="Town">
+                <xal:LocalityName>Darmstadt</xal:LocalityName>
+                <xal:Thoroughfare Type="Street">
+                    <xal:ThoroughfareNumber>5</xal:ThoroughfareNumber>
+                    <xal:ThoroughfareName>Fraunhoferstraße</xal:ThoroughfareName>
+                </xal:Thoroughfare>
+            </xal:Locality>
+        </xal:Country>
+    </xal:AddressDetails>
+</Adress>
