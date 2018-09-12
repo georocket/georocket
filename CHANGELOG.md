@@ -15,6 +15,7 @@
 * Compress communication between GeoRocket and Elasticsearch (configurable)
 * Enable snappy compression for MongoDB connection
 * Support YAML syntax in environment variables
+* Log memory info on startup
 
 ### Command-line application
 

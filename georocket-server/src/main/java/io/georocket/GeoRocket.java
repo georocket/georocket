@@ -6,6 +6,7 @@ import io.georocket.index.IndexerVerticle;
 import io.georocket.index.MetadataVerticle;
 import io.georocket.util.FilteredServiceLoader;
 import io.georocket.util.JsonUtils;
+import io.georocket.util.SizeFormat;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
@@ -35,6 +36,8 @@ import rx.plugins.RxJavaHooks;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryMXBean;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
@@ -471,6 +474,13 @@ public class GeoRocket extends AbstractVerticle {
     if (logConfig) {
       log.info("Configuration:\n" + options.getConfig().encodePrettily());
     }
+
+    // log memory info
+    MemoryMXBean memoryMXBean = ManagementFactory.getMemoryMXBean();
+    long memoryInit = memoryMXBean.getHeapMemoryUsage().getInit();
+    long memoryMax = memoryMXBean.getHeapMemoryUsage().getMax();
+    log.info("Initial heap size: " + SizeFormat.format(memoryInit) +
+        ", max heap size: " + SizeFormat.format(memoryMax));
 
     // deploy main verticle
     vertx.deployVerticle(GeoRocket.class.getName(), options, ar -> {
