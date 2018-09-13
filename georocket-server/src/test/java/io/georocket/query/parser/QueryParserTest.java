@@ -298,7 +298,15 @@ public class QueryParserTest {
   public void not() {
     expectFixture("not");
   }
-  
+
+  /**
+   * Logical NOT with nested EQ
+   */
+  @Test
+  public void notEq() {
+    expectFixture("not_eq");
+  }
+
   /**
    * Query with a double-quoted string
    */

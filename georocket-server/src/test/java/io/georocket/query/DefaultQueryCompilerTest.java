@@ -131,7 +131,23 @@ public class DefaultQueryCompilerTest {
   public void lte() {
     expectFixture("lte");
   }
-  
+
+  /**
+   * Test query with logical NOT
+   */
+  @Test
+  public void not() {
+    expectFixture("not");
+  }
+
+  /**
+   * Test query with logical NOT and nested EQ
+   */
+  @Test
+  public void notEq() {
+    expectFixture("not_eq");
+  }
+
   /**
    * Test complex query
    */

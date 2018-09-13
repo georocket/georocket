@@ -70,21 +70,23 @@ public class ElasticsearchQueryOptimizer {
         }
       }
 
-      // remove bool if it has only one child
+      // remove bool if it has only one child - but keep must_not
       if (bool.size() == 1) {
         String fieldName = bool.fieldNames().iterator().next();
-        Object expr = bool.getValue(fieldName);
-        if (expr instanceof JsonObject) {
-          result = (JsonObject)expr;
-        } else if (expr instanceof JsonArray) {
-          // Merge array if there is only one item or if the current fieldName
-          // matches parentClause. In the latter case the array will be merged
-          // by the caller.
-          JsonArray arrexpr = (JsonArray)expr;
-          if (parentClause == null && arrexpr.size() == 1) {
-            result = arrexpr.getJsonObject(0);
-          } else if (parentClause != null && parentClause.equals(fieldName)) {
-            result = expr;
+        if (!"must_not".equals(fieldName)) {
+          Object expr = bool.getValue(fieldName);
+          if (expr instanceof JsonObject) {
+            result = (JsonObject)expr;
+          } else if (expr instanceof JsonArray) {
+            // Merge array if there is only one item or if the current fieldName
+            // matches parentClause. In the latter case the array will be merged
+            // by the caller.
+            JsonArray arrexpr = (JsonArray)expr;
+            if (parentClause == null && arrexpr.size() == 1) {
+              result = arrexpr.getJsonObject(0);
+            } else if (parentClause != null && parentClause.equals(fieldName)) {
+              result = expr;
+            }
           }
         }
       }
