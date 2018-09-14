@@ -190,6 +190,15 @@ You may also export the whole data store. Just provide the root layer `/` to the
 
 WARNING: Exporting the whole data store may take a while, depending on how much data you have stored in GeoRocket.
 
+[NOTE]
+====
+If your data stored in GeoRocket is homogeneous, you can enable _optimistic merging_ to tremendously reduce the latency between the request and the first returned chunk:
+
+  georocket export --optimistic-merging /
+
+Note that chunks that cannot be merged will be skipped. The number of skipped chunks will be written to the standard error stream (stderr). Repeat the request if you want to get all chunks (e.g. with optimistic merging disabled).
+====
+
 [[search-command]]
 === Search command
 
@@ -225,6 +234,15 @@ Do not try to quote the whole query string or to escape the space character. THE
   georocket search EQ\(key\ value\)
 
 These commands search for chunks that contain the verbatim string `EQ(key value)` and not for those where the specified property equals the given value!
+====
+
+[NOTE]
+====
+If your data stored in GeoRocket is homogeneous, you can enable _optimistic merging_ to tremendously reduce the latency between the request and the first returned chunk:
+
+  georocket export --optimistic-merging /
+
+Note that chunks that cannot be merged will be skipped. The number of skipped chunks will be written to the standard error stream (stderr). Repeat the request if you want to get all chunks (e.g. with optimistic merging disabled).
 ====
 
 === Tag command
@@ -410,7 +428,7 @@ Search the data store for chunks that match a given <<query-language, query>>. M
 [cols="1,2"]
 |===
 | *TE*
-| This header should contain the string `trailers` if GeoRocket is allowed to return HTTP trailers after the response (see the list of response trailers below).
+| This header should contain the string `trailers` if GeoRocket is allowed to return HTTP trailers after the response (see the list of response trailers below).
 |===
 
 ===== Response headers
@@ -432,7 +450,7 @@ Search the data store for chunks that match a given <<query-language, query>>. M
 [cols="1,2"]
 |===
 | *GeoRocket-Unmerged-Chunks*
-| The number of chunks that were skipped during merging. Possible reasons for unmerged chunks are: (1) new chunks were added to the store while merging was in progress, (2) optimistic merging was enabled and some chunks could not be merged. Based on this HTTP trailer, the client can decide whether to repeat the request to fetch the missing chunks (e.g. with optimistic merging disabled) or not. This HTTP trailer will only be sent if the request header `TE` contains the string `trailers` and if there actually were chunks that could not be merged.
+| The number of chunks that were skipped during merging. Possible reasons for unmerged chunks are: (1) chunks were added to GeoRocket's store while merging was in progress, or (2) optimistic merging was enabled and some chunks did not fit to the search result. Based on this HTTP trailer, the client can decide whether to repeat the request to fetch the missing chunks (e.g. with optimistic merging disabled) or not. This HTTP trailer will only be sent if the request header `TE` contains the string `trailers` and if there actually were chunks that could not be merged.
 |===
 
 ===== Status codes
