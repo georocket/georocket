@@ -4,6 +4,7 @@
 ### New features:
 
 * Add low-latency optimistic merging
+* Add indexer for xAL 2.0 addresses
 * Improve query performance
 * Improve indexer performance
 * Improve scalability during import/indexing
