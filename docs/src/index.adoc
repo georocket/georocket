@@ -391,6 +391,9 @@ Search the data store for chunks that match a given <<query-language, query>>. M
 | *search* +
   _(optional)_
 | A URL-encoded <<query-language, query string>>. If no query string is provided all chunks from the requested layer will be returned.
+| *optimisticMerging* +
+  _(optional)_
+| A boolean value (`true` or `false`) specifying whether optimistic merging is enabled. Normally, GeoRocket has to check all chunks matching a query and find the best merge strategy before it can return them. If your data stored in GeoRocket is homogeneous, you can enable optimistic merging to tremendously reduce the latency between the request and the first returned chunk. Note that chunks that cannot be merged will be skipped. The number of skipped chunks can be retrieved from the `GeoRocket-Unmerged-Chunks` HTTP trailer (see below).
 | *scroll* +
   _(optional)_
 | A boolean value (`true` or `false`) denoting whether scrolling should be enabled. Scrolling allows you to download large amounts of data in a progressive fashion. If it is enabled, GeoRocket will only return a given number of chunks in one request (see `size` parameter). Each response will include an HTTP header named `X-Scroll-Id` whose value can be used to retrieve more chunks in subsequent requests (see `scrollId` parameter). The response will also include the HTTP headers `X-Total-Hits` denoting the total number of chunks matching the query and `X-Hits` specifying the number of chunks returned in the current response. To retrieve all chunks matching a query, issue the same request with the returned scroll ID again and again until `X-Hits` is less than `X-Total-Hits` or until GeoRocket returns the HTTP status code 404 (Not Found).
@@ -402,16 +405,34 @@ Search the data store for chunks that match a given <<query-language, query>>. M
 | The scroll ID returned in the previous response to a scrolling request (see `scroll` parameter).
 |===
 
+===== Request headers
+
+[cols="1,2"]
+|===
+| *TE*
+| This header should contain the string `trailers` if GeoRocket is allowed to return HTTP trailers after the response (see the list of response trailers below).
+|===
+
 ===== Response headers
 
 [cols="1,2"]
 |===
+| *Trailer*
+| This header will be included in the response if GeoRocket is about to send HTTP trailers after the response (see the `TE` request header). It specifies the trailers that GeoRocket will send (see the list of response trailers below).
 | *X-Total-Hits*
 | The total number of chunks matching the current query. This header will only be included if scrolling is enabled (see `scroll` parameter).
 | *X-Hits*
 | The number of chunks returned in the current response. This header will only be included if scrolling is enabled (see `scroll` parameter).
 | *X-Scroll-Id*
 | An ID that can be used to retrieve further chunks in subsequent scrolling requests. This header will only be included if scrolling is enabled (see `scroll` parameter).
+|===
+
+===== Response trailers
+
+[cols="1,2"]
+|===
+| *GeoRocket-Unmerged-Chunks*
+| The number of chunks that were skipped during merging. Possible reasons for unmerged chunks are: (1) new chunks were added to the store while merging was in progress, (2) optimistic merging was enabled and some chunks could not be merged. Based on this HTTP trailer, the client can decide whether to repeat the request to fetch the missing chunks (e.g. with optimistic merging disabled) or not. This HTTP trailer will only be sent if the request header `TE` contains the string `trailers` and if there actually were chunks that could not be merged.
 |===
 
 ===== Status codes
