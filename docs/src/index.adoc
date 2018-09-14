@@ -391,6 +391,27 @@ Search the data store for chunks that match a given <<query-language, query>>. M
 | *search* +
   _(optional)_
 | A URL-encoded <<query-language, query string>>. If no query string is provided all chunks from the requested layer will be returned.
+| *scroll* +
+  _(optional)_
+| A boolean value (`true` or `false`) denoting whether scrolling should be enabled. Scrolling allows you to download large amounts of data in a progressive fashion. If it is enabled, GeoRocket will only return a given number of chunks in one request (see `size` parameter). Each response will include an HTTP header named `X-Scroll-Id` whose value can be used to retrieve more chunks in subsequent requests (see `scrollId` parameter). The response will also include the HTTP headers `X-Total-Hits` denoting the total number of chunks matching the query and `X-Hits` specifying the number of chunks returned in the current response. To retrieve all chunks matching a query, issue the same request with the returned scroll ID again and again until `X-Hits` is less than `X-Total-Hits` or until GeoRocket returns the HTTP status code 404 (Not Found).
+| *size* +
+  _(default: 100)_
+| The maximum number of chunks to return in one request if scrolling is enabled (see `scroll` parameter). This parameter will be ignored if scrolling is not enabled.
+| *scrollId* +
+  _(optional)_
+| The scroll ID returned in the previous response to a scrolling request (see `scroll` parameter).
+|===
+
+===== Response headers
+
+[cols="1,2"]
+|===
+| *X-Total-Hits*
+| The total number of chunks matching the current query. This header will only be included if scrolling is enabled (see `scroll` parameter).
+| *X-Hits*
+| The number of chunks returned in the current response. This header will only be included if scrolling is enabled (see `scroll` parameter).
+| *X-Scroll-Id*
+| An ID that can be used to retrieve further chunks in subsequent scrolling requests. This header will only be included if scrolling is enabled (see `scroll` parameter).
 |===
 
 ===== Status codes

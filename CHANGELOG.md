@@ -37,6 +37,8 @@
 ### Bug fixes
 
 * Import a file only after it has been written/closed completely
+* Fix NOT queries with embedded EQ clause
+* Add missing documentation for scrolling
 
 ### Internal
 
