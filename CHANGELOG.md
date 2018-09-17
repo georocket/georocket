@@ -1,7 +1,7 @@
 <a name="1.3.0"></a>
-## [1.3.0-SNAPSHOT](https://github.com/georocket/georocket/compare/v1.2.0...master) (Upcoming)
+## [1.3.0](https://github.com/georocket/georocket/compare/v1.2.0...v1.3.0) (2018-09-17)
 
-### New features:
+### New features
 
 * Add low-latency optimistic merging
 * Add indexer for xAL 2.0 addresses
@@ -51,7 +51,7 @@
 <a name="1.2.0"></a>
 ## [1.2.0](https://github.com/georocket/georocket/compare/v1.1.0...v1.2.0) (2018-07-13)
 
-### New features:
+### New features
 
 * Add H2 back-end (now the default back-end!)
 * Add support for SSL/TLS and HTTP/2
@@ -67,13 +67,13 @@
 * Print banner and server version on startup
 * Improve compatibility with Java 9
 
-### Server API:
+### Server API
 
 * Allow new HTTP endpoints to be added
 * Allow extensions to register verticles
 * Add possibility to filter service instances
 
-### Bug fixes:
+### Bug fixes
 
 * Correctly import files with a UTF-8 BOM
 * Correctly split GeoJSON files with UTF-8 characters
@@ -82,7 +82,7 @@
 * Fix `StackOverflowError` that could happen when scrolling with a very large
   frame size
 
-### Internal:
+### Internal
 
 * Upgrade Vert.x to 3.5.1
 * Update library dependencies
