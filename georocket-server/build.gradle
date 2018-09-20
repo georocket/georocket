@@ -25,6 +25,14 @@ dependencies {
     compile project(':georocket-common')
     compile project(':georocket-server-api')
 
+    // include projects that announce themselves as extensions
+    project.parent.allprojects.each {
+        if (it.extensions.extraProperties.has('geoRocketServerExtension') &&
+            it.extensions.extraProperties.get('geoRocketServerExtension')) {
+            runtimeOnly it
+        }
+    }
+
     compile group: 'org.slf4j', name: 'jul-to-slf4j', version: '1.7.25'
     compile group: 'org.slf4j', name: 'log4j-over-slf4j', version: '1.7.25'
     compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.25'
