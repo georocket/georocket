@@ -45,8 +45,7 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options
 @RunWith(VertxUnitRunner.class)
 public class RemoteElasticsearchClientTest {
   private static final String INDEX = "myindex";
-  private static final String TYPE = "mytype";
-  
+
   private static final JsonObject BULK_RESPONSE_ERROR = new JsonObject()
       .put("errors", true)
       .put("items", new JsonArray()
@@ -134,24 +133,6 @@ public class RemoteElasticsearchClientTest {
       async.complete();
     }, context::fail);
   }
-
-  /**
-   * Test if the {@link ElasticsearchClient#typeExists(String)} method returns
-   * <code>false</code> if the index does not exist
-   * @param context the test context
-   */
-  @Test
-  public void typeIndexExistsFalse(TestContext context) {
-    wireMockRule1.stubFor(head(urlEqualTo("/" + INDEX + "/" + TYPE))
-      .willReturn(aResponse()
-        .withStatus(404)));
-
-    Async async = context.async();
-    client.typeExists(TYPE).subscribe(f -> {
-      context.assertFalse(f);
-      async.complete();
-    }, context::fail);
-  }
   
   /**
    * Test if the {@link ElasticsearchClient#indexExists()} method returns
@@ -172,30 +153,12 @@ public class RemoteElasticsearchClientTest {
   }
 
   /**
-   * Test if the {@link ElasticsearchClient#indexExists()} method returns
-   * <code>true</code> if the index exists
-   * @param context the test context
-   */
-  @Test
-  public void typeIndexExistsTrue(TestContext context) {
-    wireMockRule1.stubFor(head(urlEqualTo("/" + INDEX + "/_mapping/" + TYPE))
-      .willReturn(aResponse()
-        .withStatus(200)));
-
-    Async async = context.async();
-    client.typeExists(TYPE).subscribe(f -> {
-      context.assertTrue(f);
-      async.complete();
-    }, context::fail);
-  }
-
-  /**
    * Test if the client can create a mapping for an index
    * @param context the test context
    */
   @Test
   public void putMapping(TestContext context) {
-    wireMockRule1.stubFor(put(urlEqualTo("/" + INDEX + "/_mapping/" + TYPE))
+    wireMockRule1.stubFor(put(urlEqualTo("/" + INDEX + "/_mapping"))
       .willReturn(aResponse()
         .withStatus(200)
         .withBody(ACKNOWLEDGED.encode())));
@@ -206,8 +169,8 @@ public class RemoteElasticsearchClientTest {
           .put("type", "text")));
 
     Async async = context.async();
-    client.putMapping(TYPE, mappings).subscribe(ack -> {
-      wireMockRule1.verify(putRequestedFor(urlEqualTo("/" + INDEX + "/_mapping/" + TYPE))
+    client.putMapping(mappings).subscribe(ack -> {
+      wireMockRule1.verify(putRequestedFor(urlEqualTo("/" + INDEX + "/_mapping"))
         .withRequestBody(equalToJson("{\"properties\":{\"name\":{\"type\":\"text\"}}}}}")));
       context.assertTrue(ack);
       async.complete();
@@ -260,7 +223,7 @@ public class RemoteElasticsearchClientTest {
    */
   @Test
   public void bulkInsert(TestContext context) {
-    String url = "/" + INDEX + "/" + TYPE + "/_bulk";
+    String url = "/" + INDEX + "/_bulk";
 
     wireMockRule1.stubFor(post(urlEqualTo(url))
         .willReturn(aResponse()
@@ -272,7 +235,7 @@ public class RemoteElasticsearchClientTest {
     documents.add(Tuple.tuple("B", new JsonObject().put("name", "Max")));
     
     Async async = context.async();
-    client.bulkInsert(TYPE, documents).subscribe(res -> {
+    client.bulkInsert(documents).subscribe(res -> {
       wireMockRule1.verify(postRequestedFor(urlEqualTo(url))
           .withRequestBody(equalToJson("{\"index\":{\"_id\":\"A\"}}\n" + 
               "{\"name\":\"Elvis\"}\n" + 
@@ -374,7 +337,7 @@ public class RemoteElasticsearchClientTest {
    */
   @Test
   public void autoDetectHosts(TestContext context) {
-    List<URI> hosts = Arrays.asList(URI.create("http://localhost:" + wireMockRule1.port()));
+    List<URI> hosts = Collections.singletonList(URI.create("http://localhost:" + wireMockRule1.port()));
     client.close();
     client = new RemoteElasticsearchClient(hosts, INDEX, Duration.ofMillis(222),
         false, rule.vertx());
@@ -409,16 +372,13 @@ public class RemoteElasticsearchClientTest {
     expected.add(Boolean.TRUE);
     expected.add(Boolean.FALSE);
     Async async = context.async(expected.size());
-    rule.vertx().setPeriodic(100, id -> {
-      client.indexExists()
-        .subscribe(e -> {
-          if (expected.remove(e)) {
-            if (expected.isEmpty()) {
-              rule.vertx().cancelTimer(id);
-            }
-            async.countDown();
-          }
-        }, context::fail);
-    });
+    rule.vertx().setPeriodic(100, id -> client.indexExists().subscribe(e -> {
+      if (expected.remove(e)) {
+        if (expected.isEmpty()) {
+          rule.vertx().cancelTimer(id);
+        }
+        async.countDown();
+      }
+    }, context::fail));
   }
 }

@@ -47,11 +47,6 @@ public class MetadataVerticle extends AbstractVerticle {
   private static final String INDEX_NAME = "georocket";
 
   /**
-   * Type of documents stored in the Elasticsearch index
-   */
-  private static final String TYPE_NAME = "object";
-
-  /**
    * The Elasticsearch client
    */
   private ElasticsearchClient client;
@@ -75,11 +70,9 @@ public class MetadataVerticle extends AbstractVerticle {
     queryCompiler.setQueryCompilers(indexerFactories);
 
     new ElasticsearchClientFactory(vertx).createElasticsearchClient(INDEX_NAME)
-      .doOnSuccess(es -> {
-        client = es;
-      })
+      .doOnSuccess(es -> client = es)
       .flatMapCompletable(v -> client.ensureIndex())
-      .andThen(Completable.defer(() -> ensureMapping()))
+      .andThen(Completable.defer(this::ensureMapping))
       .subscribe(() -> {
         registerMessageConsumers();
         startFuture.complete();
@@ -110,7 +103,7 @@ public class MetadataVerticle extends AbstractVerticle {
     indexerFactories.stream().filter(f -> !(f instanceof DefaultMetaIndexerFactory))
       .forEach(factory -> MapUtils.deepMerge(mappings, factory.getMapping()));
 
-    return client.putMapping(TYPE_NAME, new JsonObject(mappings)).toCompletable();
+    return client.putMapping(new JsonObject(mappings)).toCompletable();
   }
 
   /**
@@ -125,19 +118,17 @@ public class MetadataVerticle extends AbstractVerticle {
     registerCompletable(AddressConstants.METADATA_REMOVE_TAGS, this::onRemoveTags);
   }
 
-  private <T> void registerCompletable(String address, Function<JsonObject, Completable> mapper) {
+  private void registerCompletable(String address, Function<JsonObject, Completable> mapper) {
     register(address, obj -> mapper.apply(obj).toSingleDefault(0));
   }
 
   private <T> void register(String address, Function<JsonObject, Single<T>> mapper) {
     vertx.eventBus().<JsonObject>consumer(address)
       .toObservable()
-      .subscribe(msg -> {
-        mapper.apply(msg.body()).subscribe(msg::reply, err -> {
-          log.error("Could not perform query", err);
-          msg.fail(throwableToCode(err), throwableToMessage(err, ""));
-        });
-      });
+      .subscribe(msg -> mapper.apply(msg.body()).subscribe(msg::reply, err -> {
+        log.error("Could not perform query", err);
+        msg.fail(throwableToCode(err), throwableToMessage(err, ""));
+      }));
   }
 
   private Single<JsonObject> onGetAttributeValues(JsonObject body) {
@@ -184,7 +175,7 @@ public class MetadataVerticle extends AbstractVerticle {
         // documents and not those that likely match). For the difference between
         // query and post_filter see the Elasticsearch documentation.
         JsonObject postFilter = queryCompiler.compileQuery(search, path, keyExists);
-        return client.beginScroll(TYPE_NAME, null, postFilter, parameters, timeout);
+        return client.beginScroll(null, postFilter, parameters, timeout);
       } catch (Throwable t) {
         return Single.error(t);
       }
@@ -283,7 +274,7 @@ public class MetadataVerticle extends AbstractVerticle {
    * if an error occurs
    */
   private Completable updateDocuments(JsonObject postFilter, JsonObject updateScript) {
-    return client.updateByQuery(TYPE_NAME, postFilter, updateScript)
+    return client.updateByQuery(postFilter, updateScript)
       .flatMapCompletable(sr -> {
         if (sr.getBoolean("timed_out", true)) {
           return Completable.error(new TimeoutException());

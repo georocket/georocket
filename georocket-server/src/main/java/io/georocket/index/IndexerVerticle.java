@@ -76,11 +76,6 @@ public class IndexerVerticle extends AbstractVerticle {
   private static final String INDEX_NAME = "georocket";
   
   /**
-   * Type of documents stored in the Elasticsearch index
-   */
-  private static final String TYPE_NAME = "object";
-
-  /**
    * The Elasticsearch client
    */
   private ElasticsearchClient client;
@@ -187,17 +182,13 @@ public class IndexerVerticle extends AbstractVerticle {
     queryCompiler.setQueryCompilers(indexerFactories);
     
     new ElasticsearchClientFactory(vertx).createElasticsearchClient(INDEX_NAME)
-      .doOnSuccess(es -> {
-        client = es;
-      })
+      .doOnSuccess(es -> client = es)
       .flatMapCompletable(v -> client.ensureIndex())
-      .andThen(Completable.defer(() -> ensureMapping()))
+      .andThen(Completable.defer(this::ensureMapping))
       .subscribe(() -> {
         registerMessageConsumers();
         startFuture.complete();
-      }, err -> {
-        startFuture.fail(err);
-      });
+      }, startFuture::fail);
   }
 
   private DefaultQueryCompiler createQueryCompiler() {
@@ -284,14 +275,10 @@ public class IndexerVerticle extends AbstractVerticle {
   private void registerDelete() {
     vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_DELETE)
       .toObservable()
-      .subscribe(msg -> {
-        onDelete(msg.body()).subscribe(() -> {
-          msg.reply(null);
-        }, err -> {
-          log.error("Could not delete document", err);
-          msg.fail(throwableToCode(err), throwableToMessage(err, ""));
-        });
-      });
+      .subscribe(msg -> onDelete(msg.body()).subscribe(() -> msg.reply(null), err -> {
+        log.error("Could not delete document", err);
+        msg.fail(throwableToCode(err), throwableToMessage(err, ""));
+      }));
   }
   
   /**
@@ -300,14 +287,10 @@ public class IndexerVerticle extends AbstractVerticle {
   private void registerQuery() {
     vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_QUERY)
       .toObservable()
-      .subscribe(msg -> {
-        onQuery(msg.body()).subscribe(reply -> {
-          msg.reply(reply);
-        }, err -> {
-          log.error("Could not perform query", err);
-          msg.fail(throwableToCode(err), throwableToMessage(err, ""));
-        });
-      });
+      .subscribe(msg -> onQuery(msg.body()).subscribe(msg::reply, err -> {
+        log.error("Could not perform query", err);
+        msg.fail(throwableToCode(err), throwableToMessage(err, ""));
+      }));
   }
 
   /**
@@ -389,20 +372,18 @@ public class IndexerVerticle extends AbstractVerticle {
     indexerFactories.stream().filter(f -> !(f instanceof DefaultMetaIndexerFactory))
         .forEach(factory -> MapUtils.deepMerge(mappings, factory.getMapping()));
 
-    return client.putMapping(TYPE_NAME, new JsonObject(mappings)).toCompletable();
+    return client.putMapping(new JsonObject(mappings)).toCompletable();
   }
   
   /**
    * Insert multiple Elasticsearch documents into the index. Perform a
    * bulk request. This method replies to all messages if the bulk request
    * was successful.
-   * @param type Elasticsearch type for documents
    * @param documents a list of tuples containing document IDs, documents to
    * index, and the respective messages from which the documents were created
    * @return a Completable that completes when the operation has finished
    */
-  private Completable insertDocuments(String type,
-      List<Tuple3<String, JsonObject, Message<JsonObject>>> documents) {
+  private Completable insertDocuments(List<Tuple3<String, JsonObject, Message<JsonObject>>> documents) {
     long startTimeStamp = System.currentTimeMillis();
     
     List<String> chunkPaths = Seq.seq(documents)
@@ -417,7 +398,7 @@ public class IndexerVerticle extends AbstractVerticle {
       .map(Tuple3::v3)
       .toList();
     
-    return client.bulkInsert(type, docsToInsert).flatMapCompletable(bres -> {
+    return client.bulkInsert(docsToInsert).flatMapCompletable(bres -> {
       JsonArray items = bres.getJsonArray("items");
       for (int i = 0; i < items.size(); ++i) {
         JsonObject jo = items.getJsonObject(i);
@@ -679,7 +660,7 @@ public class IndexerVerticle extends AbstractVerticle {
       .toList()
       .flatMapCompletable(l -> {
         if (!l.isEmpty()) {
-          return insertDocuments(TYPE_NAME, l);
+          return insertDocuments(l);
         }
         return Completable.complete();
       })
@@ -716,7 +697,7 @@ public class IndexerVerticle extends AbstractVerticle {
       } catch (Throwable t) {
         return Single.error(t);
       }
-      single = client.beginScroll(TYPE_NAME, null, postFilter, parameters, timeout);
+      single = client.beginScroll(null, postFilter, parameters, timeout);
     } else {
       // continue searching
       single = client.continueScroll(scrollId, timeout);
@@ -762,7 +743,7 @@ public class IndexerVerticle extends AbstractVerticle {
     long startTimeStamp = System.currentTimeMillis();
     onDeletingStarted(startTimeStamp, paths, totalChunks, remainingChunks);
 
-    return client.bulkDelete(TYPE_NAME, paths).flatMapCompletable(bres -> {
+    return client.bulkDelete(paths).flatMapCompletable(bres -> {
       long stopTimeStamp = System.currentTimeMillis();
       if (client.bulkResponseHasErrors(bres)) {
         String error = client.bulkResponseGetErrorMessage(bres);
