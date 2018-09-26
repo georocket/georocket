@@ -158,7 +158,7 @@ public class RemoteElasticsearchClientTest {
    */
   @Test
   public void putMapping(TestContext context) {
-    wireMockRule1.stubFor(put(urlEqualTo("/" + INDEX + "/_mapping/object"))
+    wireMockRule1.stubFor(put(urlEqualTo("/" + INDEX + "/_mapping"))
       .willReturn(aResponse()
         .withStatus(200)
         .withBody(ACKNOWLEDGED.encode())));
@@ -170,7 +170,7 @@ public class RemoteElasticsearchClientTest {
 
     Async async = context.async();
     client.putMapping(mappings).subscribe(ack -> {
-      wireMockRule1.verify(putRequestedFor(urlEqualTo("/" + INDEX + "/_mapping/object"))
+      wireMockRule1.verify(putRequestedFor(urlEqualTo("/" + INDEX + "/_mapping"))
         .withRequestBody(equalToJson("{\"properties\":{\"name\":{\"type\":\"text\"}}}}}")));
       context.assertTrue(ack);
       async.complete();
