@@ -36,14 +36,15 @@ public class EmbeddedElasticsearchClient implements ElasticsearchClient {
   }
 
   @Override
-  public Single<JsonObject> bulkInsert(List<Tuple2<String, JsonObject>> documents) {
-    return delegate.bulkInsert(documents);
+  public Single<JsonObject> bulkInsert(String type,
+      List<Tuple2<String, JsonObject>> documents) {
+    return delegate.bulkInsert(type, documents);
   }
 
   @Override
-  public Single<JsonObject> beginScroll(JsonObject query, JsonObject postFilter,
-      JsonObject aggregations, JsonObject parameters, String timeout) {
-    return delegate.beginScroll(query, postFilter, aggregations, parameters, timeout);
+  public Single<JsonObject> beginScroll(String type, JsonObject query,
+    JsonObject postFilter, JsonObject aggregations, JsonObject parameters, String timeout) {
+    return delegate.beginScroll(type, query, postFilter, aggregations, parameters, timeout);
   }
 
   @Override
@@ -52,30 +53,35 @@ public class EmbeddedElasticsearchClient implements ElasticsearchClient {
   }
 
   @Override
-  public Single<JsonObject> search(JsonObject query, JsonObject postFilter,
-      JsonObject aggregations, JsonObject parameters) {
-    return delegate.search(query, postFilter, aggregations, parameters);
+  public Single<JsonObject> search(String type, JsonObject query,
+    JsonObject postFilter, JsonObject aggregations, JsonObject parameters) {
+    return delegate.search(type, query, postFilter, aggregations, parameters);
   }
 
   @Override
-  public Single<Long> count(JsonObject query) {
-    return delegate.count(query);
+  public Single<Long> count(String type, JsonObject query) {
+    return delegate.count(type, query);
   }
 
   @Override
-  public Single<JsonObject> updateByQuery(JsonObject postFilter,
+  public Single<JsonObject> updateByQuery(String type, JsonObject postFilter,
       JsonObject script) {
-    return delegate.updateByQuery(postFilter, script);
+    return delegate.updateByQuery(type, postFilter, script);
   }
 
   @Override
-  public Single<JsonObject> bulkDelete(JsonArray ids) {
-    return delegate.bulkDelete(ids);
+  public Single<JsonObject> bulkDelete(String type, JsonArray ids) {
+    return delegate.bulkDelete(type, ids);
   }
 
   @Override
   public Single<Boolean> indexExists() {
     return delegate.indexExists();
+  }
+
+  @Override
+  public Single<Boolean> typeExists(String type) {
+    return delegate.typeExists(type);
   }
 
   @Override
@@ -94,23 +100,23 @@ public class EmbeddedElasticsearchClient implements ElasticsearchClient {
   }
 
   @Override
-  public Single<Boolean> putMapping(JsonObject mapping) {
-    return delegate.putMapping(mapping);
+  public Single<Boolean> putMapping(String type, JsonObject mapping) {
+    return delegate.putMapping(type, mapping);
   }
 
   @Override
-  public Single<JsonObject> getMapping() {
-    return delegate.getMapping();
+  public Single<JsonObject> getMapping(String type) {
+    return delegate.getMapping(type);
   }
 
   @Override
-  public Single<JsonObject> getMapping(String field) {
-    return delegate.getMapping(field);
+  public Single<JsonObject> getMapping(String type, String field) {
+    return delegate.getMapping(type, field);
   }
   
   @Override
-  public Completable ensureMapping(JsonObject mapping) {
-    return delegate.ensureMapping(mapping);
+  public Completable ensureMapping(String type, JsonObject mapping) {
+    return delegate.ensureMapping(type, mapping);
   }
 
   @Override

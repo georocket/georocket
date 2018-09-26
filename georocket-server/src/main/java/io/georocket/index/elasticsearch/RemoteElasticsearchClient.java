@@ -120,8 +120,9 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
   }
   
   @Override
-  public Single<JsonObject> bulkInsert(List<Tuple2<String, JsonObject>> documents) {
-    String uri = "/" + index + "/_bulk";
+  public Single<JsonObject> bulkInsert(String type,
+      List<Tuple2<String, JsonObject>> documents) {
+    String uri = "/" + index + "/" + type + "/_bulk";
     
     // prepare the whole body now because it's much faster to send
     // it at once instead of using HTTP chunked mode.
@@ -141,9 +142,9 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
   }
   
   @Override
-  public Single<JsonObject> beginScroll(JsonObject query, JsonObject postFilter,
-      JsonObject aggregations, JsonObject parameters, String timeout) {
-    String uri = "/" + index + "/_search";
+  public Single<JsonObject> beginScroll(String type, JsonObject query,
+      JsonObject postFilter, JsonObject aggregations, JsonObject parameters, String timeout) {
+    String uri = "/" + index + "/" + type + "/_search";
     uri += "?scroll=" + timeout;
     
     JsonObject source = new JsonObject();
@@ -178,9 +179,9 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
   }
   
   @Override
-  public Single<JsonObject> search(JsonObject query, JsonObject postFilter,
-      JsonObject aggregations, JsonObject parameters) {
-    String uri = "/" + index + "/_search";
+  public Single<JsonObject> search(String type, JsonObject query,
+      JsonObject postFilter, JsonObject aggregations, JsonObject parameters) {
+    String uri = "/" + index + "/" + type + "/_search";
     
     JsonObject source = new JsonObject();
     parameters.forEach(entry -> 
@@ -200,8 +201,8 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
   }
 
   @Override
-  public Single<Long> count(JsonObject query) {
-    String uri = "/" + index + "/_count";
+  public Single<Long> count(String type, JsonObject query) {
+    String uri = "/" + index + "/" + type + "/_count";
 
     JsonObject source = new JsonObject();
     if (query != null) {
@@ -220,9 +221,9 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
   }
 
   @Override
-  public Single<JsonObject> updateByQuery(JsonObject postFilter,
+  public Single<JsonObject> updateByQuery(String type, JsonObject postFilter,
       JsonObject script) {
-    String uri = "/" + index + "/_update_by_query";
+    String uri = "/" + index + "/" + type + "/_update_by_query";
 
     JsonObject source = new JsonObject();
     if (postFilter != null) {
@@ -236,8 +237,8 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
   }
   
   @Override
-  public Single<JsonObject> bulkDelete(JsonArray ids) {
-    String uri = "/" + index + "/_bulk";
+  public Single<JsonObject> bulkDelete(String type, JsonArray ids) {
+    String uri = "/" + index + "/" + type + "/_bulk";
     
     // prepare the whole body now because it's much faster to send
     // it at once instead of using HTTP chunked mode.
@@ -256,6 +257,11 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
   @Override
   public Single<Boolean> indexExists() {
     return exists("/" + index);
+  }
+  
+  @Override
+  public Single<Boolean> typeExists(String type) {
+    return exists("/" + index + "/_mapping/" + type);
   }
   
   /**
@@ -316,9 +322,7 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
   }
   
   @Override
-  public Single<Boolean> putMapping(JsonObject mapping) {
-    // TODO remove mapping type 'object' as soon as we upgrade to Elasticsearch 7
-    String type = "object";
+  public Single<Boolean> putMapping(String type, JsonObject mapping) {
     String uri = "/" + index + "/_mapping/" + type;
     return client.performRequest(HttpMethod.PUT, uri, mapping.toBuffer())
       .map(res -> res.getBoolean("acknowledged", true));
@@ -326,28 +330,37 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
   
   /**
    * Ensure the Elasticsearch mapping exists
+   * @param type the target type for the mapping
    * @return an observable that will emit a single item when the mapping has
    * been created or if it already exists
    */
   @Override
-  public Completable ensureMapping(JsonObject mapping) {
-    return putMapping(mapping).flatMapCompletable(ack -> {
-      if (ack) {
+  public Completable ensureMapping(String type, JsonObject mapping) {
+    // check if the target type exists
+    return typeExists(type).flatMapCompletable(exists -> {
+      if (exists) {
         return Completable.complete();
+      } else {
+        // target type does not exist. create the mapping.
+        return putMapping(type, mapping).flatMapCompletable(ack -> {
+          if (ack) {
+            return Completable.complete();
+          }
+          return Completable.error(new NoStackTraceThrowable("Mapping creation "
+            + "was not acknowledged by Elasticsearch"));
+        });
       }
-      return Completable.error(new NoStackTraceThrowable("Mapping creation "
-        + "was not acknowledged by Elasticsearch"));
     });
   }
 
   @Override
-  public Single<JsonObject> getMapping() {
-    return getMapping(null);
+  public Single<JsonObject> getMapping(String type) {
+    return getMapping(type, null);
   }
 
   @Override
-  public Single<JsonObject> getMapping(String field) {
-    String uri = "/" + index + "/_mapping";
+  public Single<JsonObject> getMapping(String type, String field) {
+    String uri = "/" + index + "/_mapping/" + type;
     if (field != null) {
       uri += "/field/" + field;
     }
