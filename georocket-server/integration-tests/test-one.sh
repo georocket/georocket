@@ -49,6 +49,9 @@ docker logs -f ci_integration-tester_1 &
 TEST_EXIT_CODE=`docker wait ci_integration-tester_1`
 if [ -z ${TEST_EXIT_CODE+x} ] || [ "$TEST_EXIT_CODE" -ne 0 ] ; then
   printf "${RED}Tests Failed${NC} - Exit Code: $TEST_EXIT_CODE\n"
+  printf "LOGS ================================================================\n"
+  docker logs ci_georocket_${MODE}_1
+  printf "=====================================================================\n"
 else
   printf "${GREEN}Tests Passed${NC}\n"
 fi
