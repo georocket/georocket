@@ -15,13 +15,15 @@ import io.vertx.core.buffer.Buffer;
 import io.vertx.core.eventbus.ReplyException;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import org.bson.types.ObjectId;
+import org.apache.commons.lang3.StringUtils;
 
+import java.security.SecureRandom;
 import java.util.ArrayDeque;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Queue;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
@@ -30,6 +32,9 @@ import java.util.function.Function;
  * @author Michel Kraemer
  */
 public abstract class IndexedStore implements Store {
+  private static final AtomicInteger COUNTER =
+    new AtomicInteger(new SecureRandom().nextInt());
+
   private final Vertx vertx;
   
   /**
@@ -43,7 +48,7 @@ public abstract class IndexedStore implements Store {
   @Override
   public void add(String chunk, ChunkMeta chunkMeta, String path,
       IndexMeta indexMeta, Handler<AsyncResult<Void>> handler) {
-    doAddChunk(chunk, path, ar -> {
+    doAddChunk(chunk, path, indexMeta.getCorrelationId(), ar -> {
       if (ar.failed()) {
         handler.handle(Future.failedFuture(ar.cause()));
       } else {
@@ -52,23 +57,21 @@ public abstract class IndexedStore implements Store {
             .put("path", ar.result())
             .put("meta", chunkMeta.toJsonObject());
 
-        if (indexMeta != null) {
-          if (indexMeta.getCorrelationId() != null) {
-            indexMsg.put("correlationId", indexMeta.getCorrelationId());
-          }
-          if (indexMeta.getFilename() != null) {
-            indexMsg.put("filename", indexMeta.getFilename());
-          }
-          indexMsg.put("timestamp", indexMeta.getTimestamp());
-          if (indexMeta.getTags() != null) {
-            indexMsg.put("tags", new JsonArray(indexMeta.getTags()));
-          }
-          if (indexMeta.getFallbackCRSString() != null) {
-            indexMsg.put("fallbackCRSString", indexMeta.getFallbackCRSString());
-          }
-          if (indexMeta.getProperties() != null) {
-            indexMsg.put("properties", new JsonObject(indexMeta.getProperties()));
-          }
+        if (indexMeta.getCorrelationId() != null) {
+          indexMsg.put("correlationId", indexMeta.getCorrelationId());
+        }
+        if (indexMeta.getFilename() != null) {
+          indexMsg.put("filename", indexMeta.getFilename());
+        }
+        indexMsg.put("timestamp", indexMeta.getTimestamp());
+        if (indexMeta.getTags() != null) {
+          indexMsg.put("tags", new JsonArray(indexMeta.getTags()));
+        }
+        if (indexMeta.getFallbackCRSString() != null) {
+          indexMsg.put("fallbackCRSString", indexMeta.getFallbackCRSString());
+        }
+        if (indexMeta.getProperties() != null) {
+          indexMsg.put("properties", new JsonObject(indexMeta.getProperties()));
         }
 
         // save chunk to cache and then let indexer know about it
@@ -297,12 +300,19 @@ public abstract class IndexedStore implements Store {
   }
 
   /**
-   * Generate or get an unique identifier. This method generates an
-   * identifier independently of the chunk itself.
+   * Generate or get a unique chunk identifier. The given correlation ID will
+   * be used as the new identifier's prefix. The remaining 16 characters will
+   * be constructed from the current time and an atomic counter.
+   * @param correlationId the correlation ID of the current import process
    * @return chunk identifier
    */
-  protected String generateChunkId() {
-    return new ObjectId().toString();
+  protected String generateChunkId(String correlationId) {
+    int seconds = (int)(System.currentTimeMillis() / 1000);
+    String time = StringUtils.leftPad(Integer.toHexString(seconds),
+      Integer.SIZE / Byte.SIZE * 2, '0');
+    String counter = StringUtils.leftPad(Integer.toHexString(COUNTER.getAndIncrement()),
+      Integer.SIZE / Byte.SIZE * 2, '0');
+    return correlationId + time + counter;
   }
   
   /**
@@ -311,7 +321,8 @@ public abstract class IndexedStore implements Store {
    * @param path the chunk's destination path
    * @param handler will be called when the operation has finished
    */
-  protected abstract void doAddChunk(String chunk, String path, Handler<AsyncResult<String>> handler);
+  protected abstract void doAddChunk(String chunk, String path,
+    String correlationId, Handler<AsyncResult<String>> handler);
   
   /**
    * Delete all chunks with the given paths from the store. Remove one item

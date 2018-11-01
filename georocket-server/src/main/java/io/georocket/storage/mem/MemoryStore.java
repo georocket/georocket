@@ -50,12 +50,12 @@ public class MemoryStore extends IndexedStore implements Store {
   }
   
   @Override
-  protected void doAddChunk(String chunk, String path,
+  protected void doAddChunk(String chunk, String path, String correlationId,
       Handler<AsyncResult<String>> handler) {
     if (path == null || path.isEmpty()) {
       path = "/";
     }
-    String filename = PathUtils.join(path, generateChunkId());
+    String filename = PathUtils.join(path, generateChunkId(correlationId));
     
     getStore(ar -> {
       if (ar.failed()) {

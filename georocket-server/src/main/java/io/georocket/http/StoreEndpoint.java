@@ -496,7 +496,7 @@ public class StoreEndpoint implements Endpoint {
     String filename = new ObjectId().toString();
     String filepath = incoming + "/" + filename;
 
-    String correlationId = UUID.randomUUID().toString();
+    String correlationId = new ObjectId().toString();
     long startTime = System.currentTimeMillis();
     this.onReceivingFileStarted(correlationId, layer, startTime);
 

@@ -14,7 +14,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 
 /**
- * Mock for georocket indexed store.
+ * Mock for the GeoRocket indexed store
  * @author David Gengenbach
  */
 public class MockStore extends IndexedStore {
@@ -40,7 +40,8 @@ public class MockStore extends IndexedStore {
   }
 
   @Override
-  protected void doAddChunk(String chunk, String path, Handler<AsyncResult<String>> handler) {
+  protected void doAddChunk(String chunk, String path, String correlationId,
+      Handler<AsyncResult<String>> handler) {
     notImplemented(handler);
   }
 
@@ -51,7 +52,7 @@ public class MockStore extends IndexedStore {
 
   @Override
   public void add(String chunk, ChunkMeta chunkMeta, String path, IndexMeta indexMeta,
-    Handler<AsyncResult<Void>> handler) {
+      Handler<AsyncResult<Void>> handler) {
     notImplemented(handler);
   }
 

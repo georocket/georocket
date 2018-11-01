@@ -132,13 +132,13 @@ public class H2Store extends IndexedStore {
   }
 
   @Override
-  protected void doAddChunk(String chunk, String path,
+  protected void doAddChunk(String chunk, String path, String correlationId,
       Handler<AsyncResult<String>> handler) {
     if (path == null || path.isEmpty()) {
       path = "/";
     }
 
-    String filename = PathUtils.join(path, generateChunkId());
+    String filename = PathUtils.join(path, generateChunkId(correlationId));
     getMap().put(filename, chunk);
     handler.handle(Future.succeededFuture(filename));
   }

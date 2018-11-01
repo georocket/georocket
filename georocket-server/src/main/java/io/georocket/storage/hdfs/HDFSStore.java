@@ -111,13 +111,14 @@ public class HDFSStore extends IndexedStore {
   }
 
   @Override
-  protected void doAddChunk(String chunk, String path, Handler<AsyncResult<String>> handler) {
+  protected void doAddChunk(String chunk, String path, String correlationId,
+      Handler<AsyncResult<String>> handler) {
     if (path == null || path.isEmpty()) {
       path = "/";
     }
 
     // generate new file name
-    String id = generateChunkId();
+    String id = generateChunkId(correlationId);
     String filename = PathUtils.join(path, id);
 
     vertx.executeBlocking(f -> {

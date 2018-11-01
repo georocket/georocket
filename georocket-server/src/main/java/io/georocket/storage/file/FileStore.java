@@ -55,7 +55,8 @@ public class FileStore extends IndexedStore {
   }
 
   @Override
-  protected void doAddChunk(String chunk, String path, Handler<AsyncResult<String>> handler) {
+  protected void doAddChunk(String chunk, String path,
+      String correlationId, Handler<AsyncResult<String>> handler) {
     if (path == null || path.isEmpty()) {
       path = "/";
     }
@@ -70,7 +71,7 @@ public class FileStore extends IndexedStore {
       }
 
       // generate new file name
-      String filename = generateChunkId();
+      String filename = generateChunkId(correlationId);
 
       // open new file
       FileSystem fs = vertx.fileSystem();
