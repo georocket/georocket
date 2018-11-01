@@ -135,15 +135,13 @@ public abstract class IndexedStore implements Store {
   protected void doDelete(StoreCursor cursor, Queue<String> paths,
       AtomicLong remainingChunks, Handler<AsyncResult<Void>> handler) {
     // handle response of bulk delete operation
-    Function<Integer, Handler<AsyncResult<Void>>> handleBulk = size -> {
-      return bulkAr -> {
-        remainingChunks.getAndAdd(-size);
-        if (bulkAr.failed()) {
-          handler.handle(Future.failedFuture(bulkAr.cause()));
-        } else {
-          doDelete(cursor, paths, remainingChunks, handler);
-        }
-      };
+    Function<Integer, Handler<AsyncResult<Void>>> handleBulk = size -> bulkAr -> {
+      remainingChunks.getAndAdd(-size);
+      if (bulkAr.failed()) {
+        handler.handle(Future.failedFuture(bulkAr.cause()));
+      } else {
+        doDelete(cursor, paths, remainingChunks, handler);
+      }
     };
     
     // while cursor has items ...

@@ -96,18 +96,16 @@ public class MongoDBStore extends IndexedStore {
   public void getOne(String path, Handler<AsyncResult<ChunkReadStream>> handler) {
     GridFSDownloadStream downloadStream =
         getGridFS().openDownloadStream(PathUtils.normalize(path));
-    downloadStream.getGridFSFile((file, t) -> {
-      context.runOnContext(v -> {
-        if (t != null) {
-          handler.handle(Future.failedFuture(t));
-        } else {
-          long length = file.getLength();
-          int chunkSize = file.getChunkSize();
-          handler.handle(Future.succeededFuture(new MongoDBChunkReadStream(
-              downloadStream, length, chunkSize, context)));
-        }
-      });
-    });
+    downloadStream.getGridFSFile((file, t) -> context.runOnContext(v -> {
+      if (t != null) {
+        handler.handle(Future.failedFuture(t));
+      } else {
+        long length = file.getLength();
+        int chunkSize = file.getChunkSize();
+        handler.handle(Future.succeededFuture(new MongoDBChunkReadStream(
+            downloadStream, length, chunkSize, context)));
+      }
+    }));
   }
 
   @Override
@@ -123,15 +121,13 @@ public class MongoDBStore extends IndexedStore {
     
     byte[] bytes = chunk.getBytes(StandardCharsets.UTF_8);
     AsyncInputStream is = AsyncStreamHelper.toAsyncInputStream(bytes);
-    getGridFS().uploadFromStream(filename, is, (oid, t) -> {
-      context.runOnContext(v -> {
-        if (t != null) {
-          handler.handle(Future.failedFuture(t));
-        } else {
-          handler.handle(Future.succeededFuture(filename));
-        }
-      });
-    });
+    getGridFS().uploadFromStream(filename, is, (oid, t) -> context.runOnContext(v -> {
+      if (t != null) {
+        handler.handle(Future.failedFuture(t));
+      } else {
+        handler.handle(Future.succeededFuture(filename));
+      }
+    }));
   }
 
   @Override
@@ -153,15 +149,13 @@ public class MongoDBStore extends IndexedStore {
           context.runOnContext(v -> doDeleteChunks(paths, handler));
           return;
         }
-        gridFS.delete(file.getObjectId(), (r, t2) -> {
-          context.runOnContext(v -> {
-            if (t2 != null) {
-              handler.handle(Future.failedFuture(t2));
-            } else {
-              doDeleteChunks(paths, handler);
-            }
-          });
-        });
+        gridFS.delete(file.getObjectId(), (r, t2) -> context.runOnContext(v -> {
+          if (t2 != null) {
+            handler.handle(Future.failedFuture(t2));
+          } else {
+            doDeleteChunks(paths, handler);
+          }
+        }));
       }
     });
   }

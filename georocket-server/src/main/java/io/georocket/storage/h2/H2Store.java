@@ -47,8 +47,7 @@ public class H2Store extends IndexedStore {
    * The underlying H2 MVStore. Use {@link #getMVStore()} to retrieve this
    * field's value.
    */
-  private static final AtomicReference<MVStore> mvstore =
-    new AtomicReference<MVStore>();
+  private static final AtomicReference<MVStore> mvstore = new AtomicReference<>();
 
   /**
    * The underlying H2 MVMap. Use {@link #getMap()} to retrieve this field's

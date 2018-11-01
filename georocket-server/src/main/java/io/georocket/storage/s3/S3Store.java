@@ -177,9 +177,7 @@ public class S3Store extends IndexedStore {
       request.handler(response -> {
         Buffer errorBody = Buffer.buffer();
         if (response.statusCode() != 200) {
-          response.handler(buf -> {
-            errorBody.appendBuffer(buf);
-          });
+          response.handler(errorBody::appendBuffer);
         }
         response.endHandler(v -> {
           if (response.statusCode() == 200) {
@@ -223,9 +221,7 @@ public class S3Store extends IndexedStore {
           handler.handle(Future.succeededFuture(new DelegateChunkReadStream(chunkSize, response)));
         } else {
           Buffer errorBody = Buffer.buffer();
-          response.handler(buf -> {
-            errorBody.appendBuffer(buf);
-          });
+          response.handler(errorBody::appendBuffer);
           response.endHandler(v -> {
             log.error(errorBody);
             handler.handle(Future.failedFuture(response.statusMessage()));
@@ -266,9 +262,7 @@ public class S3Store extends IndexedStore {
       request.handler(response -> {
         Buffer errorBody = Buffer.buffer();
         if (response.statusCode() != 204) {
-          response.handler(buf -> {
-            errorBody.appendBuffer(buf);
-          });
+          response.handler(errorBody::appendBuffer);
         }
         response.endHandler(v -> {
           switch (response.statusCode()) {
