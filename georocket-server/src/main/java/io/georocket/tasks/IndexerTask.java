@@ -57,7 +57,7 @@ public class IndexerTask extends AbstractTask {
   @Override
   public void inc(Task other) {
     if (!(other instanceof IndexerTask)) {
-      throw new IllegalArgumentException("Can only merge tasks of same type");
+      throw new IllegalArgumentException("Illegal task type");
     }
     IndexerTask io = (IndexerTask)other;
     super.inc(other);

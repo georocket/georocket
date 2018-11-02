@@ -11,6 +11,7 @@ import io.georocket.storage.ChunkMeta;
 import io.georocket.storage.IndexMeta;
 import io.georocket.storage.RxStore;
 import io.georocket.storage.StoreFactory;
+import io.georocket.tasks.ImporterTask;
 import io.georocket.util.JsonParserTransformer;
 import io.georocket.util.RxUtils;
 import io.georocket.util.StringWindow;
@@ -31,8 +32,10 @@ import io.vertx.rxjava.core.file.AsyncFile;
 import io.vertx.rxjava.core.file.FileSystem;
 import io.vertx.rxjava.core.streams.ReadStream;
 import rx.Completable;
+import rx.Observable;
 import rx.Single;
 
+import java.util.Calendar;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -249,17 +252,43 @@ public class ImporterVerticle extends AbstractVerticle {
     } else if (contentEncoding != null && !contentEncoding.isEmpty()) {
       log.warn("Unknown content encoding: `" + contentEncoding + "'. Trying anyway.");
     }
+
+    // let the task verticle know that we're now importing
+    ImporterTask startTask = new ImporterTask(correlationId);
+    startTask.setStartTime(Calendar.getInstance());
+    vertx.eventBus().publish(AddressConstants.TASK_INC, JsonObject.mapFrom(startTask));
+
+    Observable<Integer> result;
     if (belongsTo(contentType, "application", "xml") ||
         belongsTo(contentType, "text", "xml")) {
-      return importXML(f, correlationId, filename, timestamp, layer, tags,
+      result = importXML(f, correlationId, filename, timestamp, layer, tags,
         properties, fallbackCRSString);
     } else if (belongsTo(contentType, "application", "json")) {
-      return importJSON(f, correlationId, filename, timestamp, layer, tags, properties);
+      result = importJSON(f, correlationId, filename, timestamp, layer, tags, properties);
     } else {
-      return Single.error(new NoStackTraceThrowable(String.format(
+      result = Observable.error(new NoStackTraceThrowable(String.format(
           "Received an unexpected content type '%s' while trying to import "
           + "file '%s'", contentType, filename)));
     }
+
+    return result.window(100)
+      .flatMap(Observable::count)
+      .doOnNext(n -> {
+        // let the task verticle know that we imported n chunks
+        ImporterTask currentTask = new ImporterTask(correlationId);
+        currentTask.setImportedChunks(n);
+        vertx.eventBus().publish(AddressConstants.TASK_INC,
+            JsonObject.mapFrom(currentTask));
+      })
+      .reduce(0, (a, b) -> a + b)
+      .toSingle()
+      .doAfterTerminate(() -> {
+        // let the task verticle know that the import process has finished
+        ImporterTask endTask = new ImporterTask(correlationId);
+        endTask.setEndTime(Calendar.getInstance());
+        vertx.eventBus().publish(AddressConstants.TASK_INC,
+            JsonObject.mapFrom(endTask));
+      });
   }
 
   /**
@@ -273,9 +302,9 @@ public class ImporterVerticle extends AbstractVerticle {
    * @param properties the map of properties to attach to the file (may be null)
    * @param fallbackCRSString the CRS which should be used if the imported
    * file does not specify one (may be <code>null</code>)
-   * @return a single that will emit when the file has been imported
+   * @return an observable that will emit the number 1 when a chunk has been imported
    */
-  protected Single<Integer> importXML(ReadStream<Buffer> f, String correlationId,
+  protected Observable<Integer> importXML(ReadStream<Buffer> f, String correlationId,
       String filename, long timestamp, String layer, List<String> tags,
       Map<String, Object> properties, String fallbackCRSString) {
     UTF8BomFilter bomFilter = new UTF8BomFilter();
@@ -304,9 +333,7 @@ public class ImporterVerticle extends AbstractVerticle {
               timestamp, tags, properties, crsString);
           return addToStoreWithPause(result, layer, indexMeta, f, processing)
               .toSingleDefault(1);
-        })
-        .count()
-        .toSingle();
+        });
   }
   
   /**
@@ -318,9 +345,9 @@ public class ImporterVerticle extends AbstractVerticle {
    * @param layer the layer where the file should be stored (may be null)
    * @param tags the list of tags to attach to the file (may be null)
    * @param properties the map of properties to attach to the file (may be null)
-   * @return a single that will emit when the file has been imported
+   * @return an observable that will emit the number 1 when a chunk has been imported
    */
-  protected Single<Integer> importJSON(ReadStream<Buffer> f, String correlationId,
+  protected Observable<Integer> importJSON(ReadStream<Buffer> f, String correlationId,
       String filename, long timestamp, String layer, List<String> tags, Map<String, Object> properties) {
     UTF8BomFilter bomFilter = new UTF8BomFilter();
     StringWindow window = new StringWindow();
@@ -337,9 +364,7 @@ public class ImporterVerticle extends AbstractVerticle {
               timestamp, tags, properties, null);
           return addToStoreWithPause(result, layer, indexMeta, f, processing)
               .toSingleDefault(1);
-        })
-        .count()
-        .toSingle();
+        });
   }
 
   /**
