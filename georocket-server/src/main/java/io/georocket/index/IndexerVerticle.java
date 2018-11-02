@@ -20,6 +20,7 @@ import io.georocket.storage.JsonChunkMeta;
 import io.georocket.storage.RxStore;
 import io.georocket.storage.StoreFactory;
 import io.georocket.storage.XMLChunkMeta;
+import io.georocket.tasks.IndexerTask;
 import io.georocket.util.FilteredServiceLoader;
 import io.georocket.util.JsonParserTransformer;
 import io.georocket.util.MapUtils;
@@ -48,6 +49,7 @@ import rx.Single;
 import rx.functions.Func1;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -191,13 +193,11 @@ public class IndexerVerticle extends AbstractVerticle {
         client = es;
       })
       .flatMapCompletable(v -> client.ensureIndex())
-      .andThen(Completable.defer(() -> ensureMapping()))
+      .andThen(Completable.defer(this::ensureMapping))
       .subscribe(() -> {
         registerMessageConsumers();
         startFuture.complete();
-      }, err -> {
-        startFuture.fail(err);
-      });
+      }, startFuture::fail);
   }
 
   private DefaultQueryCompiler createQueryCompiler() {
@@ -504,6 +504,59 @@ public class IndexerVerticle extends AbstractVerticle {
   }
 
   /**
+   * Send indexer tasks for the correlation IDs in the given messages
+   * to the task verticle
+   * @param messages the messages
+   * @param incIndexedChunks {@link true} if the number of indexed chunks
+   * should be increased
+   */
+  private void generateIndexerTasks(List<Message<JsonObject>> messages,
+      boolean incIndexedChunks) {
+    IndexerTask currentTask = null;
+
+    for (Message<JsonObject> msg : messages) {
+      JsonObject body = msg.body();
+      String correlationId = body.getString("correlationId");
+      if (currentTask == null) {
+        currentTask = new IndexerTask(correlationId);
+        currentTask.setStartTime(Calendar.getInstance());
+      } else if (!currentTask.getCorrelationId().equals(correlationId)) {
+        vertx.eventBus().publish(AddressConstants.TASK_INC,
+          JsonObject.mapFrom(currentTask));
+        currentTask = new IndexerTask(correlationId);
+        currentTask.setStartTime(Calendar.getInstance());
+      }
+
+      if (incIndexedChunks) {
+        currentTask.incIndexedChunks();
+      }
+    }
+
+    if (currentTask != null) {
+      vertx.eventBus().publish(AddressConstants.TASK_INC,
+        JsonObject.mapFrom(currentTask));
+    }
+  }
+
+  /**
+   * Send empty indexer tasks for the correlation IDs in the given messages
+   * to the task verticle
+   * @param messages the messages
+   */
+  private void generateIndexerTasks(List<Message<JsonObject>> messages) {
+    generateIndexerTasks(messages, false);
+  }
+
+  /**
+   * Send indexer tasks to the task verticle and accumulate the number of
+   * indexed chunks for the correlation IDs in the given messages
+   * @param messages the messages
+   */
+  private void sendIndexerTasksIndexedChunks(List<Message<JsonObject>> messages) {
+    generateIndexerTasks(messages, true);
+  }
+
+  /**
    * Get a chunk from the store but first look into the cache of indexable chunks
    * @param path the chunk's path
    * @return the chunk
@@ -629,6 +682,7 @@ public class IndexerVerticle extends AbstractVerticle {
    * @return a Completable that completes when the operation has finished
    */
   private Completable onAdd(List<Message<JsonObject>> messages) {
+    generateIndexerTasks(messages);
     return Observable.from(messages)
       .flatMap(msg -> {
         // get path to chunk from message
@@ -683,7 +737,8 @@ public class IndexerVerticle extends AbstractVerticle {
         }
         return Completable.complete();
       })
-      .toCompletable();
+      .toCompletable()
+      .doOnCompleted(() -> sendIndexerTasksIndexedChunks(messages));
   }
 
   /**

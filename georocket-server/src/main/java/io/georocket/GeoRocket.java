@@ -4,6 +4,7 @@ import io.georocket.constants.ConfigConstants;
 import io.georocket.http.Endpoint;
 import io.georocket.index.IndexerVerticle;
 import io.georocket.index.MetadataVerticle;
+import io.georocket.tasks.TaskVerticle;
 import io.georocket.util.FilteredServiceLoader;
 import io.georocket.util.JsonUtils;
 import io.georocket.util.SizeFormat;
@@ -112,6 +113,15 @@ public class GeoRocket extends AbstractVerticle {
    */
   protected Single<String> deployMetadata() {
     return deployVerticle(MetadataVerticle.class);
+  }
+
+  /**
+   * Deploy the task verticle
+   * @return a single that will complete when the verticle was deployed
+   * and will carry the verticle's deployment id
+   */
+  protected Single<String> deployTask() {
+    return deployVerticle(TaskVerticle.class);
   }
 
   /**
@@ -262,7 +272,8 @@ public class GeoRocket extends AbstractVerticle {
         vertx.eventBus().publish(ExtensionVerticle.EXTENSION_VERTICLE_ADDRESS,
             new JsonObject().put("type", ExtensionVerticle.MESSAGE_ON_INIT));
       })
-      .andThen(deployIndexer()
+      .andThen(deployTask()
+        .flatMap(v -> deployIndexer())
         .flatMap(v -> deployImporter())
         .flatMap(v -> deployMetadata())
         .flatMap(v -> deployHttpServer())

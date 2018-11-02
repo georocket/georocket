@@ -18,6 +18,7 @@ public final class AddressConstants {
   public static final String METADATA_REMOVE_PROPERTIES = "georocket.metadata.properties.remove";
   public static final String METADATA_APPEND_TAGS = "georocket.metadata.tags.append";
   public static final String METADATA_REMOVE_TAGS = "georocket.metadata.tags.remove";
+  public static final String TASK_INC = "georocket.task.inc";
   public static final String ACTIVITIES = "georocket.activities";
   
   private AddressConstants() {
