@@ -14,8 +14,9 @@ import java.util.Calendar;
   use = JsonTypeInfo.Id.NAME,
   property = "type")
 @JsonSubTypes({
-  @JsonSubTypes.Type(value = IndexerTask.class, name = "indexing"),
-  @JsonSubTypes.Type(value = ImporterTask.class, name = "importing")
+  @JsonSubTypes.Type(value = IndexingTask.class, name = "indexing"),
+  @JsonSubTypes.Type(value = ImportingTask.class, name = "importing"),
+  @JsonSubTypes.Type(value = ReceivingTask.class, name = "receiving")
 })
 @JsonInclude(value = JsonInclude.Include.NON_NULL)
 public interface Task {

@@ -12,6 +12,7 @@ import io.georocket.storage.RxStore;
 import io.georocket.storage.RxStoreCursor;
 import io.georocket.storage.StoreCursor;
 import io.georocket.storage.StoreFactory;
+import io.georocket.tasks.ReceivingTask;
 import io.georocket.util.HttpException;
 import io.georocket.util.MimeTypeUtils;
 import io.vertx.core.AsyncResult;
@@ -47,6 +48,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -497,7 +499,7 @@ public class StoreEndpoint implements Endpoint {
 
     String correlationId = new ObjectId().toString();
     long startTime = System.currentTimeMillis();
-    this.onReceivingFileStarted(correlationId, layer, startTime);
+    this.onReceivingFileStarted(correlationId, startTime);
 
     // create directory for incoming files
     FileSystem fs = vertx.fileSystem();
@@ -560,7 +562,7 @@ public class StoreEndpoint implements Endpoint {
       })
       .subscribe(detectedContentType -> {
         long duration = System.currentTimeMillis() - startTime;
-        this.onReceivingFileFinished(correlationId, duration, layer, null);
+        this.onReceivingFileFinished(correlationId, duration, null);
 
         String contentEncoding = request.getHeader("Content-Encoding");
 
@@ -594,15 +596,15 @@ public class StoreEndpoint implements Endpoint {
         vertx.eventBus().send(AddressConstants.IMPORTER_IMPORT, msg);
       }, err -> {
         long duration = System.currentTimeMillis() - startTime;
-        this.onReceivingFileFinished(correlationId, duration, layer, err);
+        this.onReceivingFileFinished(correlationId, duration, err);
         fail(request.response(), err);
         err.printStackTrace();
         fs.delete(filepath, ar -> {});
       });
   }
 
-  private void onReceivingFileStarted(String correlationId, String layer, long startTime) {
-    log.info(String.format("Receiving file [%s] to layer '%s'", correlationId, layer));
+  private void onReceivingFileStarted(String correlationId, long startTime) {
+    log.info("Receiving file [" + correlationId + "]");
 
     if (reportActivities) {
       JsonObject msg = new JsonObject()
@@ -614,10 +616,14 @@ public class StoreEndpoint implements Endpoint {
 
       vertx.eventBus().publish(AddressConstants.ACTIVITIES, msg);
     }
+
+    ReceivingTask task = new ReceivingTask(correlationId);
+    task.setStartTime(Calendar.getInstance());
+    vertx.eventBus().publish(AddressConstants.TASK_INC, JsonObject.mapFrom(task));
   }
 
   private void onReceivingFileFinished(String correlationId, long duration,
-      String layer, Throwable error) {
+      Throwable error) {
     if (error == null) {
       log.info(String.format("Finished receiving file [%s] after '%d' ms",
           correlationId, duration));
@@ -640,6 +646,10 @@ public class StoreEndpoint implements Endpoint {
 
       vertx.eventBus().publish(AddressConstants.ACTIVITIES, msg);
     }
+
+    ReceivingTask task = new ReceivingTask(correlationId);
+    task.setEndTime(Calendar.getInstance());
+    vertx.eventBus().publish(AddressConstants.TASK_INC, JsonObject.mapFrom(task));
   }
 
   /**

@@ -4,13 +4,13 @@ package io.georocket.tasks;
  * A task started by the {@link io.georocket.index.IndexerVerticle}
  * @author Michel Kraemer
  */
-public class IndexerTask extends AbstractTask {
+public class IndexingTask extends AbstractTask {
   private int indexedChunks;
 
   /**
    * Package-visible default constructor
    */
-  IndexerTask() {
+  IndexingTask() {
     // nothing to do here
   }
 
@@ -18,7 +18,7 @@ public class IndexerTask extends AbstractTask {
    * Default constructor
    * @param correlationId the correlation ID this task belongs to
    */
-  public IndexerTask(String correlationId) {
+  public IndexingTask(String correlationId) {
     super(correlationId);
   }
 
@@ -56,10 +56,10 @@ public class IndexerTask extends AbstractTask {
 
   @Override
   public void inc(Task other) {
-    if (!(other instanceof IndexerTask)) {
+    if (!(other instanceof IndexingTask)) {
       throw new IllegalArgumentException("Illegal task type");
     }
-    IndexerTask io = (IndexerTask)other;
+    IndexingTask io = (IndexingTask)other;
     super.inc(other);
     setIndexedChunks(getIndexedChunks() + io.getIndexedChunks());
   }

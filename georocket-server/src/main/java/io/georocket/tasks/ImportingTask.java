@@ -4,13 +4,13 @@ package io.georocket.tasks;
  * A task started by the {@link io.georocket.ImporterVerticle}
  * @author Michel Kraemer
  */
-public class ImporterTask extends AbstractTask {
+public class ImportingTask extends AbstractTask {
   private int importedChunks;
 
   /**
    * Package-visible default constructor
    */
-  ImporterTask() {
+  ImportingTask() {
     // nothing to do here
   }
 
@@ -18,7 +18,7 @@ public class ImporterTask extends AbstractTask {
    * Default constructor
    * @param correlationId the correlation ID this task belongs to
    */
-  public ImporterTask(String correlationId) {
+  public ImportingTask(String correlationId) {
     super(correlationId);
   }
 
@@ -56,10 +56,10 @@ public class ImporterTask extends AbstractTask {
 
   @Override
   public void inc(Task other) {
-    if (!(other instanceof ImporterTask)) {
+    if (!(other instanceof ImportingTask)) {
       throw new IllegalArgumentException("Illegal task type");
     }
-    ImporterTask io = (ImporterTask)other;
+    ImportingTask io = (ImportingTask)other;
     super.inc(other);
     setImportedChunks(getImportedChunks() + io.getImportedChunks());
   }

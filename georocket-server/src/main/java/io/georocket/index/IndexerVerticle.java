@@ -20,7 +20,7 @@ import io.georocket.storage.JsonChunkMeta;
 import io.georocket.storage.RxStore;
 import io.georocket.storage.StoreFactory;
 import io.georocket.storage.XMLChunkMeta;
-import io.georocket.tasks.IndexerTask;
+import io.georocket.tasks.IndexingTask;
 import io.georocket.util.FilteredServiceLoader;
 import io.georocket.util.JsonParserTransformer;
 import io.georocket.util.MapUtils;
@@ -512,18 +512,18 @@ public class IndexerVerticle extends AbstractVerticle {
    */
   private void generateIndexerTasks(List<Message<JsonObject>> messages,
       boolean incIndexedChunks) {
-    IndexerTask currentTask = null;
+    IndexingTask currentTask = null;
 
     for (Message<JsonObject> msg : messages) {
       JsonObject body = msg.body();
       String correlationId = body.getString("correlationId");
       if (currentTask == null) {
-        currentTask = new IndexerTask(correlationId);
+        currentTask = new IndexingTask(correlationId);
         currentTask.setStartTime(Calendar.getInstance());
       } else if (!currentTask.getCorrelationId().equals(correlationId)) {
         vertx.eventBus().publish(AddressConstants.TASK_INC,
           JsonObject.mapFrom(currentTask));
-        currentTask = new IndexerTask(correlationId);
+        currentTask = new IndexingTask(correlationId);
         currentTask.setStartTime(Calendar.getInstance());
       }
 

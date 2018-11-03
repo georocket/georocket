@@ -11,7 +11,7 @@ import io.georocket.storage.ChunkMeta;
 import io.georocket.storage.IndexMeta;
 import io.georocket.storage.RxStore;
 import io.georocket.storage.StoreFactory;
-import io.georocket.tasks.ImporterTask;
+import io.georocket.tasks.ImportingTask;
 import io.georocket.util.JsonParserTransformer;
 import io.georocket.util.RxUtils;
 import io.georocket.util.StringWindow;
@@ -254,7 +254,7 @@ public class ImporterVerticle extends AbstractVerticle {
     }
 
     // let the task verticle know that we're now importing
-    ImporterTask startTask = new ImporterTask(correlationId);
+    ImportingTask startTask = new ImportingTask(correlationId);
     startTask.setStartTime(Calendar.getInstance());
     vertx.eventBus().publish(AddressConstants.TASK_INC, JsonObject.mapFrom(startTask));
 
@@ -275,7 +275,7 @@ public class ImporterVerticle extends AbstractVerticle {
       .flatMap(Observable::count)
       .doOnNext(n -> {
         // let the task verticle know that we imported n chunks
-        ImporterTask currentTask = new ImporterTask(correlationId);
+        ImportingTask currentTask = new ImportingTask(correlationId);
         currentTask.setImportedChunks(n);
         vertx.eventBus().publish(AddressConstants.TASK_INC,
             JsonObject.mapFrom(currentTask));
@@ -284,7 +284,7 @@ public class ImporterVerticle extends AbstractVerticle {
       .toSingle()
       .doAfterTerminate(() -> {
         // let the task verticle know that the import process has finished
-        ImporterTask endTask = new ImporterTask(correlationId);
+        ImportingTask endTask = new ImportingTask(correlationId);
         endTask.setEndTime(Calendar.getInstance());
         vertx.eventBus().publish(AddressConstants.TASK_INC,
             JsonObject.mapFrom(endTask));
