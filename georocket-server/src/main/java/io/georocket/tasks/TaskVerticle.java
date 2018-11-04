@@ -117,6 +117,21 @@ public class TaskVerticle extends AbstractVerticle {
       finishedTasks.add(t);
     }
 
+    // help the indexer verticle and finish the indexing task if the importer
+    // task has also finished and the number of indexed chunks equals the
+    // number of imported chunks
+    if (t instanceof IndexingTask || t instanceof ImportingTask) {
+      ImportingTask importingTask = (ImportingTask)m.get(ImportingTask.class);
+      if (importingTask != null && importingTask.getEndTime() != null) {
+        IndexingTask indexingTask = (IndexingTask)m.get(IndexingTask.class);
+        if (indexingTask != null && indexingTask.getEndTime() == null &&
+            indexingTask.getIndexedChunks() == importingTask.getImportedChunks()) {
+          indexingTask.setEndTime(Calendar.getInstance());
+          finishedTasks.add(indexingTask);
+        }
+      }
+    }
+
     cleanUp();
   }
 
