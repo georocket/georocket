@@ -9,7 +9,6 @@ import io.vertx.core.json.JsonObject;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Calendar;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -126,7 +125,7 @@ public class TaskVerticle extends AbstractVerticle {
         IndexingTask indexingTask = (IndexingTask)m.get(IndexingTask.class);
         if (indexingTask != null && indexingTask.getEndTime() == null &&
             indexingTask.getIndexedChunks() == importingTask.getImportedChunks()) {
-          indexingTask.setEndTime(Calendar.getInstance());
+          indexingTask.setEndTime(Instant.now());
           finishedTasks.add(indexingTask);
         }
       }
@@ -140,7 +139,7 @@ public class TaskVerticle extends AbstractVerticle {
    */
   private void cleanUp() {
     Instant threshold = Instant.now().minus(retainSeconds, ChronoUnit.SECONDS);
-    while (!finishedTasks.isEmpty() && finishedTasks.first().getEndTime().toInstant().isBefore(threshold)) {
+    while (!finishedTasks.isEmpty() && finishedTasks.first().getEndTime().isBefore(threshold)) {
       Task t = finishedTasks.pollFirst();
       Map<Class<? extends Task>, Task> m = tasks.get(t.getCorrelationId());
       if (m != null) {

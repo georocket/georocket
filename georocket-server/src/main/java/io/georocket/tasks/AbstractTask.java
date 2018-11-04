@@ -1,6 +1,6 @@
 package io.georocket.tasks;
 
-import java.util.Calendar;
+import java.time.Instant;
 
 /**
  * Abstract base class for tasks
@@ -8,8 +8,8 @@ import java.util.Calendar;
  */
 public abstract class AbstractTask implements Task {
   private String correlationId;
-  private Calendar startTime;
-  private Calendar endTime;
+  private Instant startTime;
+  private Instant endTime;
 
   /**
    * Package-visible default constructor
@@ -40,7 +40,7 @@ public abstract class AbstractTask implements Task {
   }
 
   @Override
-  public Calendar getStartTime() {
+  public Instant getStartTime() {
     return startTime;
   }
 
@@ -48,12 +48,12 @@ public abstract class AbstractTask implements Task {
    * Set the task's start time
    * @param startTime the start time
    */
-  public void setStartTime(Calendar startTime) {
+  public void setStartTime(Instant startTime) {
     this.startTime = startTime;
   }
 
   @Override
-  public Calendar getEndTime() {
+  public Instant getEndTime() {
     return endTime;
   }
 
@@ -61,7 +61,7 @@ public abstract class AbstractTask implements Task {
    * Set the task's end time
    * @param endTime the end time
    */
-  public void setEndTime(Calendar endTime) {
+  public void setEndTime(Instant endTime) {
     this.endTime = endTime;
   }
 
@@ -72,7 +72,7 @@ public abstract class AbstractTask implements Task {
         setStartTime(getStartTime());
       } else if (getStartTime() == null && other.getStartTime() != null) {
         setStartTime(other.getStartTime());
-      } else if (getStartTime().before(other.getStartTime())) {
+      } else if (getStartTime().isBefore(other.getStartTime())) {
         setStartTime(getStartTime());
       } else {
         setStartTime(other.getStartTime());
@@ -84,7 +84,7 @@ public abstract class AbstractTask implements Task {
         setEndTime(getEndTime());
       } else if (getEndTime() == null && other.getEndTime() != null) {
         setEndTime(other.getEndTime());
-      } else if (getEndTime().before(other.getEndTime())) {
+      } else if (getEndTime().isBefore(other.getEndTime())) {
         setEndTime(getEndTime());
       } else {
         setEndTime(other.getEndTime());

@@ -3,8 +3,10 @@ package io.georocket.tasks;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import io.georocket.util.InstantDeserializer;
 
-import java.util.Calendar;
+import java.time.Instant;
 
 /**
  * A task currently being performed by GeoRocket
@@ -31,7 +33,8 @@ public interface Task {
    * @return the task's start time (may be {@code null} if GeoRocket has not
    * yet started executing the task)
    */
-  Calendar getStartTime();
+  @JsonDeserialize(using = InstantDeserializer.class)
+  Instant getStartTime();
 
   /**
    * Get the time when GeoRocket has finished executing the task. Note that
@@ -40,7 +43,8 @@ public interface Task {
    * @return the task's end time (may be {@code null} if GeoRocket has not
    * finished the task yet or if the task's end cannot be decided)
    */
-  Calendar getEndTime();
+  @JsonDeserialize(using = InstantDeserializer.class)
+  Instant getEndTime();
 
   /**
    * Increment the values from this task by the values from the given one

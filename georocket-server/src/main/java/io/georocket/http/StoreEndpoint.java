@@ -47,8 +47,8 @@ import rx.Single;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.Arrays;
-import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -618,7 +618,7 @@ public class StoreEndpoint implements Endpoint {
     }
 
     ReceivingTask task = new ReceivingTask(correlationId);
-    task.setStartTime(Calendar.getInstance());
+    task.setStartTime(Instant.now());
     vertx.eventBus().publish(AddressConstants.TASK_INC, JsonObject.mapFrom(task));
   }
 
@@ -648,7 +648,7 @@ public class StoreEndpoint implements Endpoint {
     }
 
     ReceivingTask task = new ReceivingTask(correlationId);
-    task.setEndTime(Calendar.getInstance());
+    task.setEndTime(Instant.now());
     vertx.eventBus().publish(AddressConstants.TASK_INC, JsonObject.mapFrom(task));
   }
 

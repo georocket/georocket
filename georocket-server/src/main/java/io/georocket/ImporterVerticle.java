@@ -35,7 +35,7 @@ import rx.Completable;
 import rx.Observable;
 import rx.Single;
 
-import java.util.Calendar;
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -255,7 +255,7 @@ public class ImporterVerticle extends AbstractVerticle {
 
     // let the task verticle know that we're now importing
     ImportingTask startTask = new ImportingTask(correlationId);
-    startTask.setStartTime(Calendar.getInstance());
+    startTask.setStartTime(Instant.now());
     vertx.eventBus().publish(AddressConstants.TASK_INC, JsonObject.mapFrom(startTask));
 
     Observable<Integer> result;
@@ -285,7 +285,7 @@ public class ImporterVerticle extends AbstractVerticle {
       .doAfterTerminate(() -> {
         // let the task verticle know that the import process has finished
         ImportingTask endTask = new ImportingTask(correlationId);
-        endTask.setEndTime(Calendar.getInstance());
+        endTask.setEndTime(Instant.now());
         vertx.eventBus().publish(AddressConstants.TASK_INC,
             JsonObject.mapFrom(endTask));
       });

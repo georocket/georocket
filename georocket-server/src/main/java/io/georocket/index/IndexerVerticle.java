@@ -48,8 +48,8 @@ import rx.Observable.Transformer;
 import rx.Single;
 import rx.functions.Func1;
 
+import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -519,12 +519,12 @@ public class IndexerVerticle extends AbstractVerticle {
       String correlationId = body.getString("correlationId");
       if (currentTask == null) {
         currentTask = new IndexingTask(correlationId);
-        currentTask.setStartTime(Calendar.getInstance());
+        currentTask.setStartTime(Instant.now());
       } else if (!currentTask.getCorrelationId().equals(correlationId)) {
         vertx.eventBus().publish(AddressConstants.TASK_INC,
           JsonObject.mapFrom(currentTask));
         currentTask = new IndexingTask(correlationId);
-        currentTask.setStartTime(Calendar.getInstance());
+        currentTask.setStartTime(Instant.now());
       }
 
       if (incIndexedChunks) {
