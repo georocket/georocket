@@ -1,23 +1,35 @@
 package io.georocket.tasks;
 
 import io.georocket.constants.AddressConstants;
+import io.georocket.constants.ConfigConstants;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.Calendar;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.TreeSet;
 
 /**
  * A verticle that tracks information about currently running tasks
  * @author Michel Kraemer
  */
 public class TaskVerticle extends AbstractVerticle {
+  private long retainSeconds;
   private Map<String, Map<Class<? extends Task>, Task>> tasks = new LinkedHashMap<>();
+  private TreeSet<Task> finishedTasks = new TreeSet<>(Comparator.comparing(Task::getEndTime)
+    .thenComparingInt(System::identityHashCode));
 
   @Override
   public void start() {
+    retainSeconds = config().getLong(ConfigConstants.TASKS_RETAIN_SECONDS,
+        ConfigConstants.DEFAULT_TASKS_RETAIN_SECONDS);
+
     vertx.eventBus().consumer(AddressConstants.TASK_GET_ALL, this::onGetAll);
     vertx.eventBus().consumer(AddressConstants.TASK_GET_BY_CORRELATION_ID,
         this::onGetByCorrelationId);
@@ -29,6 +41,7 @@ public class TaskVerticle extends AbstractVerticle {
    * @param msg the request
    */
   private void onGetAll(Message<Void> msg) {
+    cleanUp();
     JsonObject result = new JsonObject();
     tasks.forEach((c, m) -> result.put(c, makeResponse(m)));
     msg.reply(result);
@@ -39,6 +52,7 @@ public class TaskVerticle extends AbstractVerticle {
    * @param msg the request
    */
   private void onGetByCorrelationId(Message<String> msg) {
+    cleanUp();
     String correlationId = msg.body();
     if (correlationId == null) {
       msg.fail(400, "Correlation ID expected");
@@ -89,9 +103,37 @@ public class TaskVerticle extends AbstractVerticle {
 
     Task existingTask = m.get(t.getClass());
     if (existingTask != null) {
+      if (existingTask.getEndTime() != null && t.getEndTime() != null) {
+        // End time will be updated. Temporarily remove existing task from finished tasks.
+        finishedTasks.remove(existingTask);
+      }
       existingTask.inc(t);
+      t = existingTask;
     } else {
       m.put(t.getClass(), t);
+    }
+
+    if (t.getEndTime() != null) {
+      finishedTasks.add(t);
+    }
+
+    cleanUp();
+  }
+
+  /**
+   * Remove outdated tasks
+   */
+  private void cleanUp() {
+    Instant threshold = Instant.now().minus(retainSeconds, ChronoUnit.SECONDS);
+    while (!finishedTasks.isEmpty() && finishedTasks.first().getEndTime().toInstant().isBefore(threshold)) {
+      Task t = finishedTasks.pollFirst();
+      Map<Class<? extends Task>, Task> m = tasks.get(t.getCorrelationId());
+      if (m != null) {
+        m.remove(t.getClass());
+        if (m.isEmpty()) {
+          tasks.remove(t.getCorrelationId());
+        }
+      }
     }
   }
 }

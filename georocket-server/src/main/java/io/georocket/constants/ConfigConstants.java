@@ -72,6 +72,8 @@ public final class ConfigConstants {
   public static final String QUERY_COMPILER_CLASS = "georocket.query.defaultQueryCompiler"; // undocumented
   public static final String QUERY_DEFAULT_CRS = "georocket.query.defaultCRS";
 
+  public static final String TASKS_RETAIN_SECONDS = "georocket.tasks.retainSeconds";
+
   public static final String DEFAULT_HOST = "127.0.0.1";
   public static final int DEFAULT_PORT = 63020;
 
@@ -80,6 +82,8 @@ public final class ConfigConstants {
   public static final int DEFAULT_INDEX_MAX_QUEUED_CHUNKS = 10000;
   public static final long DEFAULT_INDEX_INDEXABLE_CHUNK_CACHE_MAX_SIZE = 1024L * 1024 * 64; // 64 MB
   public static final long DEFAULT_INDEX_INDEXABLE_CHUNK_CACHE_MAX_TIME_SECONDS = 60;
+
+  public static final long DEFAULT_TASKS_RETAIN_SECONDS = 60 * 2;
 
   private ConfigConstants() {
     // hidden constructor

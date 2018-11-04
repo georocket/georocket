@@ -89,3 +89,8 @@ georocket:
       autoUpdateHostsIntervalSeconds: -1
       compressRequestBodies: false
       javaOpts: "-Xms6g -Xmx6g"
+
+  tasks:
+    # the maximum number of seconds information about a task should be kept
+    # and provided through the tasks endpoint after the task has finished
+    retainSeconds: 120
