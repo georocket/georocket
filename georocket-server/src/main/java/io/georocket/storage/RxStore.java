@@ -74,16 +74,40 @@ public class RxStore implements Store {
   public void delete(String search, String path, Handler<AsyncResult<Void>> handler) {
     delegate.delete(search, path, handler);
   }
-  
+
   /**
    * Rx version of {@link #delete(String, String, Handler)}
    * @param search the search query
    * @param path the path where to search for the chunks (may be null)
    * @return a Completable that completes when the operation has finished
+   * @deprecated Call {@link #rxDelete(String, String, DeleteMeta)}
+   * instead with a unique {@code correlationId} in the {@link DeleteMeta}
+   * object so the deletion process can be tracked correctly. This method
+   * will be removed in GeoRocket 2.0.0.
    */
+  @Deprecated
   public Completable rxDelete(String search, String path) {
     return Single.create(new SingleOnSubscribeAdapter<Void>(f ->
         delete(search, path, f))).toCompletable();
+  }
+
+  @Override
+  public void delete(String search, String path, DeleteMeta deleteMeta,
+    Handler<AsyncResult<Void>> handler) {
+    delegate.delete(search, path, deleteMeta, handler);
+  }
+
+  /**
+   * Rx version of {@link #delete(String, String, DeleteMeta, Handler)}
+   * @param search the search query
+   * @param path the path where to search for the chunks (may be null)
+   * @param deleteMeta a metadata object containing additional information
+   * about the deletion process
+   * @return a Completable that completes when the operation has finished
+   */
+  public Completable rxDelete(String search, String path, DeleteMeta deleteMeta) {
+    return Single.create(new SingleOnSubscribeAdapter<Void>(f ->
+      delete(search, path, deleteMeta, f))).toCompletable();
   }
 
   @Override

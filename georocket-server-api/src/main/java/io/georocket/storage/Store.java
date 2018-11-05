@@ -36,8 +36,27 @@ public interface Store {
    * @param search the search query
    * @param path the path where to search for the chunks (may be null)
    * @param handler will be called when the chunk has been deleted
+   * @deprecated Call {@link #delete(String, String, DeleteMeta, Handler)}
+   * instead with a unique {@code correlationId} in the {@link DeleteMeta}
+   * object so the deletion process can be tracked correctly. This method
+   * will be removed in GeoRocket 2.0.0.
    */
+  @Deprecated
   void delete(String search, String path, Handler<AsyncResult<Void>> handler);
+
+  /**
+   * Delete all chunks from the store that match a given query. Callers should
+   * pass a {@link DeleteMeta} object with a unique {@code correlationId} so the
+   * deletion process can be tracked correctly.
+   * @param search the search query
+   * @param path the path where to search for the chunks (may be null)
+   * @param deleteMeta a metadata object containing additional information
+   * about the deletion process
+   * @param handler will be called when the chunk has been deleted
+   * @since 1.4.0
+   */
+  void delete(String search, String path, DeleteMeta deleteMeta,
+      Handler<AsyncResult<Void>> handler);
 
   /**
    * Get a number of chunks from the store using quick-search

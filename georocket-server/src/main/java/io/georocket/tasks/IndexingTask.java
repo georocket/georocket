@@ -38,22 +38,6 @@ public class IndexingTask extends AbstractTask {
     this.indexedChunks = indexedChunks;
   }
 
-  /**
-   * Increase the number of chunks already indexed by this task by 1
-   */
-  public void incIndexedChunks() {
-    incIndexedChunks(1);
-  }
-
-  /**
-   * Increase the number of chunks already indexed by this task by the
-   * given number
-   * @param inc the increment
-   */
-  public void incIndexedChunks(int inc) {
-    indexedChunks += inc;
-  }
-
   @Override
   public void inc(Task other) {
     if (!(other instanceof IndexingTask)) {

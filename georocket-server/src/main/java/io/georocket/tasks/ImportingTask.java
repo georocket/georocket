@@ -38,22 +38,6 @@ public class ImportingTask extends AbstractTask {
     this.importedChunks = importedChunks;
   }
 
-  /**
-   * Increase the number of chunks already imported by this task by 1
-   */
-  public void incImportedChunks() {
-    incImportedChunks(1);
-  }
-
-  /**
-   * Increase the number of chunks already imported by this task by the
-   * given number
-   * @param inc the increment
-   */
-  public void incImportedChunks(int inc) {
-    importedChunks += inc;
-  }
-
   @Override
   public void inc(Task other) {
     if (!(other instanceof ImportingTask)) {

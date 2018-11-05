@@ -7,6 +7,7 @@ import io.georocket.constants.ConfigConstants;
 import io.georocket.output.Merger;
 import io.georocket.output.MultiMerger;
 import io.georocket.storage.ChunkMeta;
+import io.georocket.storage.DeleteMeta;
 import io.georocket.storage.RxAsyncCursor;
 import io.georocket.storage.RxStore;
 import io.georocket.storage.RxStoreCursor;
@@ -728,7 +729,9 @@ public class StoreEndpoint implements Endpoint {
    * @param response the http response
    */
   private void deleteChunks(String search, String path, HttpServerResponse response) {
-    store.rxDelete(search, path)
+    String correlationId = new ObjectId().toString();
+    DeleteMeta deleteMeta = new DeleteMeta(correlationId);
+    store.rxDelete(search, path, deleteMeta)
       .subscribe(() -> {
         response
           .setStatusCode(204)

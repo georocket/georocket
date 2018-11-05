@@ -4,9 +4,11 @@ import io.georocket.constants.AddressConstants;
 import io.georocket.index.IndexableChunkCache;
 import io.georocket.storage.AsyncCursor;
 import io.georocket.storage.ChunkMeta;
+import io.georocket.storage.DeleteMeta;
 import io.georocket.storage.IndexMeta;
 import io.georocket.storage.Store;
 import io.georocket.storage.StoreCursor;
+import io.georocket.tasks.PurgingTask;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -18,6 +20,7 @@ import io.vertx.core.json.JsonObject;
 import org.apache.commons.lang3.StringUtils;
 
 import java.security.SecureRandom;
+import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.List;
 import java.util.Map;
@@ -86,6 +89,50 @@ public abstract class IndexedStore implements Store {
 
   @Override
   public void delete(String search, String path, Handler<AsyncResult<Void>> handler) {
+    delete(search, path, null, handler);
+  }
+
+  /**
+   * Send a message to the task verticle telling it that we are now starting
+   * to delete chunks from the store
+   * @param correlationId the correlation ID of the purging task
+   * @param totalChunks the total number of chunks to purge
+   */
+  private void startPurgingTask(String correlationId, int totalChunks) {
+    PurgingTask purgingTask = new PurgingTask(correlationId);
+    purgingTask.setStartTime(Instant.now());
+    purgingTask.setTotalChunks(totalChunks);
+    vertx.eventBus().publish(AddressConstants.TASK_INC,
+        JsonObject.mapFrom(purgingTask));
+  }
+
+  /**
+   * Send a message to the task verticle telling it that we have finished
+   * deleting chunks from the store
+   * @param correlationId the correlation ID of the purging task
+   */
+  private void stopPurgingTask(String correlationId) {
+    PurgingTask purgingTask = new PurgingTask(correlationId);
+    purgingTask.setEndTime(Instant.now());
+    vertx.eventBus().publish(AddressConstants.TASK_INC,
+        JsonObject.mapFrom(purgingTask));
+  }
+
+  /**
+   * Send a message to the task verticle telling it that we just deleted
+   * the given number of chunks from the store
+   * @param correlationId the correlation ID of the purging task
+   */
+  private void updatePurgingTask(String correlationId, int purgedChunks) {
+    PurgingTask purgingTask = new PurgingTask(correlationId);
+    purgingTask.setPurgedChunks(purgedChunks);
+    vertx.eventBus().publish(AddressConstants.TASK_INC,
+        JsonObject.mapFrom(purgingTask));
+  }
+
+  @Override
+  public void delete(String search, String path, DeleteMeta deleteMeta,
+      Handler<AsyncResult<Void>> handler) {
     get(search, path, ar -> {
       if (ar.failed()) {
         Throwable cause = ar.cause();
@@ -101,9 +148,20 @@ public abstract class IndexedStore implements Store {
         handler.handle(Future.failedFuture(ar.cause()));
       } else {
         StoreCursor cursor = ar.result();
-        Queue<String> paths = new ArrayDeque<>();
         AtomicLong remaining = new AtomicLong(cursor.getInfo().getTotalHits());
-        doDelete(cursor, paths, remaining, handler);
+
+        String correlationId = deleteMeta != null ? deleteMeta.getCorrelationId() : null;
+        if (correlationId != null) {
+          startPurgingTask(correlationId, remaining.intValue());
+        }
+
+        Queue<String> paths = new ArrayDeque<>();
+        doDelete(cursor, paths, remaining, correlationId, ddar -> {
+          if (correlationId != null) {
+            stopPurgingTask(correlationId);
+          }
+          handler.handle(ddar);
+        });
       }
     });
   }
@@ -130,17 +188,22 @@ public abstract class IndexedStore implements Store {
    * @param paths an empty queue (used internally for recursion)
    * @param remainingChunks holds the remaining number of chunks to delete
    * (used internally for recursion)
+   * @param correlationId the correlation ID of the current purging task
    * @param handler will be called when all chunks have been deleted
    */
-  protected void doDelete(StoreCursor cursor, Queue<String> paths,
-      AtomicLong remainingChunks, Handler<AsyncResult<Void>> handler) {
+  private void doDelete(StoreCursor cursor, Queue<String> paths,
+      AtomicLong remainingChunks, String correlationId,
+      Handler<AsyncResult<Void>> handler) {
     // handle response of bulk delete operation
     Function<Integer, Handler<AsyncResult<Void>>> handleBulk = size -> bulkAr -> {
       remainingChunks.getAndAdd(-size);
+      if (correlationId != null) {
+        updatePurgingTask(correlationId, size);
+      }
       if (bulkAr.failed()) {
         handler.handle(Future.failedFuture(bulkAr.cause()));
       } else {
-        doDelete(cursor, paths, remainingChunks, handler);
+        doDelete(cursor, paths, remainingChunks, correlationId, handler);
       }
     };
     
@@ -160,7 +223,7 @@ public abstract class IndexedStore implements Store {
                 remainingChunks.get(), handleBulk.apply(size));
           } else {
             // otherwise proceed with next item from cursor
-            doDelete(cursor, paths, remainingChunks, handler);
+            doDelete(cursor, paths, remainingChunks, correlationId, handler);
           }
         }
       });
@@ -186,7 +249,7 @@ public abstract class IndexedStore implements Store {
    * @param remainingChunks the remaining chunks to delete (including this batch)
    * @param handler will be called when the operation has finished
    */
-  protected void doDeleteBulk(Queue<String> paths, long totalChunks,
+  private void doDeleteBulk(Queue<String> paths, long totalChunks,
       long remainingChunks, Handler<AsyncResult<Void>> handler) {
     // delete from index first so the chunks cannot be found anymore
     JsonArray jsonPaths = new JsonArray();

@@ -528,7 +528,7 @@ public class IndexerVerticle extends AbstractVerticle {
       }
 
       if (incIndexedChunks) {
-        currentTask.incIndexedChunks();
+        currentTask.setIndexedChunks(currentTask.getIndexedChunks() + 1);
       }
     }
 

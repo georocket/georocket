@@ -16,8 +16,9 @@ import java.time.Instant;
   use = JsonTypeInfo.Id.NAME,
   property = "type")
 @JsonSubTypes({
-  @JsonSubTypes.Type(value = IndexingTask.class, name = "indexing"),
   @JsonSubTypes.Type(value = ImportingTask.class, name = "importing"),
+  @JsonSubTypes.Type(value = IndexingTask.class, name = "indexing"),
+  @JsonSubTypes.Type(value = PurgingTask.class, name = "purging"),
   @JsonSubTypes.Type(value = ReceivingTask.class, name = "receiving")
 })
 @JsonInclude(value = JsonInclude.Include.NON_NULL)
