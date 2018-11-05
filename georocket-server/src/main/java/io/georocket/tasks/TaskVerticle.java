@@ -131,6 +131,16 @@ public class TaskVerticle extends AbstractVerticle {
       }
     }
 
+    // help the indexer verticle and finish the removing task if all chunks
+    // have been removed
+    if (t instanceof RemovingTask && t.getEndTime() == null) {
+      RemovingTask rt = (RemovingTask)t;
+      if (rt.getTotalChunks() == rt.getRemovedChunks()) {
+        rt.setEndTime(Instant.now());
+        finishedTasks.add(rt);
+      }
+    }
+
     cleanUp();
   }
 

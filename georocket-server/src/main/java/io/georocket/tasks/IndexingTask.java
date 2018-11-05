@@ -5,7 +5,7 @@ package io.georocket.tasks;
  * @author Michel Kraemer
  */
 public class IndexingTask extends AbstractTask {
-  private int indexedChunks;
+  private long indexedChunks;
 
   /**
    * Package-visible default constructor
@@ -26,7 +26,7 @@ public class IndexingTask extends AbstractTask {
    * Get the number of chunks already indexed by this task
    * @return the number of indexed chunks
    */
-  public int getIndexedChunks() {
+  public long getIndexedChunks() {
     return indexedChunks;
   }
 
@@ -34,7 +34,7 @@ public class IndexingTask extends AbstractTask {
    * Set the number of chunks already indexed by this task
    * @param indexedChunks the number of indexed chunks
    */
-  public void setIndexedChunks(int indexedChunks) {
+  public void setIndexedChunks(long indexedChunks) {
     this.indexedChunks = indexedChunks;
   }
 

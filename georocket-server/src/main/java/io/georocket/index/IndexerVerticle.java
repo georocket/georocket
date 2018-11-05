@@ -21,6 +21,7 @@ import io.georocket.storage.RxStore;
 import io.georocket.storage.StoreFactory;
 import io.georocket.storage.XMLChunkMeta;
 import io.georocket.tasks.IndexingTask;
+import io.georocket.tasks.RemovingTask;
 import io.georocket.util.FilteredServiceLoader;
 import io.georocket.util.JsonParserTransformer;
 import io.georocket.util.MapUtils;
@@ -510,7 +511,7 @@ public class IndexerVerticle extends AbstractVerticle {
    * @param incIndexedChunks {@link true} if the number of indexed chunks
    * should be increased
    */
-  private void generateIndexerTasks(List<Message<JsonObject>> messages,
+  private void startIndexerTasks(List<Message<JsonObject>> messages,
       boolean incIndexedChunks) {
     IndexingTask currentTask = null;
 
@@ -543,8 +544,8 @@ public class IndexerVerticle extends AbstractVerticle {
    * to the task verticle
    * @param messages the messages
    */
-  private void generateIndexerTasks(List<Message<JsonObject>> messages) {
-    generateIndexerTasks(messages, false);
+  private void startIndexerTasks(List<Message<JsonObject>> messages) {
+    startIndexerTasks(messages, false);
   }
 
   /**
@@ -552,8 +553,40 @@ public class IndexerVerticle extends AbstractVerticle {
    * indexed chunks for the correlation IDs in the given messages
    * @param messages the messages
    */
-  private void sendIndexerTasksIndexedChunks(List<Message<JsonObject>> messages) {
-    generateIndexerTasks(messages, true);
+  private void updateIndexerTasks(List<Message<JsonObject>> messages) {
+    startIndexerTasks(messages, true);
+  }
+
+  /**
+   * Send a message to the task verticle telling it that we are now starting
+   * to remove chunks from the index
+   * @param correlationId the correlation ID of the removing task
+   * @param totalChunks the total number of chunks to remove
+   */
+  private void startRemovingTask(String correlationId, long totalChunks) {
+    if (correlationId == null) {
+      return;
+    }
+    RemovingTask removingTask = new RemovingTask(correlationId);
+    removingTask.setStartTime(Instant.now());
+    removingTask.setTotalChunks(totalChunks);
+    vertx.eventBus().publish(AddressConstants.TASK_INC,
+        JsonObject.mapFrom(removingTask));
+  }
+
+  /**
+   * Send a message to the task verticle telling it that we just removed the
+   * given number of chunks from the index
+   * @param correlationId the correlation ID of the removing task
+   */
+  private void updateRemovingTask(String correlationId, int removedChunks) {
+    if (correlationId == null) {
+      return;
+    }
+    RemovingTask removingTask = new RemovingTask(correlationId);
+    removingTask.setRemovedChunks(removedChunks);
+    vertx.eventBus().publish(AddressConstants.TASK_INC,
+        JsonObject.mapFrom(removingTask));
   }
 
   /**
@@ -682,7 +715,7 @@ public class IndexerVerticle extends AbstractVerticle {
    * @return a Completable that completes when the operation has finished
    */
   private Completable onAdd(List<Message<JsonObject>> messages) {
-    generateIndexerTasks(messages);
+    startIndexerTasks(messages);
     return Observable.from(messages)
       .flatMap(msg -> {
         // get path to chunk from message
@@ -738,7 +771,7 @@ public class IndexerVerticle extends AbstractVerticle {
         return Completable.complete();
       })
       .toCompletable()
-      .doOnCompleted(() -> sendIndexerTasksIndexedChunks(messages));
+      .doOnCompleted(() -> updateIndexerTasks(messages));
   }
 
   /**
@@ -810,14 +843,17 @@ public class IndexerVerticle extends AbstractVerticle {
    */
   private Completable onDelete(JsonObject body) {
     JsonArray paths = body.getJsonArray("paths");
+    String correlationId = body.getString("correlationId");
     long totalChunks = body.getLong("totalChunks", (long)paths.size());
     long remainingChunks = body.getLong("remainingChunks", (long)paths.size());
 
     // execute bulk request
     long startTimeStamp = System.currentTimeMillis();
     onDeletingStarted(startTimeStamp, paths, totalChunks, remainingChunks);
+    startRemovingTask(correlationId, totalChunks);
 
     return client.bulkDelete(TYPE_NAME, paths).flatMapCompletable(bres -> {
+      updateRemovingTask(correlationId, paths.size());
       long stopTimeStamp = System.currentTimeMillis();
       if (client.bulkResponseHasErrors(bres)) {
         String error = client.bulkResponseGetErrorMessage(bres);

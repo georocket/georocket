@@ -5,7 +5,7 @@ package io.georocket.tasks;
  * @author Michel Kraemer
  */
 public class ImportingTask extends AbstractTask {
-  private int importedChunks;
+  private long importedChunks;
 
   /**
    * Package-visible default constructor
@@ -26,7 +26,7 @@ public class ImportingTask extends AbstractTask {
    * Get the number of chunks already imported by this task
    * @return the number of imported chunks
    */
-  public int getImportedChunks() {
+  public long getImportedChunks() {
     return importedChunks;
   }
 
@@ -34,7 +34,7 @@ public class ImportingTask extends AbstractTask {
    * Set the number of chunks already imported by this task
    * @param importedChunks the number of imported chunks
    */
-  public void setImportedChunks(int importedChunks) {
+  public void setImportedChunks(long importedChunks) {
     this.importedChunks = importedChunks;
   }
 

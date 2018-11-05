@@ -6,8 +6,8 @@ package io.georocket.tasks;
  * @author Michel Kraemer
  */
 public class PurgingTask extends AbstractTask {
-  private int totalChunks;
-  private int purgedChunks;
+  private long totalChunks;
+  private long purgedChunks;
 
   /**
    * Package-visible default constructor
@@ -28,7 +28,7 @@ public class PurgingTask extends AbstractTask {
    * Get the total number of chunks to be purged by this task
    * @return the number of chunks to be purged
    */
-  public int getTotalChunks() {
+  public long getTotalChunks() {
     return totalChunks;
   }
 
@@ -36,7 +36,7 @@ public class PurgingTask extends AbstractTask {
    * Set the total number of chunks to be purged by this task
    * @param totalChunks the total number of chunks to be purged
    */
-  public void setTotalChunks(int totalChunks) {
+  public void setTotalChunks(long totalChunks) {
     this.totalChunks = totalChunks;
   }
 
@@ -44,7 +44,7 @@ public class PurgingTask extends AbstractTask {
    * Get the number of chunks already purged by this task
    * @return the number of purged chunks
    */
-  public int getPurgedChunks() {
+  public long getPurgedChunks() {
     return purgedChunks;
   }
 
@@ -52,7 +52,7 @@ public class PurgingTask extends AbstractTask {
    * Set the number of chunks already purged by this task
    * @param purgedChunks the number of purged chunks
    */
-  public void setPurgedChunks(int purgedChunks) {
+  public void setPurgedChunks(long purgedChunks) {
     this.purgedChunks = purgedChunks;
   }
 
@@ -64,6 +64,6 @@ public class PurgingTask extends AbstractTask {
     PurgingTask po = (PurgingTask)other;
     super.inc(other);
     setPurgedChunks(getPurgedChunks() + po.getPurgedChunks());
-    setTotalChunks(getTotalChunks() + po.getTotalChunks());
+    setTotalChunks(Math.max(getTotalChunks(), po.getTotalChunks()));
   }
 }

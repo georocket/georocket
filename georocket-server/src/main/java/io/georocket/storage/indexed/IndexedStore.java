@@ -220,7 +220,7 @@ public abstract class IndexedStore implements Store {
           if (paths.size() >= size) {
             // if there are enough items in the queue, bulk delete them
             doDeleteBulk(paths, cursor.getInfo().getTotalHits(),
-                remainingChunks.get(), handleBulk.apply(size));
+                remainingChunks.get(), correlationId, handleBulk.apply(size));
           } else {
             // otherwise proceed with next item from cursor
             doDelete(cursor, paths, remainingChunks, correlationId, handler);
@@ -232,7 +232,7 @@ public abstract class IndexedStore implements Store {
       if (!paths.isEmpty()) {
         // bulk delete the remaining ones
         doDeleteBulk(paths, cursor.getInfo().getTotalHits(),
-            remainingChunks.get(), handleBulk.apply(paths.size()));
+            remainingChunks.get(), correlationId, handleBulk.apply(paths.size()));
       } else {
         // end operation
         handler.handle(Future.succeededFuture());
@@ -247,14 +247,16 @@ public abstract class IndexedStore implements Store {
    * the operation has finished)
    * @param totalChunks the total number of paths to delete (including this batch)
    * @param remainingChunks the remaining chunks to delete (including this batch)
+   * @param correlationId the correlation ID of the current purging task
    * @param handler will be called when the operation has finished
    */
   private void doDeleteBulk(Queue<String> paths, long totalChunks,
-      long remainingChunks, Handler<AsyncResult<Void>> handler) {
+      long remainingChunks, String correlationId, Handler<AsyncResult<Void>> handler) {
     // delete from index first so the chunks cannot be found anymore
     JsonArray jsonPaths = new JsonArray();
     paths.forEach(jsonPaths::add);
     JsonObject indexMsg = new JsonObject()
+        .put("correlationId", correlationId)
         .put("paths", jsonPaths)
         .put("totalChunks", totalChunks)
         .put("remainingChunks", remainingChunks);
