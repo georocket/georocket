@@ -674,7 +674,9 @@ public class StoreEndpoint implements Endpoint {
     } else if (StringUtils.isNotEmpty(tags)) {
       removeTags(search, path, tags, response);
     } else {
-      deleteChunks(search, path, response);
+      String strAsync = request.getParam("async");
+      boolean async = BooleanUtils.toBoolean(strAsync);
+      deleteChunks(search, path, async, response);
     }
   }
 
@@ -726,20 +728,32 @@ public class StoreEndpoint implements Endpoint {
    * Delete chunks
    * @param search the search query
    * @param path the path
+   * @param async {@code true} if the operation should be performed asynchronously
    * @param response the http response
    */
-  private void deleteChunks(String search, String path, HttpServerResponse response) {
+  private void deleteChunks(String search, String path, boolean async,
+      HttpServerResponse response) {
     String correlationId = new ObjectId().toString();
     DeleteMeta deleteMeta = new DeleteMeta(correlationId);
-    store.rxDelete(search, path, deleteMeta)
-      .subscribe(() -> {
-        response
-          .setStatusCode(204)
-          .end();
-      }, err -> {
-        log.error("Could not delete chunks", err);
-        fail(response, err);
-      });
+    if (async) {
+      store.rxDelete(search, path, deleteMeta)
+        .subscribe(() -> {}, err -> log.error("Could not delete chunks", err));
+      response
+        .setStatusCode(202) // Accepted
+        .putHeader("X-Correlation-Id", correlationId)
+        .end();
+    } else {
+      store.rxDelete(search, path, deleteMeta)
+        .subscribe(() -> {
+          response
+            .setStatusCode(204) // No Content
+            .putHeader("X-Correlation-Id", correlationId)
+            .end();
+        }, err -> {
+          log.error("Could not delete chunks", err);
+          fail(response, err);
+        });
+    }
   }
 
   /**
