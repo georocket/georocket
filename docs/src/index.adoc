@@ -619,6 +619,14 @@ NOTE: This operation supports GZIP. Clients may upload compressed files to GeoRo
 | GeoRocket is able to automatically detect the coordinate reference system (CRS) of an imported file. If this is, for any reason, not possible, you may manually specify a reference system with this parameter. GeoRocket will only use it if it does not find a valid one in the imported file. Values for this parameter must be in the form `EPSG:<code>` (e.g. `EPSG:25832`). See the http://www.epsg-registry.org/[EPSG registry] for more information.
 |===
 
+===== Response headers
+
+[cols="1,2"]
+|===
+| *X-Correlation-Id*
+| A unique identifier that can be used to query the status of importing and indexing the uploaded file through the <<get-tasks, task endpoint>>.
+|===
+
 ===== Status codes
 
 [cols="1,2"]
@@ -648,6 +656,7 @@ Content-Length: 35903517
 ----
 HTTP/1.1 202 Accepted file - importing in progress
 Content-Length: 0
+X-Correlation-Id: 1234566789abcdef12345678
 ----
 
 === PUT tags
@@ -772,6 +781,14 @@ Delete chunks or layers from the data store.
 
 CAUTION: If you don't specify a layer (`path`) nor a query (`search`) then the whole contents of the GeoRocket data store will be deleted.
 
+===== Response headers
+
+[cols="1,2"]
+|===
+| *X-Correlation-Id*
+| A unique identifier that can be used to query the status of deleting the chunks through the <<get-tasks, task endpoint>>.
+|===
+
 ===== Status codes
 
 [cols="1,2"]
@@ -797,6 +814,7 @@ DELETE /store/CityModel?search=LOD1 HTTP/1.1
 ----
 HTTP/1.1 204 No Content
 Content-Length: 0
+X-Correlation-Id: 1234566789abcdef12345678
 ----
 
 === DELETE tags
