@@ -777,6 +777,9 @@ Delete chunks or layers from the data store.
 | *search* +
   _(optional)_
 | A URL-encoded <<query-language, query string>> specifying which chunks should be deleted. If no query string is provided the whole layer is deleted.
+| *async* +
+  _(default: false)_
+| A boolean value (`true` or `false`) denoting whether the operation should be performed asynchronously or not. If the value is `true`, GeoRocket will schedule the operation and immediately return with HTTP status code 202.
 |===
 
 CAUTION: If you don't specify a layer (`path`) nor a query (`search`) then the whole contents of the GeoRocket data store will be deleted.
@@ -793,26 +796,28 @@ CAUTION: If you don't specify a layer (`path`) nor a query (`search`) then the w
 
 [cols="1,2"]
 |===
+| *202*
+| The request was accepted and the matching chunks will be deleted from the data store asynchronously. This status code will only be returned if the `async` parameter is `true`.
 | *204*
-| The operation was successful. The matching chunks were deleted from the data store.
+| The operation was successful. The matching chunks were deleted from the data store. This status code will only be returned if the `async` parameter is `false` (default).
 | *400*
 | The provided information was invalid (e.g. malformed query)
 | *500*
 | An unexpected error occurred on the server side
 |===
 
-NOTE: This HTTP method is idempotent. Even if the given query returns no results (i.e. if there is nothing to delete) the operation completes successfully with a status code of `204`.
+NOTE: This HTTP method is idempotent. Even if the given query returns no results (i.e. if there is nothing to delete) the operation will complete successfully with a status code of `202` or `204` (depending on the `async` parameter).
 
 ===== Example request
 
 ----
-DELETE /store/CityModel?search=LOD1 HTTP/1.1
+DELETE /store/CityModel?search=LOD1&async=true HTTP/1.1
 ----
 
 ===== Example response
 
 ----
-HTTP/1.1 204 No Content
+HTTP/1.1 202 Accepted
 Content-Length: 0
 X-Correlation-Id: 1234566789abcdef12345678
 ----
