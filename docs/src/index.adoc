@@ -922,6 +922,59 @@ HTTP/1.1 204 No Content
 Content-Length: 0
 ----
 
+[[get-tasks]]
+=== GET tasks
+
+Get information about the status of asynchronous tasks such as importing,
+indexing, or deleting.
+
+===== Resource URL
+
+  /tasks/:correlationId
+
+===== Parameters
+
+[cols="1,2"]
+|===
+| *correlationId* +
+  _(optional)_
+| A unique task identifier (also called '`correlation ID`'). Operations such as `POST file` or `DELETE chunks` return such an identifier in their response headers (`X-Correlation-Id`). If this parameter is left off, GeoRocket will return information about all tasks. If it is given, GeoRocket will only return information about the specified task.
+|===
+
+===== Status codes
+
+[cols="1,2"]
+|===
+| *200*
+| The operation was successful
+| *404*
+| The requested task was not found
+|===
+
+===== Example request
+
+----
+GET /tasks/1234566789abcdef12345678 HTTP/1.1
+----
+
+===== Example response
+
+----
+HTTP/1.1 200 OK
+Content-Type: application/json
+Content-Length: 186
+
+{
+  "1234566789abcdef12345678": [{
+    "endTime": "2018-11-06T11:27:54.705Z",
+    "startTime": "2018-11-06T11:27:52.345Z",
+    "type": "receiving"
+  }, {
+    ...
+  }]
+}
+----
+
 === Compression
 
 The GeoRocket HTTP interface supports GZIP compression. If the configuration item <<config-http-interface, `georocket.http.compress`>> is set to `true` (default), GeoRocket is able to compress responses of all operations described above. Note that this will only work if the client advertises that it understands `gzip` by sending an appropriate `Accept-Encoding` HTTP header.
