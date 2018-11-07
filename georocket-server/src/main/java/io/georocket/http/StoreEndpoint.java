@@ -82,11 +82,6 @@ public class StoreEndpoint implements Endpoint {
   private RxStore store;
   private String storagePath;
 
-  /**
-   * True if the store should report activities to the Vert.x event bus
-   */
-  private boolean reportActivities;
-
   @Override
   public String getMountPoint() {
     return "/store";
@@ -96,8 +91,6 @@ public class StoreEndpoint implements Endpoint {
   public Router createRouter(Vertx vertx) {
     this.vertx = vertx;
 
-    reportActivities = vertx.getOrCreateContext()
-      .config().getBoolean(ConfigConstants.REPORT_ACTIVITIES, false);
     store = new RxStore(StoreFactory.createStore(vertx));
     storagePath = vertx.getOrCreateContext().config()
       .getString(ConfigConstants.STORAGE_FILE_PATH);
@@ -606,18 +599,6 @@ public class StoreEndpoint implements Endpoint {
 
   private void onReceivingFileStarted(String correlationId, long startTime) {
     log.info("Receiving file [" + correlationId + "]");
-
-    if (reportActivities) {
-      JsonObject msg = new JsonObject()
-        .put("activity", "import")
-        .put("state", "receive")
-        .put("action", "enter")
-        .put("correlationId", correlationId)
-        .put("timestamp", startTime);
-
-      vertx.eventBus().publish(AddressConstants.ACTIVITIES, msg);
-    }
-
     ReceivingTask task = new ReceivingTask(correlationId);
     task.setStartTime(Instant.now());
     vertx.eventBus().publish(AddressConstants.TASK_INC, JsonObject.mapFrom(task));
@@ -626,28 +607,12 @@ public class StoreEndpoint implements Endpoint {
   private void onReceivingFileFinished(String correlationId, long duration,
       Throwable error) {
     if (error == null) {
-      log.info(String.format("Finished receiving file [%s] after '%d' ms",
+      log.info(String.format("Finished receiving file [%s] after %d ms",
           correlationId, duration));
     } else {
       log.error(String.format("Failed receiving file [%s] after %d ms",
           correlationId, duration), error);
     }
-
-    if (reportActivities) {
-      JsonObject msg = new JsonObject()
-        .put("activity", "import")
-        .put("state", "receive")
-        .put("action", "leave")
-        .put("correlationId", correlationId)
-        .put("duration", duration);
-
-      if (error != null) {
-        msg.put("error", error.getMessage());
-      }
-
-      vertx.eventBus().publish(AddressConstants.ACTIVITIES, msg);
-    }
-
     ReceivingTask task = new ReceivingTask(correlationId);
     task.setEndTime(Instant.now());
     vertx.eventBus().publish(AddressConstants.TASK_INC, JsonObject.mapFrom(task));

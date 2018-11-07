@@ -122,11 +122,6 @@ public class IndexerVerticle extends AbstractVerticle {
   private List<MetaIndexerFactory> metaIndexerFactories;
   
   /**
-   * True if the indexer should report activities to the Vert.x event bus
-   */
-  private boolean reportActivities;
-  
-  /**
    * The maximum number of chunks to index in one bulk
    */
   private int maxBulkSize;
@@ -160,10 +155,6 @@ public class IndexerVerticle extends AbstractVerticle {
   public void start(Future<Void> startFuture) {
     log.info("Launching indexer ...");
 
-    // True if the indexer and other verticles should report their activities
-    // to the Vert.x event bus (mostly useful for GeoRocket plug-ins)
-    reportActivities = config().getBoolean(ConfigConstants.REPORT_ACTIVITIES, false);
-    
     maxBulkSize = config().getInteger(ConfigConstants.INDEX_MAX_BULK_SIZE,
         ConfigConstants.DEFAULT_INDEX_MAX_BULK_SIZE);
     maxParallelInserts = config().getInteger(ConfigConstants.INDEX_MAX_PARALLEL_INSERTS,
@@ -310,77 +301,6 @@ public class IndexerVerticle extends AbstractVerticle {
         });
       });
   }
-
-  /**
-   * Will be called before the indexer starts deleting chunks
-   * @param timeStamp the time when the indexer has started deleting
-   * @param paths the chunks to delete
-   * @param totalChunks the total number of chunks to delete in the whole batch
-   * operation
-   * @param remainingChunks the remaining number of chunks to delete
-   */
-  private void onDeletingStarted(long timeStamp, JsonArray paths,
-      long totalChunks, long remainingChunks) {
-    if (paths.size() < remainingChunks) {
-      log.info("Deleting " + paths.size() + "/" + remainingChunks +
-          " chunks from index ...");
-    } else {
-      log.info("Deleting " + paths.size() + " chunks from index ...");
-    }
-
-    if (reportActivities) {
-      JsonObject msg = new JsonObject()
-        .put("activity", "delete")
-        .put("state", "index")
-        .put("owner", deploymentID())
-        .put("action", "enter")
-        .put("chunkCount", paths.size())
-        .put("totalChunkCount", totalChunks)
-        .put("remainingChunkCount", remainingChunks)
-        .put("paths", paths)
-        .put("timestamp", timeStamp);
-      vertx.eventBus().publish(AddressConstants.ACTIVITIES, msg);
-    }
-  }
-
-  /**
-   * Will be called after the indexer has finished deleting chunks
-   * @param duration the time it took to delete the chunks
-   * @param paths the paths of the deleted chunks
-   * @param totalChunks the total number of chunks to delete in the whole batch
-   * operation
-   * @param remainingChunks the remaining number of chunks to delete
-   * @param errorMessage an error message if the process has failed
-   * or <code>null</code> if everything was successful
-   */
-  private void onDeletingFinished(long duration, JsonArray paths,
-      long totalChunks, long remainingChunks, String errorMessage) {
-    if (errorMessage != null) {
-      log.error("Deleting chunks failed: " + errorMessage);
-    } else {
-      log.info("Finished deleting " + paths.size() +
-          " chunks from index in " + duration + " ms");
-    }
-
-    if (reportActivities) {
-      JsonObject msg = new JsonObject()
-        .put("activity", "delete")
-        .put("state", "index")
-        .put("owner", deploymentID())
-        .put("action", "leave")
-        .put("chunkCount", paths.size())
-        .put("totalChunkCount", totalChunks)
-        .put("remainingChunkCount", remainingChunks)
-        .put("paths", paths)
-        .put("duration", duration);
-
-      if (errorMessage != null) {
-        msg.put("error", errorMessage);
-      }
-
-      vertx.eventBus().publish(AddressConstants.ACTIVITIES, msg);
-    }
-  }
   
   private Completable ensureMapping() {
     // merge mappings from all indexers
@@ -397,19 +317,23 @@ public class IndexerVerticle extends AbstractVerticle {
    * Insert multiple Elasticsearch documents into the index. Perform a
    * bulk request. This method replies to all messages if the bulk request
    * was successful.
-   * @param type Elasticsearch type for documents
    * @param documents a list of tuples containing document IDs, documents to
    * index, and the respective messages from which the documents were created
    * @return a Completable that completes when the operation has finished
    */
-  private Completable insertDocuments(String type,
-      List<Tuple3<String, JsonObject, Message<JsonObject>>> documents) {
+  private Completable insertDocuments(List<Tuple3<String, JsonObject, Message<JsonObject>>> documents) {
     long startTimeStamp = System.currentTimeMillis();
     
     List<String> chunkPaths = Seq.seq(documents)
       .map(Tuple3::v1)
       .toList();
-    onIndexingStarted(startTimeStamp, chunkPaths);
+
+    if (queuedAddMessages > 0) {
+      int total = chunkPaths.size() + queuedAddMessages;
+      log.info("Indexing " + chunkPaths.size() + "/" + total + " chunks");
+    } else {
+      log.info("Indexing " + chunkPaths.size() + " chunks");
+    }
 
     List<Tuple2<String, JsonObject>> docsToInsert = Seq.seq(documents)
       .map(Tuple3::limit2)
@@ -418,7 +342,7 @@ public class IndexerVerticle extends AbstractVerticle {
       .map(Tuple3::v3)
       .toList();
     
-    return client.bulkInsert(type, docsToInsert).flatMapCompletable(bres -> {
+    return client.bulkInsert(TYPE_NAME, docsToInsert).flatMapCompletable(bres -> {
       JsonArray items = bres.getJsonArray("items");
       for (int i = 0; i < items.size(); ++i) {
         JsonObject jo = items.getJsonObject(i);
@@ -432,76 +356,17 @@ public class IndexerVerticle extends AbstractVerticle {
       }
       
       long stopTimeStamp = System.currentTimeMillis();
-      List<String> correlationIds = Seq.seq(messages)
-        .map(Message::body)
-        .map(d -> d.getString("correlationId"))
-        .toList();
-      onIndexingFinished(stopTimeStamp - startTimeStamp, correlationIds,
-          chunkPaths, client.bulkResponseGetErrorMessage(bres));
+      String errorMessage = client.bulkResponseGetErrorMessage(bres);
+      if (errorMessage != null) {
+        log.error("Indexing failed");
+        log.error(errorMessage);
+      } else {
+        log.info("Finished indexing " + chunkPaths.size() + " chunks in " +
+            (stopTimeStamp - startTimeStamp) + " " + "ms");
+      }
 
       return Completable.complete();
     });
-  }
-
-  /**
-   * Will be called before the indexer starts the indexing process
-   * @param timestamp the time when the indexer has started the process
-   * @param chunkIds A list of chunkIds
-   */
-  private void onIndexingStarted(long timestamp, List<String> chunkIds) {
-    if (queuedAddMessages > 0) {
-      int total = chunkIds.size() + queuedAddMessages;
-      log.info("Indexing " + chunkIds.size() + "/" + total + " chunks");
-    } else {
-      log.info("Indexing " + chunkIds.size() + " chunks");
-    }
-    
-    if (reportActivities) {
-      JsonObject msg = new JsonObject()
-        .put("activity", "import")
-        .put("state", "index")
-        .put("owner", deploymentID())
-        .put("action", "enter")
-        .put("chunkIds", new JsonArray(chunkIds))
-        .put("timestamp", timestamp);
-      vertx.eventBus().publish(AddressConstants.ACTIVITIES, msg);
-    }
-  }
-
-  /**
-   * Will be called after the indexer has finished the indexing process
-   * @param duration the time passed during indexing
-   * @param correlationIds the correlation IDs of the chunks that were processed by
-   * the indexer. This list may include IDs of chunks whose indexing failed.
-   * @param chunkIds A list of chunkIds
-   * @param errorMessage an error message if the process has failed
-   * or <code>null</code> if everything was successful
-   */
-  private void onIndexingFinished(long duration, List<String> correlationIds,
-      List<String> chunkIds, String errorMessage) {
-    if (errorMessage != null) {
-      log.error("Indexing failed: " + errorMessage);
-    } else {
-      log.info("Finished indexing " + correlationIds.size() + " chunks in " +
-          duration + " " + "ms");
-    }
-    
-    if (reportActivities) {
-      JsonObject msg = new JsonObject()
-        .put("activity", "import")
-        .put("state", "index")
-        .put("owner", deploymentID())
-        .put("action", "leave")
-        .put("correlationIds", new JsonArray(correlationIds))
-        .put("chunkIds", new JsonArray(chunkIds))
-        .put("duration", duration);
-
-      if (errorMessage != null) {
-        msg.put("error", errorMessage);
-      }
-
-      vertx.eventBus().publish(AddressConstants.ACTIVITIES, msg);
-    }
   }
 
   /**
@@ -766,7 +631,7 @@ public class IndexerVerticle extends AbstractVerticle {
       .toList()
       .flatMapCompletable(l -> {
         if (!l.isEmpty()) {
-          return insertDocuments(TYPE_NAME, l);
+          return insertDocuments(l);
         }
         return Completable.complete();
       })
@@ -847,11 +712,17 @@ public class IndexerVerticle extends AbstractVerticle {
     long totalChunks = body.getLong("totalChunks", (long)paths.size());
     long remainingChunks = body.getLong("remainingChunks", (long)paths.size());
 
-    // execute bulk request
-    long startTimeStamp = System.currentTimeMillis();
-    onDeletingStarted(startTimeStamp, paths, totalChunks, remainingChunks);
+    if (paths.size() < remainingChunks) {
+      log.info("Deleting " + paths.size() + "/" + remainingChunks +
+          " chunks from index ...");
+    } else {
+      log.info("Deleting " + paths.size() + " chunks from index ...");
+    }
+
     startRemovingTask(correlationId, totalChunks);
 
+    // execute bulk request
+    long startTimeStamp = System.currentTimeMillis();
     return client.bulkDelete(TYPE_NAME, paths).flatMapCompletable(bres -> {
       updateRemovingTask(correlationId, paths.size());
       long stopTimeStamp = System.currentTimeMillis();
@@ -859,13 +730,11 @@ public class IndexerVerticle extends AbstractVerticle {
         String error = client.bulkResponseGetErrorMessage(bres);
         log.error("One or more chunks could not be deleted");
         log.error(error);
-        onDeletingFinished(stopTimeStamp - startTimeStamp, paths, totalChunks,
-            remainingChunks, error);
         return Completable.error(new NoStackTraceThrowable(
                 "One or more chunks could not be deleted"));
       } else {
-        onDeletingFinished(stopTimeStamp - startTimeStamp, paths, totalChunks,
-            remainingChunks, null);
+        log.info("Finished deleting " + paths.size() + " chunks from index in "
+            + (stopTimeStamp - startTimeStamp) + " ms");
         return Completable.complete();
       }
     });

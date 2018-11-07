@@ -33,8 +33,7 @@ public final class ConfigConstants {
   public static final String HTTP_CORS_MAX_AGE = "georocket.http.cors.maxAge";
 
   public static final String LOG_CONFIG = "georocket.logConfig";
-  public static final String REPORT_ACTIVITIES = "georocket.reportActivities"; // undocumented
-  
+
   public static final String STORAGE_CLASS = "georocket.storage.class";
   public static final String STORAGE_H2_PATH = "georocket.storage.h2.path";
   public static final String STORAGE_H2_COMPRESS = "georocket.storage.h2.compress";

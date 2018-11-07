@@ -21,8 +21,7 @@ public final class AddressConstants {
   public static final String TASK_GET_ALL = "georocket.task.getAll";
   public static final String TASK_GET_BY_CORRELATION_ID = "georocket.task.getByCorrelationId";
   public static final String TASK_INC = "georocket.task.inc";
-  public static final String ACTIVITIES = "georocket.activities";
-  
+
   private AddressConstants() {
     // hidden constructor
   }
