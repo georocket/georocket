@@ -22,6 +22,7 @@ import io.georocket.storage.StoreFactory;
 import io.georocket.storage.XMLChunkMeta;
 import io.georocket.tasks.IndexingTask;
 import io.georocket.tasks.RemovingTask;
+import io.georocket.tasks.TaskError;
 import io.georocket.util.FilteredServiceLoader;
 import io.georocket.util.JsonParserTransformer;
 import io.georocket.util.MapUtils;
@@ -443,13 +444,19 @@ public class IndexerVerticle extends AbstractVerticle {
    * Send a message to the task verticle telling it that we just removed the
    * given number of chunks from the index
    * @param correlationId the correlation ID of the removing task
+   * @param error an error that occurred during the task execution (may be
+   * {@code null} if everything is OK
    */
-  private void updateRemovingTask(String correlationId, int removedChunks) {
+  private void updateRemovingTask(String correlationId, int removedChunks,
+      TaskError error) {
     if (correlationId == null) {
       return;
     }
     RemovingTask removingTask = new RemovingTask(correlationId);
     removingTask.setRemovedChunks(removedChunks);
+    if (error != null) {
+      removingTask.addError(error);
+    }
     vertx.eventBus().publish(AddressConstants.TASK_INC,
         JsonObject.mapFrom(removingTask));
   }
@@ -724,17 +731,19 @@ public class IndexerVerticle extends AbstractVerticle {
     // execute bulk request
     long startTimeStamp = System.currentTimeMillis();
     return client.bulkDelete(TYPE_NAME, paths).flatMapCompletable(bres -> {
-      updateRemovingTask(correlationId, paths.size());
       long stopTimeStamp = System.currentTimeMillis();
       if (client.bulkResponseHasErrors(bres)) {
         String error = client.bulkResponseGetErrorMessage(bres);
         log.error("One or more chunks could not be deleted");
         log.error(error);
+        updateRemovingTask(correlationId, paths.size(),
+            new TaskError("generic_error", error));
         return Completable.error(new NoStackTraceThrowable(
                 "One or more chunks could not be deleted"));
       } else {
         log.info("Finished deleting " + paths.size() + " chunks from index in "
             + (stopTimeStamp - startTimeStamp) + " ms");
+        updateRemovingTask(correlationId, paths.size(), null);
         return Completable.complete();
       }
     });

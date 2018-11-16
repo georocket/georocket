@@ -9,6 +9,7 @@ import io.georocket.storage.IndexMeta;
 import io.georocket.storage.Store;
 import io.georocket.storage.StoreCursor;
 import io.georocket.tasks.PurgingTask;
+import io.georocket.tasks.TaskError;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -110,10 +111,15 @@ public abstract class IndexedStore implements Store {
    * Send a message to the task verticle telling it that we have finished
    * deleting chunks from the store
    * @param correlationId the correlation ID of the purging task
+   * @param error an error that occurred during the task execution (may be
+   * {@code null} if everything is OK
    */
-  private void stopPurgingTask(String correlationId) {
+  private void stopPurgingTask(String correlationId, TaskError error) {
     PurgingTask purgingTask = new PurgingTask(correlationId);
     purgingTask.setEndTime(Instant.now());
+    if (error != null) {
+      purgingTask.addError(error);
+    }
     vertx.eventBus().publish(AddressConstants.TASK_INC,
         JsonObject.mapFrom(purgingTask));
   }
@@ -133,24 +139,27 @@ public abstract class IndexedStore implements Store {
   @Override
   public void delete(String search, String path, DeleteMeta deleteMeta,
       Handler<AsyncResult<Void>> handler) {
+    String correlationId = deleteMeta != null ? deleteMeta.getCorrelationId() : null;
+    if (correlationId != null) {
+      startPurgingTask(correlationId, 0);
+    }
+
     get(search, path, ar -> {
       if (ar.failed()) {
         Throwable cause = ar.cause();
         if (cause instanceof ReplyException) {
-          // Cast to get access to the failure code
           ReplyException ex = (ReplyException)cause;
-
           if (ex.failureCode() == 404) {
+            stopPurgingTask(correlationId, null);
             handler.handle(Future.succeededFuture());
             return;
           }
         }
+        stopPurgingTask(correlationId, new TaskError(ar.cause()));
         handler.handle(Future.failedFuture(ar.cause()));
       } else {
         StoreCursor cursor = ar.result();
         AtomicLong remaining = new AtomicLong(cursor.getInfo().getTotalHits());
-
-        String correlationId = deleteMeta != null ? deleteMeta.getCorrelationId() : null;
         if (correlationId != null) {
           startPurgingTask(correlationId, remaining.intValue());
         }
@@ -158,7 +167,11 @@ public abstract class IndexedStore implements Store {
         Queue<String> paths = new ArrayDeque<>();
         doDelete(cursor, paths, remaining, correlationId, ddar -> {
           if (correlationId != null) {
-            stopPurgingTask(correlationId);
+            if (ddar.failed()) {
+              stopPurgingTask(correlationId, new TaskError(ddar.cause()));
+            } else {
+              stopPurgingTask(correlationId, null);
+            }
           }
           handler.handle(ddar);
         });

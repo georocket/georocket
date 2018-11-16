@@ -12,6 +12,7 @@ import io.georocket.storage.IndexMeta;
 import io.georocket.storage.RxStore;
 import io.georocket.storage.StoreFactory;
 import io.georocket.tasks.ImportingTask;
+import io.georocket.tasks.TaskError;
 import io.georocket.util.JsonParserTransformer;
 import io.georocket.util.RxUtils;
 import io.georocket.util.StringWindow;
@@ -41,6 +42,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -196,6 +198,17 @@ public class ImporterVerticle extends AbstractVerticle {
           + "file '%s'", contentType, filename)));
     }
 
+    Consumer<Throwable> onFinish = t -> {
+      // let the task verticle know that the import process has finished
+      ImportingTask endTask = new ImportingTask(correlationId);
+      endTask.setEndTime(Instant.now());
+      if (t != null) {
+        endTask.addError(new TaskError(t));
+      }
+      vertx.eventBus().publish(AddressConstants.TASK_INC,
+          JsonObject.mapFrom(endTask));
+    };
+
     return result.window(100)
       .flatMap(Observable::count)
       .doOnNext(n -> {
@@ -207,13 +220,8 @@ public class ImporterVerticle extends AbstractVerticle {
       })
       .reduce(0, (a, b) -> a + b)
       .toSingle()
-      .doAfterTerminate(() -> {
-        // let the task verticle know that the import process has finished
-        ImportingTask endTask = new ImportingTask(correlationId);
-        endTask.setEndTime(Instant.now());
-        vertx.eventBus().publish(AddressConstants.TASK_INC,
-            JsonObject.mapFrom(endTask));
-      });
+      .doOnError(onFinish::accept)
+      .doOnSuccess(i -> onFinish.accept(null));
   }
 
   /**

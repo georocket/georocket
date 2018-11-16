@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import io.georocket.util.InstantDeserializer;
 
 import java.time.Instant;
+import java.util.List;
 
 /**
  * A task currently being performed by GeoRocket
@@ -55,4 +56,11 @@ public interface Task {
    * this one
    */
   void inc(Task other);
+
+  /**
+   * Get the errors that occurred during the execution of the task
+   * @return a list of errors (may be {@code null} or empty if no errors have
+   * occurred)
+   */
+  List<TaskError> getErrors();
 }

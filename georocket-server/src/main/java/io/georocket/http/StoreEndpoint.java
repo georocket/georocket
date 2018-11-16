@@ -14,6 +14,7 @@ import io.georocket.storage.RxStoreCursor;
 import io.georocket.storage.StoreCursor;
 import io.georocket.storage.StoreFactory;
 import io.georocket.tasks.ReceivingTask;
+import io.georocket.tasks.TaskError;
 import io.georocket.util.HttpException;
 import io.georocket.util.MimeTypeUtils;
 import io.vertx.core.AsyncResult;
@@ -615,6 +616,9 @@ public class StoreEndpoint implements Endpoint {
     }
     ReceivingTask task = new ReceivingTask(correlationId);
     task.setEndTime(Instant.now());
+    if (error != null) {
+      task.addError(new TaskError(error));
+    }
     vertx.eventBus().publish(AddressConstants.TASK_INC, JsonObject.mapFrom(task));
   }
 

@@ -1,15 +1,20 @@
 package io.georocket.tasks;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Abstract base class for tasks
  * @author Michel Kraemer
  */
 public abstract class AbstractTask implements Task {
+  private static final int MAX_ERRORS = 10;
+
   private String correlationId;
   private Instant startTime;
   private Instant endTime;
+  private List<TaskError> errors;
 
   /**
    * Package-visible default constructor
@@ -66,6 +71,45 @@ public abstract class AbstractTask implements Task {
   }
 
   @Override
+  public List<TaskError> getErrors() {
+    return errors;
+  }
+
+  /**
+   * Set the list of errors that occurred during the task execution
+   * @param errors the list errors (may be {@code null} or empty if no errors
+   * have occurred)
+   */
+  public void setErrors(List<TaskError> errors) {
+    this.errors = errors;
+
+    if (this.errors.size() > MAX_ERRORS) {
+      this.errors = this.errors.subList(0, MAX_ERRORS);
+      addMoreErrors();
+    }
+  }
+
+  /**
+   * Add an error that occurred during the task execution
+   * @param error the error to add
+   */
+  public void addError(TaskError error) {
+    if (errors == null) {
+      errors = new ArrayList<>();
+    }
+    if (errors.size() == MAX_ERRORS) {
+      addMoreErrors();
+    } else if (errors.size() < MAX_ERRORS) {
+      errors.add(error);
+    }
+  }
+
+  private void addMoreErrors() {
+    errors.add(new TaskError("more", "There are more errors. Only " + MAX_ERRORS +
+      " errors will be displayed. The server logs provide more information."));
+  }
+
+  @Override
   public void inc(Task other) {
     if (getStartTime() != null || other.getStartTime() != null) {
       if (getStartTime() != null && other.getStartTime() == null) {
@@ -89,6 +133,10 @@ public abstract class AbstractTask implements Task {
       } else {
         setEndTime(other.getEndTime());
       }
+    }
+
+    if (other.getErrors() != null) {
+      other.getErrors().forEach(this::addError);
     }
   }
 }
