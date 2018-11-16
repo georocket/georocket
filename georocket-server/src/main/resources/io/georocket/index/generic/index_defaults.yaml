@@ -23,6 +23,9 @@ properties:
   # tags attached to chunks
   tags:
     type: keyword  # array of keywords actually, auto-supported by Elasticsearch
+  # unique ID of the upload/import/index tasks
+  correlationId:
+    type: keyword
   # metadata: don't index it
   chunkMeta:
     type: object

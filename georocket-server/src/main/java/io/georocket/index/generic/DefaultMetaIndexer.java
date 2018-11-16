@@ -31,5 +31,8 @@ public class DefaultMetaIndexer implements MetaIndexer {
     if (indexMeta.getProperties() != null) {
       result.put("props", indexMeta.getProperties());
     }
+    if (indexMeta.getCorrelationId() != null) {
+      result.put("correlationId", indexMeta.getCorrelationId());
+    }
   }
 }

@@ -61,10 +61,11 @@ public class DefaultMetaIndexerFactory implements MetaIndexerFactory {
 
   @Override
   public JsonObject compileQuery(QueryPart queryPart) {
+    JsonObject result = null;
     if (queryPart instanceof StringQueryPart) {
       // match values of all fields regardless of their name
       String search = ((StringQueryPart)queryPart).getSearchString();
-      return ElasticsearchQueryHelper.termQuery("tags", search);
+      result = ElasticsearchQueryHelper.termQuery("tags", search);
     } else if (queryPart instanceof KeyValueQueryPart) {
       KeyValueQueryPart kvqp = (KeyValueQueryPart)queryPart;
       String key = kvqp.getKey();
@@ -73,18 +74,36 @@ public class DefaultMetaIndexerFactory implements MetaIndexerFactory {
 
       switch (comp) {
         case EQ:
-          return ElasticsearchQueryHelper.termQuery("props." + key, value);
+          result = ElasticsearchQueryHelper.termQuery("props." + key, value);
+          break;
         case GT:
-          return ElasticsearchQueryHelper.gtQuery("props." + key, value);
+          result = ElasticsearchQueryHelper.gtQuery("props." + key, value);
+          break;
         case GTE:
-          return ElasticsearchQueryHelper.gteQuery("props." + key, value);
+          result = ElasticsearchQueryHelper.gteQuery("props." + key, value);
+          break;
         case LT:
-          return ElasticsearchQueryHelper.ltQuery("props." + key, value);
+          result = ElasticsearchQueryHelper.ltQuery("props." + key, value);
+          break;
         case LTE:
-          return ElasticsearchQueryHelper.lteQuery("props." + key, value);
+          result = ElasticsearchQueryHelper.lteQuery("props." + key, value);
+          break;
+      }
+
+      if (kvqp.getComparisonOperator() == ComparisonOperator.EQ &&
+          "correlationId".equals(kvqp.getKey())) {
+        JsonObject cq = ElasticsearchQueryHelper.termQuery("correlationId", value);
+        if (result != null) {
+          JsonObject bool = ElasticsearchQueryHelper.boolQuery(1);
+          ElasticsearchQueryHelper.boolAddShould(bool, result);
+          ElasticsearchQueryHelper.boolAddShould(bool, cq);
+          result = bool;
+        } else {
+          result = cq;
+        }
       }
     }
-    return null;
+    return result;
   }
 
   @Override
