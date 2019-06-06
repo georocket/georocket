@@ -1,9 +1,12 @@
 package io.georocket.util.io;
 
+import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.rx.java.RxHelper;
 import io.vertx.rxjava.core.buffer.Buffer;
+import io.vertx.rxjava.core.streams.Pipe;
 import io.vertx.rxjava.core.streams.ReadStream;
+import io.vertx.rxjava.core.streams.WriteStream;
 import rx.Observable;
 
 /**
@@ -66,9 +69,30 @@ public class RxGzipReadStream implements ReadStream<Buffer> {
   }
 
   @Override
+  public RxGzipReadStream fetch(long amount) {
+    delegate.fetch(amount);
+    return this;
+  }
+
+  @Override
   public RxGzipReadStream endHandler(Handler<Void> endHandler) {
     delegate.endHandler(endHandler);
     return this;
+  }
+
+  @Override
+  public Pipe<Buffer> pipe() {
+    return new Pipe<>(delegate.pipe());
+  }
+
+  @Override
+  public void pipeTo(WriteStream<Buffer> dst) {
+    delegate.pipeTo(dst.getDelegate());
+  }
+
+  @Override
+  public void pipeTo(WriteStream<Buffer> dst, Handler<AsyncResult<Void>> handler) {
+    delegate.pipeTo(dst.getDelegate(), handler);
   }
 
   @Override

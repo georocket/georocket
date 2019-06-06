@@ -52,6 +52,11 @@ public class SearchReadStream implements ReadStream<Buffer> {
   }
 
   @Override
+  public ReadStream<Buffer> fetch(long amount) {
+    return resume();
+  }
+
+  @Override
   public SearchReadStream endHandler(Handler<Void> endHandler) {
     endHandlerWithResult(sr -> endHandler.handle(null));
     return this;

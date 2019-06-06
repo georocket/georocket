@@ -224,6 +224,11 @@ public class MongoDBChunkReadStream implements ChunkReadStream {
   }
 
   @Override
+  public ReadStream<Buffer> fetch(long amount) {
+    return resume();
+  }
+
+  @Override
   public ReadStream<Buffer> endHandler(Handler<Void> endHandler) {
     check();
     this.endHandler = endHandler;

@@ -66,6 +66,11 @@ public class BufferReadStream implements ReadStream<Buffer> {
   }
 
   @Override
+  public ReadStream<Buffer> fetch(long amount) {
+    return resume();
+  }
+
+  @Override
   public ReadStream<Buffer> endHandler(Handler<Void> endHandler) {
     if (buf == null) {
       endHandler.handle(null);

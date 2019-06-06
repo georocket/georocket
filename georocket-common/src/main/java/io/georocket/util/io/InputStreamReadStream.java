@@ -135,6 +135,11 @@ public class InputStreamReadStream implements ReadStream<Buffer> {
   }
 
   @Override
+  public ReadStream<Buffer> fetch(long amount) {
+    return resume();
+  }
+
+  @Override
   public InputStreamReadStream endHandler(Handler<Void> handler) {
     this.endHandler = handler;
     return this;

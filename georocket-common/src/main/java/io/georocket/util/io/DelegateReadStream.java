@@ -44,6 +44,12 @@ public class DelegateReadStream<T> implements ReadStream<T> {
   }
 
   @Override
+  public ReadStream<T> fetch(long amount) {
+    delegate.fetch(amount);
+    return this;
+  }
+
+  @Override
   public ReadStream<T> endHandler(Handler<Void> endHandler) {
     delegate.endHandler(endHandler);
     return this;

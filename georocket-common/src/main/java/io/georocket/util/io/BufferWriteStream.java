@@ -1,5 +1,7 @@
 package io.georocket.util.io;
 
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.streams.WriteStream;
@@ -19,7 +21,15 @@ public class BufferWriteStream implements WriteStream<Buffer> {
 
   @Override
   public WriteStream<Buffer> write(Buffer data) {
+    return write(data, null);
+  }
+
+  @Override
+  public WriteStream<Buffer> write(Buffer data, Handler<AsyncResult<Void>> handler) {
     buf.appendBuffer(data);
+    if (handler != null) {
+      handler.handle(Future.succeededFuture());
+    }
     return this;
   }
 
@@ -41,7 +51,14 @@ public class BufferWriteStream implements WriteStream<Buffer> {
   
   @Override
   public void end() {
-    // nothing to do here
+    end((Handler<AsyncResult<Void>>)null);
+  }
+
+  @Override
+  public void end(Handler<AsyncResult<Void>> handler) {
+    if (handler != null) {
+      handler.handle(Future.succeededFuture());
+    }
   }
   
   /**

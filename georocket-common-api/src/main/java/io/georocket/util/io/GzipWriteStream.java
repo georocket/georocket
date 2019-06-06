@@ -1,5 +1,7 @@
 package io.georocket.util.io;
 
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
@@ -71,6 +73,15 @@ public class GzipWriteStream implements WriteStream<Buffer> {
 
   @Override
   public GzipWriteStream write(Buffer data) {
+    return write(data, ar -> {
+      if (ar.failed()) {
+        handleException(ar.cause());
+      }
+    });
+  }
+
+  @Override
+  public GzipWriteStream write(Buffer data, Handler<AsyncResult<Void>> handler) {
     if (!headerWritten) {
       headerWritten = true;
       writeHeader();
@@ -91,7 +102,7 @@ public class GzipWriteStream implements WriteStream<Buffer> {
       f.complete(b);
     }, ar -> {
       if (ar.failed()) {
-        handleException(ar.cause());
+        handler.handle(Future.failedFuture(ar.cause()));
         return;
       }
 
@@ -102,6 +113,8 @@ public class GzipWriteStream implements WriteStream<Buffer> {
         writesOutstanding -= b.length();
       }
       checkDrained();
+
+      handler.handle(Future.succeededFuture());
     });
 
     return this;
@@ -135,6 +148,15 @@ public class GzipWriteStream implements WriteStream<Buffer> {
 
   @Override
   public void end() {
+    end(ar -> {
+      if (ar.failed()) {
+        handleException(ar.cause());
+      }
+    });
+  }
+
+  @Override
+  public void end(Handler<AsyncResult<Void>> handler) {
     // finish compression in a blocking code
     Vertx.currentContext().<Buffer>executeBlocking(f -> {
       deflater.finish();
@@ -145,7 +167,7 @@ public class GzipWriteStream implements WriteStream<Buffer> {
       f.complete(b);
     }, ar -> {
       if (ar.failed()) {
-        handleException(ar.cause());
+        handler.handle(Future.failedFuture(ar.cause()));
         return;
       }
 
@@ -162,22 +184,23 @@ public class GzipWriteStream implements WriteStream<Buffer> {
         // close stream
         closed = true;
         if (closeHandler != null) {
-          Handler<Void> handler = closeHandler;
+          Handler<Void> oldHandler = closeHandler;
           closeHandler = null;
-          handler.handle(null);
+          oldHandler.handle(null);
         }
       };
 
       if (delegate instanceof AsyncFile) {
         ((AsyncFile)delegate).close(closeAr -> {
           if (closeAr.failed()) {
-            handleException(closeAr.cause());
+            handler.handle(Future.failedFuture(closeAr.cause()));
           } else {
             closer.run();
+            handler.handle(Future.succeededFuture());
           }
         });
       } else {
-        delegate.end();
+        delegate.end(handler);
         closer.run();
       }
     });
