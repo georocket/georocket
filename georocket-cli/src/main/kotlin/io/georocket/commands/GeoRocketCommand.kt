@@ -31,8 +31,7 @@ interface GeoRocketCommand : Command {
    * be forwarded to sub-commands
    * @param i a stream from which user input can be read
    * @param o a stream to write the output to
-   * @param handler has to be called when the command has finished its work
+   * @return the command's exit code
    */
-  fun doRun(remainingArgs: Array<String>, i: InputReader, o: PrintWriter,
-      handler: Handler<Int>)
+  suspend fun doRun(remainingArgs: Array<String>, i: InputReader, o: PrintWriter): Int
 }

@@ -7,9 +7,10 @@ import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics
 import org.fusesource.jansi.Ansi.ansi
 import org.jline.terminal.Terminal
 import org.jline.terminal.TerminalBuilder
+import java.io.Closeable
 import java.io.IOException
 
-class ImportProgressRenderer(private val vertx: Vertx) {
+class ImportProgressRenderer(private val vertx: Vertx) : Closeable {
   companion object {
     /**
      * Default refresh interval in milliseconds
@@ -136,8 +137,9 @@ class ImportProgressRenderer(private val vertx: Vertx) {
   /**
    * Dispose this renderer and do not print progress anymore
    */
-  fun dispose() {
+  override fun close() {
     vertx.cancelTimer(timerId)
+    render(true)
   }
 
   /**

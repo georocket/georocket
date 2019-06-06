@@ -4,9 +4,10 @@ import de.undercouch.underline.InputReader
 import de.undercouch.underline.Option
 import de.undercouch.underline.OptionDesc
 import de.undercouch.underline.UnknownAttributes
-import io.vertx.core.Handler
+import io.georocket.util.coroutines.getPropertyValues
 import io.vertx.core.impl.NoStackTraceThrowable
 import io.vertx.core.logging.LoggerFactory
+import io.vertx.kotlin.coroutines.toChannel
 import java.io.PrintWriter
 
 /**
@@ -50,23 +51,21 @@ class GetPropertyCommand : AbstractGeoRocketCommand() {
     return super.checkArguments()
   }
 
-  override fun doRun(remainingArgs: Array<String>, i: InputReader,
-      o: PrintWriter, handler: Handler<Int>) {
-    val client = createClient()
-    client.store.getPropertyValues(property, query, layer) { ar ->
-      if (ar.failed()) {
-        val t = ar.cause()
+  override suspend fun doRun(remainingArgs: Array<String>, i: InputReader,
+      o: PrintWriter): Int {
+    return createClient().use { client ->
+      try {
+        val stream = client.store.getPropertyValues(property, query, layer)
+        for (buf in stream.toChannel(vertx)) {
+          o.write(buf.toString())
+        }
+        0
+      } catch (t: Throwable) {
         error(t.message)
         if (t !is NoStackTraceThrowable) {
           log.error("Could not get values of property $property", t)
         }
-        handler.handle(1)
-      } else {
-        ar.result().handler { o.write(it.toString()) }
-        ar.result().endHandler {
-          client.close()
-          handler.handle(0)
-        }
+        1
       }
     }
   }

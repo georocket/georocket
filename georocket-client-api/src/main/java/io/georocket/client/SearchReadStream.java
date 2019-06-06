@@ -17,6 +17,7 @@ public class SearchReadStream implements ReadStream<Buffer> {
 
   private final HttpClientResponse delegate;
   private Handler<Throwable> exceptionHandler;
+  private SearchReadStreamResult result;
 
   /**
    * Create a new read stream
@@ -86,8 +87,20 @@ public class SearchReadStream implements ReadStream<Buffer> {
           return;
         }
       }
-      endHandler.handle(new SearchReadStreamResult(unmergedChunks));
+      result = new SearchReadStreamResult(unmergedChunks);
+      endHandler.handle(result);
     });
     return this;
+  }
+
+  /**
+   * Get a result object that contains information only available after the
+   * stream has ended. The method will return <code>null</code> until the end
+   * of the stream has been reached.
+   * @return the result object
+   * @since 1.4.0
+   */
+  public SearchReadStreamResult getResult() {
+    return result;
   }
 }

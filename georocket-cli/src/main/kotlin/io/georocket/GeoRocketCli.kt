@@ -21,6 +21,7 @@ import io.vertx.core.Handler
 import io.vertx.core.Vertx
 import io.vertx.core.json.DecodeException
 import io.vertx.core.json.JsonObject
+import io.vertx.kotlin.coroutines.awaitEvent
 import javassist.ClassPool
 import org.fusesource.jansi.AnsiConsole
 import org.yaml.snakeyaml.Yaml
@@ -28,7 +29,6 @@ import java.io.File
 import java.io.IOException
 import java.io.OutputStreamWriter
 import java.io.PrintWriter
-import java.lang.RuntimeException
 import java.nio.charset.StandardCharsets
 
 /**
@@ -178,12 +178,11 @@ class GeoRocketCli : AbstractGeoRocketCommand() {
     }
   }
 
-  override fun doRun(remainingArgs: Array<String>, i: InputReader,
-      o: PrintWriter, handler: Handler<Int>) {
+  override suspend fun doRun(remainingArgs: Array<String>, i: InputReader,
+      o: PrintWriter): Int {
     if (displayVersion) {
       println("georocket $version")
-      handler.handle(0)
-      return
+      return 0
     }
 
     initConfig()
@@ -191,12 +190,13 @@ class GeoRocketCli : AbstractGeoRocketCommand() {
     // if there are no commands print usage and exit
     if (command == null) {
       usage()
-      handler.handle(0)
-      return
+      return 0
     }
 
-    command!!.endHandler = handler
-    command!!.run(remainingArgs, i, o)
+    return awaitEvent { handler ->
+      command!!.endHandler = handler
+      command!!.run(remainingArgs, i, o)
+    }
   }
 
   /**

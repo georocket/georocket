@@ -4,13 +4,18 @@ import de.undercouch.underline.InputReader
 import de.undercouch.underline.OptionDesc
 import de.undercouch.underline.UnknownAttributes
 import io.georocket.client.SearchParams
-import io.vertx.core.Handler
+import io.vertx.core.impl.NoStackTraceThrowable
+import io.vertx.core.logging.LoggerFactory
 import java.io.PrintWriter
 
 /**
  * Exports a layer or the whole data store
  */
 class ExportCommand : AbstractQueryCommand() {
+  companion object {
+    private val log = LoggerFactory.getLogger(ExportCommand::class.java)
+  }
+
   private var layer: String? = null
 
   override val usageName = "export"
@@ -39,11 +44,21 @@ class ExportCommand : AbstractQueryCommand() {
     this.layer = l
   }
 
-  override fun doRun(remainingArgs: Array<String>, i: InputReader,
-      o: PrintWriter, handler: Handler<Int>) {
+  override suspend fun doRun(remainingArgs: Array<String>, i: InputReader,
+      o: PrintWriter): Int {
     val params = SearchParams()
         .setLayer(layer)
         .setOptimisticMerging(optimisticMerging)
-    query(params, o, handler)
+    return try {
+      query(params, o)
+      0
+    } catch (t: Throwable) {
+      error(t.message)
+      if (t !is NoSuchElementException &&
+          t !is NoStackTraceThrowable) {
+        log.error("Could not query store", t)
+      }
+      1
+    }
   }
 }

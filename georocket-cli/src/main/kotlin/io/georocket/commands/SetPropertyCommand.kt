@@ -4,7 +4,7 @@ import de.undercouch.underline.InputReader
 import de.undercouch.underline.Option
 import de.undercouch.underline.OptionDesc
 import de.undercouch.underline.UnknownAttributes
-import io.vertx.core.Handler
+import io.georocket.util.coroutines.setProperties
 import io.vertx.core.impl.NoStackTraceThrowable
 import io.vertx.core.logging.LoggerFactory
 import java.io.PrintWriter
@@ -67,20 +67,18 @@ class SetPropertyCommand : AbstractGeoRocketCommand() {
     return super.checkArguments()
   }
 
-  override fun doRun(remainingArgs: Array<String>, i: InputReader,
-      o: PrintWriter, handler: Handler<Int>) {
-    val client = createClient()
-    client.store.setProperties(query, layer, properties) { ar ->
-      if (ar.failed()) {
-        client.close()
-        val t = ar.cause()
+  override suspend fun doRun(remainingArgs: Array<String>, i: InputReader,
+      o: PrintWriter): Int {
+    return createClient().use { client ->
+      try {
+        client.store.setProperties(query, layer, properties)
+        0
+      } catch (t: Throwable) {
         error(t.message)
         if (t !is NoStackTraceThrowable) {
           log.error("Could not set properties", t)
         }
-        handler.handle(1)
-      } else {
-        handler.handle(0)
+        1
       }
     }
   }

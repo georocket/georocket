@@ -13,25 +13,22 @@ import io.georocket.util.SizeFormat
 import io.georocket.util.formatUntilNow
 import io.georocket.util.io.GzipWriteStream
 import io.vertx.core.Future
-import io.vertx.core.Handler
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.file.OpenOptions
-import io.vertx.core.streams.WriteStream
-import io.vertx.rx.java.RxHelper
-import io.vertx.rxjava.core.Vertx
+import io.vertx.core.streams.ReadStream
+import io.vertx.kotlin.core.file.openAwait
+import io.vertx.kotlin.core.file.propsAwait
+import io.vertx.kotlin.core.streams.writeAwait
+import io.vertx.kotlin.coroutines.await
+import io.vertx.kotlin.coroutines.toChannel
 import org.apache.commons.io.FilenameUtils
 import org.apache.commons.lang3.SystemUtils
 import org.apache.tools.ant.Project
 import org.apache.tools.ant.types.FileSet
-import org.pcollections.TreePVector
-import rx.Observable
-import rx.Single
 import java.io.File
 import java.io.PrintWriter
 import java.nio.file.Paths
 import java.util.ArrayList
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Import one or more files into GeoRocket
@@ -124,8 +121,8 @@ class ImportCommand : AbstractGeoRocketCommand() {
     return false
   }
 
-  override fun doRun(remainingArgs: Array<String>, i: InputReader,
-      o: PrintWriter, handler: Handler<Int>) {
+  override suspend fun doRun(remainingArgs: Array<String>, i: InputReader,
+      o: PrintWriter): Int {
     val start = System.currentTimeMillis()
 
     // resolve file patterns
@@ -181,83 +178,73 @@ class ImportCommand : AbstractGeoRocketCommand() {
 
     if (files.isEmpty()) {
       error("given pattern didn't match any files")
-      return
+      return 1
     }
 
-    val vertx = Vertx(this.vertx)
-    val client = createClient()
+    return try {
+      val metrics = createClient().use { doImport(files, it) }
 
-    doImport(files, client, vertx)
-        .doAfterTerminate { client.close() }
-        .subscribe({ metrics ->
-          var m = "file"
-          if (files.size > 1) {
-            m += "s"
-          }
-          println("Successfully imported ${files.size} m")
-          println("  Total time:         ${start.formatUntilNow()}")
-          println("  Total data size:    ${SizeFormat.format(metrics.bytesImported)}")
-          println("  Transferred size:   ${SizeFormat.format(metrics.bytesTransferred)}")
-          handler.handle(0)
-        }, { err ->
-          error(err.message)
-          handler.handle(1)
-        })
+      var m = "file"
+      if (files.size > 1) {
+        m += "s"
+      }
+      println("Successfully imported ${files.size} $m")
+      println("  Total time:         ${start.formatUntilNow()}")
+      println("  Total data size:    ${SizeFormat.format(metrics.bytesImported)}")
+      println("  Transferred size:   ${SizeFormat.format(metrics.bytesTransferred)}")
+
+      0
+    } catch (t: Throwable) {
+      error(t.message)
+      1
+    }
   }
 
   /**
    * Determine the sizes of all given files
    * @param files the files
-   * @param vertx the Vert.x instance
-   * @return an observable that emits pairs of file names and sizes
+   * @return a list of pairs containing file names and sizes
    */
-  private fun getFileSizes(files: List<String>, vertx: Vertx): Observable<Pair<String, Long>> {
+  private suspend fun getFileSizes(files: List<String>): List<Pair<String, Long>> {
     val fs = vertx.fileSystem()
-    return Observable.from(files)
-        .flatMapSingle { path -> fs.rxProps(path).map { Pair(path, it.size()) } }
+    return files.map { path ->
+      val props = fs.propsAwait(path)
+      Pair(path, props.size())
+    }
   }
 
   /**
    * Import files using a HTTP client and finally call a handler
    * @param files the files to import
    * @param client the GeoRocket client
-   * @param vertx the Vert.x instance
    * @return an observable that will emit metrics when all files have been imported
    */
-  private fun doImport(files: List<String>, client: GeoRocketClient,
-      vertx: Vertx): Single<Metrics> {
-    val progress = ImportProgressRenderer(vertx.delegate)
-    progress.totalFiles = files.size
+  private suspend fun doImport(files: List<String>, client: GeoRocketClient): Metrics {
+    ImportProgressRenderer(vertx).use { progress ->
+      progress.totalFiles = files.size
 
-    return getFileSizes(files, vertx)
-        .reduce(Pair(0L, TreePVector.empty<Pair<String, Long>>())) { a, b ->
-          val newTotalSize = a.first + b.second
-          val newPairs = a.second.plus(b)
-          Pair(newTotalSize, newPairs)
-        }
-        .flatMap { l ->
-          val totalSize = l.first
-          progress.totalSize = totalSize
+      val filesWithSizes = getFileSizes(files)
+      val totalSize = filesWithSizes.map { it.second }.sum()
+      progress.totalSize = totalSize
 
-          Observable.from(l.second)
-              .zipWith(Observable.range(1, Integer.MAX_VALUE)) { left, right -> Pair(left, right) }
-              .flatMapSingle({ pair ->
-                val path = pair.first.first
-                val size = pair.first.second
-                val index = pair.second
+      var bytesImported = 0L
+      var bytesTransferred = 0L
+      for (file in filesWithSizes.withIndex()) {
+        val path = file.value.first
+        val size = file.value.second
+        val index = file.index
 
-                progress.startNewFile(Paths.get(path).fileName.toString())
-                progress.index = index
-                progress.size = size
+        progress.startNewFile(Paths.get(path).fileName.toString())
+        progress.index = index
+        progress.size = size
 
-                importFile(path, size, progress, client, vertx)
-              }, false, 1)
-        }
-        .reduce(Metrics(0L, 0L)) { a, b ->
-          Metrics(a.bytesImported + b.bytesImported, a.bytesTransferred + b.bytesTransferred)
-        }
-        .toSingle()
-        .doAfterTerminate { progress.dispose() }
+        val m = importFile(path, size, progress, client)
+        bytesImported += m.bytesImported
+        bytesTransferred += m.bytesTransferred
+      }
+
+      return Metrics(bytesImported, bytesTransferred)
+    }
   }
 
   /**
@@ -266,74 +253,55 @@ class ImportCommand : AbstractGeoRocketCommand() {
    * @param fileSize the size of the file
    * @param progress a renderer that display the progress on the terminal
    * @param client the GeoRocket client
-   * @param vertx the Vert.x instance
-   * @return an observable that will emit metrics when the file has been uploaded
+   * @return a metrics object
    */
-  private fun importFile(path: String, fileSize: Long,
-      progress: ImportProgressRenderer, client: GeoRocketClient,
-      vertx: Vertx): Single<Metrics> {
+  private suspend fun importFile(path: String, fileSize: Long,
+      progress: ImportProgressRenderer, client: GeoRocketClient): Metrics {
     // open file
     val fs = vertx.fileSystem()
     val openOptions = OpenOptions().setCreate(false).setWrite(false)
-    return fs.rxOpen(path, openOptions)
-        .flatMap { file ->
-          val o = RxHelper.observableFuture<ImportResult>()
-          val handler = o.toHandler()
+    val file = fs.openAwait(path, openOptions)
+    try {
+      // start import
+      val options = ImportParams()
+      options.layer = layer
+      options.tags = tags
+      options.properties = properties
+      options.fallbackCRS = fallbackCRS
+      options.compression = Compression.GZIP
 
-          // start import
-          val options = ImportParams()
-              .setLayer(layer)
-              .setTags(tags)
-              .setProperties(properties)
-              .setFallbackCRS(fallbackCRS)
-              .setCompression(Compression.GZIP)
+      val alreadyCompressed = path.endsWith(".gz", true)
+      val resultFuture = Future.future<ImportResult>()
+      val out = if (alreadyCompressed) {
+        options.size = fileSize
+        client.store.startImport(options, resultFuture)
+      } else {
+        GzipWriteStream(client.store.startImport(options, resultFuture))
+      }
 
-          val store = client.store
-          val out: WriteStream<Buffer>
-          val alreadyCompressed = path.toLowerCase().endsWith(".gz")
-          if (alreadyCompressed) {
-            options.size = fileSize
-            out = store.startImport(options, handler)
-          } else {
-            out = GzipWriteStream(store.startImport(options, handler))
-          }
-
-          val fileClosed = AtomicBoolean()
-          val bytesWritten = AtomicLong()
-
-          file.endHandler {
-            file.close()
-            out.end()
-            fileClosed.set(true)
-            progress.current = bytesWritten.get()
-          }
-
-          val exceptionHandler = { t: Throwable ->
-            if (!fileClosed.get()) {
-              file.endHandler(null)
-              file.close()
-            }
-            handler.handle(Future.failedFuture(t))
-          }
-          file.exceptionHandler(exceptionHandler)
-          out.exceptionHandler(exceptionHandler)
-
-          file.handler { data ->
-            out.write(data.delegate)
-            progress.current = bytesWritten.getAndAdd(data.length().toLong())
-            if (out.writeQueueFull()) {
-              file.pause()
-              out.drainHandler { file.resume() }
-            }
-          }
-
-          o.map {
-            if (alreadyCompressed) {
-              Metrics(fileSize, fileSize)
-            } else {
-              Metrics(fileSize, (out as GzipWriteStream).bytesWritten)
-            }
-          }.toSingle()
+      var bytesWritten = 0L
+      val fileChannel = (file as ReadStream<Buffer>).toChannel(vertx)
+      for (buf in fileChannel) {
+        out.writeAwait(buf)
+        progress.current = bytesWritten
+        bytesWritten += buf.length().toLong()
+        if (out.writeQueueFull()) {
+          file.pause()
+          out.drainHandler { file.resume() }
         }
+      }
+
+      out.end()
+      progress.current = bytesWritten
+
+      resultFuture.await()
+      return if (alreadyCompressed) {
+        Metrics(fileSize, fileSize)
+      } else {
+        Metrics(fileSize, (out as GzipWriteStream).bytesWritten)
+      }
+    } finally {
+      file.close()
+    }
   }
 }

@@ -11,6 +11,9 @@ import io.georocket.client.GeoRocketClient
 import io.vertx.core.Handler
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
+import io.vertx.kotlin.coroutines.dispatcher
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import java.io.PrintWriter
 
 /**
@@ -54,7 +57,9 @@ abstract class AbstractGeoRocketCommand : GeoRocketCommand {
       return 1
     }
 
-    doRun(parsedOptions.remainingArgs, i, o, endHandler)
+    GlobalScope.launch(vertx.orCreateContext.dispatcher()) {
+      endHandler.handle(doRun(parsedOptions.remainingArgs, i, o))
+    }
     return 0
   }
 

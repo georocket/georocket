@@ -3,7 +3,7 @@ package io.georocket.commands
 import de.undercouch.underline.CommandDesc
 import de.undercouch.underline.CommandDescList
 import de.undercouch.underline.InputReader
-import io.vertx.core.Handler
+import io.vertx.kotlin.coroutines.awaitEvent
 import java.io.PrintWriter
 
 /**
@@ -34,9 +34,11 @@ class PropertyCommand : AbstractGeoRocketCommand() {
     return super.checkArguments()
   }
 
-  override fun doRun(remainingArgs: Array<String>, i: InputReader,
-      o: PrintWriter, handler: Handler<Int>) {
-    subcommand!!.endHandler = handler
-    subcommand!!.run(remainingArgs, i, o)
+  override suspend fun doRun(remainingArgs: Array<String>, i: InputReader,
+      o: PrintWriter): Int {
+    return awaitEvent { handler ->
+      subcommand!!.endHandler = handler
+      subcommand!!.run(remainingArgs, i, o)
+    }
   }
 }
