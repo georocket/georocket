@@ -19,11 +19,6 @@ class TagCommand : AbstractGeoRocketCommand() {
           description = "remove tags from existing chunks",
           command = RemoveTagCommand::class))
   var subcommand: AbstractGeoRocketCommand? = null
-    set(cmd) {
-      field = cmd
-      field?.vertx = vertx
-      field?.config = config
-    }
 
   override fun checkArguments(): Boolean {
     if (subcommand == null) {

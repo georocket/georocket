@@ -25,11 +25,6 @@ class PropertyCommand : AbstractGeoRocketCommand() {
           description = "remove properties from existing chunks",
           command = RemovePropertyCommand::class))
   var subcommand: AbstractGeoRocketCommand? = null
-    set(cmd) {
-      field = cmd
-      field?.vertx = vertx
-      field?.config = config
-    }
 
   override fun checkArguments(): Boolean {
     if (subcommand == null) {

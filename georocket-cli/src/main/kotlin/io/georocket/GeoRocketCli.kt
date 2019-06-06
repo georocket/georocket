@@ -47,148 +47,27 @@ class GeoRocketCli : AbstractGeoRocketCommand() {
    * GeoRocket CLI's home directory
    */
   private val geoRocketCliHome: File
-
-  private var displayVersion: Boolean = false
-  private var host: String? = null
   private var port: Int? = null
-  private var confFilePath: String? = null
-  private var command: AbstractGeoRocketCommand? = null
 
-  /**
-   * The Vert.x instance
-   */
-  override var vertx: Vertx? = Vertx.vertx()
+  override val usageName = "" // the tool's name will be prepended
+  override val usageDescription = "Command-line interface for GeoRocket"
 
-  init {
-    // get GEOROCKET_CLI_HOME
-    var geoRocketCliHomeStr: String? = System.getenv("GEOROCKET_CLI_HOME")
-    if (geoRocketCliHomeStr == null) {
-      System.err.println("Environment variable GEOROCKET_CLI_HOME not set. " +
-          "Using current working directory.")
-      geoRocketCliHomeStr = File(".").absolutePath
-    }
-
-    try {
-      geoRocketCliHome = File(geoRocketCliHomeStr).canonicalFile
-    } catch (e: IOException) {
-      System.err.println("Invalid GeoRocket home: $geoRocketCliHomeStr")
-      System.exit(1)
-      throw RuntimeException()
-    }
-  }
-
-  override var config: JsonObject = JsonObject()
-    get() {
-      if (field.isEmpty) {
-        // load configuration file
-        val confFile = if (confFilePath != null) {
-          File(confFilePath)
-        } else {
-          val confDir = File(geoRocketCliHome, "conf")
-          var cf = File(confDir, "georocket.yaml")
-          if (!cf.exists()) {
-            cf = File(confDir, "georocket.yml")
-            if (!cf.exists()) {
-              cf = File(confDir, "georocket.json")
-            }
-          }
-          cf
-        }
-
-        try {
-          val confFileStr = confFile.readText()
-          field = if (confFile.name.endsWith(".json")) {
-            JsonObject(confFileStr)
-          } else {
-            @Suppress("UNCHECKED_CAST")
-            val m = Yaml().loadAs(confFileStr, Map::class.java) as Map<String, Any>
-            JsonUtils.flatten(JsonObject(m))
-          }
-        } catch (e: IOException) {
-          System.err.println("Could not read config file $confFile: ${e.message}")
-          System.exit(1)
-        } catch (e: DecodeException) {
-          System.err.println("Invalid config file: ${e.message}")
-          System.exit(1)
-        }
-
-        // set default values
-        if (!field.containsKey(ConfigConstants.HOST)) {
-          field.put(ConfigConstants.HOST, GeoRocketClient.DEFAULT_HOST)
-        }
-        if (!field.containsKey(ConfigConstants.PORT)) {
-          field.put(ConfigConstants.PORT, GeoRocketClient.DEFAULT_PORT)
-        }
-
-        // overwrite with values from command line
-        if (host != null) {
-          field.put(ConfigConstants.HOST, host)
-        }
-        if (port != null) {
-          field.put(ConfigConstants.PORT, port)
-        }
-      }
-      return field
-    }
-
-  /**
-   * Set the name of the host where GeoRocket is running
-   * @param host the host
-   */
-  @OptionDesc(longName = "host",
+  @set:OptionDesc(longName = "host",
       description = "the name of the host where GeoRocket is running",
       argumentName = "HOST", argumentType = ArgumentType.STRING)
-  @Suppress("UNUSED")
-  fun setHost(host: String) {
-    this.host = host
-  }
+  var host: String? = null
 
-  /**
-   * Set the port GeoRocket server is listening on
-   * @param port the port
-   */
-  @OptionDesc(longName = "port",
-      description = "the port GeoRocket server is listening on",
-      argumentName = "PORT", argumentType = ArgumentType.STRING)
-  @Suppress("UNUSED")
-  fun setPort(port: String) {
-    try {
-      this.port = port.toInt()
-    } catch (e: NumberFormatException) {
-      error("invalid port: $port")
-      System.exit(1)
-    }
-  }
-
-  /**
-   * Set the path to the application's configuration file
-   * @param path the path
-   */
-  @OptionDesc(longName = "conf", shortName = "c",
-      description = "path to the application's configuration file",
-      argumentName = "PATH", argumentType = ArgumentType.STRING)
-  @Suppress("UNUSED")
-  fun setConfFilePath(path: String) {
-    this.confFilePath = path
-  }
-
-  /**
-   * Specify if version information should be displayed
-   * @param display true if the version should be displayed
-   */
-  @OptionDesc(longName = "version", shortName = "V",
+  @set:OptionDesc(longName = "version", shortName = "V",
       description = "output version information and exit",
       priority = 9999)
-  @Suppress("UNUSED")
-  fun setDisplayVersion(display: Boolean) {
-    this.displayVersion = display
-  }
+  var displayVersion: Boolean = false
 
-  /**
-   * Set the command to execute
-   * @param command the command
-   */
-  @CommandDescList(
+  @set:OptionDesc(longName = "conf", shortName = "c",
+      description = "path to the application's configuration file",
+      argumentName = "PATH", argumentType = ArgumentType.STRING)
+  var confFilePath: String? = null
+
+  @set:CommandDescList(
       CommandDesc(longName = "import",
           description = "import one or more files into GeoRocket",
           command = ImportCommand::class),
@@ -211,16 +90,93 @@ class GeoRocketCli : AbstractGeoRocketCommand() {
           description = "display help for a given command",
           command = HelpCommand::class)
   )
-  @Suppress("UNUSED")
-  fun setCommand(command: AbstractGeoRocketCommand) {
-    this.command = command
-    command.vertx = vertx
-    command.config = config
+  var command: AbstractGeoRocketCommand? = null
+
+  init {
+    // get GEOROCKET_CLI_HOME
+    var geoRocketCliHomeStr: String? = System.getenv("GEOROCKET_CLI_HOME")
+    if (geoRocketCliHomeStr == null) {
+      System.err.println("Environment variable GEOROCKET_CLI_HOME not set. " +
+          "Using current working directory.")
+      geoRocketCliHomeStr = File(".").absolutePath
+    }
+
+    try {
+      geoRocketCliHome = File(geoRocketCliHomeStr).canonicalFile
+    } catch (e: IOException) {
+      System.err.println("Invalid GeoRocket home: $geoRocketCliHomeStr")
+      System.exit(1)
+      throw RuntimeException()
+    }
   }
 
-  override val usageName = "" // the tool's name will be prepended
+  /**
+   * Set the port GeoRocket server is listening on
+   * @param port the port
+   */
+  @OptionDesc(longName = "port",
+      description = "the port GeoRocket server is listening on",
+      argumentName = "PORT", argumentType = ArgumentType.STRING)
+  @Suppress("UNUSED")
+  fun setPort(port: String) {
+    try {
+      this.port = port.toInt()
+    } catch (e: NumberFormatException) {
+      error("invalid port: $port")
+      System.exit(1)
+    }
+  }
 
-  override val usageDescription = "Command-line interface for GeoRocket"
+  private fun initConfig() {
+    // load configuration file
+    val confFile = if (confFilePath != null) {
+      File(confFilePath)
+    } else {
+      val confDir = File(geoRocketCliHome, "conf")
+      var cf = File(confDir, "georocket.yaml")
+      if (!cf.exists()) {
+        cf = File(confDir, "georocket.yml")
+        if (!cf.exists()) {
+          cf = File(confDir, "georocket.json")
+        }
+      }
+      cf
+    }
+
+    try {
+      val confFileStr = confFile.readText()
+      val readConf = if (confFile.name.endsWith(".json")) {
+        JsonObject(confFileStr)
+      } else {
+        @Suppress("UNCHECKED_CAST")
+        val m = Yaml().loadAs(confFileStr, Map::class.java) as Map<String, Any>
+        JsonUtils.flatten(JsonObject(m))
+      }
+      config.mergeIn(readConf)
+    } catch (e: IOException) {
+      System.err.println("Could not read config file $confFile: ${e.message}")
+      System.exit(1)
+    } catch (e: DecodeException) {
+      System.err.println("Invalid config file: ${e.message}")
+      System.exit(1)
+    }
+
+    // set default values
+    if (!config.containsKey(ConfigConstants.HOST)) {
+      config.put(ConfigConstants.HOST, GeoRocketClient.DEFAULT_HOST)
+    }
+    if (!config.containsKey(ConfigConstants.PORT)) {
+      config.put(ConfigConstants.PORT, GeoRocketClient.DEFAULT_PORT)
+    }
+
+    // overwrite with values from command line
+    if (host != null) {
+      config.put(ConfigConstants.HOST, host)
+    }
+    if (port != null) {
+      config.put(ConfigConstants.PORT, port)
+    }
+  }
 
   override fun doRun(remainingArgs: Array<String>, i: InputReader,
       o: PrintWriter, handler: Handler<Int>) {
@@ -229,6 +185,8 @@ class GeoRocketCli : AbstractGeoRocketCommand() {
       handler.handle(0)
       return
     }
+
+    initConfig()
 
     // if there are no commands print usage and exit
     if (command == null) {
@@ -285,5 +243,8 @@ class GeoRocketCli : AbstractGeoRocketCommand() {
  * @param args the command line arguments
  */
 fun main(args: Array<String>) {
-  GeoRocketCli().start(args)
+  val vertx = Vertx.vertx()
+  vertx.runOnContext {
+    GeoRocketCli().start(args)
+  }
 }

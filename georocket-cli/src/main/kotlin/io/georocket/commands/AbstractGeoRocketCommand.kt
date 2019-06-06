@@ -18,8 +18,8 @@ import java.io.PrintWriter
  */
 abstract class AbstractGeoRocketCommand : GeoRocketCommand {
   private val options: OptionGroup<ID> = OptionIntrospector.introspect(javaClass)
-  open var vertx: Vertx? = null
-  open var config: JsonObject = JsonObject()
+  protected val vertx: Vertx by lazy { Vertx.currentContext().owner() }
+  protected val config: JsonObject by lazy { Vertx.currentContext().config() }
   var endHandler: Handler<Int> = Handler { }
 
   /**

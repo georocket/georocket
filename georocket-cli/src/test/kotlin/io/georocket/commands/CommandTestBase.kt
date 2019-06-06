@@ -55,8 +55,7 @@ abstract class CommandTestBase<T : AbstractGeoRocketCommand> {
     val config = JsonObject()
         .put(ConfigConstants.HOST, "localhost")
         .put(ConfigConstants.PORT, wireMockRule.port())
-    cmd.config = config
-    cmd.vertx = rule.vertx()
+    rule.vertx().orCreateContext.config().mergeIn(config)
   }
 
   /**
