@@ -11,24 +11,26 @@ import io.georocket.client.ImportResult
 import io.georocket.commands.console.ImportProgressRenderer
 import io.georocket.util.SizeFormat
 import io.georocket.util.formatUntilNow
-import io.georocket.util.io.GzipWriteStream
 import io.vertx.core.Future
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.file.OpenOptions
 import io.vertx.core.streams.ReadStream
 import io.vertx.kotlin.core.file.openAwait
 import io.vertx.kotlin.core.file.propsAwait
-import io.vertx.kotlin.core.streams.writeAwait
 import io.vertx.kotlin.coroutines.await
+import io.vertx.kotlin.coroutines.awaitBlocking
 import io.vertx.kotlin.coroutines.toChannel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import org.apache.commons.io.FilenameUtils
 import org.apache.commons.lang3.SystemUtils
 import org.apache.tools.ant.Project
 import org.apache.tools.ant.types.FileSet
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.PrintWriter
 import java.nio.file.Paths
 import java.util.ArrayList
+import java.util.zip.GZIPOutputStream
 
 /**
  * Import one or more files into GeoRocket
@@ -272,34 +274,41 @@ class ImportCommand : AbstractGeoRocketCommand() {
 
       val alreadyCompressed = path.endsWith(".gz", true)
       val resultFuture = Future.future<ImportResult>()
-      val out = if (alreadyCompressed) {
+      val out = client.store.startImport(options, resultFuture).toChannel(vertx)
+
+      val baos = ByteArrayOutputStream()
+      val os = if (alreadyCompressed) {
         options.size = fileSize
-        client.store.startImport(options, resultFuture)
+        baos
       } else {
-        GzipWriteStream(client.store.startImport(options, resultFuture))
+        awaitBlocking { GZIPOutputStream(baos) }
       }
 
       var bytesWritten = 0L
+      var compressedBytesWritten = 0L
       val fileChannel = (file as ReadStream<Buffer>).toChannel(vertx)
       for (buf in fileChannel) {
-        out.writeAwait(buf)
+        awaitBlocking { os.write(buf.bytes) }
+        if (baos.size() > 0) {
+          out.send(Buffer.buffer(baos.toByteArray()))
+          compressedBytesWritten += baos.size()
+          baos.reset()
+        }
         progress.current = bytesWritten
         bytesWritten += buf.length().toLong()
-        if (out.writeQueueFull()) {
-          file.pause()
-          out.drainHandler { file.resume() }
-        }
       }
 
-      out.end()
+      awaitBlocking { os.close() }
+      if (baos.size() > 0) {
+        out.send(Buffer.buffer(baos.toByteArray()))
+        compressedBytesWritten += baos.size()
+      }
+
+      out.close()
       progress.current = bytesWritten
 
       resultFuture.await()
-      return if (alreadyCompressed) {
-        Metrics(fileSize, fileSize)
-      } else {
-        Metrics(fileSize, (out as GzipWriteStream).bytesWritten)
-      }
+      return Metrics(fileSize, compressedBytesWritten)
     } finally {
       file.close()
     }
