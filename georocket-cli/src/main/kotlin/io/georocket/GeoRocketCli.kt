@@ -21,7 +21,6 @@ import io.vertx.core.Vertx
 import io.vertx.core.VertxOptions
 import io.vertx.core.json.DecodeException
 import io.vertx.core.json.JsonObject
-import javassist.ClassPool
 import org.fusesource.jansi.AnsiConsole
 import org.yaml.snakeyaml.Yaml
 import java.io.File
@@ -199,21 +198,6 @@ class GeoRocketCli : AbstractGeoRocketCommand() {
    * @param args the command line arguments
    */
   fun start(args: Array<String>) {
-    // BEGIN WORKAROUND-VERTX-2562: REMOVE THIS ONCE
-    // https://github.com/eclipse/vert.x/issues/2562 HAS BEEN RESOLVED
-    val cp = ClassPool.getDefault()
-    try {
-      val cc = cp.get("io.netty.handler.codec.http.ComposedLastHttpContent")
-      val m = cc.getDeclaredMethod("decoderResult")
-      m.insertBefore("{ if (result == null) result = io.netty.handler.codec.DecoderResult.SUCCESS; }")
-      cc.toClass()
-    } catch (e: Exception) {
-      System.err.println("Could not patch ComposedLastHttpContent. Optimistic " +
-          "merging will not work properly.")
-      e.printStackTrace()
-    }
-    // END WORKAROUND-VERTX-2562
-
     AnsiConsole.systemInstall()
 
     // start CLI

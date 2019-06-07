@@ -38,11 +38,6 @@ dependencies {
     compile group: 'ch.qos.logback', name: 'logback-classic', version: '1.2.3'
     compile group: 'ch.qos.logback', name: 'logback-core', version: '1.2.3'
 
-    // BEGIN WORKAROUND-VERTX-2562: REMOVE THIS ONCE
-    // https://github.com/eclipse/vert.x/issues/2562 HAS BEEN RESOLVED
-    compile 'org.javassist:javassist:3.23.1-GA'
-    // END WORKAROUND-VERTX-2562
-
     compile "org.jetbrains.kotlin:kotlin-reflect"
     compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
 
