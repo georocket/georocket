@@ -10,6 +10,7 @@ import io.georocket.client.ImportParams.Compression
 import io.georocket.client.ImportResult
 import io.georocket.commands.console.ImportProgressRenderer
 import io.georocket.util.SizeFormat
+import io.georocket.util.coroutines.awaitBlockingConcurrent
 import io.georocket.util.formatUntilNow
 import io.vertx.core.Future
 import io.vertx.core.buffer.Buffer
@@ -280,7 +281,7 @@ class ImportCommand : AbstractGeoRocketCommand() {
         options.size = fileSize
         baos
       } else {
-        awaitBlocking { GZIPOutputStream(baos) }
+        awaitBlockingConcurrent { GZIPOutputStream(baos) }
       }
 
       var bytesWritten = 0L

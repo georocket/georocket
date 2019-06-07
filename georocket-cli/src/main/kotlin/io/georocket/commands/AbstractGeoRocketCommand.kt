@@ -8,13 +8,11 @@ import de.undercouch.underline.OptionIntrospector.ID
 import de.undercouch.underline.OptionParser
 import io.georocket.ConfigConstants
 import io.georocket.client.GeoRocketClient
-import io.vertx.core.Handler
+import io.georocket.util.coroutines.awaitBlockingConcurrent
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
-import io.vertx.kotlin.coroutines.awaitEvent
 import io.vertx.kotlin.coroutines.dispatcher
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.io.PrintWriter
 
 /**
@@ -24,9 +22,6 @@ abstract class AbstractGeoRocketCommand : GeoRocketCommand {
   private val options: OptionGroup<ID> = OptionIntrospector.introspect(javaClass)
   protected val vertx: Vertx by lazy { Vertx.currentContext().owner() }
   protected val config: JsonObject by lazy { Vertx.currentContext().config() }
-  private var endHandler: Handler<Int> = Handler {
-    throw NotImplementedError("Call runAwait() instead of run() to set an end handler")
-  }
 
   /**
    * `true` if the command's help should be displayed
@@ -44,10 +39,7 @@ abstract class AbstractGeoRocketCommand : GeoRocketCommand {
   }
 
   suspend fun runAwait(args: Array<String>, i: InputReader, o: PrintWriter): Int {
-    return awaitEvent { handler ->
-      endHandler = handler
-      run(args, i, o)
-    }
+    return awaitBlockingConcurrent { run(args, i, o) }
   }
 
   override fun run(args: Array<String>, i: InputReader, o: PrintWriter): Int {
@@ -58,19 +50,16 @@ abstract class AbstractGeoRocketCommand : GeoRocketCommand {
 
     if (displayHelp) {
       usage()
-      endHandler.handle(0)
       return 0
     }
 
     if (!checkArguments()) {
-      endHandler.handle(1)
       return 1
     }
 
-    GlobalScope.launch(vertx.orCreateContext.dispatcher()) {
-      endHandler.handle(doRun(parsedOptions.remainingArgs, i, o))
+    return runBlocking(vertx.dispatcher()) {
+      doRun(parsedOptions.remainingArgs, i, o)
     }
-    return 0
   }
 
   /**

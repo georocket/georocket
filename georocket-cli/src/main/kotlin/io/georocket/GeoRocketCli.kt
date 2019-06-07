@@ -18,13 +18,10 @@ import io.georocket.commands.SearchCommand
 import io.georocket.commands.TagCommand
 import io.georocket.util.JsonUtils
 import io.vertx.core.Vertx
+import io.vertx.core.VertxOptions
 import io.vertx.core.json.DecodeException
 import io.vertx.core.json.JsonObject
-import io.vertx.kotlin.coroutines.awaitBlocking
-import io.vertx.kotlin.coroutines.dispatcher
 import javassist.ClassPool
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
 import org.fusesource.jansi.AnsiConsole
 import org.yaml.snakeyaml.Yaml
 import java.io.File
@@ -222,12 +219,10 @@ class GeoRocketCli : AbstractGeoRocketCommand() {
     // start CLI
     try {
       val out = PrintWriter(OutputStreamWriter(System.out, StandardCharsets.UTF_8))
-      GlobalScope.launch(vertx.dispatcher()) {
-        val exitCode = runAwait(args, StandardInputReader(), out)
-        awaitBlocking { out.flush() }
-        AnsiConsole.systemUninstall()
-        System.exit(exitCode)
-      }
+      val exitCode = run(args, StandardInputReader(), out)
+      out.flush()
+      AnsiConsole.systemUninstall()
+      System.exit(exitCode)
     } catch (e: OptionParserException) {
       error(e.message)
       AnsiConsole.systemUninstall()
@@ -241,8 +236,16 @@ class GeoRocketCli : AbstractGeoRocketCommand() {
  * @param args the command line arguments
  */
 fun main(args: Array<String>) {
-  val vertx = Vertx.vertx()
-  vertx.runOnContext {
+  val options = VertxOptions()
+  options.maxWorkerExecuteTime = Long.MAX_VALUE
+  val vertx = Vertx.vertx(options)
+  vertx.executeBlocking<Unit>({ f ->
     GeoRocketCli().start(args)
-  }
+    f.complete()
+  }, false, { ar ->
+    if (ar.failed()) {
+      ar.cause().printStackTrace()
+      System.exit(1)
+    }
+  })
 }
