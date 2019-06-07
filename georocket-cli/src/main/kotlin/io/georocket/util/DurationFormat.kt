@@ -3,11 +3,6 @@ package io.georocket.util
 import net.time4j.Duration.Formatter
 import java.time.Duration
 
-/**
- * Convert durations to human-readable strings. Used by all commands that
- * output durations, so the output always looks the same.
- * @author Michel Kraemer
- */
 private const val PATTERN = "[#################Y'y ']" +
     "[#################M'mo '][#################W'w ']" +
     "[#################D'd '][#################h'h ']" +

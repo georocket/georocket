@@ -36,9 +36,6 @@ class PropertyCommand : AbstractGeoRocketCommand() {
 
   override suspend fun doRun(remainingArgs: Array<String>, i: InputReader,
       o: PrintWriter): Int {
-    return awaitEvent { handler ->
-      subcommand!!.endHandler = handler
-      subcommand!!.run(remainingArgs, i, o)
-    }
+    return subcommand!!.runAwait(remainingArgs, i, o)
   }
 }

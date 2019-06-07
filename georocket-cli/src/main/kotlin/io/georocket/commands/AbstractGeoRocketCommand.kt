@@ -11,6 +11,7 @@ import io.georocket.client.GeoRocketClient
 import io.vertx.core.Handler
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
+import io.vertx.kotlin.coroutines.awaitEvent
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -23,7 +24,9 @@ abstract class AbstractGeoRocketCommand : GeoRocketCommand {
   private val options: OptionGroup<ID> = OptionIntrospector.introspect(javaClass)
   protected val vertx: Vertx by lazy { Vertx.currentContext().owner() }
   protected val config: JsonObject by lazy { Vertx.currentContext().config() }
-  var endHandler: Handler<Int> = Handler { }
+  private var endHandler: Handler<Int> = Handler {
+    throw NotImplementedError("Call runAwait() instead of run() to set an end handler")
+  }
 
   /**
    * `true` if the command's help should be displayed
@@ -38,6 +41,13 @@ abstract class AbstractGeoRocketCommand : GeoRocketCommand {
    */
   protected fun error(msg: String?) {
     System.err.println("georocket: $msg")
+  }
+
+  suspend fun runAwait(args: Array<String>, i: InputReader, o: PrintWriter): Int {
+    return awaitEvent { handler ->
+      endHandler = handler
+      run(args, i, o)
+    }
   }
 
   override fun run(args: Array<String>, i: InputReader, o: PrintWriter): Int {

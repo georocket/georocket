@@ -4,9 +4,11 @@ import com.github.tomakehurst.wiremock.client.WireMock.aResponse
 import com.github.tomakehurst.wiremock.client.WireMock.get
 import com.github.tomakehurst.wiremock.client.WireMock.stubFor
 import com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo
-import io.vertx.core.Handler
 import io.vertx.ext.unit.TestContext
 import io.vertx.ext.unit.junit.VertxUnitRunner
+import io.vertx.kotlin.coroutines.dispatcher
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -23,11 +25,11 @@ class ExportCommandTest : CommandTestBase<ExportCommand>() {
   @Test
   fun noLayer(context: TestContext) {
     val async = context.async()
-    cmd.endHandler = Handler { exitCode ->
+    GlobalScope.launch(rule.vertx().dispatcher()) {
+      val exitCode = cmd.runAwait(arrayOf(), input, out)
       context.assertEquals(1, exitCode)
       async.complete()
     }
-    cmd.run(arrayOf(), input, out)
   }
 
   /**
@@ -36,11 +38,11 @@ class ExportCommandTest : CommandTestBase<ExportCommand>() {
   @Test
   fun emptyLayer(context: TestContext) {
     val async = context.async()
-    cmd.endHandler = Handler { exitCode ->
+    GlobalScope.launch(rule.vertx().dispatcher()) {
+      val exitCode = cmd.runAwait(arrayOf(""), input, out)
       context.assertEquals(1, exitCode)
       async.complete()
     }
-    cmd.run(arrayOf(""), input, out)
   }
 
   /**
@@ -56,13 +58,12 @@ class ExportCommandTest : CommandTestBase<ExportCommand>() {
             .withBody(xml)))
 
     val async = context.async()
-    cmd.endHandler = Handler { exitCode ->
+    GlobalScope.launch(rule.vertx().dispatcher()) {
+      val exitCode = cmd.runAwait(arrayOf("/"), input, out)
       context.assertEquals(0, exitCode)
       verifyRequested(url, context)
       async.complete()
     }
-
-    cmd.run(arrayOf("/"), input, out)
   }
 
   /**
@@ -78,13 +79,12 @@ class ExportCommandTest : CommandTestBase<ExportCommand>() {
             .withBody(xml)))
 
     val async = context.async()
-    cmd.endHandler = Handler { exitCode ->
+    GlobalScope.launch(rule.vertx().dispatcher()) {
+      val exitCode = cmd.runAwait(arrayOf("/hello/world"), input, out)
       context.assertEquals(0, exitCode)
       verifyRequested(url, context)
       async.complete()
     }
-
-    cmd.run(arrayOf("/hello/world"), input, out)
   }
 
   /**
@@ -100,12 +100,11 @@ class ExportCommandTest : CommandTestBase<ExportCommand>() {
             .withBody(xml)))
 
     val async = context.async()
-    cmd.endHandler = Handler { exitCode ->
+    GlobalScope.launch(rule.vertx().dispatcher()) {
+      val exitCode = cmd.runAwait(arrayOf("--optimistic-merging", "/hello/world"), input, out)
       context.assertEquals(0, exitCode)
       verifyRequested(url, context)
       async.complete()
     }
-
-    cmd.run(arrayOf("--optimistic-merging", "/hello/world"), input, out)
   }
 }

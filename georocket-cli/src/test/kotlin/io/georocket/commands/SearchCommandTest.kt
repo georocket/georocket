@@ -4,9 +4,11 @@ import com.github.tomakehurst.wiremock.client.WireMock.aResponse
 import com.github.tomakehurst.wiremock.client.WireMock.get
 import com.github.tomakehurst.wiremock.client.WireMock.stubFor
 import com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo
-import io.vertx.core.Handler
 import io.vertx.ext.unit.TestContext
 import io.vertx.ext.unit.junit.VertxUnitRunner
+import io.vertx.kotlin.coroutines.dispatcher
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -23,11 +25,10 @@ class SearchCommandTest : CommandTestBase<SearchCommand>() {
   @Test
   fun noQuery(context: TestContext) {
     val async = context.async()
-    cmd.endHandler = Handler { exitCode ->
-      context.assertEquals(1, exitCode)
+    GlobalScope.launch(rule.vertx().dispatcher()) {
+      context.assertEquals(1, cmd.runAwait(arrayOf(), input, out))
       async.complete()
     }
-    context.assertEquals(1, cmd.run(arrayOf(), input, out))
   }
 
   /**
@@ -36,11 +37,10 @@ class SearchCommandTest : CommandTestBase<SearchCommand>() {
   @Test
   fun emptyQuery(context: TestContext) {
     val async = context.async()
-    cmd.endHandler = Handler { exitCode ->
-      context.assertEquals(1, exitCode)
+    GlobalScope.launch(rule.vertx().dispatcher()) {
+      context.assertEquals(1, cmd.runAwait(arrayOf(""), input, out))
       async.complete()
     }
-    context.assertEquals(1, cmd.run(arrayOf(""), input, out))
   }
 
   /**
@@ -56,14 +56,13 @@ class SearchCommandTest : CommandTestBase<SearchCommand>() {
             .withBody(xml)))
 
     val async = context.async()
-    cmd.endHandler = Handler { exitCode ->
+    GlobalScope.launch(rule.vertx().dispatcher()) {
+      val exitCode = cmd.runAwait(arrayOf("test"), input, out)
       context.assertEquals(0, exitCode)
       context.assertEquals(xml, writer.toString())
       verifyRequested(url, context)
       async.complete()
     }
-
-    cmd.run(arrayOf("test"), input, out)
   }
 
   /**
@@ -79,14 +78,13 @@ class SearchCommandTest : CommandTestBase<SearchCommand>() {
             .withBody(xml)))
 
     val async = context.async()
-    cmd.endHandler = Handler { exitCode ->
+    GlobalScope.launch(rule.vertx().dispatcher()) {
+      val exitCode = cmd.runAwait(arrayOf("test1", "test2"), input, out)
       context.assertEquals(0, exitCode)
       context.assertEquals(xml, writer.toString())
       verifyRequested(url, context)
       async.complete()
     }
-
-    cmd.run(arrayOf("test1", "test2"), input, out)
   }
 
   /**
@@ -102,14 +100,13 @@ class SearchCommandTest : CommandTestBase<SearchCommand>() {
             .withBody(xml)))
 
     val async = context.async()
-    cmd.endHandler = Handler { exitCode ->
+    GlobalScope.launch(rule.vertx().dispatcher()) {
+      val exitCode = cmd.runAwait(arrayOf("-l", "hello/world", "test"), input, out)
       context.assertEquals(0, exitCode)
       context.assertEquals(xml, writer.toString())
       verifyRequested(url, context)
       async.complete()
     }
-
-    cmd.run(arrayOf("-l", "hello/world", "test"), input, out)
   }
 
   /**
@@ -125,13 +122,13 @@ class SearchCommandTest : CommandTestBase<SearchCommand>() {
             .withBody(xml)))
 
     val async = context.async()
-    cmd.endHandler = Handler { exitCode ->
+    GlobalScope.launch(rule.vertx().dispatcher()) {
+      val exitCode = cmd.runAwait(arrayOf("-l", "hello/world",
+          "--optimistic-merging", "test"), input, out)
       context.assertEquals(0, exitCode)
       context.assertEquals(xml, writer.toString())
       verifyRequested(url, context)
       async.complete()
     }
-
-    cmd.run(arrayOf("-l", "hello/world", "--optimistic-merging", "test"), input, out)
   }
 }

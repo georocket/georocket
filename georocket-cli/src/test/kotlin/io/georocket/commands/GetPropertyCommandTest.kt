@@ -4,9 +4,11 @@ import com.github.tomakehurst.wiremock.client.WireMock.aResponse
 import com.github.tomakehurst.wiremock.client.WireMock.get
 import com.github.tomakehurst.wiremock.client.WireMock.stubFor
 import com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo
-import io.vertx.core.Handler
 import io.vertx.ext.unit.TestContext
 import io.vertx.ext.unit.junit.VertxUnitRunner
+import io.vertx.kotlin.coroutines.dispatcher
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -30,13 +32,12 @@ class GetPropertyCommandTest : CommandTestBase<GetPropertyCommand>() {
             .withBody(body)))
 
     val async = context.async()
-    cmd.endHandler = Handler { exitCode ->
+    GlobalScope.launch(rule.vertx().dispatcher()) {
+      val exitCode = cmd.runAwait(arrayOf("-l", "/", "-prop", "test"), input, out)
       context.assertEquals(0, exitCode)
       context.assertEquals(body, writer.toString())
       verifyRequested(url, context)
       async.complete()
     }
-
-    cmd.run(arrayOf("-l", "/", "-prop", "test"), input, out)
   }
 }

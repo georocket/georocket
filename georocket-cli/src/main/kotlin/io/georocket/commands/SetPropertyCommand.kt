@@ -11,7 +11,6 @@ import java.io.PrintWriter
 
 /**
  * Set properties to existing chunks in the GeoRocket data store
- * @author Benedikt Hiemenz
  */
 class SetPropertyCommand : AbstractGeoRocketCommand() {
   companion object {

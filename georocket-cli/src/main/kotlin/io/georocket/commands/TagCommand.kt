@@ -3,12 +3,10 @@ package io.georocket.commands
 import de.undercouch.underline.CommandDesc
 import de.undercouch.underline.CommandDescList
 import de.undercouch.underline.InputReader
-import io.vertx.kotlin.coroutines.awaitEvent
 import java.io.PrintWriter
 
 /**
  * Update tags of existing chunks in the GeoRocket data store
- * @author Benedikt Hiemenz
  */
 class TagCommand : AbstractGeoRocketCommand() {
   @set:CommandDescList(
@@ -35,9 +33,6 @@ class TagCommand : AbstractGeoRocketCommand() {
 
   override suspend fun doRun(remainingArgs: Array<String>, i: InputReader,
       o: PrintWriter): Int {
-    return awaitEvent { handler ->
-      subcommand!!.endHandler = handler
-      subcommand!!.run(remainingArgs, i, o)
-    }
+    return subcommand!!.runAwait(remainingArgs, i, o)
   }
 }

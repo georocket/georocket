@@ -8,9 +8,11 @@ import com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor
 import com.github.tomakehurst.wiremock.client.WireMock.stubFor
 import com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo
 import com.github.tomakehurst.wiremock.client.WireMock.verify
-import io.vertx.core.Handler
 import io.vertx.ext.unit.TestContext
 import io.vertx.ext.unit.junit.VertxUnitRunner
+import io.vertx.kotlin.coroutines.dispatcher
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -56,11 +58,10 @@ class ImportCommandTest : CommandTestBase<ImportCommand>() {
   @Test
   fun noFilePattern(context: TestContext) {
     val async = context.async()
-    cmd.endHandler = Handler { exitCode ->
-      context.assertEquals(1, exitCode)
+    GlobalScope.launch(rule.vertx().dispatcher()) {
+      context.assertEquals(1, cmd.runAwait(arrayOf(), input, out))
       async.complete()
     }
-    context.assertEquals(1, cmd.run(arrayOf(), input, out))
   }
 
   /**
@@ -86,13 +87,12 @@ class ImportCommandTest : CommandTestBase<ImportCommand>() {
             .withStatus(202)))
 
     val async = context.async()
-    cmd.endHandler = Handler { exitCode ->
+    GlobalScope.launch(rule.vertx().dispatcher()) {
+      val exitCode = cmd.runAwait(arrayOf(testFile!!.absolutePath), input, out)
       context.assertEquals(0, exitCode)
       verifyPosted(url, context)
       async.complete()
     }
-
-    cmd.run(arrayOf(testFile!!.absolutePath), input, out)
   }
 
   /**
@@ -106,13 +106,13 @@ class ImportCommandTest : CommandTestBase<ImportCommand>() {
             .withStatus(202)))
 
     val async = context.async()
-    cmd.endHandler = Handler { exitCode ->
+    GlobalScope.launch(rule.vertx().dispatcher()) {
+      val exitCode = cmd.runAwait(arrayOf("-l", "hello/world",
+          testFile!!.absolutePath), input, out)
       context.assertEquals(0, exitCode)
       verifyPosted(url, context)
       async.complete()
     }
-
-    cmd.run(arrayOf("-l", "hello/world", testFile!!.absolutePath), input, out)
   }
 
   /**
@@ -126,13 +126,13 @@ class ImportCommandTest : CommandTestBase<ImportCommand>() {
             .withStatus(202)))
 
     val async = context.async()
-    cmd.endHandler = Handler { exitCode ->
+    GlobalScope.launch(rule.vertx().dispatcher()) {
+      val exitCode = cmd.runAwait(arrayOf("-t", "hello,world",
+          testFile!!.absolutePath), input, out)
       context.assertEquals(0, exitCode)
       verifyPosted(url, context)
       async.complete()
     }
-
-    cmd.run(arrayOf("-t", "hello,world", testFile!!.absolutePath), input, out)
   }
 
   /**
@@ -146,14 +146,13 @@ class ImportCommandTest : CommandTestBase<ImportCommand>() {
             .withStatus(202)))
 
     val async = context.async()
-    cmd.endHandler = Handler { exitCode ->
+    GlobalScope.launch(rule.vertx().dispatcher()) {
+      val exitCode = cmd.runAwait(arrayOf("-props", "hello:world,myKey:myValue",
+          testFile!!.absolutePath), input, out)
       context.assertEquals(0, exitCode)
       verifyPosted(url, context)
       async.complete()
     }
-
-    cmd.run(arrayOf("-props", "hello:world,myKey:myValue",
-        testFile!!.absolutePath), input, out)
   }
 
   /**
@@ -167,14 +166,15 @@ class ImportCommandTest : CommandTestBase<ImportCommand>() {
             .withStatus(202)))
 
     val async = context.async()
-    cmd.endHandler = Handler { exitCode ->
+    GlobalScope.launch(rule.vertx().dispatcher()) {
+      val exitCode = cmd.runAwait(arrayOf("-props",
+          "hello:world,myKey:my\\:Value,my\\:Key:myValue",
+          testFile!!.absolutePath), input, out)
       context.assertEquals(0, exitCode)
       verifyPosted(url, context)
       async.complete()
     }
 
-    cmd.run(arrayOf("-props", "hello:world,myKey:my\\:Value,my\\:Key:myValue",
-        testFile!!.absolutePath), input, out)
   }
 
   /**
@@ -188,12 +188,12 @@ class ImportCommandTest : CommandTestBase<ImportCommand>() {
             .withStatus(202)))
 
     val async = context.async()
-    cmd.endHandler = Handler { exitCode ->
+    GlobalScope.launch(rule.vertx().dispatcher()) {
+      val exitCode = cmd.runAwait(arrayOf("-c", "test",
+          testFile!!.absolutePath), input, out)
       context.assertEquals(0, exitCode)
       verifyPosted(url, context)
       async.complete()
     }
-
-    cmd.run(arrayOf("-c", "test", testFile!!.absolutePath), input, out)
   }
 }

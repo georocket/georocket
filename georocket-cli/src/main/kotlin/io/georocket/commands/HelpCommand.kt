@@ -25,9 +25,6 @@ class HelpCommand : AbstractGeoRocketCommand() {
     // simply forward commands to GeoRocketCli and append '-h'
     val cmd = GeoRocketCli()
     val args = commands + "-h"
-    return awaitEvent { handler ->
-      cmd.endHandler = handler
-      cmd.run(args.toTypedArray(), i, o)
-    }
+    return cmd.runAwait(args.toTypedArray(), i, o)
   }
 }

@@ -20,7 +20,6 @@ import io.vertx.kotlin.core.file.propsAwait
 import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.awaitBlocking
 import io.vertx.kotlin.coroutines.toChannel
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import org.apache.commons.io.FilenameUtils
 import org.apache.commons.lang3.SystemUtils
 import org.apache.tools.ant.Project

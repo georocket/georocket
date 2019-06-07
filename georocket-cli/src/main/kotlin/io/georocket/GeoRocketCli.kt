@@ -17,12 +17,14 @@ import io.georocket.commands.PropertyCommand
 import io.georocket.commands.SearchCommand
 import io.georocket.commands.TagCommand
 import io.georocket.util.JsonUtils
-import io.vertx.core.Handler
 import io.vertx.core.Vertx
 import io.vertx.core.json.DecodeException
 import io.vertx.core.json.JsonObject
-import io.vertx.kotlin.coroutines.awaitEvent
+import io.vertx.kotlin.coroutines.awaitBlocking
+import io.vertx.kotlin.coroutines.dispatcher
 import javassist.ClassPool
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import org.fusesource.jansi.AnsiConsole
 import org.yaml.snakeyaml.Yaml
 import java.io.File
@@ -33,7 +35,6 @@ import java.nio.charset.StandardCharsets
 
 /**
  * GeoRocket command-line interface
- * @author Michel Kraemer
  */
 class GeoRocketCli : AbstractGeoRocketCommand() {
   companion object {
@@ -193,10 +194,7 @@ class GeoRocketCli : AbstractGeoRocketCommand() {
       return 0
     }
 
-    return awaitEvent { handler ->
-      command!!.endHandler = handler
-      command!!.run(remainingArgs, i, o)
-    }
+    return command!!.runAwait(remainingArgs, i, o)
   }
 
   /**
@@ -224,12 +222,12 @@ class GeoRocketCli : AbstractGeoRocketCommand() {
     // start CLI
     try {
       val out = PrintWriter(OutputStreamWriter(System.out, StandardCharsets.UTF_8))
-      endHandler = Handler { exitCode ->
-        out.flush()
+      GlobalScope.launch(vertx.dispatcher()) {
+        val exitCode = runAwait(args, StandardInputReader(), out)
+        awaitBlocking { out.flush() }
         AnsiConsole.systemUninstall()
         System.exit(exitCode)
       }
-      run(args, StandardInputReader(), out)
     } catch (e: OptionParserException) {
       error(e.message)
       AnsiConsole.systemUninstall()
