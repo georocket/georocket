@@ -76,7 +76,7 @@ dependencies {
     runtime "io.netty:netty-tcnative-boringssl-static:2.0.7.Final"
 
     testCompile 'de.flapdoodle.embed:de.flapdoodle.embed.mongo:2.0.0'
-    testCompile 'com.github.tomakehurst:wiremock:2.12.0'
+    testCompile 'com.github.tomakehurst:wiremock-jre8:2.25.1'
     testCompile "io.vertx:vertx-unit:$vertxVersion"
     testCompile 'junit:junit:4.12'
     testCompile 'org.mongodb:mongodb-driver:3.6.1'

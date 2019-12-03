@@ -14,6 +14,7 @@ import io.vertx.core.json.JsonObject
 import io.vertx.ext.unit.TestContext
 import io.vertx.ext.unit.junit.RunTestOnContext
 import org.junit.Before
+import org.junit.ClassRule
 import org.junit.Rule
 import java.io.PrintWriter
 import java.io.StringWriter
@@ -22,19 +23,21 @@ import java.io.StringWriter
  * Base class for unit tests that test commands
  */
 abstract class CommandTestBase<T : AbstractGeoRocketCommand> {
+  companion object {
+    /**
+     * Run a mock HTTP server
+     */
+    @ClassRule
+    @JvmField
+    var wireMockRule = WireMockRule(options().dynamicPort())
+  }
+
   /**
    * Run the test on a Vert.x test context
    */
   @Rule
   @JvmField
   var rule = RunTestOnContext()
-
-  /**
-   * Run a mock HTTP server
-   */
-  @Rule
-  @JvmField
-  var wireMockRule = WireMockRule(options().dynamicPort())
 
   /**
    * The command under test

@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.Set;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
-import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalToJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.head;
@@ -224,7 +223,6 @@ public class RemoteElasticsearchClientTest {
   @Test
   public void createIndex(TestContext context) {
     StubMapping settings = wireMockRule1.stubFor(put(urlEqualTo("/" + INDEX))
-      .withRequestBody(equalTo(""))
       .willReturn(aResponse()
         .withBody(ACKNOWLEDGED.encode())
         .withStatus(200)));
