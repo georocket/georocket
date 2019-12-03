@@ -146,6 +146,10 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
       JsonObject postFilter, JsonObject aggregations, JsonObject parameters, String timeout) {
     String uri = "/" + index + "/" + type + "/_search";
     uri += "?scroll=" + timeout;
+
+    // add parameters that helps us migrate to Elasticsearch 7
+    // TODO remove them when we migrate to Elasticsearch 8 and drop support for 6
+    uri += "&rest_total_hits_as_int=true&rest_total_hits_as_int=true";
     
     JsonObject source = new JsonObject();
     parameters.forEach(entry ->
@@ -170,6 +174,10 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
   @Override
   public Single<JsonObject> continueScroll(String scrollId, String timeout) {
     String uri = "/_search/scroll";
+
+    // add parameters that helps us migrate to Elasticsearch 7
+    // TODO remove them when we migrate to Elasticsearch 8 and drop support for 6
+    uri += "?rest_total_hits_as_int=true&rest_total_hits_as_int=true";
     
     JsonObject source = new JsonObject();
     source.put("scroll", timeout);
@@ -182,6 +190,10 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
   public Single<JsonObject> search(String type, JsonObject query,
       JsonObject postFilter, JsonObject aggregations, JsonObject parameters) {
     String uri = "/" + index + "/" + type + "/_search";
+
+    // add parameters that helps us migrate to Elasticsearch 7
+    // TODO remove them when we migrate to Elasticsearch 8 and drop support for 6
+    uri += "?rest_total_hits_as_int=true&rest_total_hits_as_int=true";
     
     JsonObject source = new JsonObject();
     parameters.forEach(entry -> 
@@ -261,7 +273,9 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
   
   @Override
   public Single<Boolean> typeExists(String type) {
-    return exists("/" + index + "/_mapping/" + type);
+    // TODO remove include_type_name parameter when we migrate to Elasticsearch 8
+    // TODO and drop support for version 6
+    return exists("/" + index + "/_mapping/" + type + "?include_type_name=true");
   }
   
   /**
@@ -323,7 +337,9 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
   
   @Override
   public Single<Boolean> putMapping(String type, JsonObject mapping) {
-    String uri = "/" + index + "/_mapping/" + type;
+    // TODO remove include_type_name parameter when we migrate to Elasticsearch 8
+    // TODO and drop support for version 6
+    String uri = "/" + index + "/_mapping/" + type + "?include_type_name=true";
     return client.performRequest(HttpMethod.PUT, uri, mapping.toBuffer())
       .map(res -> res.getBoolean("acknowledged", true));
   }
@@ -360,7 +376,9 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
 
   @Override
   public Single<JsonObject> getMapping(String type, String field) {
-    String uri = "/" + index + "/_mapping/" + type;
+    // TODO remove include_type_name parameter when we migrate to Elasticsearch 8
+    // TODO and drop support for version 6
+    String uri = "/" + index + "/_mapping/" + type + "?include_type_name=true";
     if (field != null) {
       uri += "/field/" + field;
     }
