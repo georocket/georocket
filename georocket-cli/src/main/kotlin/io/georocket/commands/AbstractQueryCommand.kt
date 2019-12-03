@@ -2,7 +2,7 @@ package io.georocket.commands
 
 import io.georocket.client.SearchParams
 import io.georocket.util.coroutines.search
-import io.vertx.kotlin.coroutines.toChannel
+import kotlinx.coroutines.delay
 import java.io.PrintWriter
 
 /**
@@ -26,9 +26,8 @@ abstract class AbstractQueryCommand : AbstractGeoRocketCommand() {
    */
   protected suspend fun query(params: SearchParams, out: PrintWriter) {
     createClient().use { client ->
-      val sr = client.store.search(params)
-      val r = sr.response
-      for (buf in r.toChannel(vertx)) {
+      val r = client.store.search(params)
+      for (buf in r) {
         out.write(buf.toString())
       }
 
