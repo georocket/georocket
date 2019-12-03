@@ -187,6 +187,10 @@ task extractElasticsearch(dependsOn: downloadElasticsearch, type: Copy) {
     // make sure 'logs' directory exists
     def logsDir = new File(elasticsearchInstallDir, 'logs')
     logsDir.mkdirs()
+
+    // Delete all x-pack plugins. We don't need them for the embedded version.
+    def modulesDir = new File(elasticsearchInstallDir, 'modules')
+    delete modulesDir.listFiles().findAll { it.getName().startsWith('x-pack') }
 }
 
 task cleanExtractedElasticsearch(type: Delete) {
