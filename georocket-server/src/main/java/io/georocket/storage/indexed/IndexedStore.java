@@ -395,6 +395,7 @@ public abstract class IndexedStore implements Store {
    * Add a chunk to the store
    * @param chunk the chunk to add
    * @param path the chunk's destination path
+   * @param correlationId the correlation ID of the current import process
    * @param handler will be called when the operation has finished
    */
   protected abstract void doAddChunk(String chunk, String path,
