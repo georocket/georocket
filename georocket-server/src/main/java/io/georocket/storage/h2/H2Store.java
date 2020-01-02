@@ -22,7 +22,7 @@ import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonObject;
 
 /**
- * Stores chunks on a H2 database
+ * Stores chunks in a H2 database
  * @author Michel Kraemer
  */
 public class H2Store extends IndexedStore {
