@@ -759,6 +759,7 @@ HTTP/1.1 204 No Content
 Content-Length: 0
 ----
 
+[[delete-chunks]]
 === DELETE chunks
 
 Delete chunks or layers from the data store.
@@ -926,7 +927,8 @@ Content-Length: 0
 === GET tasks
 
 Get information about the status of asynchronous tasks such as importing,
-indexing, or deleting.
+indexing, or deleting. The operation's response is structured as described
+in the <<task-model, task model section>>.
 
 ===== Resource URL
 
@@ -946,15 +948,15 @@ indexing, or deleting.
 [cols="1,2"]
 |===
 | *200*
-| The operation was successful
+| The operation was successful. The response is structured as described in the <<task-model, task model section>>.
 | *404*
-| The requested task was not found
+| The requested task information was not found
 |===
 
 ===== Example request
 
 ----
-GET /tasks/1234566789abcdef12345678 HTTP/1.1
+GET /tasks/ HTTP/1.1
 ----
 
 ===== Example response
@@ -975,12 +977,173 @@ Content-Length: 186
 }
 ----
 
+[[task-model]]
+=== Task model
+
+The response of the <<get-tasks, task endpoint>> is an object that maps correlation IDs to an array of tasks. Each task has a `type`, as well as a `startTime` and `endTime`. Depending on their type, tasks may have additional properties (see definition of task types below). A task may also have an `error` property containing a list of errors that occurred during the task execution.
+
+There are five task types: <<receiving-task, receiving task>>, <<importing-task, importing task>>, <<indexing-task, indexing task>>, <<removing-task, removing task>>, and <<purging-task, purging task>>.
+
+The process of importing a file into GeoRocket through the <<post-file>> endpoint will be tracked by a <<receiving-task, receiving task>>, an <<importing-task, importing task>>, and an <<indexing-task, indexing task>>. The process is finished when all these tasks are finished--i.e. when their `endTime` properties are set. The <<indexing-task, indexing task>> will always finish last.
+
+The process of deleting chunks through the <<delete-chunks>> endpoint will be tracked by a <<removing-task, removing task>> and a <<purging-task, purging task>>. The process is finished when both tasks are finished, but the <<purging-task, purging task>> will always finish last.
+
+===== Common properties
+
+[cols="1,2"]
+|===
+| *type* +
+  _(required)_
+| The task type. Valid values are `receiving`, `importing`, `indexing`, `removing`, and `purging`.
+| *startTime* +
+  _(required)_
+| An ISO-8601 timestamp specifying when the task was started
+| *endTime* +
+  _(optional)_
+| An ISO-8601 timestamp specifying when the task has ended. This property will not be set if the task is still running.
+| *errors* +
+  _(optional)_
+| An array of <<error-responses, errors>> that occurred during the task execution. This property will not be set if the task is still running or if it was executed successfully.
+|===
+
+===== Example response
+
+The following response contains a correlation ID `1234566789abcdef12345678` with three successful tasks, as well as another correlation ID `2234566789abcdef12345679` with two failed tasks.
+
+----
+{
+  "1234566789abcdef12345678": [{
+    "type": "receiving",
+    "startTime": "2018-12-03T13:40:50.285328Z",
+    "endTime": "2018-12-03T13:40:52.607407Z"
+  }, {
+    "type": "importing",
+    "startTime": "2018-12-03T13:40:53.582647Z",
+    "endTime": "2018-12-03T13:40:56.822243Z",
+    "importedChunks": 2025
+  }, {
+    "type": "indexing",
+    "startTime": "2018-12-03T13:40:59.424719Z",
+    "endTime": "2018-12-03T13:41:02.927662Z",
+    "indexedChunks": 2025
+  }],
+  "2234566789abcdef12345679": [{
+    "type": "purging",
+    "startTime": "2018-12-03T14:00:07.369Z",
+    "endTime": "2018-12-03T14:00:07.699Z",
+    "purgedChunks": 0,
+    "totalChunks": 8642,
+    "errors": [{
+      "reason": "One or more chunks could not be deleted",
+      "type": "ReplyException"
+    }]
+  }, {
+    "type": "removing",
+    "startTime": "2018-12-03T14:00:07.641Z",
+    "endTime": "2018-12-03T14:00:07.698Z",
+    "removedChunks": 0,
+    "totalChunks": 8642,
+    "errors": [{
+      "reason": "A very description example error message",
+      "type": "generic_error"
+    }]
+  }]
+}
+----
+
+[[receiving-task]]
+==== Receiving task
+
+This task tracks the progress while a file is being received by GeoRocket through the <<post-file>> endpoint. When this task is finished, the file has been uploaded to GeoRocket but it has not been imported and indexed yet. This means the file contents cannot be queried yet.
+
+===== Properties
+
+[cols="1,2"]
+|===
+| *type* +
+  _(required)_
+| The value is always `receiving`.
+|===
+
+[[importing-task]]
+==== Importing task
+
+This task tracks the progress of importing a file into GeoRocket's data store. The task starts immediately after the file has been received--i.e. when the <<receiving-task, receiving task>> has ended.
+
+When the importing task is finished, the file has been imported but it has not been fully indexed yet. Importing and indexing run in parallel but importing will always finish first. This means that until both tasks are finished, the file contents cannot be fully queried.
+
+===== Properties
+
+[cols="1,2"]
+|===
+| *type* +
+  _(required)_
+| The value is always `importing`.
+| *importedChunks* +
+  _(required)_
+| The number of chunks imported so far. When the task has finished, this value will equal the total number of imported chunks.
+|===
+
+[[indexing-task]]
+==== Indexing task
+
+This task tracks the progress of indexing chunks in GeoRocket's data store. When this task is finished, GeoRocket has processed (i.e. received, imported, and indexed) the entire contents of the file. The indexing task will always finish after the <<receiving-task, receiving>> and <<importing-task, importing>> tasks.
+
+===== Properties
+
+[cols="1,2"]
+|===
+| *type* +
+  _(required)_
+| The value is always `indexing`.
+| *indexedChunks* +
+  _(required)_
+| The number of chunks indexed so far. When the task has finished, both values--the number of _indexed_ chunks as well as the number of _imported_ chunks--will be equal.
+|===
+
+[[removing-task]]
+==== Removing task
+
+This task tracks the progress of removing chunks from GeoRocket's index. The removing task and the <<purging-task, purging task>> run in parallel. When both tasks have finished, the chunks have been deleted completely from GeoRocket. The <<purging-task, purging task>> will always finish after the removing task.
+
+[cols="1,2"]
+|===
+| *type* +
+  _(required)_
+| The value is always `removing`.
+| *totalChunks* +
+  _(required)_
+| The total number of chunks to remove. Always equals `totalChunks` from the <<purging-task, purging task>> with the same correlation ID.
+| *removedChunks* +
+  _(required)_
+| The number of chunks removed so far. When the task has finished, `totalChunks` and `removedChunks` will be equal. In addition, when the corresponding <<purging-task, purging task>> with the same correlation ID has also finished, `removedChunks` will equal `purgedChunks`.
+|===
+
+[[purging-task]]
+==== Purging task
+
+This task tracks the progress of removing chunks from GeoRocket's data store. The purging task and the <<removing-task, removing task>> run in parallel. When both tasks have finished, the chunks have been deleted completely from GeoRocket. The purging task will always finish after the <<removing-task, removing task>>.
+
+[cols="1,2"]
+|===
+| *type* +
+  _(required)_
+| The value is always `purging`.
+| *totalChunks* +
+  _(required)_
+| The total number of chunks to remove. Always equals `totalChunks` from the <<removing-task, removing task>> with the same correlation ID.
+| *purgedChunks* +
+  _(required)_
+| The number of chunks removed so far. When the task has finished, `totalChunks` and `purgedChunks` will be equal. In addition, when the corresponding <<removing-task, removing task>> with the same correlation ID has also finished, `purgedChunks` will equal `removedChunks`.
+|===
+
 === Compression
 
 The GeoRocket HTTP interface supports GZIP compression. If the configuration item <<config-http-interface, `georocket.http.compress`>> is set to `true` (default), GeoRocket is able to compress responses of all operations described above. Note that this will only work if the client advertises that it understands `gzip` by sending an appropriate `Accept-Encoding` HTTP header.
 
 In addition, the <<post-file, POST file>> operation supports GZIP compression. Clients can upload compressed files to GeoRocket by including a `Content-Encoding` header in the request with a value of `gzip`.
 
+[[error-responses]]
 === Error responses
 
 All endpoints described above return standardised HTTP status codes. With these status codes you are able to determine if an operation was successful or not. The error codes are descriptive (see https://tools.ietf.org/html/rfc7231[RFC7231]), but sometimes more information is needed. Whenever an error occurs, GeoRocket returns a JSON object providing additional details. The JSON object always has the same structure:
