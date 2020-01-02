@@ -8,7 +8,7 @@ v1.4.0-SNAPSHOT
 :icons: font
 :source-highlighter: highlight.js
 
-Copyright (C) 2015-2018 Fraunhofer Institute for Computer Graphics Research IGD
+Copyright (C) 2015-2020 Fraunhofer Institute for Computer Graphics Research IGD
 
 == Introduction
 
