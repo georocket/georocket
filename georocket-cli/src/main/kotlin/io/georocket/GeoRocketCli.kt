@@ -28,6 +28,7 @@ import java.io.IOException
 import java.io.OutputStreamWriter
 import java.io.PrintWriter
 import java.nio.charset.StandardCharsets
+import kotlin.system.exitProcess
 
 /**
  * GeoRocket command-line interface
@@ -102,8 +103,7 @@ class GeoRocketCli : AbstractGeoRocketCommand() {
       geoRocketCliHome = File(geoRocketCliHomeStr).canonicalFile
     } catch (e: IOException) {
       System.err.println("Invalid GeoRocket home: $geoRocketCliHomeStr")
-      System.exit(1)
-      throw RuntimeException()
+      exitProcess(1)
     }
   }
 
@@ -120,7 +120,7 @@ class GeoRocketCli : AbstractGeoRocketCommand() {
       this.port = port.toInt()
     } catch (e: NumberFormatException) {
       error("invalid port: $port")
-      System.exit(1)
+      exitProcess(1)
     }
   }
 
@@ -152,10 +152,10 @@ class GeoRocketCli : AbstractGeoRocketCommand() {
       config.mergeIn(readConf)
     } catch (e: IOException) {
       System.err.println("Could not read config file $confFile: ${e.message}")
-      System.exit(1)
+      exitProcess(1)
     } catch (e: DecodeException) {
       System.err.println("Invalid config file: ${e.message}")
-      System.exit(1)
+      exitProcess(1)
     }
 
     // set default values
@@ -206,11 +206,11 @@ class GeoRocketCli : AbstractGeoRocketCommand() {
       val exitCode = run(args, StandardInputReader(), out)
       out.flush()
       AnsiConsole.systemUninstall()
-      System.exit(exitCode)
+      exitProcess(exitCode)
     } catch (e: OptionParserException) {
       error(e.message)
       AnsiConsole.systemUninstall()
-      System.exit(1)
+      exitProcess(1)
     }
   }
 }
@@ -229,7 +229,7 @@ fun main(args: Array<String>) {
   }, false, { ar ->
     if (ar.failed()) {
       ar.cause().printStackTrace()
-      System.exit(1)
+      exitProcess(1)
     }
   })
 }
