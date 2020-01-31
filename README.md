@@ -9,7 +9,7 @@
 
 > A high-performance data store for geospatial files
 
-[![Apache License, Version 2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0) [![Build Status](https://travis-ci.org/georocket/georocket.svg?branch=master)](https://travis-ci.org/georocket/georocket)
+[![Apache License, Version 2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0) [![Actions Status](https://github.com/georocket/georocket/workflows/Java%20CI/badge.svg)](https://github.com/georocket/georocket/actions)
 
 GeoRocket can store geospatial files such as *3D city models (CityGML)*, *GML*
 and *GeoJSON* files. Any file saved in GeoRocket can be completely restored
