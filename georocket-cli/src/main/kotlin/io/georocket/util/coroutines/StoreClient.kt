@@ -5,9 +5,9 @@ import io.georocket.client.StoreClient
 import io.vertx.core.Future
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
-import io.vertx.core.streams.ReadStream
 import io.vertx.kotlin.coroutines.awaitResult
 import io.vertx.kotlin.coroutines.toChannel
+import kotlinx.coroutines.channels.ReceiveChannel
 
 suspend fun StoreClient.appendTags(query: String?, layer: String?, tags: List<String>?) {
   awaitResult<Void> { appendTags(query, layer, tags, it) }
@@ -18,8 +18,18 @@ suspend fun StoreClient.delete(query: String?, layer: String?) {
 }
 
 suspend fun StoreClient.getPropertyValues(property: String?, query: String?,
-    layer: String?): ReadStream<Buffer> {
-  return awaitResult { getPropertyValues(property, query, layer, it) }
+    layer: String?): ReceiveChannel<Buffer> {
+  return awaitResult { ar ->
+    getPropertyValues(property, query, layer) { res ->
+      if (res.failed()) {
+        ar.handle(Future.failedFuture(res.cause()))
+      } else {
+        val rs = res.result()
+        val channel = rs.toChannel(Vertx.currentContext().owner())
+        ar.handle(Future.succeededFuture(channel))
+      }
+    }
+  }
 }
 
 suspend fun StoreClient.removeProperties(query: String?, layer: String?,

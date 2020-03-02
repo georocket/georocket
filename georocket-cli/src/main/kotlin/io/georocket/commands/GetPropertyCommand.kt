@@ -7,7 +7,6 @@ import de.undercouch.underline.UnknownAttributes
 import io.georocket.util.coroutines.getPropertyValues
 import io.vertx.core.impl.NoStackTraceThrowable
 import io.vertx.core.logging.LoggerFactory
-import io.vertx.kotlin.coroutines.toChannel
 import java.io.PrintWriter
 
 /**
@@ -55,8 +54,8 @@ class GetPropertyCommand : AbstractGeoRocketCommand() {
       o: PrintWriter): Int {
     return createClient().use { client ->
       try {
-        val stream = client.store.getPropertyValues(property, query, layer)
-        for (buf in stream.toChannel(vertx)) {
+        val r = client.store.getPropertyValues(property, query, layer)
+        for (buf in r) {
           o.write(buf.toString())
         }
         0
