@@ -33,7 +33,7 @@ public final class ElasticsearchQueryHelper {
   public static JsonObject boolQuery(int minimumShouldMatch) {
     JsonObject r = boolQuery();
     r.getJsonObject("bool")
-        .put("minimum_should_match", 1);
+        .put("minimum_should_match", minimumShouldMatch);
     return r;
   }
   
