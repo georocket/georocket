@@ -1,5 +1,6 @@
 package io.georocket.http;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.base.Splitter;
 import io.georocket.ServerAPIException;
 import io.georocket.constants.AddressConstants;
@@ -26,6 +27,7 @@ import io.vertx.core.file.FileSystem;
 import io.vertx.core.file.OpenOptions;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpServerResponse;
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -373,7 +375,11 @@ public class StoreEndpoint implements Endpoint {
           } else {
             response.write(",");
           }
-          response.write("\"" + StringEscapeUtils.escapeJson(x) + "\"");
+          try {
+            response.write(Json.mapper.writeValueAsString(x));
+          } catch (JsonProcessingException e) {
+            fail(response, e);
+          }
         },
         err -> fail(response, err),
         () -> response

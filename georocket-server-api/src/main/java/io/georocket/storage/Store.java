@@ -90,7 +90,7 @@ public interface Store {
    * @param handler will be called when the values have been retrieved from the store
    */
   void getAttributeValues(String search, String path, String attribute,
-    Handler<AsyncResult<AsyncCursor<String>>> handler);
+    Handler<AsyncResult<AsyncCursor<Object>>> handler);
 
   /**
    * Get all values for the specified property

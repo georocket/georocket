@@ -23,13 +23,16 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeoutException;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static io.georocket.util.ThrowableHelper.throwableToCode;
 import static io.georocket.util.ThrowableHelper.throwableToMessage;
@@ -66,6 +69,12 @@ public class MetadataVerticle extends AbstractVerticle {
    */
   private List<? extends IndexerFactory> indexerFactories;
 
+  /**
+   * A function that extracts values of indexed attributes from Elasticsearch
+   * source objects
+   */
+  private BiFunction<JsonObject, String, Stream<Object>> indexedAttributeExtractor;
+
   @Override
   public void start(Future<Void> startFuture) {
     // load and copy all indexer factories now and not lazily to avoid
@@ -73,6 +82,14 @@ public class MetadataVerticle extends AbstractVerticle {
     indexerFactories = ImmutableList.copyOf(FilteredServiceLoader.load(IndexerFactory.class));
     queryCompiler = createQueryCompiler();
     queryCompiler.setQueryCompilers(indexerFactories);
+
+    // create extractors for indexed attributes
+    Map<String, Object> attributeMappings = new HashMap<>();
+    indexerFactories.stream()
+      .map(IndexerFactory::getIndexedAttributeMapping)
+      .filter(Objects::nonNull)
+      .forEach(mapping -> MapUtils.deepMerge(attributeMappings, mapping));
+    indexedAttributeExtractor = attributeMappingsToExtractor(attributeMappings);
 
     new ElasticsearchClientFactory(vertx).createElasticsearchClient(INDEX_NAME)
       .doOnSuccess(es -> {
@@ -102,6 +119,88 @@ public class MetadataVerticle extends AbstractVerticle {
     }
   }
 
+  /**
+   * Converts the given indexed attribute mapping to a function that extracts
+   * the values of an indexed attribute from a Elasticsearch source object.
+   * @param mapping the indexed attribute mapping
+   * @return the function that extracts the values
+   */
+  private static BiFunction<JsonObject, String, Stream<Object>> attributeMappingsToExtractor(
+    Map<String, Object> mapping) {
+    return (JsonObject source, String key) -> {
+      List<Object> values = new ArrayList<>();
+
+      @SuppressWarnings("unchecked")
+      Map<String, Object> properties = (Map<String, Object>)mapping.get("properties");
+      if (properties != null && properties.containsKey(key)) {
+        Object value = source.getValue(key);
+        if (value != null) {
+          values.add(value);
+        }
+      }
+
+      @SuppressWarnings("unchecked")
+      List<Map<String, Object>> dynamicMappings =
+        (List<Map<String, Object>>)mapping.get("dynamic_templates");
+      if (dynamicMappings != null) {
+        for (Map<String, Object> dm : dynamicMappings) {
+          for (Object templateObject : dm.values()) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> template = (Map<String, Object>)templateObject;
+            String pathMatch = (String)template.get("path_match");
+            if (pathMatch == null) {
+              throw new IllegalStateException("Dynamic template for indexed " +
+                "attribute must contain a path match");
+            }
+
+            if (!pathMatch.endsWith(".*")) {
+              throw new IllegalStateException("Path match must end with `.*'");
+            }
+
+            String[] parts = pathMatch.split("\\.");
+            JsonObject map = source;
+            for (int i = 0; i < parts.length - 1; ++i) {
+              map = map.getJsonObject(parts[i]);
+              if (map == null) {
+                break;
+              }
+            }
+
+            if (map != null) {
+              Object value = map.getString(key);
+              if (value != null) {
+                values.add(value);
+              }
+            }
+          }
+        }
+      }
+
+      return values.stream();
+    };
+  }
+
+  /**
+   * A function that can extract a value of a property from an Elasticsearch
+   * source object
+   * @param source the source object
+   * @param key the property's name
+   * @return the value as a list with a single element or an empty list if the
+   * property does not exist
+   */
+  private static Stream<Object> propertyExtractor(JsonObject source, String key) {
+    JsonObject map = source.getJsonObject("props");
+    if (map == null) {
+      return null;
+    }
+    String value = map.getString(key);
+    if (value != null) {
+      return Stream.of(value);
+    } else {
+      return Stream.empty();
+    }
+  }
+
   private Completable ensureMapping() {
     // merge mappings from all indexers
     Map<String, Object> mappings = new HashMap<>();
@@ -125,7 +224,7 @@ public class MetadataVerticle extends AbstractVerticle {
     registerCompletable(AddressConstants.METADATA_REMOVE_TAGS, this::onRemoveTags);
   }
 
-  private <T> void registerCompletable(String address, Function<JsonObject, Completable> mapper) {
+  private void registerCompletable(String address, Function<JsonObject, Completable> mapper) {
     register(address, obj -> mapper.apply(obj).toSingleDefault(0));
   }
 
@@ -141,35 +240,33 @@ public class MetadataVerticle extends AbstractVerticle {
   }
 
   private Single<JsonObject> onGetAttributeValues(JsonObject body) {
-    return onGetMap(body, "genAttrs", body.getString("attribute"));
+    return onGetMap(body, indexedAttributeExtractor, body.getString("attribute"));
   }
 
   private Single<JsonObject> onGetPropertyValues(JsonObject body) {
-    return onGetMap(body, "props", body.getString("property"));
+    return onGetMap(body, MetadataVerticle::propertyExtractor, body.getString("property"));
   }
 
-  private Single<JsonObject> onGetMap(JsonObject body, String map, String key) {
-    return executeQuery(body, map + "." + key)
+  private Single<JsonObject> onGetMap(JsonObject body,
+      BiFunction<JsonObject, String, Stream<Object>> extractor, String key) {
+    return executeQuery(body)
       .map(result -> {
         JsonObject hits = result.getJsonObject("hits");
 
-        List<String> resultHits = hits.getJsonArray("hits").stream()
+        List<Object> resultHits = hits.getJsonArray("hits").stream()
           .map(JsonObject.class::cast)
           .map(hit -> hit.getJsonObject("_source"))
-          .flatMap(source -> source.getJsonObject(map, new JsonObject()).stream())
-          .filter(pair -> Objects.equals(pair.getKey(), key))
-          .map(Map.Entry::getValue)
-          .map(String.class::cast)
+          .flatMap(source -> extractor.apply(source, key))
           .collect(Collectors.toList());
 
         return new JsonObject()
           .put("hits", new JsonArray(resultHits))
-          .put("totalHits", hits.getLong("total"))
+          .put("totalHits", resultHits.size())
           .put("scrollId", result.getString("_scroll_id"));
       });
   }
 
-  private Single<JsonObject> executeQuery(JsonObject body, String keyExists) {
+  private Single<JsonObject> executeQuery(JsonObject body) {
     String search = body.getString("search");
     String path = body.getString("path");
     String scrollId = body.getString("scrollId");
@@ -183,7 +280,7 @@ public class MetadataVerticle extends AbstractVerticle {
         // a yes/no answer and no scoring (i.e. we only want to get matching
         // documents and not those that likely match). For the difference between
         // query and post_filter see the Elasticsearch documentation.
-        JsonObject postFilter = queryCompiler.compileQuery(search, path, keyExists);
+        JsonObject postFilter = queryCompiler.compileQuery(search, path);
         return client.beginScroll(TYPE_NAME, null, postFilter, parameters, timeout);
       } catch (Throwable t) {
         return Single.error(t);

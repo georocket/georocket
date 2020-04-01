@@ -166,7 +166,7 @@ public class RxStore implements Store {
 
   @Override
   public void getAttributeValues(String search, String path, String attribute,
-      Handler<AsyncResult<AsyncCursor<String>>> handler) {
+      Handler<AsyncResult<AsyncCursor<Object>>> handler) {
     delegate.getAttributeValues(search, path, attribute, handler);
   }
 
@@ -177,9 +177,9 @@ public class RxStore implements Store {
    * @param attribute the name of the attribute
    * @return emits when the values have been retrieved from the store
    */
-  public Single<AsyncCursor<String>> rxGetAttributeValues(String search,
+  public Single<AsyncCursor<Object>> rxGetAttributeValues(String search,
       String path, String attribute) {
-    ObservableFuture<AsyncCursor<String>> o = RxHelper.observableFuture();
+    ObservableFuture<AsyncCursor<Object>> o = RxHelper.observableFuture();
     getAttributeValues(search, path, attribute, o.toHandler());
     return o.toSingle();
   }

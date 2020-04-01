@@ -33,6 +33,11 @@ public abstract class GenericAttributeIndexerFactory implements IndexerFactory {
   }
 
   @Override
+  public Map<String, Object> getIndexedAttributeMapping() {
+    return getMapping();
+  }
+
+  @Override
   public MatchPriority getQueryPriority(QueryPart queryPart) {
     if (queryPart instanceof StringQueryPart ||
         queryPart instanceof KeyValueQueryPart) {
