@@ -22,8 +22,9 @@ public class GenericAttributeIndexer implements Indexer {
     // Remove dot from field name so that Elasticsearch does not think
     // this field is of type 'object' instead of 'keyword'
     key = key.replace('.', '_');
-    
-    result.put(key, value);
+
+    // never overwrite attributes already collected!
+    result.putIfAbsent(key, value);
   }
   
   @Override
