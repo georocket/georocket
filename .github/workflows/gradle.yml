@@ -20,7 +20,7 @@ jobs:
           java-version: 1.8
 
       - name: Run tests and install
-        run: ./gradlew check installDist -i
+        run: ./gradlew check installDist -s
 
       - name: Build Docker image
         run: |
