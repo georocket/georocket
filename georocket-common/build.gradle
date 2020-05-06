@@ -5,8 +5,16 @@ apply plugin: 'checkstyle'
 
 repositories {
     jcenter()
-    maven {
-        url 'https://repo.osgeo.org/repository/release/'
+    exclusiveContent {
+        forRepository {
+            maven {
+                url 'https://repo.osgeo.org/repository/release/'
+            }
+        }
+        filter {
+            includeGroup "jgridshift"
+            includeGroup "org.geotools"
+        }
     }
 }
 
