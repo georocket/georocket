@@ -6,7 +6,7 @@ apply plugin: 'checkstyle'
 repositories {
     jcenter()
     maven {
-        url 'http://download.osgeo.org/webdav/geotools/'
+        url 'https://repo.osgeo.org/repository/release/'
     }
 }
 

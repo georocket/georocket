@@ -13,7 +13,7 @@ mainClassName = 'io.georocket.GeoRocket'
 repositories {
     jcenter()
     maven {
-        url 'http://download.osgeo.org/webdav/geotools/'
+        url 'https://repo.osgeo.org/repository/release/'
     }
 }
 
