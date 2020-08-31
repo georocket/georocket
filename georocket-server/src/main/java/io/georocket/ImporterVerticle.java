@@ -58,6 +58,7 @@ public class ImporterVerticle extends AbstractVerticle {
   private static final int MAX_RETRIES = 5;
   private static final int RETRY_INTERVAL = 1000;
   private static final int MAX_PARALLEL_IMPORTS = 1;
+  private static final int MAX_PARALLEL_ADDS = 10;
   
   protected RxStore store;
   private String incoming;
@@ -266,7 +267,7 @@ public class ImporterVerticle extends AbstractVerticle {
               timestamp, tags, properties, crsString);
           return addToStoreWithPause(result, layer, indexMeta, f, processing)
               .toSingleDefault(1);
-        });
+        }, false, MAX_PARALLEL_ADDS);
   }
   
   /**
@@ -297,7 +298,7 @@ public class ImporterVerticle extends AbstractVerticle {
               timestamp, tags, properties, null);
           return addToStoreWithPause(result, layer, indexMeta, f, processing)
               .toSingleDefault(1);
-        });
+        }, false, MAX_PARALLEL_ADDS);
   }
 
   /**
