@@ -1,4 +1,4 @@
-FROM georocket/integration-tests-parent-image:1.3.0
+FROM georocket/integration-tests-parent-image:2.0.0
 
 ADD conf/s3cfg /root/.s3cfg
 
