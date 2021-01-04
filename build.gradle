@@ -3,38 +3,14 @@ plugins {
 }
 
 subprojects {
-    apply plugin: 'eclipse'
-    apply plugin: 'idea'
     apply plugin: 'signing'
     
     version = '2.0.0-SNAPSHOT'
     group = 'io.georocket'
 
-    ext {
-        checkstyleConfigDir = new File(rootProject.projectDir, 'config/checkstyle')
-    }
-
     plugins.withType(JavaPlugin) {
         sourceCompatibility = '1.8'
         targetCompatibility = '1.8'
-
-        eclipse {
-            jdt.file.withProperties { properties ->
-                properties['org.eclipse.jdt.core.formatter.indentation.size'] = '2'
-                properties['org.eclipse.jdt.core.formatter.tabulation.size'] = '2'
-                properties['org.eclipse.jdt.core.formatter.tabulation.char'] = 'space'
-                properties['org.eclipse.jdt.core.formatter.continuation_indentation'] = '1'
-                properties['org.eclipse.jdt.core.formatter.continuation_indentation_for_array_initializer'] = '1'
-            }
-        }
-
-        plugins.withType(CheckstylePlugin) {
-            checkstyle {
-                toolVersion = "7.2"
-                configFile new File(checkstyleConfigDir, 'checkstyle.xml')
-                configProperties.checkstyleConfigDir = checkstyleConfigDir
-            }
-        }
 
         plugins.withType(MavenPlugin) {
             javadoc {

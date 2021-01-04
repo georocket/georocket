@@ -17,8 +17,7 @@ public class GeoJsonMerger implements Merger<GeoJsonChunkMeta> {
   private static final int GEOMETRY_COLLECTION = 2;
   private static final int FEATURE = 3;
   private static final int FEATURE_COLLECTION = 4;
-  
-  // CHECKSTYLE:OFF
+
   private static final int[][] TRANSITIONS = {
     /*                          FEATURE            | GEOMETRY            */
     /* NOT_SPECIFIED       */ { FEATURE            , GEOMETRY            },
@@ -27,8 +26,7 @@ public class GeoJsonMerger implements Merger<GeoJsonChunkMeta> {
     /* FEATURE             */ { FEATURE_COLLECTION , FEATURE_COLLECTION  },
     /* FEATURE_COLLECTION  */ { FEATURE_COLLECTION , FEATURE_COLLECTION  }
   };
-  // CHECKSTYLE:ON
-  
+
   /**
    * {@code true} if {@link #merge(ChunkReadStream, GeoJsonChunkMeta, WriteStream)}
    * has been called at least once

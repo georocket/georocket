@@ -5,7 +5,6 @@ plugins {
 apply plugin: 'java'
 apply plugin: 'application'
 apply plugin: 'maven'
-apply plugin: 'checkstyle'
 
 mainClassName = 'io.georocket.GeoRocketCliKt'
 

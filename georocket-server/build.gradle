@@ -1,11 +1,10 @@
 plugins {
-    id "de.undercouch.download" version "3.4.2"
+    id "de.undercouch.download" version "4.1.1"
 }
 
 apply plugin: 'java'
 apply plugin: 'application'
 apply plugin: 'maven'
-apply plugin: 'checkstyle'
 apply plugin: 'de.undercouch.download'
 
 mainClassName = 'io.georocket.GeoRocket'
@@ -206,7 +205,6 @@ task cleanExtractedElasticsearch(type: Delete) {
 }
 
 processResources.dependsOn(extractElasticsearch)
-eclipseClasspath.dependsOn(extractElasticsearch)
 
 clean.dependsOn(cleanExtractedElasticsearch)
 
