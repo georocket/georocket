@@ -1,7 +1,0 @@
-georocket:
-  host: 0.0.0.0
-  storage:
-    class: io.georocket.storage.hdfs.HDFSStore
-    hdfs:
-      defaultFS: hdfs://hdfs:9000
-      path: /georocket/

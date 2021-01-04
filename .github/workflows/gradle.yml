@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        server-integration-test-var: [ 'standalone', 'h2', 'mongo', 's3', 'hdfs'] 
+        server-integration-test-var: [ 'standalone', 'h2', 'mongo', 's3' ]
         
     steps:
       - uses: actions/checkout@v1

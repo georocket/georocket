@@ -8,13 +8,13 @@ v2.0.0-SNAPSHOT
 :icons: font
 :source-highlighter: highlight.js
 
-Copyright (C) 2015-2020 Fraunhofer Institute for Computer Graphics Research IGD
+Copyright (C) 2015-2021 Fraunhofer Institute for Computer Graphics Research IGD
 
 == Introduction
 
 GeoRocket is a high-performance data store for geospatial files. Its focus lies on the storage, indexing, and analysis of big vector data. GeoRocket supports GeoJSON, CityGML (3D city models), GML or any other XML-based geospatial data format. It provides the following features:
 
-* Scalable high-performance data storage with multiple back-ends such as Amazon S3, MongoDB, H2 (default), distributed file systems (e.g. HDFS or Ceph), or your local hard drive.
+* Scalable high-performance data storage with multiple back-ends such as Amazon S3, MongoDB, H2 (default), distributed file systems (e.g. Gluster or Ceph), or your local hard drive.
 * Support for high-speed search features based on the popular Open-Source framework https://www.elastic.co/[Elasticsearch]. You can perform spatial queries and search for attributes, layers and tags.
 * GeoRocket is made for the Cloud. Based on the Open-Source toolkit http://vertx.io[Vert.x] it is reactive and can handle big files and a large number of parallel requests.
 * GeoRocket exists in two editions--an Open-Source version and a Pro edition for enterprise applications
@@ -33,7 +33,7 @@ The import process starts in the upper left corner. Every imported file is first
 
 Attached to each chunk, there is metadata containing additional information describing the chunk. This includes tags and properties specified by the client, as well as other automatically generated attributes.
 
-The chunks are put into the GeoRocket data store. There are several data store implementations supporting different back-ends such as Amazon S3, MongoDB, H2 (default), HDFS or the local hard drive. Immediately after a chunk has been put into the data store, the indexer starts working asynchronously in the background. It reads new chunks from the data store and analyses them for known patterns. It recognises spatial coordinates, attributes, and other content. The indexer creates an https://en.wikipedia.org/wiki/Inverted_index[inverted index] of every item found.
+The chunks are put into the GeoRocket data store. There are several data store implementations supporting different back-ends such as Amazon S3, MongoDB, H2 (default), or the local hard drive. Immediately after a chunk has been put into the data store, the indexer starts working asynchronously in the background. It reads new chunks from the data store and analyses them for known patterns. It recognises spatial coordinates, attributes, and other content. The indexer creates an https://en.wikipedia.org/wiki/Inverted_index[inverted index] of every item found.
 
 The export process starts with querying the indexer for chunks matching the <<query-language, criteria>> supplied by the client. These chunks are then retrieved from the data store (together with their metadata) and merged into a result file.
 
@@ -1445,7 +1445,6 @@ You may override items in your configuration file with environment variables. Th
 | The data store implementation to use. Possible values include: +
   `io.georocket.storage.file.FileStore` +
   `io.georocket.storage.h2.H2Store` +
-  `io.georocket.storage.hdfs.HDFSStore` +
   `io.georocket.storage.mongodb.MongoDBStore` +
   `io.georocket.storage.s3.S3Store`
 |===
@@ -1487,26 +1486,6 @@ Store chunks in a http://www.h2database.com[H2 database] on the local hard drive
 | *georocket.storage.h2.compress* +
   _(default: false)_
 | A boolean value (`true` or `false`) denoting whether the chunks stored in the H2 database should be compressed using the LZF algorithm. This can save a lot of disk space but will slow down read and write operations slightly.
-|===
-
-==== HDFS
-
-Store chunks on https://en.wikipedia.org/wiki/Apache_Hadoop#Hadoop_distributed_file_system[HDFS (Hadoop distributed file system)]. Each chunk will be written to a separate file on the distributed file system.
-
-===== Data store implementation
-
-  io.georocket.storage.hdfs.HDFSStore
-
-===== Configuration
-
-[cols="2,2"]
-|===
-| *georocket.storage.hdfs.defaultFS* +
-  _(required)_
-| The endpoint of the HDFS NameNode
-| *georocket.storage.hdfs.path* +
-  _(required)_
-| The path on the distributed file system where the chunks should be stored. The directory must exist and write permissions must have been granted to the user executing GeoRocket.
 |===
 
 ==== MongoDB

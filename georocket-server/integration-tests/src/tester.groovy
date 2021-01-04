@@ -80,17 +80,6 @@ def assertS3ObjectCount(expected) {
     }
 }
 
-def assertHDFSFileCount(expected) {
-    def hdfsfiles = run("/usr/local/hadoop/bin/hdfs dfs -ls /georocket/", null, true)
-    if (expected == 0) {
-        assertEquals("", hdfsfiles, "Expected no files in HDFS. Got ${hdfsfiles}.")
-    } else {
-        hdfsfiles = hdfsfiles.split('\n')
-        assertEquals(expected, hdfsfiles.length - 1,
-            "Expected ${expected} files in HDFS. Got ${hdfsfiles.length - 1}.")
-    }
-}
-
 String mode = args.length > 0 ? args[0] : null
 if (!mode) {
     mode = "standalone"
@@ -137,26 +126,6 @@ if (mode == "standalone" || mode == "h2") {
     assertS3ObjectCount(EXPECTED_FEATURE_COLL.features.size())
     finishGeoJsonTests(host)
     assertS3ObjectCount(0)
-
-    logSuccess()
-} else if (mode == "hdfs") {
-    logTest("GeoRocket with HDFS back-end ...")
-    waitHttp("http://hdfs:50070", "GET")
-    run("/usr/local/hadoop/bin/hdfs dfsadmin -safemode get", null, false, 20)
-    run("/usr/local/hadoop/bin/hdfs dfsadmin -safemode wait")
-    run("/usr/local/hadoop/bin/hdfs dfs -mkdir /georocket")
-    run("/usr/local/hadoop/bin/hdfs dfs -chown georocket:georocket /georocket")
-    def host = "georocket_hdfs"
-
-    runXMLTests(host)
-    assertHDFSFileCount(EXPECTED_NODE.children().size())
-    finishXMLTests(host)
-    assertHDFSFileCount(0)
-
-    runGeoJsonTests(host)
-    assertHDFSFileCount(EXPECTED_FEATURE_COLL.features.size())
-    finishGeoJsonTests(host)
-    assertHDFSFileCount(0)
 
     logSuccess()
 }

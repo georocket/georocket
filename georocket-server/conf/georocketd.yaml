@@ -26,7 +26,6 @@ georocket:
     # The data store implementation to use
     # class: io.georocket.storage.file.FileStore
     class: io.georocket.storage.h2.H2Store
-    # class: io.georocket.storage.hdfs.HDFSStore
     # class: io.georocket.storage.mongodb.MongoDBStore
     # class: io.georocket.storage.s3.S3Store
 
@@ -38,11 +37,6 @@ georocket:
     h2:
       path: $GEOROCKET_HOME/storage/georocket
       compress: false
-
-    # Configuration for the HDFS back-end
-    hdfs:
-      defaultFS: hdfs://127.0.0.1:9000
-      path: /georocket/
 
     # Configuration for the MongoDB back-end
     mongodb:

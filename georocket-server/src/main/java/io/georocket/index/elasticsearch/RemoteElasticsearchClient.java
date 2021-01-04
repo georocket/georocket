@@ -9,7 +9,6 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import org.apache.commons.collections.CollectionUtils;
 import org.jooq.lambda.tuple.Tuple2;
 import rx.Completable;
 import rx.Single;
@@ -108,7 +107,7 @@ public class RemoteElasticsearchClient implements ElasticsearchClient {
       if (hosts.isEmpty()) {
         log.warn("Retrieved empty list of hosts from Elasticsearch");
       } else {
-        if (!CollectionUtils.isEqualCollection(hosts, client.getHosts())) {
+        if (!hosts.equals(client.getHosts())) {
           log.info("Updated list of Elasticsearch hosts: " + hosts);
         }
 

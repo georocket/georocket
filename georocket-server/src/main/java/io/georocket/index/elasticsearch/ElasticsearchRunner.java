@@ -12,7 +12,6 @@ import org.apache.commons.exec.ExecuteWatchdog;
 import org.apache.commons.exec.Executor;
 import org.apache.commons.exec.ShutdownHookProcessDestroyer;
 import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.lang.SystemUtils;
 
 import io.georocket.constants.ConfigConstants;
 import io.georocket.util.RxUtils;
@@ -21,6 +20,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.rxjava.core.Vertx;
+import org.apache.commons.lang3.SystemUtils;
 import rx.Completable;
 import rx.Observable;
 import rx.Single;

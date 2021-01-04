@@ -39,8 +39,6 @@ public final class ConfigConstants {
   public static final String STORAGE_H2_COMPRESS = "georocket.storage.h2.compress";
   public static final String STORAGE_H2_MAP_NAME = "georocket.storage.h2.mapName"; // undocumented
   public static final String STORAGE_FILE_PATH = "georocket.storage.file.path";
-  public static final String STORAGE_HDFS_DEFAULT_FS = "georocket.storage.hdfs.defaultFS";
-  public static final String STORAGE_HDFS_PATH = "georocket.storage.hdfs.path";
   public static final String STORAGE_MONGODB_CONNECTION_STRING = "georocket.storage.mongodb.connectionString";
   public static final String STORAGE_MONGODB_DATABASE = "georocket.storage.mongodb.database";
   public static final String STORAGE_S3_ACCESS_KEY = "georocket.storage.s3.accessKey";
