@@ -2,20 +2,20 @@
 # - Build GeoRocket with `./gradlew installDist`
 # - Run `docker build -t georocket .`
 
-FROM openjdk:8-jre-alpine
+FROM openjdk:11-jre-slim
 MAINTAINER Michel Kraemer <michel.kraemer@igd.fraunhofer.de>
 
 # add GeoRocket user
-RUN adduser -D -u 1000 -h /usr/local/georocket-server georocket
+RUN adduser --disabled-password --gecos "" --uid 1000 --home /usr/local/georocket-server georocket
 
 # always add Elasticsearch first so we can keep it in the Docker cache
 ADD georocket-server/build/install/georocket-server/elasticsearch /usr/local/georocket-server/elasticsearch
 
 # install required packages
 # (libc6-compat is required for snappy compression used by the mongodb driver)
-RUN apk update && \
-    apk add bash sed libc6-compat && \
-    rm -rf /var/cache/apk/*
+# RUN apk update && \
+#     apk add bash sed libc6-compat && \
+#     rm -rf /var/cache/apk/*
 
 # add GeoRocket distribution (everything except Elasticsearch)
 ADD georocket-server/build/install/georocket-server/bin  /usr/local/georocket-server/bin
