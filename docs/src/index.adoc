@@ -1,6 +1,6 @@
 = GeoRocket User Documentation
 Michel Krämer <michel.kraemer@igd.fraunhofer.de>
-v1.4.0-SNAPSHOT
+v2.0.0-SNAPSHOT
 :toc: right
 :homepage: https://georocket.io
 :numbered:
