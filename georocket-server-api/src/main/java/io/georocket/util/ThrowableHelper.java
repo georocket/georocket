@@ -2,8 +2,6 @@ package io.georocket.util;
 
 import java.io.FileNotFoundException;
 
-import javax.xml.ws.http.HTTPException;
-
 import io.georocket.ServerAPIException;
 import io.vertx.core.eventbus.ReplyException;
 
@@ -31,8 +29,6 @@ public final class ThrowableHelper {
       return 404;
     } else if (t instanceof HttpException) {
       return ((HttpException)t).getStatusCode();
-    } else if (t instanceof HTTPException) {
-      return ((HTTPException)t).getStatusCode();
     }
     return 500;
   }

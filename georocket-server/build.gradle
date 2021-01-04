@@ -50,7 +50,7 @@ dependencies {
     compile "io.vertx:vertx-rx-java:$vertxVersion"
     compile "io.vertx:vertx-service-discovery:$vertxVersion"
 
-    compile 'com.amazonaws:aws-java-sdk-s3:1.11.256'
+    compile 'com.amazonaws:aws-java-sdk-s3:1.11.930'
     compile 'com.fasterxml:aalto-xml:1.0.0'
     compile 'com.h2database:h2:1.4.196'
     compile 'com.vividsolutions:jts:1.13'
