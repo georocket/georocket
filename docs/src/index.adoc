@@ -1584,17 +1584,12 @@ Store chunks in an Amazon S3 bucket. Each chunk will be written to a separate ob
 [[indexer-elasticsearch]]
 === Elasticsearch
 
-The GeoRocket distribution contains a version of Elasticsearch that will
-automatically be started together with GeoRocket by default. You can disable
-this behaviour and use a remote Elasticsearch instance instead.
-
-Set the following configuration items to disable the provided Elasticsearch
-instance and to configure the host and port of the remote one:
+Set the following configuration items to configure the host and port of a
+remote Elasticsearch instance:
 
   georocket:
     index:
       elasticsearch:
-        embedded: false
         hosts: ["192.168.0.100:9200"]
 
 Replace the connection string `192.168.0.100:9200` with the actual hostname (or
@@ -1604,20 +1599,13 @@ ip address) and port of your existing Elasticsearch instance.
 
 [cols="2,2"]
 |===
-| *georocket.index.elasticsearch.embedded* +
-  _(default: true)_
-| `true` if GeoRocket should launch the provided Elasticsearch instance. `false`
-if it should connect to an existing instance.
 | *georocket.index.elasticsearch.hosts* +
   _(default: ["localhost:9200"])_
-| An array of connection strings. If `georocket.index.elasticsearch.embedded` is `false`, the array defines how to connect to an existing Elasticsearch instance/cluster. Each item is a string consisting of a hostname (or ip address) and a port joined by a colon and denotes the address of an Elasticsearch node. If your Elasticsearch instance has only one node, you must specify exactly one item in the array. If you want to connect to multiple nodes of a cluster, you may specify multiple items (e.g. `["192.168.0.100:9200", "192.168.0.101:9200", "192.168.0.102:9200"]`). If `georocket.index.elasticsearch.embedded` is `true`, only the first item in the array will be considered. In this case, this item will specify to which host and port the embedded Elasticsearch instance will be bound to.
+| An array of connection strings. This array defines how to connect to an existing Elasticsearch instance/cluster. Each item is a string consisting of a hostname (or ip address) and a port joined by a colon and denotes the address of an Elasticsearch node. If your Elasticsearch instance has only one node, you must specify exactly one item in the array. If you want to connect to multiple nodes of a cluster, you may specify multiple items (e.g. `["192.168.0.100:9200", "192.168.0.101:9200", "192.168.0.102:9200"]`).
 | *georocket.index.elasticsearch.autoUpdateHostsIntervalSeconds* +
   _(default: -1)_
-| If this configuration item is greater than `0`, GeoRocket will regularly poll the configured Elasticsearch cluster and automatically update the list of nodes (`georocket.index.elasticsearch.hosts`). This is useful if you have a dynamic cluster with a changing number of hosts or if you do not want to specify all nodes in `georocket.index.elasticsearch.hosts` and wish GeoRocket to fill it automatically for you. For example, you may only specify the Elasticsearch master nodes and let GeoRocket discover the data nodes automatically. The configuration item specifies the update interval in seconds. A reasonable number is `300`, which equals 5 minutes. Note that this configuration item will be ignored if `georocket.index.elasticsearch.embedded` is `true`.
+| If this configuration item is greater than `0`, GeoRocket will regularly poll the configured Elasticsearch cluster and automatically update the list of nodes (`georocket.index.elasticsearch.hosts`). This is useful if you have a dynamic cluster with a changing number of hosts or if you do not want to specify all nodes in `georocket.index.elasticsearch.hosts` and wish GeoRocket to fill it automatically for you. For example, you may only specify the Elasticsearch master nodes and let GeoRocket discover the data nodes automatically. The configuration item specifies the update interval in seconds. A reasonable number is `300`, which equals 5 minutes.
 | *georocket.index.elasticsearch.compressRequestBodies* +
   _(default: false)_
 | `true` if bodies of HTTP requests sent to Elasticsearch should be compressed with GZIP. This can save bandwidth but only works if HTTP compression is enabled in Elasticsearch.
-| *georocket.index.elasticsearch.javaOpts* +
-  _(optional)_
-| JVM options for the embedded Elasticsearch instance. This configuration item will only be taken into account if `georocket.index.elasticsearch.embedded` is `true`. It can be overridden through the environment variable `ES_JAVA_OPTS`. See the https://www.elastic.co/guide/en/elasticsearch/reference/current/setting-system-settings.html#jvm-options[Elasticsearch documentation] for more information about `ES_JAVA_OPTS` and reasonable values for the https://www.elastic.co/guide/en/elasticsearch/reference/master/heap-size.html[heap size].
 |===
