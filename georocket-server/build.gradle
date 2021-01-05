@@ -1,4 +1,5 @@
 plugins {
+    id 'org.jetbrains.kotlin.jvm' version '1.4.21'
 }
 
 apply plugin: 'java'
@@ -45,6 +46,8 @@ dependencies {
     compile group: 'ch.qos.logback', name: 'logback-classic', version: '1.2.3'
     compile group: 'ch.qos.logback', name: 'logback-core', version: '1.2.3'
 
+    compile "io.vertx:vertx-lang-kotlin:$vertxVersion"
+    compile "io.vertx:vertx-lang-kotlin-coroutines:$vertxVersion"
     compile "io.vertx:vertx-rx-java:$vertxVersion"
     compile "io.vertx:vertx-service-discovery:$vertxVersion"
 
@@ -63,10 +66,14 @@ dependencies {
     // mongodb driver + snappy compression
     compile 'org.mongodb:bson:3.6.1'
     compile 'org.mongodb:mongodb-driver-async:3.6.1'
+    compile 'org.mongodb:mongodb-driver-reactivestreams:4.1.1'
     compile 'org.xerial.snappy:snappy-java:1.1.4'
 
     // necessary for ALPN / HTTP/2
     runtime "io.netty:netty-tcnative-boringssl-static:2.0.7.Final"
+
+    compile "org.jetbrains.kotlin:kotlin-reflect"
+    compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
 
     testCompile 'de.flapdoodle.embed:de.flapdoodle.embed.mongo:2.0.0'
     testCompile 'com.github.tomakehurst:wiremock-jre8:2.25.1'
@@ -135,4 +142,12 @@ startScripts {
 
         winScriptFile.text = winFileText
     }
+}
+
+compileKotlin {
+    kotlinOptions.jvmTarget = "1.8"
+}
+
+compileTestKotlin {
+    kotlinOptions.jvmTarget = "1.8"
 }
