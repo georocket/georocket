@@ -11,24 +11,24 @@ import rx.Producer;
 import rx.internal.operators.BackpressureUtils;
 
 /**
- * Wraps around {@link StoreCursor} so it can be used with RxJava
+ * Wraps around {@link LegacyStoreCursor} so it can be used with RxJava
  * @author Michel Kraemer
  */
-public class RxStoreCursor implements StoreCursor {
-  private final StoreCursor delegate;
+public class RxStoreCursor implements LegacyStoreCursor {
+  private final LegacyStoreCursor delegate;
 
   /**
    * Create a new rx-ified cursor
    * @param delegate the actual cursor to delegate to
    */
-  public RxStoreCursor(StoreCursor delegate) {
+  public RxStoreCursor(LegacyStoreCursor delegate) {
     this.delegate = delegate;
   }
   
   /**
    * @return the actual non-rx-ified cursor
    */
-  public StoreCursor getDelegate() {
+  public LegacyStoreCursor getDelegate() {
     return delegate;
   }
 

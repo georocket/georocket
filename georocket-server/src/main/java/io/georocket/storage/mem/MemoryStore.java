@@ -4,8 +4,8 @@ import java.io.FileNotFoundException;
 import java.util.Queue;
 
 import io.georocket.storage.ChunkReadStream;
-import io.georocket.storage.Store;
-import io.georocket.storage.indexed.IndexedStore;
+import io.georocket.storage.LegacyStore;
+import io.georocket.storage.indexed.LegacyIndexedStore;
 import io.georocket.util.PathUtils;
 import io.georocket.util.io.DelegateChunkReadStream;
 import io.vertx.core.AsyncResult;
@@ -21,7 +21,7 @@ import io.vertx.core.shareddata.AsyncMap;
  * GeoRocket quits.</strong></p>
  * @author Michel Kraemer
  */
-public class MemoryStore extends IndexedStore implements Store {
+public class MemoryStore extends LegacyIndexedStore implements LegacyStore {
   private final Vertx vertx;
   private AsyncMap<String, Buffer> store;
   

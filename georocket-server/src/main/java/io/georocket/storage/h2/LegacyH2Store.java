@@ -1,17 +1,9 @@
 package io.georocket.storage.h2;
 
-import java.io.FileNotFoundException;
-import java.util.Map;
-import java.util.Queue;
-import java.util.concurrent.atomic.AtomicReference;
-
-import org.h2.mvstore.MVStore;
-
 import com.google.common.base.Preconditions;
-
 import io.georocket.constants.ConfigConstants;
 import io.georocket.storage.ChunkReadStream;
-import io.georocket.storage.indexed.IndexedStore;
+import io.georocket.storage.indexed.LegacyIndexedStore;
 import io.georocket.util.PathUtils;
 import io.georocket.util.io.DelegateChunkReadStream;
 import io.vertx.core.AsyncResult;
@@ -20,12 +12,19 @@ import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonObject;
+import org.h2.mvstore.MVStore;
+
+import java.io.FileNotFoundException;
+import java.util.Map;
+import java.util.Queue;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Stores chunks in a H2 database
  * @author Michel Kraemer
  */
-public class H2Store extends IndexedStore {
+@Deprecated
+public class LegacyH2Store extends LegacyIndexedStore {
   /**
    * The path to the H2 database file
    */
@@ -59,7 +58,7 @@ public class H2Store extends IndexedStore {
    * Constructs a new store
    * @param vertx the Vert.x instance
    */
-  public H2Store(Vertx vertx) {
+  public LegacyH2Store(Vertx vertx) {
     super(vertx);
 
     JsonObject config = vertx.getOrCreateContext().config();

@@ -19,7 +19,7 @@ import com.google.common.base.Preconditions;
 
 import io.georocket.constants.ConfigConstants;
 import io.georocket.storage.ChunkReadStream;
-import io.georocket.storage.indexed.IndexedStore;
+import io.georocket.storage.indexed.LegacyIndexedStore;
 import io.georocket.util.PathUtils;
 import io.georocket.util.io.DelegateChunkReadStream;
 import io.vertx.core.AsyncResult;
@@ -38,7 +38,7 @@ import io.vertx.core.logging.LoggerFactory;
  * Stores chunks on Amazon S3
  * @author Michel Kraemer
  */
-public class S3Store extends IndexedStore {
+public class S3Store extends LegacyIndexedStore {
   private static Logger log = LoggerFactory.getLogger(S3Store.class);
 
   private final Vertx vertx;

@@ -5,7 +5,7 @@ import java.util.Queue;
 import io.georocket.storage.ChunkMeta;
 import io.georocket.storage.ChunkReadStream;
 import io.georocket.storage.IndexMeta;
-import io.georocket.storage.indexed.IndexedStore;
+import io.georocket.storage.indexed.LegacyIndexedStore;
 import io.georocket.util.io.DelegateChunkReadStream;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -17,7 +17,7 @@ import io.vertx.core.buffer.Buffer;
  * Mock for the GeoRocket indexed store
  * @author David Gengenbach
  */
-public class MockStore extends IndexedStore {
+public class MockStore extends LegacyIndexedStore {
   static final String RETURNED_CHUNK = "{\"type\":\"Polygon\"}";
 
   /**

@@ -12,24 +12,24 @@ import rx.Completable;
 import rx.Single;
 
 /**
- * Wraps around {@link Store} and adds methods to be used with RxJava
+ * Wraps around {@link LegacyStore} and adds methods to be used with RxJava
  * @author Michel Kraemer
  */
-public class RxStore implements Store {
-  private final Store delegate;
+public class RxStore implements LegacyStore {
+  private final LegacyStore delegate;
   
   /**
    * Create a new rx-ified store
    * @param delegate the actual store to delegate to
    */
-  public RxStore(Store delegate) {
+  public RxStore(LegacyStore delegate) {
     this.delegate = delegate;
   }
   
   /**
    * @return the actual non-rx-ified store
    */
-  public Store getDelegate() {
+  public LegacyStore getDelegate() {
     return delegate;
   }
   
@@ -111,7 +111,7 @@ public class RxStore implements Store {
   }
 
   @Override
-  public void get(String search, String path, Handler<AsyncResult<StoreCursor>> handler) {
+  public void get(String search, String path, Handler<AsyncResult<LegacyStoreCursor>> handler) {
     delegate.get(search, path, handler);
   }
 
@@ -122,14 +122,14 @@ public class RxStore implements Store {
    * @return a Single that emits a cursor that can be used to iterate
    * over all matched chunks
    */
-  public Single<StoreCursor> rxGet(String search, String path) {
-    ObservableFuture<StoreCursor> o = RxHelper.observableFuture();
+  public Single<LegacyStoreCursor> rxGet(String search, String path) {
+    ObservableFuture<LegacyStoreCursor> o = RxHelper.observableFuture();
     get(search, path, o.toHandler());
     return o.toSingle();
   }
 
   @Override
-  public void scroll(String search, String path, int size, Handler<AsyncResult<StoreCursor>> handler) {
+  public void scroll(String search, String path, int size, Handler<AsyncResult<LegacyStoreCursor>> handler) {
     delegate.scroll(search, path, size, handler);
   }
 
@@ -141,14 +141,14 @@ public class RxStore implements Store {
    * @return a Single that emits a cursor that can be used to iterate
    * over all matched chunks
    */
-  public Single<StoreCursor> rxScroll(String search, String path, int size) {
-    ObservableFuture<StoreCursor> o = RxHelper.observableFuture();
+  public Single<LegacyStoreCursor> rxScroll(String search, String path, int size) {
+    ObservableFuture<LegacyStoreCursor> o = RxHelper.observableFuture();
     scroll(search, path, size, o.toHandler());
     return o.toSingle();
   }
 
   @Override
-  public void scroll(String scrollId, Handler<AsyncResult<StoreCursor>> handler) {
+  public void scroll(String scrollId, Handler<AsyncResult<LegacyStoreCursor>> handler) {
     delegate.scroll(scrollId, handler);
   }
 
@@ -158,15 +158,15 @@ public class RxStore implements Store {
    * @return a Single that emits a cursor that can be used to iterate
    * over all matched chunks
    */
-  public Single<StoreCursor> rxScroll(String scrollId) {
-    ObservableFuture<StoreCursor> o = RxHelper.observableFuture();
+  public Single<LegacyStoreCursor> rxScroll(String scrollId) {
+    ObservableFuture<LegacyStoreCursor> o = RxHelper.observableFuture();
     scroll(scrollId, o.toHandler());
     return o.toSingle();
   }
 
   @Override
   public void getAttributeValues(String search, String path, String attribute,
-      Handler<AsyncResult<AsyncCursor<Object>>> handler) {
+      Handler<AsyncResult<LegacyAsyncCursor<Object>>> handler) {
     delegate.getAttributeValues(search, path, attribute, handler);
   }
 
@@ -177,16 +177,16 @@ public class RxStore implements Store {
    * @param attribute the name of the attribute
    * @return emits when the values have been retrieved from the store
    */
-  public Single<AsyncCursor<Object>> rxGetAttributeValues(String search,
+  public Single<LegacyAsyncCursor<Object>> rxGetAttributeValues(String search,
       String path, String attribute) {
-    ObservableFuture<AsyncCursor<Object>> o = RxHelper.observableFuture();
+    ObservableFuture<LegacyAsyncCursor<Object>> o = RxHelper.observableFuture();
     getAttributeValues(search, path, attribute, o.toHandler());
     return o.toSingle();
   }
 
   @Override
   public void getPropertyValues(String search, String path, String property,
-      Handler<AsyncResult<AsyncCursor<String>>> handler) {
+      Handler<AsyncResult<LegacyAsyncCursor<String>>> handler) {
     delegate.getPropertyValues(search, path, property, handler);
   }
 
@@ -197,9 +197,9 @@ public class RxStore implements Store {
    * @param property the name of the property
    * @return emits when the values have been retrieved from the store
    */
-  public Single<AsyncCursor<String>> rxGetPropertyValues(String search,
+  public Single<LegacyAsyncCursor<String>> rxGetPropertyValues(String search,
       String path, String property) {
-    ObservableFuture<AsyncCursor<String>> o = RxHelper.observableFuture();
+    ObservableFuture<LegacyAsyncCursor<String>> o = RxHelper.observableFuture();
     getPropertyValues(search, path, property, o.toHandler());
     return o.toSingle();
   }

@@ -22,7 +22,7 @@ import com.github.tomakehurst.wiremock.junit.WireMockRule;
 
 import io.georocket.constants.ConfigConstants;
 import io.georocket.storage.StorageTest;
-import io.georocket.storage.Store;
+import io.georocket.storage.LegacyStore;
 import io.georocket.util.PathUtils;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -194,7 +194,7 @@ public class S3StoreTest extends StorageTest {
   }
 
   @Override
-  protected Store createStore(Vertx vertx) {
+  protected LegacyStore createStore(Vertx vertx) {
     configureVertx(vertx);
     return new S3Store(vertx);
   }

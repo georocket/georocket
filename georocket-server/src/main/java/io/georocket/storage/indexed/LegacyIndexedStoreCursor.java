@@ -2,17 +2,18 @@ package io.georocket.storage.indexed;
 
 import io.georocket.storage.ChunkMeta;
 import io.georocket.storage.CursorInfo;
-import io.georocket.storage.StoreCursor;
+import io.georocket.storage.LegacyStoreCursor;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 
 /**
- * Implementation of {@link StoreCursor} for indexed chunk stores
+ * Implementation of {@link LegacyStoreCursor} for indexed chunk stores
  * @author Michel Kraemer
  */
-public class IndexedStoreCursor implements StoreCursor {
+@Deprecated
+public class LegacyIndexedStoreCursor implements LegacyStoreCursor {
   /**
    * The number of items retrieved in one batch
    */
@@ -36,7 +37,7 @@ public class IndexedStoreCursor implements StoreCursor {
   /**
    * This cursor use FrameCursor to load the full datastore frame by frame.
    */
-  private StoreCursor currentFrameCursor; 
+  private LegacyStoreCursor currentFrameCursor;
 
   /**
    * The current read position
@@ -60,7 +61,7 @@ public class IndexedStoreCursor implements StoreCursor {
    * @param path the path where to perform the search (may be null if the
    * whole store should be searched)
    */
-  public IndexedStoreCursor(Vertx vertx, String search, String path) {
+  public LegacyIndexedStoreCursor(Vertx vertx, String search, String path) {
     this.vertx = vertx;
     this.search = search;
     this.path = path;
@@ -70,8 +71,8 @@ public class IndexedStoreCursor implements StoreCursor {
    * Starts this cursor
    * @param handler will be called when the cursor has retrieved its first batch
    */
-  public void start(Handler<AsyncResult<StoreCursor>> handler) {
-    new FrameCursor(vertx, search, path, SIZE).start(h -> {
+  public void start(Handler<AsyncResult<LegacyStoreCursor>> handler) {
+    new LegacyFrameCursor(vertx, search, path, SIZE).start(h -> {
       if (h.succeeded()) {
         handleFrameCursor(h.result());
         handler.handle(Future.succeededFuture(this));
@@ -81,7 +82,7 @@ public class IndexedStoreCursor implements StoreCursor {
     });
   }
   
-  private void handleFrameCursor(StoreCursor framedCursor) {
+  private void handleFrameCursor(LegacyStoreCursor framedCursor) {
     currentFrameCursor = framedCursor;
     CursorInfo info = framedCursor.getInfo();
     this.totalHits = info.getTotalHits();
@@ -102,7 +103,7 @@ public class IndexedStoreCursor implements StoreCursor {
     } else if (this.currentFrameCursor.hasNext()) {
       this.currentFrameCursor.next(handler);
     } else {
-      new FrameCursor(vertx, scrollId).start(h -> {
+      new LegacyFrameCursor(vertx, scrollId).start(h -> {
         if (h.failed()) {
           handler.handle(Future.failedFuture(h.cause()));
         } else {

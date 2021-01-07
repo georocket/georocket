@@ -31,7 +31,7 @@ import io.vertx.core.json.JsonObject;
  * Stores chunks in MongoDB
  * @author Michel Kraemer
  */
-public class MongoDBStore extends IndexedStore {
+public class MongoDBStore extends LegacyIndexedStore {
   private final Context context;
   private final String connectionString;
   private final String databaseName;

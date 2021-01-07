@@ -2,12 +2,12 @@ package io.georocket.storage.indexed;
 
 import io.georocket.constants.AddressConstants;
 import io.georocket.index.IndexableChunkCache;
-import io.georocket.storage.AsyncCursor;
+import io.georocket.storage.LegacyAsyncCursor;
 import io.georocket.storage.ChunkMeta;
 import io.georocket.storage.DeleteMeta;
 import io.georocket.storage.IndexMeta;
-import io.georocket.storage.Store;
-import io.georocket.storage.StoreCursor;
+import io.georocket.storage.LegacyStore;
+import io.georocket.storage.LegacyStoreCursor;
 import io.georocket.tasks.PurgingTask;
 import io.georocket.tasks.TaskError;
 import io.vertx.core.AsyncResult;
@@ -35,7 +35,8 @@ import java.util.function.Function;
  * An abstract base class for chunk stores that are backed by an indexer
  * @author Michel Kraemer
  */
-public abstract class IndexedStore implements Store {
+@Deprecated
+public abstract class LegacyIndexedStore implements LegacyStore {
   private static final AtomicInteger COUNTER =
     new AtomicInteger(new SecureRandom().nextInt());
 
@@ -45,7 +46,7 @@ public abstract class IndexedStore implements Store {
    * Constructs the chunk store
    * @param vertx the Vert.x instance
    */
-  public IndexedStore(Vertx vertx) {
+  public LegacyIndexedStore(Vertx vertx) {
     this.vertx = vertx;
   }
   
@@ -158,7 +159,7 @@ public abstract class IndexedStore implements Store {
         stopPurgingTask(correlationId, new TaskError(ar.cause()));
         handler.handle(Future.failedFuture(ar.cause()));
       } else {
-        StoreCursor cursor = ar.result();
+        LegacyStoreCursor cursor = ar.result();
         AtomicLong remaining = new AtomicLong(cursor.getInfo().getTotalHits());
         if (correlationId != null) {
           startPurgingTask(correlationId, remaining.intValue());
@@ -180,18 +181,18 @@ public abstract class IndexedStore implements Store {
   }
 
   @Override
-  public void get(String search, String path, Handler<AsyncResult<StoreCursor>> handler) {
-    new IndexedStoreCursor(vertx, search, path).start(handler);
+  public void get(String search, String path, Handler<AsyncResult<LegacyStoreCursor>> handler) {
+    new LegacyIndexedStoreCursor(vertx, search, path).start(handler);
   }
 
   @Override
-  public void scroll(String search, String path, int size, Handler<AsyncResult<StoreCursor>> handler) {
-    new FrameCursor(vertx, search, path, size).start(handler);
+  public void scroll(String search, String path, int size, Handler<AsyncResult<LegacyStoreCursor>> handler) {
+    new LegacyFrameCursor(vertx, search, path, size).start(handler);
   }
 
   @Override
-  public void scroll(String scrollId, Handler<AsyncResult<StoreCursor>> handler) {
-    new FrameCursor(vertx, scrollId).start(handler);
+  public void scroll(String scrollId, Handler<AsyncResult<LegacyStoreCursor>> handler) {
+    new LegacyFrameCursor(vertx, scrollId).start(handler);
   }
 
   /**
@@ -204,7 +205,7 @@ public abstract class IndexedStore implements Store {
    * @param correlationId the correlation ID of the current purging task
    * @param handler will be called when all chunks have been deleted
    */
-  private void doDelete(StoreCursor cursor, Queue<String> paths,
+  private void doDelete(LegacyStoreCursor cursor, Queue<String> paths,
       AtomicLong remainingChunks, String correlationId,
       Handler<AsyncResult<Void>> handler) {
     // handle response of bulk delete operation
@@ -285,7 +286,7 @@ public abstract class IndexedStore implements Store {
 
   @Override
   public void getAttributeValues(String search, String path, String attribute,
-      Handler<AsyncResult<AsyncCursor<Object>>> handler) {
+      Handler<AsyncResult<LegacyAsyncCursor<Object>>> handler) {
     JsonObject template = new JsonObject()
       .put("search", search)
       .put("attribute", attribute);
@@ -299,7 +300,7 @@ public abstract class IndexedStore implements Store {
 
   @Override
   public void getPropertyValues(String search, String path, String property,
-      Handler<AsyncResult<AsyncCursor<String>>> handler) {
+      Handler<AsyncResult<LegacyAsyncCursor<String>>> handler) {
     JsonObject template = new JsonObject()
       .put("search", search)
       .put("property", property);

@@ -8,7 +8,7 @@ import com.google.common.base.Preconditions;
 
 import io.georocket.constants.ConfigConstants;
 import io.georocket.storage.ChunkReadStream;
-import io.georocket.storage.indexed.IndexedStore;
+import io.georocket.storage.indexed.LegacyIndexedStore;
 import io.georocket.util.PathUtils;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -27,7 +27,7 @@ import rx.Observable;
  * Stores chunks on the file system
  * @author Michel Kraemer
  */
-public class FileStore extends IndexedStore {
+public class FileStore extends LegacyIndexedStore {
   /**
    * The folder where the chunks should be saved
    */

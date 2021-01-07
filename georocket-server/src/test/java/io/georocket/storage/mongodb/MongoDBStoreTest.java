@@ -19,7 +19,7 @@ import com.mongodb.client.gridfs.model.GridFSFile;
 
 import io.georocket.constants.ConfigConstants;
 import io.georocket.storage.StorageTest;
-import io.georocket.storage.Store;
+import io.georocket.storage.LegacyStore;
 import io.georocket.util.PathUtils;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
@@ -74,7 +74,7 @@ public class MongoDBStoreTest extends StorageTest {
   }
 
   @Override
-  protected Store createStore(Vertx vertx) {
+  protected LegacyStore createStore(Vertx vertx) {
     configureVertx(vertx);
     return new MongoDBStore(vertx);
   }

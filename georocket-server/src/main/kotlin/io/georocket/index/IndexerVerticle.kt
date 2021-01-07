@@ -16,7 +16,7 @@ import io.georocket.storage.GeoJsonChunkMeta
 import io.georocket.storage.IndexMeta
 import io.georocket.storage.JsonChunkMeta
 import io.georocket.storage.RxStore
-import io.georocket.storage.StoreFactory
+import io.georocket.storage.LegacyStoreFactory
 import io.georocket.storage.XMLChunkMeta
 import io.georocket.tasks.IndexingTask
 import io.georocket.tasks.RemovingTask
@@ -157,7 +157,7 @@ class IndexerVerticle : AbstractVerticle() {
     jsonIndexerFactories = indexerFactories.filterIsInstance<JsonIndexerFactory>()
     metaIndexerFactories = indexerFactories.filterIsInstance<MetaIndexerFactory>()
 
-    store = RxStore(StoreFactory.createStore(getVertx()))
+    store = RxStore(LegacyStoreFactory.createStore(getVertx()))
 
     queryCompiler = createQueryCompiler()
     queryCompiler.setQueryCompilers(indexerFactories)

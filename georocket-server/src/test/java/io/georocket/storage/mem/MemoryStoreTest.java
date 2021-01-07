@@ -1,7 +1,7 @@
 package io.georocket.storage.mem;
 
 import io.georocket.storage.StorageTest;
-import io.georocket.storage.Store;
+import io.georocket.storage.LegacyStore;
 import io.georocket.util.PathUtils;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -17,7 +17,7 @@ import io.vertx.ext.unit.TestContext;
  */
 public class MemoryStoreTest extends StorageTest {
   @Override
-  protected Store createStore(Vertx vertx) {
+  protected LegacyStore createStore(Vertx vertx) {
     return new MemoryStore(vertx);
   }
 

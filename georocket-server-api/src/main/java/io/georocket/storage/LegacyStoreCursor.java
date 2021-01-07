@@ -4,11 +4,11 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 
 /**
- * A cursor that can be used to iterate over chunks in a {@link Store}
+ * A cursor that can be used to iterate over chunks in a {@link LegacyStore}
  * @since 1.0.0
  * @author Michel Kraemer
  */
-public interface StoreCursor extends AsyncCursor<ChunkMeta> {
+public interface LegacyStoreCursor extends LegacyAsyncCursor<ChunkMeta> {
   /**
    * @return true if there are more items to iterate over
    */

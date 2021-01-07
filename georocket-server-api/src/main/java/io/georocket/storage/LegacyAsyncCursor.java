@@ -9,7 +9,7 @@ import io.vertx.core.Handler;
  * @since 1.1.0
  * @param <T> type of the item
  */
-public interface AsyncCursor<T> {
+public interface LegacyAsyncCursor<T> {
   /**
    * @return true if there are more items to iterate over
    */

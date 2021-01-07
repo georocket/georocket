@@ -9,25 +9,25 @@ import rx.internal.operators.BackpressureUtils;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Wraps around {@link AsyncCursor} so it can be used with RxJava
+ * Wraps around {@link LegacyAsyncCursor} so it can be used with RxJava
  * @author Tim Hellhake
  * @param <T> type of the cursor item
  */
-public class RxAsyncCursor<T> implements AsyncCursor<T> {
-  private final AsyncCursor<T> delegate;
+public class RxAsyncCursor<T> implements LegacyAsyncCursor<T> {
+  private final LegacyAsyncCursor<T> delegate;
 
   /**
    * Create a new rx-ified cursor
    * @param delegate the actual cursor to delegate to
    */
-  public RxAsyncCursor(AsyncCursor<T> delegate) {
+  public RxAsyncCursor(LegacyAsyncCursor<T> delegate) {
     this.delegate = delegate;
   }
 
   /**
    * @return the actual non-rx-ified cursor
    */
-  public AsyncCursor<T> getDelegate() {
+  public LegacyAsyncCursor<T> getDelegate() {
     return delegate;
   }
 

@@ -7,7 +7,7 @@ import io.georocket.storage.ChunkMeta;
 import io.georocket.storage.CursorInfo;
 import io.georocket.storage.GeoJsonChunkMeta;
 import io.georocket.storage.JsonChunkMeta;
-import io.georocket.storage.StoreCursor;
+import io.georocket.storage.LegacyStoreCursor;
 import io.georocket.storage.XMLChunkMeta;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -20,7 +20,8 @@ import io.vertx.core.json.JsonObject;
  * A cursor to run over a subset of data.
  * @author Andrej Sajenko
  */
-public class FrameCursor implements StoreCursor {
+@Deprecated
+public class LegacyFrameCursor implements LegacyStoreCursor {
   /**
    * The Vert.x instance
    */
@@ -79,7 +80,7 @@ public class FrameCursor implements StoreCursor {
    * @param path The search path
    * @param size The number of elements to load in this frame
    */
-  public FrameCursor(Vertx vertx, String search, String path, int size) {
+  public LegacyFrameCursor(Vertx vertx, String search, String path, int size) {
     this(vertx, null);
     this.search = search;
     this.path = path;
@@ -92,7 +93,7 @@ public class FrameCursor implements StoreCursor {
    * @param vertx vertx instance
    * @param scrollId scrollId to load the next frame
    */
-  public FrameCursor(Vertx vertx, String scrollId) {
+  public LegacyFrameCursor(Vertx vertx, String scrollId) {
     this.vertx = vertx;
     this.scrollId = scrollId;
   }
@@ -101,7 +102,7 @@ public class FrameCursor implements StoreCursor {
    * Starts this cursor
    * @param handler will be called when the cursor has retrieved its first batch
    */
-  public void start(Handler<AsyncResult<StoreCursor>> handler) {
+  public void start(Handler<AsyncResult<LegacyStoreCursor>> handler) {
     JsonObject queryMsg = new JsonObject();
 
     if (scrollId != null) {

@@ -12,8 +12,8 @@ import io.georocket.storage.DeleteMeta;
 import io.georocket.storage.RxAsyncCursor;
 import io.georocket.storage.RxStore;
 import io.georocket.storage.RxStoreCursor;
-import io.georocket.storage.StoreCursor;
-import io.georocket.storage.StoreFactory;
+import io.georocket.storage.LegacyStoreCursor;
+import io.georocket.storage.LegacyStoreFactory;
 import io.georocket.tasks.ReceivingTask;
 import io.georocket.tasks.TaskError;
 import io.georocket.util.HttpException;
@@ -94,7 +94,7 @@ public class StoreEndpoint implements Endpoint {
   public Router createRouter(Vertx vertx) {
     this.vertx = vertx;
 
-    store = new RxStore(StoreFactory.createStore(vertx));
+    store = new RxStore(LegacyStoreFactory.createStore(vertx));
     storagePath = vertx.getOrCreateContext().config()
       .getString(ConfigConstants.STORAGE_FILE_PATH);
 
@@ -126,7 +126,7 @@ public class StoreEndpoint implements Endpoint {
    * @return a Completable that will complete when the merger has been
    * initialized with all results
    */
-  private Completable initializeMerger(Merger<ChunkMeta> merger, Single<StoreCursor> data) {
+  private Completable initializeMerger(Merger<ChunkMeta> merger, Single<LegacyStoreCursor> data) {
     return data
       .map(RxStoreCursor::new)
       .flatMapObservable(RxStoreCursor::toObservable)
@@ -143,7 +143,7 @@ public class StoreEndpoint implements Endpoint {
    * @param trailersAllowed {@code true} if the HTTP client accepts trailers
    * @return a single that will emit one item when all chunks have been merged
    */
-  private Completable doMerge(Merger<ChunkMeta> merger, Single<StoreCursor> data,
+  private Completable doMerge(Merger<ChunkMeta> merger, Single<LegacyStoreCursor> data,
       HttpServerResponse out, boolean trailersAllowed) {
     return data
       .map(RxStoreCursor::new)
@@ -202,7 +202,7 @@ public class StoreEndpoint implements Endpoint {
    * a preview or to initialize the merger
    * @return a Single providing a StoreCursor
    */
-  protected Single<StoreCursor> prepareCursor(RoutingContext context, boolean preview) {
+  protected Single<LegacyStoreCursor> prepareCursor(RoutingContext context, boolean preview) {
     HttpServerRequest request = context.request();
     HttpServerResponse response = context.response();
     

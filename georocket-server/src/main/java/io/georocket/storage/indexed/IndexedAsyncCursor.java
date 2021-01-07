@@ -1,6 +1,6 @@
 package io.georocket.storage.indexed;
 
-import io.georocket.storage.AsyncCursor;
+import io.georocket.storage.LegacyAsyncCursor;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -13,11 +13,11 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * Implementation of {@link AsyncCursor} for {@link IndexedStore}
+ * Implementation of {@link LegacyAsyncCursor} for {@link LegacyIndexedStore}
  * @author Tim Hellhake
  * @param <T> type of the item
  */
-public class IndexedAsyncCursor<T> implements AsyncCursor<T> {
+public class IndexedAsyncCursor<T> implements LegacyAsyncCursor<T> {
   /**
    * The number of items retrieved in one batch
    */
@@ -106,7 +106,7 @@ public class IndexedAsyncCursor<T> implements AsyncCursor<T> {
    * Starts this cursor
    * @param handler will be called when the cursor has retrieved its first batch
    */
-  public void start(Handler<AsyncResult<AsyncCursor<T>>> handler) {
+  public void start(Handler<AsyncResult<LegacyAsyncCursor<T>>> handler) {
     JsonObject queryMsg = template.copy()
       .put("pageSize", pageSize);
     vertx.eventBus().<JsonObject>send(address, queryMsg, ar -> {

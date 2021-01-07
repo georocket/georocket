@@ -11,7 +11,8 @@ import java.util.Map;
  * @since 1.0.0
  * @author Michel Kraemer
  */
-public interface Store {
+@Deprecated
+public interface LegacyStore {
   /**
    * Add a chunk to the store
    * @param chunk the chunk to add
@@ -64,7 +65,7 @@ public interface Store {
    * @param path the path where to search for the chunks (may be null)
    * @param handler will be called when the chunks have been retrieved from the store
    */
-  void get(String search, String path, Handler<AsyncResult<StoreCursor>> handler);
+  void get(String search, String path, Handler<AsyncResult<LegacyStoreCursor>> handler);
 
   /**
    * Start scrolling but load only one frame.
@@ -73,14 +74,14 @@ public interface Store {
    * @param handler will be called when the chunks have been retrieved from the store
    * @param size the number of elements to load.
    */
-  void scroll(String search, String path, int size, Handler<AsyncResult<StoreCursor>> handler);
+  void scroll(String search, String path, int size, Handler<AsyncResult<LegacyStoreCursor>> handler);
 
   /**
    * Continue scrolling with a given scrollId
    * @param scrollId The scrollId to load the chunks
    * @param handler will be called when the chunks have been retrieved from the store
    */
-  void scroll(String scrollId, Handler<AsyncResult<StoreCursor>> handler);
+  void scroll(String scrollId, Handler<AsyncResult<LegacyStoreCursor>> handler);
 
   /**
    * Get all values for the specified attribute
@@ -90,7 +91,7 @@ public interface Store {
    * @param handler will be called when the values have been retrieved from the store
    */
   void getAttributeValues(String search, String path, String attribute,
-    Handler<AsyncResult<AsyncCursor<Object>>> handler);
+    Handler<AsyncResult<LegacyAsyncCursor<Object>>> handler);
 
   /**
    * Get all values for the specified property
@@ -100,7 +101,7 @@ public interface Store {
    * @param handler will be called when the values have been retrieved from the store
    */
   void getPropertyValues(String search, String path, String property,
-    Handler<AsyncResult<AsyncCursor<String>>> handler);
+    Handler<AsyncResult<LegacyAsyncCursor<String>>> handler);
 
   /**
    * Set the properties of a list of chunks selected by search and path

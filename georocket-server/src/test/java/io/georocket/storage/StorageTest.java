@@ -25,7 +25,7 @@ import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 /**
- * <p>Abstract test implementation for a {@link Store}</p>
+ * <p>Abstract test implementation for a {@link LegacyStore}</p>
  *
  * <p>This class defines test methods for the store interface and should be
  * used as base class for all concrete Store tests.</p>
@@ -170,7 +170,7 @@ abstract public class StorageTest {
    * @param vertx A Vert.x instance for one test
    * @return A Store
    */
-  protected abstract Store createStore(Vertx vertx);
+  protected abstract LegacyStore createStore(Vertx vertx);
 
   /**
    * <p>Prepare test data for (every) test. Will be called during every test.</p>
@@ -188,7 +188,7 @@ abstract public class StorageTest {
    * <p>Validate the add method. Will be called after the store added data.</p>
    * <p>Heads up: look on the protected attributes of this class to know which
    * data were used for the store add method. These will be used for the
-   * {@link Store#add(String, ChunkMeta, String, IndexMeta, Handler)} method.
+   * {@link LegacyStore#add(String, ChunkMeta, String, IndexMeta, Handler)} method.
    * Use context.assert ... and context.fail to validate the test.</p>
    * @param context The current test context.
    * @param vertx A Vert.x instance of one test.
@@ -205,7 +205,7 @@ abstract public class StorageTest {
    * <p>Heads up: look on the protected attributes and your
    * {@link #prepareData(TestContext, Vertx, String, Handler)} implementation
    * to know which data you have deleted with the
-   * {@link Store#delete(String, String, Handler)} method.
+   * {@link LegacyStore#delete(String, String, Handler)} method.
    * Use context.assert ... and context.fail to validate the test.</p>
    * @param context The current test context.
    * @param vertx A Vert.x instance of one test.
@@ -296,7 +296,7 @@ abstract public class StorageTest {
   }
 
   /**
-   * Apply the {@link Store#delete(String, String, Handler)} with a
+   * Apply the {@link LegacyStore#delete(String, String, Handler)} with a
    * non-existing path and expects a success (no exceptions or failure codes).
    * @param context Test context
    */
@@ -306,7 +306,7 @@ abstract public class StorageTest {
     Async async = context.async();
     Async asyncIndexerQuery = context.async();
 
-    Store store = createStore(vertx);
+    LegacyStore store = createStore(vertx);
 
     // register add
     vertx.eventBus().consumer(AddressConstants.INDEXER_ADD).handler(h ->
@@ -329,7 +329,7 @@ abstract public class StorageTest {
   }
 
   /**
-   * Apply the {@link Store#delete(String, String, Handler)} with a
+   * Apply the {@link LegacyStore#delete(String, String, Handler)} with a
    * existing path but non existing entity and expects a success (no exceptions or failure codes).
    * @param context Test context
    */
@@ -340,7 +340,7 @@ abstract public class StorageTest {
     Async asyncIndexerDelete = context.async();
     Async asyncDelete = context.async();
 
-    Store store = createStore(vertx);
+    LegacyStore store = createStore(vertx);
 
     // register add
     vertx.eventBus().consumer(AddressConstants.INDEXER_ADD).handler(h ->
@@ -374,7 +374,7 @@ abstract public class StorageTest {
 
   /**
    * <p>Add test data to a storage and retrieve the data with the
-   * {@link Store#getOne(String, Handler)} method to compare them.</p>
+   * {@link LegacyStore#getOne(String, Handler)} method to compare them.</p>
    * <p>Uses {@link #prepareData(TestContext, Vertx, String, Handler)}</p>
    * @param context Test context
    * @param path The path where to look for data (may be null)
@@ -384,7 +384,7 @@ abstract public class StorageTest {
     Async async = context.async();
 
     prepareData(context, vertx, path, context.asyncAssertSuccess(resultPath -> {
-      Store store = createStore(vertx);
+      LegacyStore store = createStore(vertx);
       store.getOne(ID, context.asyncAssertSuccess(h -> {
         h.handler(buffer -> {
           String receivedChunk = new String(buffer.getBytes());
@@ -404,7 +404,7 @@ abstract public class StorageTest {
     Async asyncIndexerAdd = context.async();
     Async asyncAdd = context.async();
 
-    Store store = createStore(vertx);
+    LegacyStore store = createStore(vertx);
 
     vertx.eventBus().<JsonObject>consumer(AddressConstants.INDEXER_ADD).handler(h -> {
       JsonObject index = h.body();
@@ -437,7 +437,7 @@ abstract public class StorageTest {
 
   /**
    * Add test data and try to delete them with the
-   * {@link Store#delete(String, String, Handler)} method, then check the
+   * {@link LegacyStore#delete(String, String, Handler)} method, then check the
    * storage for any data
    * @param context Test context
    * @param path Path where the data can be found (may be null)
@@ -449,7 +449,7 @@ abstract public class StorageTest {
     Async asyncDelete = context.async();
 
     prepareData(context, vertx, path, context.asyncAssertSuccess(resultPath -> {
-      Store store = createStore(vertx);
+      LegacyStore store = createStore(vertx);
 
       // register add
       vertx.eventBus().consumer(AddressConstants.INDEXER_ADD).handler(h ->
@@ -485,7 +485,7 @@ abstract public class StorageTest {
 
   /**
    * Add test data with meta data and try to retrieve them with the
-   * {@link Store#get(String, String, Handler)} method
+   * {@link LegacyStore#get(String, String, Handler)} method
    * @param context Test context.
    * @param path The path where the data can be found (may be null).
    */
@@ -508,10 +508,10 @@ abstract public class StorageTest {
           + "Store::get was called!"));
 
     prepareData(context, vertx, path, context.asyncAssertSuccess(resultPath -> {
-      Store store = createStore(vertx);
+      LegacyStore store = createStore(vertx);
 
       store.get(SEARCH, resultPath, ar -> {
-        StoreCursor cursor = ar.result();
+        LegacyStoreCursor cursor = ar.result();
         context.assertTrue(cursor.hasNext());
 
         cursor.next(h -> {
