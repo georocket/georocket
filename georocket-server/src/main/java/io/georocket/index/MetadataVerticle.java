@@ -91,7 +91,7 @@ public class MetadataVerticle extends AbstractVerticle {
       .forEach(mapping -> MapUtils.deepMerge(attributeMappings, mapping));
     indexedAttributeExtractor = attributeMappingsToExtractor(attributeMappings);
 
-    new ElasticsearchClientFactory(vertx).createElasticsearchClient(INDEX_NAME)
+    new ElasticsearchClientFactory(vertx.getDelegate()).createElasticsearchClient(INDEX_NAME)
       .doOnSuccess(es -> {
         client = es;
       })
