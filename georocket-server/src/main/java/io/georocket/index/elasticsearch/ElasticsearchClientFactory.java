@@ -1,11 +1,11 @@
 package io.georocket.index.elasticsearch;
 
 import io.georocket.constants.ConfigConstants;
+import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.rxjava.core.Vertx;
 import rx.Single;
 
 import java.net.URI;
@@ -77,7 +77,7 @@ public class ElasticsearchClientFactory {
       ConfigConstants.INDEX_ELASTICSEARCH_COMPRESS_REQUEST_BODIES, false);
 
     ElasticsearchClient client = new RemoteElasticsearchClient(uris, indexName,
-        autoUpdateHostsInterval, compressRequestBodies, vertx.getDelegate());
+        autoUpdateHostsInterval, compressRequestBodies, vertx);
     
     return Single.just(client);
   }

@@ -1563,12 +1563,6 @@ Store chunks in an Amazon S3 bucket. Each chunk will be written to a separate ob
 | *georocket.index.maxBulkSize* +
   _(default: 200)_
 | The maximum number of chunks GeoRocket sends to Elasticsearch for indexing in one request. Tweak this parameter if you experience problems with Elasticsearch being too busy.
-| *georocket.index.maxParallelInserts* +
-  _(default: 5)_
-| The maximum number of files GeoRocket imports in parallel. If more files are sent to GeoRocket they will be put into a queue. Tweak this parameter if you experience problems with Elasticsearch or GeoRocket being too busy and occupying too many resources.
-| *georocket.index.maxQueuedChunks* +
-  _(default: 10000)_
-| The maximum number of chunks the indexer queues due to backpressure before it pauses the import. If this happens, the indexer will later unpause the import as soon as at least half of the queued chunks have been indexed. Lower this value if you are importing a large amount of data and GeoRocket uses too much memory.
 | *georocket.index.indexableChunkCache.maxSize* +
   _(default: 67108864 = 64 MB)_
 | After chunks have been imported into the store and before they are indexed, they are temporarily put into a cache to save bandwidth and time. This configuration item specifies the maximum size of this cache in bytes. The more often GeoRocket can make use of cached chunks, the faster it will index them and the less it has to communicate with the storage back-end. A high maximum cache size may mean more memory consumption (depending on how many chunks are kept in the cache at a time). A reasonable value is the average size of the geospatial files you typically import but you may also choose a much higher value if you have enough available RAM in your system.
