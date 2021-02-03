@@ -5,7 +5,6 @@ import io.georocket.storage.ChunkReadStream
 import io.georocket.storage.XMLChunkMeta
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.streams.WriteStream
-import rx.Completable
 
 /**
  * Merges XML chunks using various strategies to create a valid XML document
@@ -40,45 +39,36 @@ class XMLMerger(private val optimistic: Boolean) : Merger<XMLChunkMeta> {
         "strategy available.")
   }
 
-  override fun init(chunkMetadata: XMLChunkMeta): Completable {
+  override fun init(chunkMetadata: XMLChunkMeta) {
     if (mergeStarted) {
-      return Completable.error(IllegalStateException("You cannot "
-          + "initialize the merger anymore after merging has begun"))
+      throw IllegalStateException("You cannot initialize the merger anymore " +
+          "after merging has begun")
     }
 
-    return strategy.canMerge(chunkMetadata)
-        .flatMapCompletable { canMerge ->
-          if (canMerge) {
-            initialized = true
+    while (!strategy.canMerge(chunkMetadata)) {
+      // current strategy cannot merge the chunk
+      val ns = nextStrategy()
+      ns.parents = strategy.parents
+      strategy = ns
+    }
 
-            // current strategy is able to handle the chunk
-            return@flatMapCompletable strategy.init(chunkMetadata)
-          }
-
-          // current strategy cannot merge the chunk. select next one and retry.
-          val ns = nextStrategy()
-          ns.parents = strategy.parents
-          strategy = ns
-
-          // TODO remove recursiveness
-          init(chunkMetadata)
-        }
+    // current strategy is able to handle the chunk
+    initialized = true
+    return strategy.init(chunkMetadata)
   }
 
-  override fun merge(chunk: ChunkReadStream, chunkMetadata: XMLChunkMeta,
-      outputStream: WriteStream<Buffer>): Completable {
+  override suspend fun merge(chunk: ChunkReadStream, chunkMetadata: XMLChunkMeta,
+      outputStream: WriteStream<Buffer>) {
     mergeStarted = true
-    var c = Completable.complete()
     if (!initialized) {
       if (optimistic) {
         strategy = AllSameStrategy()
-        c = strategy.init(chunkMetadata)
+        strategy.init(chunkMetadata)
       } else {
-        return Completable.error(IllegalStateException(
-            "You must call init() at least once"))
+        throw IllegalStateException("You must call init() at least once")
       }
     }
-    return c.andThen(strategy.merge(chunk, chunkMetadata, outputStream))
+    strategy.merge(chunk, chunkMetadata, outputStream)
   }
 
   override fun finish(outputStream: WriteStream<Buffer>) {

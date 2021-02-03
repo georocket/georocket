@@ -9,7 +9,6 @@ import io.georocket.storage.GeoJsonChunkMeta
 import io.georocket.storage.ChunkReadStream
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.streams.WriteStream
-import rx.Completable
 
 /**
  *
@@ -27,51 +26,45 @@ class MultiMerger(private val optimistic: Boolean) : Merger<ChunkMeta> {
   private var xmlMerger: XMLMerger? = null
   private var geoJsonMerger: GeoJsonMerger? = null
 
-  private fun ensureMerger(chunkMetadata: ChunkMeta): Completable {
-    if (chunkMetadata is XMLChunkMeta) {
-      if (xmlMerger == null) {
+  private fun ensureMerger(chunkMetadata: ChunkMeta) {
+    when (chunkMetadata) {
+      is XMLChunkMeta -> if (xmlMerger == null) {
         if (geoJsonMerger != null) {
-          return Completable.error(IllegalStateException("Cannot merge "
-              + "XML chunk into a GeoJSON document."))
+          throw IllegalStateException("Cannot merge XML chunk into a GeoJSON document.")
         }
         xmlMerger = XMLMerger(optimistic)
       }
-      return Completable.complete()
-    } else if (chunkMetadata is GeoJsonChunkMeta) {
-      if (geoJsonMerger == null) {
+
+      is GeoJsonChunkMeta -> if (geoJsonMerger == null) {
         if (xmlMerger != null) {
-          return Completable.error(IllegalStateException("Cannot merge "
-              + "GeoJSON chunk into an XML document."))
+          throw IllegalStateException("Cannot merge GeoJSON chunk into an XML document.")
         }
         geoJsonMerger = GeoJsonMerger(optimistic)
       }
-      return Completable.complete()
+
+      else -> throw IllegalStateException("Cannot merge chunk of type ${chunkMetadata.mimeType}")
     }
-    return Completable.error(IllegalStateException("Cannot merge "
-        + "chunk of type " + chunkMetadata.mimeType))
   }
 
-  override fun init(chunkMetadata: ChunkMeta): Completable {
-    return ensureMerger(chunkMetadata)
-        .andThen(Completable.defer {
-          if (chunkMetadata is XMLChunkMeta) {
-            xmlMerger!!.init(chunkMetadata)
-          } else {
-            geoJsonMerger!!.init(chunkMetadata as GeoJsonChunkMeta)
-          }
-        })
+  override fun init(chunkMetadata: ChunkMeta) {
+    ensureMerger(chunkMetadata)
+
+    if (chunkMetadata is XMLChunkMeta) {
+      xmlMerger!!.init(chunkMetadata)
+    } else {
+      geoJsonMerger!!.init(chunkMetadata as GeoJsonChunkMeta)
+    }
   }
 
-  override fun merge(chunk: ChunkReadStream, chunkMetadata: ChunkMeta,
-      outputStream: WriteStream<Buffer>): Completable {
-    return ensureMerger(chunkMetadata)
-        .andThen(Completable.defer {
-          if (chunkMetadata is XMLChunkMeta) {
-            xmlMerger!!.merge(chunk, chunkMetadata, outputStream)
-          } else {
-            geoJsonMerger!!.merge(chunk, chunkMetadata as GeoJsonChunkMeta, outputStream)
-          }
-        })
+  override suspend fun merge(chunk: ChunkReadStream, chunkMetadata: ChunkMeta,
+      outputStream: WriteStream<Buffer>) {
+    ensureMerger(chunkMetadata)
+
+    if (chunkMetadata is XMLChunkMeta) {
+      xmlMerger!!.merge(chunk, chunkMetadata, outputStream)
+    } else {
+      geoJsonMerger!!.merge(chunk, chunkMetadata as GeoJsonChunkMeta, outputStream)
+    }
   }
 
   override fun finish(outputStream: WriteStream<Buffer>) {

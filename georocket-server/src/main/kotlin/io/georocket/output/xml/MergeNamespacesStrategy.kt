@@ -2,8 +2,6 @@ package io.georocket.output.xml
 
 import io.georocket.storage.XMLChunkMeta
 import io.georocket.util.XMLStartElement
-import rx.Completable
-import rx.Single
 import java.util.regex.Pattern
 
 /**
@@ -55,21 +53,15 @@ class MergeNamespacesStrategy : AbstractMergeStrategy() {
       super.parents = parents
     }
 
-  override fun canMerge(meta: XMLChunkMeta): Single<Boolean> {
-    return Single.defer {
-      if (parents == null || canMerge(parents, meta.parents, !isHeaderWritten)) {
-        Single.just(true)
-      } else {
-        Single.just(false)
-      }
-    }
+  override fun canMerge(metadata: XMLChunkMeta): Boolean {
+    return (parents == null || canMerge(parents, metadata.parents, !isHeaderWritten))
   }
 
-  override fun mergeParents(chunkMetadata: XMLChunkMeta): Completable {
+  override fun mergeParents(chunkMetadata: XMLChunkMeta) {
     if (parents == null) {
       // no merge necessary yet, just save the chunk's parents
       parents = chunkMetadata.parents
-      return Completable.complete()
+      return
     }
 
     // merge current parents and chunk parents
@@ -90,7 +82,6 @@ class MergeNamespacesStrategy : AbstractMergeStrategy() {
     if (changed) {
       super.parents = newParents
     }
-    return Completable.complete()
   }
 
   /**

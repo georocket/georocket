@@ -5,7 +5,6 @@ import io.georocket.storage.ChunkReadStream
 import io.georocket.storage.GeoJsonChunkMeta
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.streams.WriteStream
-import rx.Completable
 
 /**
  * Merges chunks to valid GeoJSON documents
@@ -56,15 +55,15 @@ class GeoJsonMerger(optimistic: Boolean) : Merger<GeoJsonChunkMeta> {
     }
   }
 
-  override fun init(chunkMetadata: GeoJsonChunkMeta): Completable {
+  override fun init(chunkMetadata: GeoJsonChunkMeta) {
     if (mergeStarted) {
-      return Completable.error(IllegalStateException("You cannot "
-          + "initialize the merger anymore after merging has begun"))
+      throw IllegalStateException("You cannot initialize the merger anymore " +
+          "after merging has begun")
     }
     if (mergedType == FEATURE_COLLECTION) {
       // shortcut: we don't need to analyse the other chunks anymore,
       // we already reached the most generic type
-      return Completable.complete()
+      return
     }
 
     // calculate the type of the merged document
@@ -73,11 +72,10 @@ class GeoJsonMerger(optimistic: Boolean) : Merger<GeoJsonChunkMeta> {
     } else {
       TRANSITIONS[mergedType][1]
     }
-    return Completable.complete()
   }
 
-  override fun merge(chunk: ChunkReadStream, chunkMetadata: GeoJsonChunkMeta,
-      outputStream: WriteStream<Buffer>): Completable {
+  override suspend fun merge(chunk: ChunkReadStream, chunkMetadata: GeoJsonChunkMeta,
+      outputStream: WriteStream<Buffer>) {
     mergeStarted = true
     if (!headerWritten) {
       writeHeader(outputStream)
@@ -86,9 +84,8 @@ class GeoJsonMerger(optimistic: Boolean) : Merger<GeoJsonChunkMeta> {
       if (mergedType == FEATURE_COLLECTION || mergedType == GEOMETRY_COLLECTION) {
         outputStream.write(Buffer.buffer(","))
       } else {
-        return Completable.error(IllegalStateException("Trying to merge two " +
-            "or more chunks but the merger has only been " +
-            "initialized with one chunk."))
+        throw IllegalStateException("Trying to merge two or more chunks but " +
+            "the merger has only been initialized with one chunk.")
       }
     }
 
@@ -97,12 +94,12 @@ class GeoJsonMerger(optimistic: Boolean) : Merger<GeoJsonChunkMeta> {
     if (wrap) {
       outputStream.write(Buffer.buffer("{\"type\":\"Feature\",\"geometry\":"))
     }
-    return writeChunk(chunk, chunkMetadata, outputStream)
-        .doOnCompleted {
-          if (wrap) {
-            outputStream.write(Buffer.buffer("}"))
-          }
-        }
+
+    writeChunk(chunk, chunkMetadata, outputStream)
+
+    if (wrap) {
+      outputStream.write(Buffer.buffer("}"))
+    }
   }
 
   override fun finish(outputStream: WriteStream<Buffer>) {

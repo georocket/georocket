@@ -2,12 +2,11 @@ package io.georocket.output
 
 import io.georocket.storage.ChunkMeta
 import io.georocket.storage.ChunkReadStream
-import java.lang.Void
-import io.vertx.core.Future
+import io.vertx.core.Promise
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.streams.WriteStream
-import io.vertx.rx.java.RxHelper
-import rx.Completable
+import io.vertx.kotlin.coroutines.await
+import java.lang.IllegalStateException
 
 /**
  * Merges chunks to create a valid output document
@@ -20,18 +19,16 @@ interface Merger<T : ChunkMeta> {
    * merge strategy. This method must be called for all chunks that should be
    * merged. After [merge] has been called this method must not be called anymore.
    */
-  fun init(chunkMetadata: T): Completable
+  fun init(chunkMetadata: T)
 
   /**
    * Merge a [chunk] using the current merge strategy and information from the
    * given [chunkMetadata] into the given [outputStream]. The chunk should have
    * been passed to [init] first. If it hasn't, the method may or may not
    * accept it. If the chunk cannot be merged with the current strategy,
-   * the returned observable will fail.
-   * @return a Completable that will complete when the chunk has been merged
+   * the method will throw and [IllegalStateException]
    */
-  fun merge(chunk: ChunkReadStream, chunkMetadata: T,
-      outputStream: WriteStream<Buffer>): Completable
+  suspend fun merge(chunk: ChunkReadStream, chunkMetadata: T, outputStream: WriteStream<Buffer>)
 
   /**
    * Finishes merging chunks. Write remaining bytes into the given [outputStream]
@@ -41,8 +38,8 @@ interface Merger<T : ChunkMeta> {
   /**
    * Write a [chunk] unchanged to an [outputStream] without doing further checks
    */
-  fun writeChunk(chunk: ChunkReadStream, chunkMetadata: ChunkMeta,
-      outputStream: WriteStream<Buffer>): Completable {
+  suspend fun writeChunk(chunk: ChunkReadStream, chunkMetadata: ChunkMeta,
+      outputStream: WriteStream<Buffer>) {
     // write chunk to output stream
     var start = chunkMetadata.start
     var end = chunkMetadata.end
@@ -56,16 +53,15 @@ interface Merger<T : ChunkMeta> {
       end -= buf.length()
     }
 
-    val o = RxHelper.observableFuture<Void>()
-    val handler = o.toHandler()
+    val p = Promise.promise<Unit>()
 
     chunk.exceptionHandler { err ->
       chunk.endHandler(null)
-      handler.handle(Future.failedFuture(err))
+      p.fail(err)
     }
 
-    chunk.endHandler { handler.handle(Future.succeededFuture()) }
+    chunk.endHandler { p.complete() }
 
-    return o.toCompletable()
+    return p.future().await()
   }
 }
