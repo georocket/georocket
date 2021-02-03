@@ -8,13 +8,9 @@ import io.georocket.tasks.TaskVerticle
 import io.georocket.util.FilteredServiceLoader
 import io.georocket.util.JsonUtils
 import io.georocket.util.SizeFormat
-import io.vertx.core.AbstractVerticle
 import io.vertx.core.DeploymentOptions
-import io.vertx.core.Future
-import io.vertx.core.Verticle
 import io.vertx.core.Vertx
 import io.vertx.core.http.HttpMethod
-import io.vertx.core.http.HttpServer
 import io.vertx.core.http.HttpServerOptions
 import io.vertx.core.json.DecodeException
 import io.vertx.core.json.JsonArray
@@ -24,14 +20,14 @@ import io.vertx.core.net.PemKeyCertOptions
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
 import io.vertx.ext.web.handler.CorsHandler
+import io.vertx.kotlin.core.deployVerticleAwait
 import io.vertx.kotlin.core.http.httpServerOptionsOf
+import io.vertx.kotlin.core.http.listenAwait
+import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.rx.java.RxHelper
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.IOUtils
 import org.yaml.snakeyaml.Yaml
-import rx.Completable
-import rx.Observable
-import rx.Single
 import rx.plugins.RxJavaHooks
 import java.io.File
 import java.io.IOException
@@ -46,92 +42,18 @@ private lateinit var geoRocketHome: File
  * GeoRocket - A high-performance database for geospatial files
  * @author Michel Kraemer
  */
-class GeoRocket : AbstractVerticle() {
-  /**
-   * Deploy a new verticle with the standard configuration of this instance
-   * @param cls the class of the verticle class to deploy
-   * @return a single that will carry the verticle's deployment id
-   */
-  private fun deployVerticle(cls: Class<out Verticle?>): Single<String> {
-    return Single.defer {
-      val observable = RxHelper.observableFuture<String>()
-      val options = DeploymentOptions().setConfig(config())
-      vertx.deployVerticle(cls.name, options, observable.toHandler())
-      observable.toSingle()
-    }
-  }
-
-  /**
-   * Deploys all verticles from GeoRocket extensions (registered through Java
-   * Service Provider Interface)
-   * @return a completable that completes when all verticles have been deployed
-   */
-  private fun deployExtensionVerticles(): Completable {
-    return Completable.defer {
-      val options = DeploymentOptions().setConfig(config())
-      Observable.from(FilteredServiceLoader.load(ExtensionVerticle::class.java))
-          .flatMap { verticle: ExtensionVerticle? ->
-            val observable = RxHelper.observableFuture<String>()
-            vertx.deployVerticle(verticle, options, observable.toHandler())
-            observable
-          }
-          .toCompletable()
-    }
-  }
-
-  /**
-   * Deploy the indexer verticle
-   * @return a single that will complete when the verticle was deployed
-   * and will carry the verticle's deployment id
-   */
-  private fun deployIndexer(): Single<String> {
-    return deployVerticle(IndexerVerticle::class.java)
-  }
-
-  /**
-   * Deploy the importer verticle
-   * @return a single that will complete when the verticle was deployed
-   * and will carry the verticle's deployment id
-   */
-  private fun deployImporter(): Single<String> {
-    return deployVerticle(ImporterVerticle::class.java)
-  }
-
-  /**
-   * Deploy the metadata verticle
-   * @return a single that will complete when the verticle was deployed
-   * and will carry the verticle's deployment id
-   */
-  private fun deployMetadata(): Single<String> {
-    return deployVerticle(MetadataVerticle::class.java)
-  }
-
-  /**
-   * Deploy the task verticle
-   * @return a single that will complete when the verticle was deployed
-   * and will carry the verticle's deployment id
-   */
-  private fun deployTask(): Single<String> {
-    return deployVerticle(TaskVerticle::class.java)
-  }
-
+class GeoRocket : CoroutineVerticle() {
   /**
    * Deploy the http server.
    * @return a single that will complete when the http server was started.
    */
-  private fun deployHttpServer(): Single<HttpServer> {
-    val host = config().getString(ConfigConstants.HOST, ConfigConstants.DEFAULT_HOST)
-    val port = config().getInteger(ConfigConstants.PORT, ConfigConstants.DEFAULT_PORT)
-    return try {
-      val router = createRouter()
-      val serverOptions = createHttpServerOptions()
-      val server = vertx.createHttpServer(serverOptions)
-      val observable = RxHelper.observableFuture<HttpServer>()
-      server.requestHandler(router).listen(port, host, observable.toHandler())
-      observable.toSingle()
-    } catch (t: Throwable) {
-      Single.error(t)
-    }
+  private suspend fun deployHttpServer() {
+    val host = config.getString(ConfigConstants.HOST, ConfigConstants.DEFAULT_HOST)
+    val port = config.getInteger(ConfigConstants.PORT, ConfigConstants.DEFAULT_PORT)
+    val router = createRouter()
+    val serverOptions = createHttpServerOptions()
+    val server = vertx.createHttpServer(serverOptions)
+    server.requestHandler(router).listenAwait(port, host)
   }
 
   /**
@@ -139,17 +61,17 @@ class GeoRocket : AbstractVerticle() {
    * @return the [CorsHandler]
    */
   private fun createCorsHandler(): CorsHandler {
-    val allowedOrigin = config().getString(
+    val allowedOrigin = config.getString(
         ConfigConstants.HTTP_CORS_ALLOW_ORIGIN, "$.") // match nothing by default
     val corsHandler = CorsHandler.create(allowedOrigin)
 
     // configure whether the Access-Control-Allow-Credentials should be returned
-    if (config().getBoolean(ConfigConstants.HTTP_CORS_ALLOW_CREDENTIALS, false)) {
+    if (config.getBoolean(ConfigConstants.HTTP_CORS_ALLOW_CREDENTIALS, false)) {
       corsHandler.allowCredentials(true)
     }
 
     // configured allowed headers
-    val allowHeaders = config().getValue(ConfigConstants.HTTP_CORS_ALLOW_HEADERS)
+    val allowHeaders = config.getValue(ConfigConstants.HTTP_CORS_ALLOW_HEADERS)
     when {
       allowHeaders is String ->
         corsHandler.allowedHeader(allowHeaders)
@@ -161,7 +83,7 @@ class GeoRocket : AbstractVerticle() {
     }
 
     // configured allowed methods
-    val allowMethods = config().getValue(ConfigConstants.HTTP_CORS_ALLOW_METHODS)
+    val allowMethods = config.getValue(ConfigConstants.HTTP_CORS_ALLOW_METHODS)
     when {
       allowMethods is String ->
         corsHandler.allowedMethod(HttpMethod.valueOf(allowMethods))
@@ -174,7 +96,7 @@ class GeoRocket : AbstractVerticle() {
     }
 
     // configured exposed headers
-    val exposeHeaders = config().getValue(ConfigConstants.HTTP_CORS_EXPOSE_HEADERS)
+    val exposeHeaders = config.getValue(ConfigConstants.HTTP_CORS_EXPOSE_HEADERS)
     when {
       exposeHeaders is String ->
         corsHandler.exposedHeader(exposeHeaders)
@@ -186,7 +108,7 @@ class GeoRocket : AbstractVerticle() {
     }
 
     // configure max age in seconds
-    val maxAge = config().getInteger(ConfigConstants.HTTP_CORS_MAX_AGE, -1)
+    val maxAge = config.getInteger(ConfigConstants.HTTP_CORS_MAX_AGE, -1)
     corsHandler.maxAgeSeconds(maxAge)
     return corsHandler
   }
@@ -197,7 +119,7 @@ class GeoRocket : AbstractVerticle() {
   private fun createRouter(): Router {
     val router = Router.router(vertx)
 
-    val corsEnable = config().getBoolean(ConfigConstants.HTTP_CORS_ENABLE, false)
+    val corsEnable = config.getBoolean(ConfigConstants.HTTP_CORS_ENABLE, false)
     if (corsEnable) {
       router.route().handler(createCorsHandler())
     }
@@ -221,21 +143,21 @@ class GeoRocket : AbstractVerticle() {
    * configuration
    */
   private fun createHttpServerOptions(): HttpServerOptions {
-    val compress = config().getBoolean(ConfigConstants.HTTP_COMPRESS, true)
+    val compress = config.getBoolean(ConfigConstants.HTTP_COMPRESS, true)
     val serverOptions = httpServerOptionsOf(compressionSupported = compress)
 
-    val ssl = config().getBoolean(ConfigConstants.HTTP_SSL, false)
+    val ssl = config.getBoolean(ConfigConstants.HTTP_SSL, false)
     if (ssl) {
       serverOptions.isSsl = ssl
-      val certPath = config().getString(ConfigConstants.HTTP_CERT_PATH, null)
-      val keyPath = config().getString(ConfigConstants.HTTP_KEY_PATH, null)
+      val certPath = config.getString(ConfigConstants.HTTP_CERT_PATH, null)
+      val keyPath = config.getString(ConfigConstants.HTTP_KEY_PATH, null)
       val pemKeyCertOptions = PemKeyCertOptions()
           .setCertPath(certPath)
           .setKeyPath(keyPath)
       serverOptions.pemKeyCertOptions = pemKeyCertOptions
     }
 
-    val alpn = config().getBoolean(ConfigConstants.HTTP_ALPN, false)
+    val alpn = config.getBoolean(ConfigConstants.HTTP_ALPN, false)
     if (alpn) {
       if (!ssl) {
         log.warn("ALPN is enabled but SSL is not! In order for ALPN to work " +
@@ -247,25 +169,32 @@ class GeoRocket : AbstractVerticle() {
     return serverOptions
   }
 
-  override fun start(startFuture: Future<Void>) {
+  override suspend fun start() {
     log.info("Launching GeoRocket ${getVersion()} ...")
-    deployExtensionVerticles()
-        .doOnCompleted {
-          vertx.eventBus().publish(ExtensionVerticle.EXTENSION_VERTICLE_ADDRESS,
-              JsonObject().put("type", ExtensionVerticle.MESSAGE_ON_INIT))
-        }
-        .andThen(deployTask()
-            .flatMap { deployIndexer() }
-            .flatMap { deployImporter() }
-            .flatMap { deployMetadata() }
-            .flatMap { deployHttpServer() }
-        )
-        .subscribe({
-          vertx.eventBus().publish(ExtensionVerticle.EXTENSION_VERTICLE_ADDRESS,
-              JsonObject().put("type", ExtensionVerticle.MESSAGE_POST_INIT))
-          log.info("GeoRocket launched successfully.")
-          startFuture.complete()
-        }) { cause: Throwable -> startFuture.fail(cause) }
+
+    val options = DeploymentOptions().setConfig(config)
+
+    // deploy extension verticles
+    for (verticle in FilteredServiceLoader.load(ExtensionVerticle::class.java)) {
+      vertx.deployVerticleAwait(verticle, options)
+    }
+
+    vertx.eventBus().publish(ExtensionVerticle.EXTENSION_VERTICLE_ADDRESS,
+        JsonObject().put("type", ExtensionVerticle.MESSAGE_ON_INIT))
+
+    // deploy other verticles
+    vertx.deployVerticleAwait(TaskVerticle(), options)
+    vertx.deployVerticleAwait(IndexerVerticle(), options)
+    vertx.deployVerticleAwait(ImporterVerticle(), options)
+    vertx.deployVerticleAwait(MetadataVerticle(), options)
+
+    // deploy HTTP server
+    deployHttpServer()
+
+    vertx.eventBus().publish(ExtensionVerticle.EXTENSION_VERTICLE_ADDRESS,
+        JsonObject().put("type", ExtensionVerticle.MESSAGE_POST_INIT))
+
+    log.info("GeoRocket launched successfully.")
   }
 
   /**
@@ -407,7 +336,7 @@ fun overwriteWithEnvironmentVariables(conf: JsonObject, env: Map<String, String>
 /**
  * Run the server
  */
-fun main() {
+suspend fun main() {
   // print banner
   try {
     val u = GeoRocket::class.java.getResource("georocket_banner.txt")
@@ -452,11 +381,11 @@ fun main() {
       "max heap size: ${SizeFormat.format(memoryMax)}")
 
   // deploy main verticle
-  vertx.deployVerticle(GeoRocket::class.java.name, options) { ar ->
-    if (ar.failed()) {
-      log.fatal("Could not deploy GeoRocket")
-      ar.cause().printStackTrace()
-      exitProcess(1)
-    }
+  try {
+    vertx.deployVerticleAwait(GeoRocket::class.java.name, options)
+  } catch (t: Throwable) {
+    log.fatal("Could not deploy GeoRocket")
+    t.printStackTrace()
+    exitProcess(1)
   }
 }
