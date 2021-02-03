@@ -74,7 +74,7 @@ class IndexedStoreCursor(private val vertx: Vertx, private val search: String?,
       fc.hasNext() -> fc.next()
 
       else -> {
-        val newCurrentFrameCursor = FrameCursor(vertx, scrollId).start()
+        val newCurrentFrameCursor = FrameCursor(vertx, scrollId = scrollId).start()
         currentFrameCursor = newCurrentFrameCursor
         newCurrentFrameCursor.next()
       }

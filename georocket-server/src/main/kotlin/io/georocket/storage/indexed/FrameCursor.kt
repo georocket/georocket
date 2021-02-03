@@ -50,9 +50,10 @@ class FrameCursor(private val vertx: Vertx, private val search: String? = null,
     if (scrollId != null) {
       queryMsg.put("scrollId", scrollId)
     } else {
-      queryMsg
-          .put("size", size)
-          .put("search", search)
+      queryMsg.put("size", size)
+      if (search != null) {
+          queryMsg.put("search", search)
+      }
       if (path != null) {
         queryMsg.put("path", path)
       }

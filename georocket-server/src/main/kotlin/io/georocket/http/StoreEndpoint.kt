@@ -38,7 +38,6 @@ import org.apache.commons.text.StringEscapeUtils
 import org.apache.http.ParseException
 import org.apache.http.entity.ContentType
 import org.bson.types.ObjectId
-import rx.Completable
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
@@ -130,9 +129,8 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
 
     if (accepted > 0) {
       merger.finish(out)
-      Completable.complete()
     } else {
-      Completable.error(FileNotFoundException("Not Found"))
+      throw FileNotFoundException("Not Found")
     }
   }
 

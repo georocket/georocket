@@ -274,8 +274,6 @@ class ImporterVerticle : CoroutineVerticle() {
 
     val channel = f.toChannel(vertx)
     channel.map { bomFilter.filter(it) }.consumeEach { buf ->
-      log.info(buf.toString())
-
       window.append(buf)
 
       val bytes = buf.bytes

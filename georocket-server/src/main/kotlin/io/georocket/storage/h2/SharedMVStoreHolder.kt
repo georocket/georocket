@@ -1,6 +1,7 @@
 package io.georocket.storage.h2
 
 import org.h2.mvstore.MVStore
+import java.io.File
 import java.util.concurrent.atomic.AtomicReference
 
 /**
@@ -20,6 +21,11 @@ class SharedMVStoreHolder(private val path: String, private val compress: Boolea
     var result = sharedMVStore.get()
     if (result == null) {
       synchronized(sharedMVStore) {
+        val dir = File(path).parentFile
+        if (!dir.exists()) {
+          dir.mkdirs()
+        }
+
         var builder = MVStore.Builder().fileName(path)
         if (compress) {
           builder = builder.compress()
