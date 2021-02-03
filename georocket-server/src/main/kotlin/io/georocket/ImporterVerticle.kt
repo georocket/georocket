@@ -32,7 +32,6 @@ import kotlinx.coroutines.channels.map
 import kotlinx.coroutines.launch
 import java.time.Instant
 
-
 /**
  * Imports file in the background
  * @author Michel Kraemer
@@ -44,7 +43,6 @@ class ImporterVerticle : CoroutineVerticle() {
 
   private lateinit var store: Store
   private lateinit var incoming: String
-  private var paused = false
   private val filesBeingImported = mutableSetOf<AsyncFile>()
 
   override suspend fun start() {
@@ -59,7 +57,6 @@ class ImporterVerticle : CoroutineVerticle() {
         onImport(msg)
       }
     }
-    vertx.eventBus().localConsumer(AddressConstants.IMPORTER_PAUSE, this::onPause)
   }
 
   /**
@@ -296,30 +293,5 @@ class ImporterVerticle : CoroutineVerticle() {
     processEvents()
 
     return chunksAdded
-  }
-
-  /**
-   * Handle a pause message
-   * @param msg the message
-   */
-  private fun onPause(msg: Message<Boolean>) {
-    val paused = msg.body()
-    if (paused == null || !paused) {
-      if (this.paused) {
-        log.info("Resuming import")
-        this.paused = false
-        for (f in filesBeingImported) {
-          f.resume()
-        }
-      }
-    } else {
-      if (!this.paused) {
-        log.info("Pausing import")
-        this.paused = true
-        for (f in filesBeingImported) {
-          f.pause()
-        }
-      }
-    }
   }
 }
