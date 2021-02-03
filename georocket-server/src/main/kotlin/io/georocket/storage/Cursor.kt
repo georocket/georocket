@@ -8,10 +8,15 @@ interface Cursor<T> {
   /**
    * Return `true` if there are more items to iterate over
    */
-  suspend fun hasNext(): Boolean
+  suspend operator fun hasNext(): Boolean
 
   /**
    * Return the next item
    */
-  suspend fun next(): T
+  suspend operator fun next(): T
+
+  /**
+   * Make this cursor available as an interator
+   */
+  operator fun iterator() = this
 }
