@@ -23,18 +23,18 @@ interface Store {
    * [path]. Callers should pass a [deleteMetadata] object with a unique
    * `correlationId` so the deletion process can be tracked correctly.
    */
-  suspend fun delete(search: String, path: String, deleteMetadata: DeleteMeta)
+  suspend fun delete(search: String?, path: String, deleteMetadata: DeleteMeta)
 
   /**
    * Get a number of chunks from the store using a given [search] query and [path]
    */
-  suspend fun get(search: String, path: String): StoreCursor
+  suspend fun get(search: String?, path: String): StoreCursor
 
   /**
    * Start scrolling over chunks matching the given [search] query and [path]
    * but load only one frame with a given [size].
    */
-  suspend fun scroll(search: String, path: String, size: Int): StoreCursor
+  suspend fun scroll(search: String?, path: String, size: Int): StoreCursor
 
   /**
    * Continue scrolling with a given [scrollId]
@@ -44,30 +44,30 @@ interface Store {
   /**
    * Get all values of the [attribute] of all chunks matching a given [search] query [path]
    */
-  suspend fun getAttributeValues(search: String, path: String, attribute: String): Cursor<Any>
+  suspend fun getAttributeValues(search: String?, path: String, attribute: String): Cursor<Any>
 
   /**
    * Get all values of the [property] of all chunks matching a given [search] query [path]
    */
-  suspend fun getPropertyValues(search: String, path: String, property: String): Cursor<String>
+  suspend fun getPropertyValues(search: String?, path: String, property: String): Cursor<String>
 
   /**
    * Set the [properties] of a list of chunks selected by [search] and [path]
    */
-  suspend fun setProperties(search: String, path: String, properties: Map<String, String>)
+  suspend fun setProperties(search: String?, path: String, properties: Map<String, String>)
 
   /**
    * Remove the [properties] of a list of chunks selected by [search] and [path]
    */
-  suspend fun removeProperties(search: String, path: String, properties: List<String>)
+  suspend fun removeProperties(search: String?, path: String, properties: List<String>)
 
   /**
    * Append [tags] to a list of chunks selected by [search] and [path]
    */
-  suspend fun appendTags(search: String, path: String, tags: List<String>)
+  suspend fun appendTags(search: String?, path: String, tags: List<String>)
 
   /**
    * Remove [tags] from a list of chunks selected by [search] and [path]
    */
-  suspend fun removeTags(search: String, path: String, tags: List<String>)
+  suspend fun removeTags(search: String?, path: String, tags: List<String>)
 }

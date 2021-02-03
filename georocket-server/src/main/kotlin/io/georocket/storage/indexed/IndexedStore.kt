@@ -18,10 +18,8 @@ import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.eventbus.requestAwait
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
-import java.security.SecureRandom
 import java.time.Instant
 import java.util.ArrayDeque
-import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * An abstract base class for chunk stores that are backed by an indexer
@@ -99,7 +97,7 @@ abstract class IndexedStore(private val vertx: Vertx) : Store {
         JsonObject.mapFrom(purgingTask))
   }
 
-  override suspend fun delete(search: String, path: String, deleteMetadata: DeleteMeta) {
+  override suspend fun delete(search: String?, path: String, deleteMetadata: DeleteMeta) {
     val correlationId = deleteMetadata.correlationId
     if (correlationId != null) {
       startPurgingTask(correlationId, 0)
@@ -126,11 +124,11 @@ abstract class IndexedStore(private val vertx: Vertx) : Store {
     }
   }
 
-  override suspend fun get(search: String, path: String): StoreCursor {
+  override suspend fun get(search: String?, path: String): StoreCursor {
     return IndexedStoreCursor(vertx, search, path).start()
   }
 
-  override suspend fun scroll(search: String, path: String, size: Int): StoreCursor {
+  override suspend fun scroll(search: String?, path: String, size: Int): StoreCursor {
     return FrameCursor(vertx, search, path, size).start()
   }
 
@@ -184,7 +182,7 @@ abstract class IndexedStore(private val vertx: Vertx) : Store {
     doDeleteChunks(paths)
   }
 
-  override suspend fun getAttributeValues(search: String, path: String,
+  override suspend fun getAttributeValues(search: String?, path: String,
       attribute: String): Cursor<Any> {
     TODO()
     /*val template = JsonObject()
@@ -196,7 +194,7 @@ abstract class IndexedStore(private val vertx: Vertx) : Store {
         .start(handler)*/
   }
 
-  override suspend fun getPropertyValues(search: String, path: String,
+  override suspend fun getPropertyValues(search: String?, path: String,
       property: String): Cursor<String> {
     TODO()
     /*val template = JsonObject()
@@ -208,7 +206,7 @@ abstract class IndexedStore(private val vertx: Vertx) : Store {
         .start(handler)*/
   }
 
-  override suspend fun setProperties(search: String, path: String,
+  override suspend fun setProperties(search: String?, path: String,
       properties: Map<String, String>) {
     val msg = JsonObject()
         .put("search", search)
@@ -217,7 +215,7 @@ abstract class IndexedStore(private val vertx: Vertx) : Store {
     vertx.eventBus().requestAwait<Any>(AddressConstants.METADATA_SET_PROPERTIES, msg)
   }
 
-  override suspend fun removeProperties(search: String, path: String,
+  override suspend fun removeProperties(search: String?, path: String,
       properties: List<String>) {
     val msg = JsonObject()
         .put("search", search)
@@ -226,7 +224,7 @@ abstract class IndexedStore(private val vertx: Vertx) : Store {
     vertx.eventBus().requestAwait<Any>(AddressConstants.METADATA_REMOVE_PROPERTIES, msg)
   }
 
-  override suspend fun appendTags(search: String, path: String, tags: List<String>) {
+  override suspend fun appendTags(search: String?, path: String, tags: List<String>) {
     val msg = JsonObject()
         .put("search", search)
         .put("tags", JsonArray(tags))
@@ -234,7 +232,7 @@ abstract class IndexedStore(private val vertx: Vertx) : Store {
     vertx.eventBus().requestAwait<Any>(AddressConstants.METADATA_APPEND_TAGS, msg)
   }
 
-  override suspend fun removeTags(search: String, path: String, tags: List<String>) {
+  override suspend fun removeTags(search: String?, path: String, tags: List<String>) {
     val msg = JsonObject()
         .put("search", search)
         .put("tags", JsonArray(tags))

@@ -13,24 +13,17 @@ import static io.georocket.util.ThrowableHelper.throwableToCode;
 import static io.georocket.util.ThrowableHelper.throwableToMessage;
 
 /**
- * An interface that can be used to add an HTTP endpoint to GeoRocket via the
- * Service Provider Interface (SPI) API.
+ * Base interface for HTTP endpoints
  * @author Michel Kraemer
  * @since 1.2.0
  */
 public interface Endpoint {
   /**
-   * Return the path prefix where the endpoint should be mounted
-   * @return the path
-   */
-  String getMountPoint();
-
-  /**
    * Create a router that handles HTTP requests for this endpoint
    * @param vertx the current Vert.x instance
    * @return the router
    */
-  Router createRouter(Vertx vertx);
+  Router createRouter();
 
   /**
    * Get absolute data store path from request

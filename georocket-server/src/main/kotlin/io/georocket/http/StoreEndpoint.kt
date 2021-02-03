@@ -50,7 +50,8 @@ import kotlin.coroutines.CoroutineContext
  * An HTTP endpoint handling requests related to the GeoRocket data store
  * @author Michel Kraemer
  */
-class StoreEndpoint() : Endpoint, CoroutineScope {
+class StoreEndpoint(override val coroutineContext: CoroutineContext,
+    private val vertx: Vertx) : Endpoint, CoroutineScope {
   companion object {
     private val log = LoggerFactory.getLogger(StoreEndpoint::class.java)
 
@@ -68,19 +69,10 @@ class StoreEndpoint() : Endpoint, CoroutineScope {
     private const val TRAILER_UNMERGED_CHUNKS = "GeoRocket-Unmerged-Chunks"
   }
 
-  private lateinit var vertx: Vertx
   private lateinit var store: Store
   private lateinit var storagePath: String
 
-  override lateinit var coroutineContext: CoroutineContext
-
-  override fun getMountPoint(): String {
-    return "/store"
-  }
-
-  override fun createRouter(vertx: Vertx): Router {
-    this.vertx = vertx
-
+  override fun createRouter(): Router {
     store = StoreFactory.createStore(vertx)
     storagePath = vertx.orCreateContext.config()
         .getString(ConfigConstants.STORAGE_FILE_PATH)

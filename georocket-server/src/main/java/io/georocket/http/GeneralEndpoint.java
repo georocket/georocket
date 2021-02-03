@@ -17,12 +17,14 @@ import io.vertx.ext.web.RoutingContext;
  * @author Michel Kraemer
  */
 public class GeneralEndpoint implements Endpoint {
+  private final Vertx vertx;
   private final String version;
 
   /**
    * Create the endpoint
    */
-  public GeneralEndpoint() {
+  public GeneralEndpoint(Vertx vertx) {
+    this.vertx = vertx;
     version = getVersion();
   }
   
@@ -41,12 +43,7 @@ public class GeneralEndpoint implements Endpoint {
   }
 
   @Override
-  public String getMountPoint() {
-    return "/";
-  }
-
-  @Override
-  public Router createRouter(Vertx vertx) {
+  public Router createRouter() {
     Router router = Router.router(vertx);
     router.get("/").handler(this::onInfo);
     router.head("/").handler(this::onPing);
@@ -60,11 +57,10 @@ public class GeneralEndpoint implements Endpoint {
    * @return the JSON object
    */
   protected JsonObject createInfo(RoutingContext context) {
-    JsonObject o = new JsonObject()
+    return new JsonObject()
       .put("name", "GeoRocket")
       .put("version", version)
       .put("tagline", "It's not rocket science!");
-    return o;
   }
   
   /**

@@ -1,7 +1,9 @@
 package io.georocket
 
 import io.georocket.constants.ConfigConstants
-import io.georocket.http.Endpoint
+import io.georocket.http.GeneralEndpoint
+import io.georocket.http.StoreEndpoint
+import io.georocket.http.TaskEndpoint
 import io.georocket.index.IndexerVerticle
 import io.georocket.index.MetadataVerticle
 import io.georocket.tasks.TaskVerticle
@@ -18,7 +20,6 @@ import io.vertx.core.json.JsonObject
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.core.net.PemKeyCertOptions
 import io.vertx.ext.web.Router
-import io.vertx.ext.web.RoutingContext
 import io.vertx.ext.web.handler.CorsHandler
 import io.vertx.kotlin.core.deployVerticleAwait
 import io.vertx.kotlin.core.http.httpServerOptionsOf
@@ -124,11 +125,16 @@ class GeoRocket : CoroutineVerticle() {
       router.route().handler(createCorsHandler())
     }
 
-    for (ep in FilteredServiceLoader.load(Endpoint::class.java)) {
-      router.mountSubRouter(ep.mountPoint, ep.createRouter(vertx))
-    }
+    val ge = GeneralEndpoint(vertx)
+    router.mountSubRouter("/", ge.createRouter())
 
-    router.route().handler { ctx: RoutingContext ->
+    val se = StoreEndpoint(coroutineContext, vertx)
+    router.mountSubRouter("/store", se.createRouter())
+
+    val te = TaskEndpoint(vertx)
+    router.mountSubRouter("/tasks", te.createRouter())
+
+    router.route().handler { ctx ->
       val reason = "The endpoint ${ctx.request().path()} does not exist"
       ctx.response()
           .setStatusCode(404)

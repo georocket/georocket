@@ -14,17 +14,14 @@ import static io.georocket.http.Endpoint.fail;
  * @author Michel Kraemer
  */
 public class TaskEndpoint implements Endpoint {
-  private Vertx vertx;
+  private final Vertx vertx;
 
-  @Override
-  public String getMountPoint() {
-    return "/tasks";
+  public TaskEndpoint(Vertx vertx) {
+    this.vertx = vertx;
   }
 
   @Override
-  public Router createRouter(Vertx vertx) {
-    this.vertx = vertx;
-
+  public Router createRouter() {
     Router router = Router.router(vertx);
     router.get("/").handler(this::onGetAll);
     router.get("/:id").handler(this::onGetByCorrelationId);

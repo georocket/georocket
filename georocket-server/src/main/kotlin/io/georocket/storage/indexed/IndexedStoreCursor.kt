@@ -9,7 +9,7 @@ import io.vertx.core.Vertx
  * Implementation of [StoreCursor] for indexed chunk stores
  * @author Michel Kraemer
  */
-class IndexedStoreCursor(private val vertx: Vertx, private val search: String,
+class IndexedStoreCursor(private val vertx: Vertx, private val search: String?,
     private val path: String) : StoreCursor {
   companion object {
     /**
