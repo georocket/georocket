@@ -1,27 +1,20 @@
 package io.georocket.http
 
-import com.fasterxml.jackson.core.JsonProcessingException
 import io.georocket.ServerAPIException
 import io.georocket.constants.AddressConstants
 import io.georocket.constants.ConfigConstants
 import io.georocket.output.Merger
 import io.georocket.output.MultiMerger
 import io.georocket.storage.ChunkMeta
-import io.georocket.storage.ChunkReadStream
 import io.georocket.storage.DeleteMeta
-import io.georocket.storage.LegacyStoreCursor
-import io.georocket.storage.LegacyStoreFactory
-import io.georocket.storage.RxAsyncCursor
-import io.georocket.storage.RxStore
-import io.georocket.storage.RxStoreCursor
+import io.georocket.storage.Store
+import io.georocket.storage.StoreCursor
+import io.georocket.storage.StoreFactory
 import io.georocket.tasks.ReceivingTask
 import io.georocket.tasks.TaskError
 import io.georocket.util.HttpException
 import io.georocket.util.MimeTypeUtils
-import io.vertx.core.Future
-import io.vertx.core.Handler
 import io.vertx.core.Vertx
-import io.vertx.core.file.AsyncFile
 import io.vertx.core.file.OpenOptions
 import io.vertx.core.http.HttpServerRequest
 import io.vertx.core.http.HttpServerResponse
@@ -29,36 +22,39 @@ import io.vertx.core.json.Json
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.core.logging.LoggerFactory
-import io.vertx.core.streams.Pump
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
-import io.vertx.rx.java.RxHelper
+import io.vertx.kotlin.core.executeBlockingAwait
+import io.vertx.kotlin.core.file.deleteAwait
+import io.vertx.kotlin.core.file.mkdirsAwait
+import io.vertx.kotlin.core.file.openAwait
+import io.vertx.kotlin.core.file.writeAwait
+import io.vertx.kotlin.coroutines.toChannel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import org.apache.commons.lang3.BooleanUtils
 import org.apache.commons.lang3.StringUtils
-import org.apache.commons.lang3.tuple.Pair
 import org.apache.commons.text.StringEscapeUtils
 import org.apache.http.ParseException
 import org.apache.http.entity.ContentType
 import org.bson.types.ObjectId
 import rx.Completable
-import rx.Observable
-import rx.Single
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
 import java.time.Instant
 import java.util.regex.Pattern
+import kotlin.coroutines.CoroutineContext
 
 /**
  * An HTTP endpoint handling requests related to the GeoRocket data store
  * @author Michel Kraemer
  */
-class StoreEndpoint : Endpoint {
+class StoreEndpoint() : Endpoint, CoroutineScope {
   companion object {
     private val log = LoggerFactory.getLogger(StoreEndpoint::class.java)
 
     /**
-     *
      * Name of the HTTP trailer that tells the client how many chunks could not
      * be merged. Possible reasons for unmerged chunks are:
      *
@@ -73,8 +69,10 @@ class StoreEndpoint : Endpoint {
   }
 
   private lateinit var vertx: Vertx
-  private lateinit var store: RxStore
+  private lateinit var store: Store
   private lateinit var storagePath: String
+
+  override lateinit var coroutineContext: CoroutineContext
 
   override fun getMountPoint(): String {
     return "/store"
@@ -83,7 +81,7 @@ class StoreEndpoint : Endpoint {
   override fun createRouter(vertx: Vertx): Router {
     this.vertx = vertx
 
-    store = RxStore(LegacyStoreFactory.createStore(vertx))
+    store = StoreFactory.createStore(vertx)
     storagePath = vertx.orCreateContext.config()
         .getString(ConfigConstants.STORAGE_FILE_PATH)
 
@@ -97,32 +95,6 @@ class StoreEndpoint : Endpoint {
   }
 
   /**
-   * Create a new merger
-   * @param optimisticMerging `true` if optimistic merging is enabled
-   * @return the new merger instance
-   */
-  private fun createMerger(optimisticMerging: Boolean): Merger<ChunkMeta> {
-    return MultiMerger(optimisticMerging)
-  }
-
-  /**
-   * Initialize the given merger. Perform a search using the given search string
-   * and pass all chunk metadata retrieved to the merger.
-   * @param merger the merger to initialize
-   * @param data data to use for the initialization
-   * @return a Completable that will complete when the merger has been
-   * initialized with all results
-   */
-  private fun initializeMerger(merger: Merger<ChunkMeta>, data: Single<LegacyStoreCursor>): Completable {
-    return data
-        .map { RxStoreCursor(it) }
-        .flatMapObservable { it.toObservable() }
-        .map { it.left }
-        .flatMapCompletable { merger.init(it) }
-        .toCompletable()
-  }
-
-  /**
    * Perform a search and merge all retrieved chunks using the given merger
    * @param merger the merger
    * @param data Data to merge into the response
@@ -130,70 +102,56 @@ class StoreEndpoint : Endpoint {
    * @param trailersAllowed `true` if the HTTP client accepts trailers
    * @return a single that will emit one item when all chunks have been merged
    */
-  private fun doMerge(merger: Merger<ChunkMeta>, data: Single<LegacyStoreCursor>,
-      out: HttpServerResponse, trailersAllowed: Boolean): Completable {
-    return data
-        .map { RxStoreCursor(it) }
-        .flatMapObservable { it.toObservable() }
-        .flatMapSingle({ p: Pair<ChunkMeta, String> ->
-          store.rxGetOne(p.right)
-              .flatMap { crs: ChunkReadStream ->
-                merger.merge(crs, p.left, out)
-                    .toSingleDefault(Pair.of(1L, 0L)) // left: count, right: not_accepted
-                    .onErrorResumeNext { t: Throwable ->
-                      if (t is IllegalStateException) {
-                        // Chunk cannot be merged. maybe it's a new one that has
-                        // been added after the merger was initialized. Just
-                        // ignore it, but emit a warning later
-                        Single.just(Pair.of(0L, 1L))
-                      } else {
-                        Single.error(t)
-                      }
-                    }
-                    .doAfterTerminate {
-                      // don't forget to close the chunk!
-                      crs.close()
-                    }
-              }
-        }, false, 1 /* write only one chunk concurrently to the output stream */)
-        .defaultIfEmpty(Pair.of(0L, 0L))
-        .reduce { p1, p2 -> Pair.of(p1.left + p2.left, p1.right + p2.right) }
-        .flatMapCompletable { p ->
-          val count = p.left
-          val notaccepted = p.right
-          if (notaccepted > 0) {
-            log.warn("Could not merge " + notaccepted + " chunks "
-                + "because the merger did not accept them. Most likely "
-                + "these are new chunks that were added while "
-                + "merging was in progress or those that were ignored "
-                + "during optimistic merging. If this worries you, "
-                + "just repeat the request.")
-          }
-          if (trailersAllowed) {
-            out.putTrailer(TRAILER_UNMERGED_CHUNKS, notaccepted.toString())
-          }
-          if (count > 0) {
-            merger.finish(out)
-            Completable.complete()
-          } else {
-            Completable.error(FileNotFoundException("Not Found"))
-          }
-        }
-        .toCompletable()
+  private suspend fun doMerge(merger: Merger<ChunkMeta>, data: StoreCursor,
+      out: HttpServerResponse, trailersAllowed: Boolean) {
+    var accepted = 0L
+    var notaccepted = 0L
+
+    for (chunk in data) {
+      val crs = store.getOne(data.chunkPath)
+      try {
+        merger.merge(crs, chunk, out)
+        accepted++
+      } catch (e: IllegalStateException) {
+        // Chunk cannot be merged. maybe it's a new one that has
+        // been added after the merger was initialized. Just
+        // ignore it, but emit a warning later
+        notaccepted++
+      } finally {
+        // don't forget to close the chunk!
+        crs.close()
+      }
+    }
+
+    if (notaccepted > 0) {
+      log.warn("Could not merge " + notaccepted + " chunks "
+          + "because the merger did not accept them. Most likely "
+          + "these are new chunks that were added while "
+          + "merging was in progress or those that were ignored "
+          + "during optimistic merging. If this worries you, "
+          + "just repeat the request.")
+    }
+
+    if (trailersAllowed) {
+      out.putTrailer(TRAILER_UNMERGED_CHUNKS, notaccepted.toString())
+    }
+
+    if (accepted > 0) {
+      merger.finish(out)
+      Completable.complete()
+    } else {
+      Completable.error(FileNotFoundException("Not Found"))
+    }
   }
 
   /**
-   * Read the context, select the right StoreCursor and set the response header.
-   * For the first call to this method within a request the `preview`
-   * parameter must equal `true` and for the second one (if there
-   * is one) the parameter must equal `false`. This method must not
-   * be called more than two times within a request.
-   * @param context the routing context
-   * @param preview `true` if the cursor should be used to generate
-   * a preview or to initialize the merger
-   * @return a Single providing a StoreCursor
+   * Read the routing [context], select the right [StoreCursor] and set
+   * response headers. For the first call to this method within a request,
+   * [preview] must equal `true`, and for the second one (if there is one),
+   * the parameter must equal `false`. This method must not be called more than
+   * two times within a request.
    */
-  private fun prepareCursor(context: RoutingContext, preview: Boolean): Single<LegacyStoreCursor> {
+  private suspend fun prepareCursor(context: RoutingContext, preview: Boolean): StoreCursor {
     val request = context.request()
     val response = context.response()
 
@@ -219,43 +177,46 @@ class StoreEndpoint : Endpoint {
     val strSize = request.getParam("size")
     val size = strSize?.toInt() ?: 100
 
-    return Single.defer {
-      if (scrolling) {
-        if (scrollId == null) {
-          store.rxScroll(search, path, size)
-        } else {
-          store.rxScroll(scrollId)
-        }
+    val cursor = if (scrolling) {
+      if (scrollId == null) {
+        store.scroll(search, path, size)
       } else {
-        store.rxGet(search, path)
+        store.scroll(scrollId)
       }
-    }.doOnSuccess { cursor ->
-      if (scrolling) {
-        // create a new scrollId consisting of the one used for the preview and
-        // the other one used for the real query
-        var newScrollId = cursor.info.scrollId
-        if (!preview) {
-          var oldScrollId = response.headers()["X-Scroll-Id"]
-          if (isOptimisticMerging(request)) {
-            oldScrollId = "0"
-          } else if (oldScrollId == null) {
-            throw IllegalStateException("A preview must be generated " +
-                "before the actual request can be made. This usually happens " +
-                "when the merger is initialized.")
-          }
-          newScrollId = "$oldScrollId:$newScrollId"
-        }
-        response
-            .putHeader("X-Scroll-Id", newScrollId)
-            .putHeader("X-Total-Hits", cursor.info.totalHits.toString())
-            .putHeader("X-Hits", cursor.info.currentHits.toString())
-      }
+    } else {
+      store.get(search, path)
     }
+
+    if (scrolling) {
+      // create a new scrollId consisting of the one used for the preview and
+      // the other one used for the real query
+      var newScrollId = cursor.info.scrollId
+
+      if (!preview) {
+        var oldScrollId = response.headers()["X-Scroll-Id"]
+
+        if (isOptimisticMerging(request)) {
+          oldScrollId = "0"
+        } else if (oldScrollId == null) {
+          throw IllegalStateException("A preview must be generated " +
+              "before the actual request can be made. This usually happens " +
+              "when the merger is initialized.")
+        }
+
+        newScrollId = "$oldScrollId:$newScrollId"
+      }
+
+      response
+          .putHeader("X-Scroll-Id", newScrollId)
+          .putHeader("X-Total-Hits", cursor.info.totalHits.toString())
+          .putHeader("X-Hits", cursor.info.currentHits.toString())
+    }
+
+    return cursor
   }
 
   /**
    * Handles the HTTP GET request for a bunch of chunks
-   * @param context the routing context
    */
   private fun onGet(context: RoutingContext) {
     val request = context.request()
@@ -266,23 +227,23 @@ class StoreEndpoint : Endpoint {
     val property = request.getParam("property")
     val attribute = request.getParam("attribute")
 
-    if (property != null && attribute != null) {
-      response
-          .setStatusCode(400)
-          .end("You can only get the values of a property or an attribute, but not both")
-    } else if (property != null) {
-      getPropertyValues(search, path, property, response)
-    } else if (attribute != null) {
-      getAttributeValues(search, path, attribute, response)
-    } else {
-      getChunks(context)
+    launch {
+      if (property != null && attribute != null) {
+        response
+            .setStatusCode(400)
+            .end("You can only get the values of a property or an attribute, but not both")
+      } else if (property != null) {
+        getPropertyValues(search, path, property, response)
+      } else if (attribute != null) {
+        getAttributeValues(search, path, attribute, response)
+      } else {
+        getChunks(context)
+      }
     }
   }
 
   /**
    * Checks if optimistic merging is enabled
-   * @param request the HTTP request
-   * @return `true` if optimistic is enabled, `false` otherwise
    */
   private fun isOptimisticMerging(request: HttpServerRequest): Boolean {
     return BooleanUtils.toBoolean(request.getParam("optimisticMerging"))
@@ -290,8 +251,6 @@ class StoreEndpoint : Endpoint {
 
   /**
    * Checks if the client accepts an HTTP trailer
-   * @param request the HTTP request
-   * @return `true` if the client accepts a trailer, `false` otherwise
    */
   private fun isTrailerAccepted(request: HttpServerRequest): Boolean {
     val te = request.getHeader("TE")
@@ -300,9 +259,8 @@ class StoreEndpoint : Endpoint {
 
   /**
    * Retrieve all chunks matching the specified query and path
-   * @param context the routing context
    */
-  private fun getChunks(context: RoutingContext) {
+  private suspend fun getChunks(context: RoutingContext) {
     val request = context.request()
     val response = context.response()
 
@@ -321,138 +279,124 @@ class StoreEndpoint : Endpoint {
       response.putHeader("Trailer", TRAILER_UNMERGED_CHUNKS)
     }
 
-    // perform two searches: first initialize the merger and then
-    // merge all retrieved chunks
-    val merger = createMerger(optimisticMerging)
+    try {
+      // perform two searches: first initialize the merger and then
+      // merge all retrieved chunks
+      val merger = MultiMerger(optimisticMerging)
 
-    val c: Completable = if (optimisticMerging) {
       // skip initialization if optimistic merging is enabled
-      Completable.complete()
-    } else {
-      initializeMerger(merger, prepareCursor(context, true))
-    }
-
-    c.andThen(Completable.defer {
-      doMerge(merger, prepareCursor(context, false), response, isTrailerAccepted)
-    }).subscribe({ response.end() }) { err ->
-      if (err !is FileNotFoundException) {
-        log.error("Could not perform query", err)
+      if (!optimisticMerging) {
+        val cursor = prepareCursor(context, true)
+        while (cursor.hasNext()) {
+          val cm = cursor.next()
+          merger.init(cm)
+        }
       }
-      Endpoint.fail(response, err)
+
+      doMerge(merger, prepareCursor(context, false), response, isTrailerAccepted)
+      response.end()
+    } catch (t: Throwable) {
+      if (t !is FileNotFoundException) {
+        log.error("Could not perform query", t)
+      }
+      Endpoint.fail(response, t)
     }
   }
 
   /**
-   * Get all values for the specified attribute
-   * @param search the search query
-   * @param path the path
-   * @param attribute the name of the attribute
-   * @param response the http response
+   * Get the values of the specified [attribute] of all chunks matching the
+   * given [search] query and [path]
    */
-  private fun getAttributeValues(search: String, path: String, attribute: String,
-      response: HttpServerResponse) {
-    val first = arrayOf(true)
+  private suspend fun getAttributeValues(search: String, path: String,
+      attribute: String, response: HttpServerResponse) {
+    var first = true
     response.isChunked = true
     response.write("[")
 
-    store.rxGetAttributeValues(search, path, attribute)
-        .flatMapObservable { x -> RxAsyncCursor(x).toObservable() }
-        .subscribe({ x ->
-          if (first[0]) {
-            first[0] = false
-          } else {
-            response.write(",")
-          }
-          try {
-            response.write(Json.mapper.writeValueAsString(x))
-          } catch (e: JsonProcessingException) {
-            Endpoint.fail(response, e)
-          }
-        }, { err -> Endpoint.fail(response, err) }) {
-          response
-              .write("]")
-              .setStatusCode(200)
-              .end()
+    val cursor = store.getAttributeValues(search, path, attribute)
+
+    try {
+      while (cursor.hasNext()) {
+        val x = cursor.next()
+
+        if (first) {
+          first = false
+        } else {
+          response.write(",")
         }
+
+        response.write(Json.mapper.writeValueAsString(x))
+      }
+
+      response
+          .write("]")
+          .setStatusCode(200)
+          .end()
+    } catch (t: Throwable) {
+      Endpoint.fail(response, t)
+    }
   }
 
   /**
-   * Get all values for the specified property
-   * @param search the search query
-   * @param path the path
-   * @param property the name of the property
-   * @param response the http response
+   * Get the values of the specified [property] of all chunks matching the
+   * given [search] query and [path]
    */
-  private fun getPropertyValues(search: String, path: String, property: String,
-      response: HttpServerResponse) {
-    val first = arrayOf(true)
+  private suspend fun getPropertyValues(search: String, path: String,
+      property: String, response: HttpServerResponse) {
+    var first = true
     response.isChunked = true
     response.write("[")
 
-    store.rxGetPropertyValues(search, path, property)
-        .flatMapObservable { x -> RxAsyncCursor(x).toObservable() }
-        .subscribe({ x ->
-          if (first[0]) {
-            first[0] = false
-          } else {
-            response.write(",")
-          }
-          response.write("\"" + StringEscapeUtils.escapeJson(x) + "\"")
-        },
-        { err -> Endpoint.fail(response, err) }) {
-          response
-              .write("]")
-              .setStatusCode(200)
-              .end()
+    try {
+      val cursor = store.getPropertyValues(search, path, property)
+
+      while (cursor.hasNext()) {
+        val x = cursor.next()
+
+        if (first) {
+          first = false
+        } else {
+          response.write(",")
         }
+
+        response.write("\"" + StringEscapeUtils.escapeJson(x) + "\"")
+      }
+
+      response
+          .write("]")
+          .setStatusCode(200)
+          .end()
+    } catch (t: Throwable) {
+      Endpoint.fail(response, t)
+    }
   }
 
   /**
-   * Try to detect the content type of a file
-   * @param filepath the absolute path to the file to analyse
-   * @param gzip true if the file is compressed with GZIP
-   * @return an observable emitting either the detected content type or an error
-   * if the content type could not be detected or the file could not be read
+   * Try to detect the content type of a file with the given [filepath].
+   * Also consider if the file is [gzip] compressed or not.
    */
-  private fun detectContentType(filepath: String, gzip: Boolean): Observable<String> {
-    val result = RxHelper.observableFuture<String>()
-    val resultHandler = result.toHandler()
-
-    vertx.executeBlocking<String>({ f ->
+  private suspend fun detectContentType(filepath: String, gzip: Boolean): String {
+    return vertx.executeBlockingAwait { f ->
       try {
         var mimeType = MimeTypeUtils.detect(File(filepath), gzip)
         if (mimeType == null) {
-          log.warn("Could not detect file type for " + filepath + ". Using "
-              + "application/octet-stream.")
+          log.warn("Could not detect file type of $filepath. Falling back to " +
+              "application/octet-stream.")
           mimeType = "application/octet-stream"
         }
         f.complete(mimeType)
       } catch (e: IOException) {
         f.fail(e)
       }
-    }) { ar ->
-      if (ar.failed()) {
-        resultHandler.handle(Future.failedFuture(ar.cause()))
-      } else {
-        val ct = ar.result()
-        if (ct != null) {
-          resultHandler.handle(Future.succeededFuture(ct))
-        } else {
-          resultHandler.handle(Future.failedFuture(HttpException(215)))
-        }
-      }
-    }
-
-    return result
+    } ?: throw HttpException(215)
   }
 
   /**
    * Handles the HTTP POST request
-   * @param context the routing context
    */
   private fun onPost(context: RoutingContext) {
     val request = context.request()
-    request.pause()
+    val requestChannel = request.toChannel(vertx)
 
     val layer = Endpoint.getEndpointPath(context)
     val tagsStr = request.getParam("tags")
@@ -489,106 +433,88 @@ class StoreEndpoint : Endpoint {
     val startTime = System.currentTimeMillis()
     onReceivingFileStarted(correlationId)
 
-    // create directory for incoming files
-    val fs = vertx.fileSystem()
-    val observable = RxHelper.observableFuture<Void>()
-    fs.mkdirs(incoming, observable.toHandler())
-    observable
-        .flatMap {
-          // create temporary file
-          val openObservable = RxHelper.observableFuture<AsyncFile>()
-          fs.open(filepath, OpenOptions(), openObservable.toHandler())
-          openObservable
+    launch {
+      // create directory for incoming files
+      val fs = vertx.fileSystem()
+      fs.mkdirsAwait(incoming)
+
+      // create temporary file
+      val f = fs.openAwait(filepath, OpenOptions())
+
+      try {
+        // write request body into temporary file
+        for (buf in requestChannel) {
+          f.writeAwait(buf)
         }
-        .flatMap { f ->
-          // write request body into temporary file
-          val pumpObservable = RxHelper.observableFuture<Void>()
-          val pumpHandler = pumpObservable.toHandler()
-          Pump.pump(request, f).start()
-          val errHandler = Handler { t: Throwable ->
-            request.endHandler(null)
-            f.close()
-            pumpHandler.handle(Future.failedFuture(t))
-          }
-          f.exceptionHandler(errHandler)
-          request.exceptionHandler(errHandler)
-          request.endHandler { f.close { pumpHandler.handle(Future.succeededFuture()) } }
-          request.resume()
-          pumpObservable
+        f.close()
+
+        val contentTypeHeader = request.getHeader("Content-Type")
+        val mimeType = try {
+          val contentType = ContentType.parse(contentTypeHeader)
+          contentType.mimeType
+        } catch (ex: ParseException) {
+          null
+        } catch (ex: IllegalArgumentException) {
+          null
         }
-        .flatMap {
-          val contentTypeHeader = request.getHeader("Content-Type")
-          val mimeType = try {
-            val contentType = ContentType.parse(contentTypeHeader)
-            contentType.mimeType
-          } catch (ex: ParseException) {
-            null
-          } catch (ex: IllegalArgumentException) {
-            null
-          }
 
-          val contentEncoding = request.getHeader("Content-Encoding")
-          var gzip = false
-          if ("gzip" == contentEncoding) {
-            gzip = true
-          }
+        val contentEncoding = request.getHeader("Content-Encoding")
+        val gzip = "gzip" == contentEncoding
 
-          // detect content type of file to import
-          if (mimeType == null || mimeType.trim().isEmpty() ||
-              mimeType == "application/octet-stream" ||
-              mimeType == "application/x-www-form-urlencoded") {
-            // fallback: if the client has not sent a Content-Type or if it's
-            // a generic one, then try to guess it
-            log.debug("Mime type '$mimeType' is invalid or generic. "
-                + "Trying to guess the right type.")
-            return@flatMap detectContentType(filepath, gzip).doOnNext { guessedType: String ->
-              log.info("Guessed mime type '$guessedType'.")
-            }
+        // detect content type of file to import
+        val detectedContentType = if (mimeType == null || mimeType.isBlank() ||
+            mimeType == "application/octet-stream" ||
+            mimeType == "application/x-www-form-urlencoded") {
+          // fallback: if the client has not sent a Content-Type or if it's
+          // a generic one, then try to guess it
+          log.debug("Mime type '$mimeType' is invalid or generic. "
+              + "Trying to guess the right type.")
+          detectContentType(filepath, gzip).also {
+            log.info("Guessed mime type '$it'.")
           }
-
-          Observable.just(mimeType)
+        } else {
+          mimeType
         }
-        .subscribe({ detectedContentType ->
-          val duration = System.currentTimeMillis() - startTime
-          onReceivingFileFinished(correlationId, duration, null)
 
-          val contentEncoding = request.getHeader("Content-Encoding")
+        val duration = System.currentTimeMillis() - startTime
+        onReceivingFileFinished(correlationId, duration, null)
 
-          // run importer
-          val msg = JsonObject()
-              .put("filename", filename)
-              .put("layer", layer)
-              .put("contentType", detectedContentType)
-              .put("correlationId", correlationId)
-              .put("contentEncoding", contentEncoding)
+        // run importer
+        val msg = JsonObject()
+            .put("filename", filename)
+            .put("layer", layer)
+            .put("contentType", detectedContentType)
+            .put("correlationId", correlationId)
+            .put("contentEncoding", contentEncoding)
 
-          if (tags != null) {
-            msg.put("tags", JsonArray(tags))
-          }
-
-          if (properties.isNotEmpty()) {
-            msg.put("properties", JsonObject(properties))
-          }
-
-          if (fallbackCRSString != null) {
-            msg.put("fallbackCRSString", fallbackCRSString)
-          }
-
-          request.response()
-              .setStatusCode(202) // Accepted
-              .putHeader("X-Correlation-Id", correlationId)
-              .setStatusMessage("Accepted file - importing in progress")
-              .end()
-
-          // run importer
-          vertx.eventBus().send(AddressConstants.IMPORTER_IMPORT, msg)
-        }) { err ->
-          val duration = System.currentTimeMillis() - startTime
-          onReceivingFileFinished(correlationId, duration, err)
-          Endpoint.fail(request.response(), err)
-          log.error(err)
-          fs.delete(filepath) {}
+        if (tags != null) {
+          msg.put("tags", JsonArray(tags))
         }
+
+        if (properties.isNotEmpty()) {
+          msg.put("properties", JsonObject(properties))
+        }
+
+        if (fallbackCRSString != null) {
+          msg.put("fallbackCRSString", fallbackCRSString)
+        }
+
+        request.response()
+            .setStatusCode(202) // Accepted
+            .putHeader("X-Correlation-Id", correlationId)
+            .setStatusMessage("Accepted file - importing in progress")
+            .end()
+
+        // run importer
+        vertx.eventBus().send(AddressConstants.IMPORTER_IMPORT, msg)
+      } catch (t: Throwable) {
+        val duration = System.currentTimeMillis() - startTime
+        onReceivingFileFinished(correlationId, duration, t)
+        Endpoint.fail(request.response(), t)
+        log.error(t)
+        fs.deleteAwait(filepath)
+      }
+    }
   }
 
   private fun onReceivingFileStarted(correlationId: String) {
@@ -627,94 +553,85 @@ class StoreEndpoint : Endpoint {
     val properties = request.getParam("properties")
     val tags = request.getParam("tags")
 
-    if (StringUtils.isNotEmpty(properties) && StringUtils.isNotEmpty(tags)) {
-      response
-          .setStatusCode(400)
-          .end("You can only delete properties or tags, but not both")
-    } else if (StringUtils.isNotEmpty(properties)) {
-      removeProperties(search, path, properties, response)
-    } else if (StringUtils.isNotEmpty(tags)) {
-      removeTags(search, path, tags, response)
-    } else {
-      val strAsync = request.getParam("async")
-      val async = BooleanUtils.toBoolean(strAsync)
-      deleteChunks(search, path, async, response)
-    }
-  }
-
-  /**
-   * Remove properties
-   * @param search the search query
-   * @param path the path
-   * @param properties the properties to remove
-   * @param response the http response
-   */
-  private fun removeProperties(search: String, path: String, properties: String,
-      response: HttpServerResponse) {
-    val list = properties.split(",")
-    store.removeProperties(search, path, list) { ar ->
-      if (ar.succeeded()) {
+    launch {
+      if (StringUtils.isNotEmpty(properties) && StringUtils.isNotEmpty(tags)) {
         response
-            .setStatusCode(204)
-            .end()
+            .setStatusCode(400)
+            .end("You can only delete properties or tags, but not both")
+      } else if (StringUtils.isNotEmpty(properties)) {
+        removeProperties(search, path, properties, response)
+      } else if (StringUtils.isNotEmpty(tags)) {
+        removeTags(search, path, tags, response)
       } else {
-        Endpoint.fail(response, ar.cause())
+        val strAsync = request.getParam("async")
+        val async = BooleanUtils.toBoolean(strAsync)
+        deleteChunks(search, path, async, response)
       }
     }
   }
 
   /**
-   * Remove tags
-   * @param search the search query
-   * @param path the path
-   * @param tags the tags to remove
-   * @param response the http response
+   * Remove [properties] from all chunks matching the given [search] query
+   * and [path]
    */
-  private fun removeTags(search: String, path: String, tags: String?,
+  private suspend fun removeProperties(search: String, path: String,
+      properties: String, response: HttpServerResponse) {
+    val list = properties.split(",")
+    try {
+      store.removeProperties(search, path, list)
+      response
+          .setStatusCode(204)
+          .end()
+    } catch (t: Throwable) {
+      Endpoint.fail(response, t)
+    }
+  }
+
+  /**
+   * Remove [tags] from all chunks matching the given [search] query and [path]
+   */
+  private suspend fun removeTags(search: String, path: String, tags: String,
       response: HttpServerResponse) {
-    if (tags != null) {
-      val list = tags.split(",")
-      store.removeTags(search, path, list) { ar ->
-        if (ar.succeeded()) {
-          response
-              .setStatusCode(204)
-              .end()
-        } else {
-          Endpoint.fail(response, ar.cause())
-        }
-      }
+    val list = tags.split(",")
+    try {
+      store.removeTags(search, path, list)
+      response
+          .setStatusCode(204)
+          .end()
+    } catch (t: Throwable) {
+      Endpoint.fail(response, t)
     }
   }
 
   /**
-   * Delete chunks
-   * @param search the search query
-   * @param path the path
-   * @param async `true` if the operation should be performed asynchronously
-   * @param response the http response
+   * Delete all chunks matching the given [search] query and [path]. The
+   * [async] flag specifies if chunks should be deleted asynchronously or not.
    */
-  private fun deleteChunks(search: String, path: String, async: Boolean,
+  private suspend fun deleteChunks(search: String, path: String, async: Boolean,
       response: HttpServerResponse) {
     val correlationId = ObjectId().toString()
     val deleteMeta = DeleteMeta(correlationId)
     if (async) {
-      store.rxDelete(search, path, deleteMeta)
-          .subscribe({}) { err -> log.error("Could not delete chunks", err) }
       response
           .setStatusCode(202) // Accepted
           .putHeader("X-Correlation-Id", correlationId)
           .end()
+      try {
+        store.delete(search, path, deleteMeta)
+      } catch (t: Throwable) {
+        log.error("Could not delete chunks", t)
+      }
     } else {
-      store.rxDelete(search, path, deleteMeta)
-          .subscribe({
-            response
-                .setStatusCode(204) // No Content
-                .putHeader("X-Correlation-Id", correlationId)
-                .end()
-          }) { err: Throwable? ->
-            log.error("Could not delete chunks", err)
-            Endpoint.fail(response, err)
-          }
+      try {
+        store.delete(search, path, deleteMeta)
+        response
+            .setStatusCode(204) // No Content
+            .putHeader("X-Correlation-Id", correlationId)
+            .end()
+      } catch (t: Throwable) {
+        log.error("Could not delete chunks", t)
+        Endpoint.fail(response, t)
+      }
     }
   }
 
@@ -729,74 +646,42 @@ class StoreEndpoint : Endpoint {
     val search = request.getParam("search")
     val properties = request.getParam("properties")
     val tags = request.getParam("tags")
-    if (StringUtils.isNotEmpty(properties) || StringUtils.isNotEmpty(tags)) {
-      var single = Completable.complete()
 
-      if (StringUtils.isNotEmpty(properties)) {
-        single = setProperties(search, path, properties)
-      }
+    launch {
+      if (StringUtils.isNotEmpty(properties) || StringUtils.isNotEmpty(tags)) {
+        try {
+          if (StringUtils.isNotEmpty(properties)) {
+            val parsedProperties = parseProperties(properties.split(","))
+            store.setProperties(search, path, parsedProperties)
+          }
 
-      if (StringUtils.isNotEmpty(tags)) {
-        single = appendTags(search, path, tags)
-      }
+          if (StringUtils.isNotEmpty(tags)) {
+            store.appendTags(search, path, tags.split(","))
+          }
 
-      single.subscribe({
+          response
+              .setStatusCode(204)
+              .end()
+        } catch (t: Throwable) {
+          Endpoint.fail(response, t)
+        }
+      } else {
         response
-            .setStatusCode(204)
-            .end()
-      }) { err -> Endpoint.fail(response, err) }
-    } else {
-      response
-          .setStatusCode(405)
-          .end("Only properties and tags can be modified")
+            .setStatusCode(405)
+            .end("Only properties and tags can be modified")
+      }
     }
   }
 
   /**
-   * Set properties
-   * @param search the search query
-   * @param path the path
-   * @param properties the properties to set
-   * @return a Completable that completes when the properties have been set
+   * Parse list of [properties] in the form `key:value` to a map
    */
-  private fun setProperties(search: String, path: String, properties: String): Completable {
-    return Single.just(properties)
-        .map { it.split(",") }
-        .flatMap { x ->
-          try {
-            Single.just(parseProperties(x))
-          } catch (e: ServerAPIException) {
-            Single.error(e)
-          }
-        }
-        .flatMapCompletable { map -> store.rxSetProperties(search, path, map) }
-  }
-
-  /**
-   * Append tags
-   * @param search the search query
-   * @param path the path
-   * @param tags the tags to append
-   * @return a Completable that completes when the tags have been appended
-   */
-  private fun appendTags(search: String, path: String, tags: String): Completable {
-    return Single.just(tags)
-        .map { it.split(",") }
-        .flatMapCompletable { tagList -> store.rxAppendTags(search, path, tagList) }
-  }
-
-  /**
-   * Parse list of properties in the form key:value
-   * @param updates the list of properties
-   * @return a json object with the property keys as object keys and the property
-   * values as corresponding object values
-   * @throws ServerAPIException if the syntax is not valid
-   */
-  private fun parseProperties(updates: List<String>): Map<String, String> {
+  private fun parseProperties(properties: List<String>): Map<String, String> {
     val props = mutableMapOf<String, String>()
     val regex = "(?<!" + Pattern.quote("\\") + ")" + Pattern.quote(":")
-    for (part in updates.map { it.trim() }) {
-      val property = part.split(regex).toTypedArray()
+
+    for (part in properties.map { it.trim() }) {
+      val property = part.split(regex)
       if (property.size != 2) {
         throw ServerAPIException(ServerAPIException.INVALID_PROPERTY_SYNTAX_ERROR,
             "Invalid property syntax: $part")
