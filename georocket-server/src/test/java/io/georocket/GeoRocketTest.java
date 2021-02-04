@@ -8,6 +8,7 @@ import org.junit.Test;
 import java.util.HashMap;
 import java.util.Map;
 
+import static io.georocket.GeoRocketKt.overwriteWithEnvironmentVariables;
 import static org.junit.Assert.assertEquals;
 
 /**
@@ -26,9 +27,9 @@ public class GeoRocketTest {
       .toUpperCase();
     final String VALUE = "test";
     JsonObject conf = new JsonObject();
-    Map<String, String> env = new HashMap<String, String>();
+    Map<String, String> env = new HashMap<>();
     env.put(ENV_KEY, VALUE);
-    GeoRocket.overwriteWithEnvironmentVariables(conf, env);
+    overwriteWithEnvironmentVariables(conf, env);
     assertEquals(Sets.newHashSet(PROP_KEY), conf.getMap().keySet());
     assertEquals(VALUE, conf.getString(PROP_KEY));
   }

@@ -64,6 +64,7 @@ class XMLMerger(private val optimistic: Boolean) : Merger<XMLChunkMeta> {
       if (optimistic) {
         strategy = AllSameStrategy()
         strategy.init(chunkMetadata)
+        initialized = true
       } else {
         throw IllegalStateException("You must call init() at least once")
       }

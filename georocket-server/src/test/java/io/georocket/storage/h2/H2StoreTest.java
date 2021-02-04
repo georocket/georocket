@@ -29,7 +29,7 @@ public class H2StoreTest extends StorageTest {
   public TemporaryFolder tempFolder = new TemporaryFolder();
 
   private String path;
-  private H2Store store;
+  private LegacyH2Store store;
   
   /**
    * Set up the test
@@ -57,10 +57,10 @@ public class H2StoreTest extends StorageTest {
   }
 
   @Override
-  protected H2Store createStore(Vertx vertx) {
+  protected LegacyH2Store createStore(Vertx vertx) {
     if (store == null) {
       configureVertx(vertx);
-      store = new H2Store(vertx);
+      store = new LegacyH2Store(vertx);
     }
     return store;
   }

@@ -20,7 +20,7 @@ class MergeNamespacesStrategy : AbstractMergeStrategy() {
   private var currentAttributes: MutableList<MutableMap<Pair<String, String>, String>>? = null
 
   override var parents: List<XMLStartElement>?
-    get() = super.parents!!
+    get() = super.parents
     set(parents) {
       currentNamespaces = mutableListOf()
       currentAttributes = mutableListOf()
