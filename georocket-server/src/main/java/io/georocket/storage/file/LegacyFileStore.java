@@ -27,7 +27,8 @@ import rx.Observable;
  * Stores chunks on the file system
  * @author Michel Kraemer
  */
-public class FileStore extends LegacyIndexedStore {
+@Deprecated
+public class LegacyFileStore extends LegacyIndexedStore {
   /**
    * The folder where the chunks should be saved
    */
@@ -42,7 +43,7 @@ public class FileStore extends LegacyIndexedStore {
    * Default constructor
    * @param vertx the Vert.x instance
    */
-  public FileStore(Vertx vertx) {
+  public LegacyFileStore(Vertx vertx) {
     super(vertx);
     
     String storagePath = vertx.getOrCreateContext().config().getString(

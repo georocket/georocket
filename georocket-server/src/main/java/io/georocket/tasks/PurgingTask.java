@@ -1,9 +1,9 @@
 package io.georocket.tasks;
 
-import io.georocket.storage.indexed.LegacyIndexedStore;
+import io.georocket.storage.indexed.IndexedStore;
 
 /**
- * A task started by the {@link LegacyIndexedStore} to
+ * A task started by the {@link IndexedStore} to
  * track the deletion of chunks from the store
  * @author Michel Kraemer
  */

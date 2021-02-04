@@ -21,7 +21,7 @@ import io.vertx.core.Vertx;
 import io.vertx.ext.unit.TestContext;
 
 /**
- * Test {@link FileStore}
+ * Test {@link LegacyFileStore}
  * @author Andrej Sajenko
  */
 public class FileStoreTest extends StorageTest {
@@ -50,7 +50,7 @@ public class FileStoreTest extends StorageTest {
   @Override
   protected LegacyStore createStore(Vertx vertx) {
     configureVertx(vertx);
-    return new FileStore(vertx);
+    return new LegacyFileStore(vertx);
   }
 
   @Override
