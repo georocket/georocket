@@ -27,8 +27,6 @@ import io.vertx.kotlin.core.file.openAwait
 import io.vertx.kotlin.core.file.openOptionsOf
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.toChannel
-import kotlinx.coroutines.channels.consumeEach
-import kotlinx.coroutines.channels.map
 import kotlinx.coroutines.launch
 import java.time.Instant
 
@@ -273,7 +271,8 @@ class ImporterVerticle : CoroutineVerticle() {
     }
 
     val channel = f.toChannel(vertx)
-    channel.map { bomFilter.filter(it) }.consumeEach { buf ->
+    for (bytebuf in channel) {
+      val buf = bomFilter.filter(bytebuf)
       window.append(buf)
 
       val bytes = buf.bytes

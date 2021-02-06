@@ -50,9 +50,10 @@ dependencies {
     compile "io.vertx:vertx-lang-kotlin-coroutines:$vertxVersion"
     compile "io.vertx:vertx-rx-java:$vertxVersion"
     compile "io.vertx:vertx-service-discovery:$vertxVersion"
+    compile "io.vertx:vertx-mongo-client:$vertxVersion"
     compile "io.vertx:vertx-web-client:$vertxVersion"
 
-    compile 'com.amazonaws:aws-java-sdk-s3:1.11.930'
+    implementation 'software.amazon.awssdk:s3:2.15.75'
     compile 'com.fasterxml:aalto-xml:1.0.0'
     compile 'com.h2database:h2:1.4.196'
     compile 'com.vividsolutions:jts:1.13'
@@ -61,6 +62,7 @@ dependencies {
     compile 'net.java.dev.jna:jna:4.5.1'
     compile 'org.apache.commons:commons-exec:1.3'
     compile 'org.apache.commons:commons-text:1.2'
+    implementation 'org.apache.httpcomponents:httpcore:4.4.14'
     compile 'org.jooq:jool:0.9.12'
     compile 'org.yaml:snakeyaml:1.19'
 
@@ -69,12 +71,15 @@ dependencies {
     compile 'org.mongodb:mongodb-driver-async:3.6.1'
     compile 'org.mongodb:mongodb-driver-reactivestreams:4.1.1'
     compile 'org.xerial.snappy:snappy-java:1.1.4'
+    implementation 'io.projectreactor:reactor-core:3.4.2'
 
     // necessary for ALPN / HTTP/2
     runtime "io.netty:netty-tcnative-boringssl-static:2.0.7.Final"
 
     compile "org.jetbrains.kotlin:kotlin-reflect"
     compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.4.2'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-reactive:1.4.2'
 
     testImplementation 'de.flapdoodle.embed:de.flapdoodle.embed.mongo:2.0.0'
     testImplementation 'com.github.tomakehurst:wiremock-jre8:2.25.1'
