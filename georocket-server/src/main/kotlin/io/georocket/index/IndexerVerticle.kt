@@ -7,6 +7,7 @@ import io.georocket.index.elasticsearch.ElasticsearchClientFactory
 import io.georocket.index.generic.DefaultMetaIndexerFactory
 import io.georocket.index.xml.JsonIndexerFactory
 import io.georocket.index.xml.MetaIndexerFactory
+import io.georocket.index.xml.StreamIndexer
 import io.georocket.index.xml.XMLIndexerFactory
 import io.georocket.query.DefaultQueryCompiler
 import io.georocket.storage.ChunkMeta
@@ -36,6 +37,7 @@ import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.kotlin.coroutines.CoroutineVerticle
+import io.vertx.rx.java.RxHelper
 import kotlinx.coroutines.launch
 import org.jooq.lambda.tuple.Tuple
 import org.jooq.lambda.tuple.Tuple3
@@ -411,13 +413,12 @@ class IndexerVerticle : CoroutineVerticle() {
   private suspend fun <T : StreamEvent> chunkToDocument(chunk: ChunkReadStream,
       fallbackCRSString: String?, parserTransformer: Observable.Transformer<Buffer, T>,
       indexerFactories: List<IndexerFactory>): Map<String, Any> {
-    /*val indexers: MutableList<StreamIndexer<T>> = ArrayList()
-    indexerFactories.forEach { factory ->
+    val indexers = indexerFactories.map { factory ->
       val i = factory.createIndexer() as StreamIndexer<T>
       if (fallbackCRSString != null && i is CRSAware) {
         i.setFallbackCRSString(fallbackCRSString)
       }
-      indexers.add(i)
+      i
     }
 
     return RxHelper.toObservable(chunk)
@@ -426,13 +427,10 @@ class IndexerVerticle : CoroutineVerticle() {
         .last() // "wait" until the whole chunk has been consumed
         .map {
           // create the Elasticsearch document
-          val doc: MutableMap<String, Any> = HashMap()
-          indexers.forEach(Consumer { i -> doc.putAll(i.result) })
+          val doc = mutableMapOf<String, Any>()
+          indexers.forEach { i -> doc.putAll(i.result) }
           doc
-        }*/
-
-    // TODO this needs to be rewritten completely
-    return emptyMap()
+        }.toSingle().rxAwait()
   }
 
   /**

@@ -1,10 +1,14 @@
 package io.georocket
 
+import com.fasterxml.aalto.AsyncXMLStreamReader
+import com.fasterxml.aalto.stax.InputFactoryImpl
 import de.undercouch.actson.JsonEvent
 import de.undercouch.actson.JsonParser
 import io.georocket.constants.AddressConstants
 import io.georocket.constants.ConfigConstants
+import io.georocket.index.xml.XMLCRSIndexer
 import io.georocket.input.geojson.GeoJsonSplitter
+import io.georocket.input.xml.FirstLevelSplitter
 import io.georocket.storage.IndexMeta
 import io.georocket.storage.Store
 import io.georocket.storage.StoreFactory
@@ -14,6 +18,8 @@ import io.georocket.util.JsonStreamEvent
 import io.georocket.util.MimeTypeUtils.belongsTo
 import io.georocket.util.StringWindow
 import io.georocket.util.UTF8BomFilter
+import io.georocket.util.Window
+import io.georocket.util.XMLStreamEvent
 import io.georocket.util.io.GzipReadStream
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.eventbus.Message
@@ -195,29 +201,75 @@ class ImporterVerticle : CoroutineVerticle() {
   private suspend fun importXML(f: ReadStream<Buffer>, correlationId: String,
       filename: String, timestamp: Long, layer: String, tags: List<String>?,
       properties: Map<String, Any>?, fallbackCRSString: String?): Int {
-    /*val bomFilter = UTF8BomFilter()
+    var chunksAdded = 0
+
+    val bomFilter = UTF8BomFilter()
     val window = Window()
-    val splitter: XMLSplitter = FirstLevelSplitter(window)
+    val splitter = FirstLevelSplitter(window)
     val crsIndexer = XMLCRSIndexer()
-    return f.toObservable()
-        .map { it.delegate }
-        .map { bomFilter.filter(it) }
-        .doOnNext { window.append(it) }
-        .compose(XMLParserTransformer())
-        .doOnNext { e ->
-          // save the first CRS found in the file
-          if (crsIndexer.crs == null) {
-            crsIndexer.onEvent(e)
+    val parser = InputFactoryImpl().createAsyncForByteArray()
+
+    val makeIndexMeta = { crsString: String? ->
+      IndexMeta(correlationId, filename, timestamp, tags, properties, crsString)
+    }
+
+    var indexMeta = makeIndexMeta(null)
+
+    val processEvents: suspend () -> Boolean = pe@{
+      while (true) {
+        val nextEvent = parser.next()
+        if (nextEvent == AsyncXMLStreamReader.EVENT_INCOMPLETE) {
+          break
+        }
+
+        // create stream event
+        val pos = parser.location.characterOffset
+        val streamEvent = XMLStreamEvent(nextEvent, pos, parser)
+
+        // save the first CRS found in the file
+        if (crsIndexer.crs == null) {
+          crsIndexer.onEvent(streamEvent)
+          if (crsIndexer.crs != null) {
+            indexMeta = makeIndexMeta(crsIndexer.crs)
           }
         }
-        .flatMap { splitter.onEventObservable(it) }
-        .flatMapSingle({ result ->
-          val crsString = crsIndexer.crs ?: fallbackCRSString
-          val indexMeta = IndexMeta(correlationId, filename,
-              timestamp, tags, properties, crsString)
+
+        val result = splitter.onEvent(streamEvent)
+        if (result != null) {
           store.add(result.chunk, result.meta, indexMeta, layer)
-        }, false, MAX_PARALLEL_ADDS)*/
-    TODO()
+          chunksAdded++
+        }
+
+        if (nextEvent == AsyncXMLStreamReader.END_DOCUMENT) {
+          parser.close()
+          return@pe false
+        }
+      }
+      true
+    }
+
+    val channel = f.toChannel(vertx)
+    for (bytebuf in channel) {
+      val buf = bomFilter.filter(bytebuf)
+      window.append(buf)
+
+      val bytes = buf.bytes
+      var i = 0
+      while (i < bytes.size) {
+        val len = bytes.size - i
+        parser.inputFeeder.feedInput(bytes, i, len)
+        i += len
+        if (!processEvents()) {
+          break
+        }
+      }
+    }
+
+    // process remaining events
+    parser.inputFeeder.endOfInput()
+    processEvents()
+
+    return chunksAdded
   }
 
   /**

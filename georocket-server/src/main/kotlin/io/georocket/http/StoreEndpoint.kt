@@ -597,7 +597,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
    * Delete all chunks matching the given [search] query and [path]. The
    * [async] flag specifies if chunks should be deleted asynchronously or not.
    */
-  private suspend fun deleteChunks(search: String, path: String, async: Boolean,
+  private suspend fun deleteChunks(search: String?, path: String, async: Boolean,
       response: HttpServerResponse) {
     val correlationId = ObjectId().toString()
     val deleteMeta = DeleteMeta(correlationId)

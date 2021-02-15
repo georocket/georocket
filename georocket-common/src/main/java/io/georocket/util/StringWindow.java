@@ -39,7 +39,7 @@ public class StringWindow {
   /**
    * A buffer holding the decoded string
    */
-  private StringBuilder decodedBuf = new StringBuilder();
+  private final StringBuilder decodedBuf = new StringBuilder();
 
   /**
    * The current position in the window (i.e. in the decoded string)
@@ -117,7 +117,7 @@ public class StringWindow {
    * of characters to advance the window forward without changing its end)
    */
   public void advanceTo(int pos) {
-    decodedBuf = decodedBuf.delete(0, pos - this.pos);
+    decodedBuf.delete(0, pos - this.pos);
     this.pos = pos;
   }
 }
