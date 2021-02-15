@@ -292,7 +292,7 @@ private fun loadGeoRocketConfiguration(): JsonObject {
   }
 
   val confFileStr = FileUtils.readFileToString(confFile, "UTF-8")
-  val conf: JsonObject = if (confFile.name.endsWith(".json")) {
+  var conf: JsonObject = if (confFile.name.endsWith(".json")) {
     JsonObject(confFileStr)
   } else {
     val yaml = Yaml()
@@ -305,8 +305,9 @@ private fun loadGeoRocketConfiguration(): JsonObject {
   setDefaultConf(conf)
 
   // replace variables in config
-  replaceConfVariables(conf)
+  conf = replaceConfVariables(conf)
   overwriteWithEnvironmentVariables(conf)
+
   return conf
 }
 
