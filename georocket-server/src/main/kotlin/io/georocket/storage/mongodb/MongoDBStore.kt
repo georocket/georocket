@@ -1,6 +1,5 @@
 package io.georocket.storage.mongodb
 
-import com.google.common.base.Preconditions
 import com.mongodb.ConnectionString
 import com.mongodb.reactivestreams.client.MongoClient
 import com.mongodb.reactivestreams.client.MongoDatabase
@@ -37,9 +36,8 @@ class MongoDBStore(vertx: Vertx, connectionString: String? = null) : IndexedStor
     val config = vertx.orCreateContext.config()
 
     val actualConnectionString = connectionString ?: config.getString(
-        STORAGE_MONGODB_CONNECTION_STRING)
-    Preconditions.checkNotNull(connectionString,
-        """Missing configuration item "$STORAGE_MONGODB_CONNECTION_STRING"""")
+        STORAGE_MONGODB_CONNECTION_STRING) ?: throw IllegalArgumentException(
+            """Missing configuration item "$STORAGE_MONGODB_CONNECTION_STRING"""")
 
     val cs = ConnectionString(actualConnectionString)
     client = SharedMongoClient.create(cs)

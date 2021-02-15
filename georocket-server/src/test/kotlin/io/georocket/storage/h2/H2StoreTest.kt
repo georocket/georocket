@@ -51,6 +51,7 @@ class H2StoreTest : StorageTest() {
       vertx: Vertx, path: String?) {
     ctx.verify {
       assertThat(store.map).hasSize(1)
+      assertThat(store.map.values.first()).isEqualTo(CHUNK_CONTENT)
     }
   }
 

@@ -1,6 +1,5 @@
 package io.georocket.storage.s3
 
-import com.google.common.base.Preconditions
 import io.georocket.constants.ConfigConstants
 import io.georocket.storage.ChunkReadStream
 import io.georocket.storage.indexed.IndexedStore
@@ -27,37 +26,36 @@ import java.net.URI
  * Stores chunks on Amazon S3
  * @author Michel Kraemer
  */
-class S3Store(vertx: Vertx) : IndexedStore(vertx) {
+class S3Store(vertx: Vertx, accessKey: String? = null, secretKey: String? = null,
+    endpoint: String? = null, bucket: String? = null) : IndexedStore(vertx) {
   private val bucket: String
   private val s3: S3AsyncClient
 
   init {
     val config = vertx.orCreateContext.config()
 
-    val accessKey = config.getString(ConfigConstants.STORAGE_S3_ACCESS_KEY)
-    Preconditions.checkNotNull(accessKey, "Missing configuration item \"" +
-        ConfigConstants.STORAGE_S3_ACCESS_KEY + "\"")
+    val actualAccessKey = accessKey ?: config.getString(ConfigConstants.STORAGE_S3_ACCESS_KEY) ?:
+        throw IllegalArgumentException("Missing configuration item \"" +
+            ConfigConstants.STORAGE_S3_ACCESS_KEY + "\"")
 
-    val secretKey = config.getString(ConfigConstants.STORAGE_S3_SECRET_KEY)
-    Preconditions.checkNotNull(secretKey, "Missing configuration item \"" +
-        ConfigConstants.STORAGE_S3_SECRET_KEY + "\"")
+    val actualSecretKey = secretKey ?: config.getString(ConfigConstants.STORAGE_S3_SECRET_KEY) ?:
+        throw IllegalArgumentException("Missing configuration item \"" +
+            ConfigConstants.STORAGE_S3_SECRET_KEY + "\"")
 
-    val host = config.getString(ConfigConstants.STORAGE_S3_HOST)
-    Preconditions.checkNotNull(host, "Missing configuration item \"" +
-        ConfigConstants.STORAGE_S3_HOST + "\"")
+    val actualEndpoint = endpoint ?: config.getString(ConfigConstants.STORAGE_S3_ENDPOINT) ?:
+        throw IllegalArgumentException("Missing configuration item \"" +
+            ConfigConstants.STORAGE_S3_ENDPOINT + "\"")
 
-    val port = config.getInteger(ConfigConstants.STORAGE_S3_PORT, 80)
-
-    bucket = config.getString(ConfigConstants.STORAGE_S3_BUCKET)
-    Preconditions.checkNotNull(bucket, "Missing configuration item \"" +
-        ConfigConstants.STORAGE_S3_BUCKET + "\"")
+    this.bucket = bucket ?: config.getString(ConfigConstants.STORAGE_S3_BUCKET) ?:
+        throw IllegalArgumentException("Missing configuration item \"" +
+            ConfigConstants.STORAGE_S3_BUCKET + "\"")
 
     val pathStyleAccess = config.getBoolean(ConfigConstants.STORAGE_S3_PATH_STYLE_ACCESS, true)
 
     s3 = S3AsyncClient.builder()
-        .endpointOverride(URI("s3://$host:$port"))
+        .endpointOverride(URI(actualEndpoint))
         .credentialsProvider(StaticCredentialsProvider.create(
-            AwsBasicCredentials.create(accessKey, secretKey)))
+            AwsBasicCredentials.create(actualAccessKey, actualSecretKey)))
         .serviceConfiguration(S3Configuration.builder()
             .pathStyleAccessEnabled(pathStyleAccess)
             .build())

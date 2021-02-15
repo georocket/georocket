@@ -1,166 +1,109 @@
 package io.georocket.storage.s3
 
-import com.github.tomakehurst.wiremock.client.WireMock
-import com.github.tomakehurst.wiremock.core.WireMockConfiguration
-import com.github.tomakehurst.wiremock.junit.WireMockRule
-import io.georocket.constants.ConfigConstants
+import io.georocket.coVerify
 import io.georocket.storage.StorageTest
 import io.georocket.storage.Store
 import io.georocket.util.PathUtils
-import io.vertx.core.AsyncResult
-import io.vertx.core.Future
-import io.vertx.core.Handler
 import io.vertx.core.Vertx
+import io.vertx.junit5.VertxTestContext
+import io.vertx.kotlin.coroutines.dispatcher
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.future.await
+import kotlinx.coroutines.launch
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
+import org.testcontainers.containers.GenericContainer
+import org.testcontainers.junit.jupiter.Container
+import org.testcontainers.junit.jupiter.Testcontainers
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
+import software.amazon.awssdk.core.async.AsyncRequestBody
+import software.amazon.awssdk.core.async.AsyncResponseTransformer
+import software.amazon.awssdk.services.s3.S3AsyncClient
+import software.amazon.awssdk.services.s3.model.CreateBucketRequest
+import software.amazon.awssdk.services.s3.model.GetObjectRequest
+import software.amazon.awssdk.services.s3.model.ListObjectsRequest
+import software.amazon.awssdk.services.s3.model.PutObjectRequest
+import java.net.URI
+import java.nio.charset.StandardCharsets
 
 /**
  * Test [S3Store]
- * @author Andrej Sajenko
+ * @author Michel Kraemer
  */
+@Testcontainers
 class S3StoreTest : StorageTest() {
   companion object {
-    private const val S3_ACCESS_KEY = "640ab2bae07bedc4c163f679a746f7ab7fb5d1fa"
-    private const val S3_SECRET_KEY = "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3"
-    private const val S3_HOST = "localhost"
-    private const val S3_BUCKET = "testbucket"
-    private const val S3_PATH_STYLE_ACCESS = true
+    private const val ACCESS_KEY = "minioadmin"
+    private const val SECRET_KEY = "minioadmin"
+    private const val BUCKET = "georocket"
+  }
 
-    private fun pathWithLeadingSlash(vararg paths: String): String {
-      return "/" + PathUtils.join(*paths)
+  private lateinit var endpoint: String
+  private lateinit var s3: S3AsyncClient
+
+  @Container
+  val s3server: GenericContainer<Nothing> = GenericContainer<Nothing>("minio/minio").apply {
+    withExposedPorts(9000)
+    withCommand("server", "/data")
+  }
+
+  @BeforeEach
+  fun setUp(ctx: VertxTestContext, vertx: Vertx) {
+    endpoint = "http://${s3server.host}:${s3server.firstMappedPort}"
+
+    // create bucket
+    s3 = S3AsyncClient.builder()
+        .endpointOverride(URI(endpoint))
+        .credentialsProvider(StaticCredentialsProvider.create(
+            AwsBasicCredentials.create(ACCESS_KEY, SECRET_KEY)))
+        .build()
+    GlobalScope.launch(vertx.dispatcher()) {
+      s3.createBucket(CreateBucketRequest.builder().bucket(BUCKET).build()).await()
+      ctx.completeNow()
     }
   }
 
-  /**
-   * Set up test dependencies.
-   */
-  @BeforeEach
-  fun setUp() {
-    wireMockRule.start()
-    WireMock.configureFor("localhost", wireMockRule.port())
-
-    // Mock http request for getOne
-    wireMockRule.stubFor( // Request
-        WireMock.get(WireMock.urlPathEqualTo(pathWithLeadingSlash(S3_BUCKET, ID)))
-            .willReturn(WireMock.aResponse()
-                .withStatus(Http.Codes.OK)
-                .withHeader(Http.CONTENT_LENGTH, CHUNK_CONTENT.length.toString())
-                .withHeader(Http.CONTENT_TYPE, Http.Types.XML)
-                .withHeader(Http.CONNECTION, "close")
-                .withHeader(Http.SERVER, "AmazonS3")
-                .withBody(CHUNK_CONTENT)
-            )
-    )
-
-    // Mock http request for add without tempFolder
-    wireMockRule.stubFor(
-        WireMock.put(WireMock.urlPathMatching(pathWithLeadingSlash(S3_BUCKET, ".*")))
-            .withHeader(Http.CONTENT_LENGTH, WireMock.equalTo(CHUNK_CONTENT.length.toString()))
-            .withRequestBody(WireMock.equalTo(CHUNK_CONTENT))
-            .willReturn(WireMock.aResponse()
-                .withStatus(Http.Codes.OK)
-            )
-    )
-    wireMockRule.stubFor(
-        WireMock.put(WireMock.urlPathMatching(pathWithLeadingSlash(S3_BUCKET, TEST_FOLDER, ".*")))
-            .withHeader(Http.CONTENT_LENGTH, WireMock.equalTo(CHUNK_CONTENT.length.toString()))
-            .withRequestBody(WireMock.equalTo(CHUNK_CONTENT))
-            .willReturn(WireMock.aResponse()
-                .withStatus(Http.Codes.OK)
-            )
-    )
-    val listItems = """<?xml version="1.0" encoding="UTF-8"?>
-<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
-  <Name>$S3_BUCKET</Name>
-  <KeyCount>1</KeyCount>
-  <MaxKeys>3</MaxKeys>
-  <IsTruncated>false</IsTruncated>
-  <Contents>
-    <Key>ExampleObject1.txt</Key>
-    <LastModified>2013-09-17T18:07:53.000Z</LastModified>
-    <ETag>&quot;599bab3ed2c697f1d26842727561fd94&quot;</ETag>
-    <Size>857</Size>
-    <StorageClass>STANDARD</StorageClass>
-  </Contents>
-  <Contents>
-    <Key>ExampleObject2.txt</Key>
-    <LastModified>2013-09-17T18:07:53.000Z</LastModified>
-    <ETag>&quot;599bab3ed2c697f1d26842727561fd20&quot;</ETag>
-    <Size>233</Size>
-    <StorageClass>STANDARD</StorageClass>
-  </Contents>
-  <Contents>
-    <Key>ExampleObject3.txt</Key>
-    <LastModified>2013-09-17T18:07:53.000Z</LastModified>
-    <ETag>&quot;599bab3ed2c697f1d26842727561fd30&quot;</ETag>
-    <Size>412</Size>
-    <StorageClass>STANDARD</StorageClass>
-  </Contents>
-</ListBucketResult>"""
-    wireMockRule.stubFor(
-        WireMock.get(WireMock.urlMatching(pathWithLeadingSlash(S3_BUCKET) + "/\\?list-type=2.*"))
-            .willReturn(WireMock.aResponse()
-                .withStatus(Http.Codes.OK)
-                .withHeader("Content-Type", "application/xml")
-                .withHeader("Content-Length", listItems.length.toString())
-                .withBody(listItems)
-            )
-    )
-
-    // Mock http request for delete without tempFolder
-    wireMockRule.stubFor(
-        WireMock.delete(WireMock.urlPathEqualTo(pathWithLeadingSlash(S3_BUCKET, ID)))
-            .willReturn(WireMock.aResponse()
-                .withStatus(Http.Codes.NO_CONTENT)
-            )
-    )
-
-    // Mock http request for delete with tempFolder
-    wireMockRule.stubFor(
-        WireMock.delete(WireMock.urlPathEqualTo(pathWithLeadingSlash(S3_BUCKET, TEST_FOLDER, ID)))
-            .willReturn(WireMock.aResponse()
-                .withStatus(Http.Codes.NO_CONTENT)
-            )
-    )
-  }
-
-  /**
-   * Stop WireMock
-   */
   @AfterEach
   fun tearDown() {
-    wireMockRule.stop()
-  }
-
-  private fun configureVertx(vertx: Vertx) {
-    val config = vertx.orCreateContext.config()
-    config.put(ConfigConstants.STORAGE_S3_ACCESS_KEY, S3_ACCESS_KEY)
-    config.put(ConfigConstants.STORAGE_S3_SECRET_KEY, S3_SECRET_KEY)
-    config.put(ConfigConstants.STORAGE_S3_HOST, S3_HOST)
-    config.put(ConfigConstants.STORAGE_S3_PORT, wireMockRule.port())
-    config.put(ConfigConstants.STORAGE_S3_BUCKET, S3_BUCKET)
-    config.put(ConfigConstants.STORAGE_S3_PATH_STYLE_ACCESS, S3_PATH_STYLE_ACCESS)
+    s3.close()
   }
 
   override fun createStore(vertx: Vertx): Store {
-    configureVertx(vertx)
-    return S3Store(vertx)
+    return S3Store(vertx, ACCESS_KEY, SECRET_KEY, endpoint, BUCKET)
   }
 
-  protected fun prepareData(context: TestContext?, vertx: Vertx?, path: String?,
-      handler: Handler<AsyncResult<String?>?>) {
-    handler.handle(Future.succeededFuture(PathUtils.join(path, ID)))
+  override suspend fun prepareData(ctx: VertxTestContext, vertx: Vertx, path: String?): String {
+    val key = PathUtils.join(path, ID)
+    val objectRequest = PutObjectRequest.builder()
+        .bucket(BUCKET)
+        .key(key)
+        .build()
+    s3.putObject(objectRequest, AsyncRequestBody.fromString(CHUNK_CONTENT)).await()
+    return key
   }
 
-  protected fun validateAfterStoreAdd(context: TestContext?, vertx: Vertx?,
-      path: String?, handler: Handler<AsyncResult<Void?>?>) {
-    WireMock.verify(WireMock.putRequestedFor(WireMock.urlPathMatching(pathWithLeadingSlash(S3_BUCKET, path!!, ".*"))))
-    handler.handle(Future.succeededFuture())
+  override suspend fun validateAfterStoreAdd(ctx: VertxTestContext, vertx: Vertx, path: String?) {
+    val objects = s3.listObjects(ListObjectsRequest.builder().bucket(BUCKET).build()).await()
+    val keys = objects.contents().map { it.key() }
+    ctx.coVerify {
+      assertThat(keys).hasSize(1)
+
+      val getObjectRequest = GetObjectRequest.builder()
+          .bucket(BUCKET)
+          .key(keys[0])
+          .build()
+      val response = s3.getObject(getObjectRequest, AsyncResponseTransformer.toBytes()).await()
+      val chunk = response.asString(StandardCharsets.UTF_8)
+      assertThat(chunk).isEqualTo(CHUNK_CONTENT)
+    }
   }
 
-  protected fun validateAfterStoreDelete(context: TestContext?, vertx: Vertx?,
-      path: String?, handler: Handler<AsyncResult<Void?>?>) {
-    WireMock.verify(WireMock.deleteRequestedFor(WireMock.urlPathEqualTo(pathWithLeadingSlash(S3_BUCKET, path!!))))
-    handler.handle(Future.succeededFuture())
+  override suspend fun validateAfterStoreDelete(ctx: VertxTestContext, vertx: Vertx, path: String) {
+    val objects = s3.listObjects(ListObjectsRequest.builder().bucket(BUCKET).build()).await()
+    ctx.verify {
+      assertThat(objects.contents()).isEmpty()
+    }
   }
 }
