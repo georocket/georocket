@@ -1,16 +1,26 @@
-integration-tester:
-  build: .
-  command: mongo
-  links:
-    - georocket_mongo
-    - mongo
+version: "2"
+services:
+  integration-tester:
+    build: .
+    command: mongo
+    links:
+      - georocket_mongo
+      - mongo
 
-georocket_mongo:
-  image: georocket/georocket
-  volumes:
-    - ./conf/georocket_mongo:/usr/local/georocket-server/conf
-  links:
-    - mongo
+  georocket_mongo:
+    image: georocket/georocket
+    volumes:
+      - ./conf/georocket_mongo:/usr/local/georocket-server/conf
+    links:
+      - mongo
+      - elasticsearch
+    depends_on:
+      - elasticsearch
 
-mongo:
-  image: mongo
+  mongo:
+    image: mongo
+
+  elasticsearch:
+    image: elasticsearch:6.8.5
+    environment:
+      - discovery.type=single-node

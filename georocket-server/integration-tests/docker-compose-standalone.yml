@@ -1,10 +1,21 @@
-integration-tester:
-  build: .
-  command: standalone
-  links:
-    - georocket_standalone
+version: "2"
+services:
+  integration-tester:
+    build: .
+    command: standalone
+    links:
+      - georocket_standalone
 
-georocket_standalone:
-  image: georocket/georocket
-  volumes:
-    - ./conf/georocket_standalone:/usr/local/georocket-server/conf
+  georocket_standalone:
+    image: georocket/georocket
+    volumes:
+      - ./conf/georocket_standalone:/usr/local/georocket-server/conf
+    links:
+      - elasticsearch
+    depends_on:
+      - elasticsearch
+
+  elasticsearch:
+    image: elasticsearch:6.8.5
+    environment:
+      - discovery.type=single-node

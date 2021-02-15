@@ -4,3 +4,7 @@ georocket:
     class: io.georocket.storage.h2.H2Store
     h2:
       path: $GEOROCKET_HOME/storage/georocket
+
+  index:
+    elasticsearch:
+      hosts: ["elasticsearch:9200"]

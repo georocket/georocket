@@ -5,9 +5,12 @@ georocket:
     s3:
       accessKey: accessKey1
       secretKey: verySecretKey1
-      host: s3
-      port: 8000
+      endpoint: http://s3:8000
+      region: us-west-1
       bucket: georocket
       pathStyleAccess: true
-      forceSignatureV2: true
       requestExpirySeconds: 600
+
+  index:
+    elasticsearch:
+      hosts: ["elasticsearch:9200"]

@@ -235,7 +235,7 @@ public class LoadBalancingHttpClient {
         }
         return Observable.just(error);
       });
-      return RxUtils.makeRetry(5, 1000, log).call(o);
+      return RxUtils.makeRetry(5, 10000, log).call(o);
     });
   }
 
