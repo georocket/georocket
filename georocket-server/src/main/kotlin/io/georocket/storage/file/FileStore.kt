@@ -57,7 +57,7 @@ class FileStore(private val vertx: Vertx, storagePath: String? = null) : Indexed
     f.writeAwait(buf)
     f.closeAwait()
 
-    return filepath
+    return PathUtils.join(path, filename)
   }
 
   override suspend fun getOne(path: String): ChunkReadStream {

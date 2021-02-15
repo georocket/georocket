@@ -20,7 +20,7 @@ class FileChunkReadStream(private val size: Long, private val file: AsyncFile) :
     return size
   }
 
-  override fun close(handler: Handler<AsyncResult<Void>>) {
+  override fun close(handler: Handler<AsyncResult<Void>>?) {
     file.close(handler)
   }
 }
