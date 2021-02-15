@@ -22,7 +22,7 @@ import java.io.FileNotFoundException
  * Stores chunks on the file system
  * @author Michel Kraemer
  */
-class FileStore(private val vertx: Vertx, storagePath: String?) : IndexedStore(vertx) {
+class FileStore(private val vertx: Vertx, storagePath: String? = null) : IndexedStore(vertx) {
   /**
    * The folder where the chunks should be saved
    */
