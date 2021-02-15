@@ -19,7 +19,7 @@ class IndexedStoreCursor(private val vertx: Vertx, private val search: String?,
   }
 
   /**
-   * This cursor uses [LegacyFrameCursor] to load the full datastore frame by frame.
+   * This cursor uses [FrameCursor] to load the full datastore frame by frame.
    */
   private var currentFrameCursor: FrameCursor? = null
 

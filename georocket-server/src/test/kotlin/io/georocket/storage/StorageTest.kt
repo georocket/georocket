@@ -185,7 +185,7 @@ abstract class StorageTest {
    *
    * Heads up: look on the protected attributes of this class to know which
    * data were used for the store add method. These will be used for the
-   * [LegacyStore.add] method.
+   * [Store.add] method.
    *
    * @param path The path where the data was created (may be `null` if not used
    * for [prepareData])
