@@ -668,7 +668,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
    */
   private fun parseProperties(properties: List<String>): Map<String, String> {
     val props = mutableMapOf<String, String>()
-    val regex = "(?<!" + Pattern.quote("\\") + ")" + Pattern.quote(":")
+    val regex = ("(?<!" + Pattern.quote("\\") + ")" + Pattern.quote(":")).toRegex()
 
     for (part in properties.map { it.trim() }) {
       val property = part.split(regex)
