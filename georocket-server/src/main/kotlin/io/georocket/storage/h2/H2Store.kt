@@ -8,7 +8,6 @@ import io.georocket.util.UniqueID
 import io.georocket.util.io.DelegateChunkReadStream
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
-import org.h2.mvstore.MVStore
 import java.io.FileNotFoundException
 
 /**
@@ -16,13 +15,7 @@ import java.io.FileNotFoundException
  * @author Michel Kraemer
  */
 class H2Store(vertx: Vertx, path: String? = null) : IndexedStore(vertx) {
-  private val mvStoreHolder: SharedMVStoreHolder
-  private val mvstore: MVStore get() = mvStoreHolder.mvStore
-
-  /**
-   * The name of the MVMap within the H2 database.
-   */
-  private val mapName: String
+  internal val map: SharedMVMap
 
   init {
     val config = vertx.orCreateContext.config()
@@ -32,23 +25,16 @@ class H2Store(vertx: Vertx, path: String? = null) : IndexedStore(vertx) {
             ConfigConstants.STORAGE_H2_PATH + "\"")
 
     val compress = config.getBoolean(ConfigConstants.STORAGE_H2_COMPRESS, false)
-    mapName = config.getString(ConfigConstants.STORAGE_H2_MAP_NAME, "georocket")
+    val mapName = config.getString(ConfigConstants.STORAGE_H2_MAP_NAME, "georocket")
 
-    mvStoreHolder = SharedMVStoreHolder(actualPath, compress)
-  }
-
-  /**
-   * The underlying H2 MVMap
-   */
-  internal val map: MutableMap<String, String> by lazy {
-    mvstore.openMap(mapName)
+    map = SharedMVMap.create(actualPath, mapName, compress)
   }
 
   /**
    * Release all resources and close this store
    */
   fun close() {
-    mvStoreHolder.close()
+    map.close()
   }
 
   override suspend fun getOne(path: String): ChunkReadStream {
