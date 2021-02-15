@@ -13,6 +13,7 @@ import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
 import software.amazon.awssdk.core.async.AsyncRequestBody
 import software.amazon.awssdk.core.async.AsyncResponseTransformer
+import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3AsyncClient
 import software.amazon.awssdk.services.s3.S3Configuration
 import software.amazon.awssdk.services.s3.model.Delete
@@ -27,7 +28,7 @@ import java.net.URI
  * @author Michel Kraemer
  */
 class S3Store(vertx: Vertx, accessKey: String? = null, secretKey: String? = null,
-    endpoint: String? = null, bucket: String? = null) : IndexedStore(vertx) {
+    endpoint: String? = null, bucket: String? = null, region: String? = null) : IndexedStore(vertx) {
   private val bucket: String
   private val s3: S3AsyncClient
 
@@ -50,16 +51,23 @@ class S3Store(vertx: Vertx, accessKey: String? = null, secretKey: String? = null
         throw IllegalArgumentException("Missing configuration item \"" +
             ConfigConstants.STORAGE_S3_BUCKET + "\"")
 
+    val actualRegion = region ?: config.getString(ConfigConstants.STORAGE_S3_REGION)
+
     val pathStyleAccess = config.getBoolean(ConfigConstants.STORAGE_S3_PATH_STYLE_ACCESS, true)
 
-    s3 = S3AsyncClient.builder()
+    var s3Builder = S3AsyncClient.builder()
         .endpointOverride(URI(actualEndpoint))
         .credentialsProvider(StaticCredentialsProvider.create(
             AwsBasicCredentials.create(actualAccessKey, actualSecretKey)))
         .serviceConfiguration(S3Configuration.builder()
             .pathStyleAccessEnabled(pathStyleAccess)
             .build())
-        .build()
+
+    if (actualRegion != null) {
+      s3Builder = s3Builder.region(Region.of(actualRegion))
+    }
+
+    s3 = s3Builder.build()
   }
 
   override suspend fun doAddChunk(chunk: String, layer: String, correlationId: String): String {
