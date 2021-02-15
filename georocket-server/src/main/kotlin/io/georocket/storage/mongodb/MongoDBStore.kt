@@ -15,8 +15,10 @@ import io.georocket.util.UniqueID
 import io.georocket.util.io.DelegateChunkReadStream
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.reactive.asFlow
 import kotlinx.coroutines.reactive.awaitSingle
-import org.bson.BsonArray
+import kotlinx.coroutines.reactive.awaitSingleOrNull
 import org.bson.BsonDocument
 import org.bson.BsonString
 import reactor.core.publisher.Mono
@@ -26,7 +28,7 @@ import java.nio.ByteBuffer
  * Stores chunks in MongoDB
  * @author Michel Kraemer
  */
-class MongoDBStore(vertx: Vertx) : IndexedStore(vertx) {
+class MongoDBStore(vertx: Vertx, connectionString: String? = null) : IndexedStore(vertx) {
   private val client: MongoClient
   private val db: MongoDatabase
   private val gridfs: GridFSBucket
@@ -34,11 +36,12 @@ class MongoDBStore(vertx: Vertx) : IndexedStore(vertx) {
   init {
     val config = vertx.orCreateContext.config()
 
-    val connectionString = config.getString(STORAGE_MONGODB_CONNECTION_STRING)
+    val actualConnectionString = connectionString ?: config.getString(
+        STORAGE_MONGODB_CONNECTION_STRING)
     Preconditions.checkNotNull(connectionString,
         """Missing configuration item "$STORAGE_MONGODB_CONNECTION_STRING"""")
 
-    val cs = ConnectionString(connectionString)
+    val cs = ConnectionString(actualConnectionString)
     client = SharedMongoClient.create(cs)
     db = client.getDatabase(cs.database)
 
@@ -60,7 +63,10 @@ class MongoDBStore(vertx: Vertx) : IndexedStore(vertx) {
   }
 
   override suspend fun doDeleteChunks(paths: Iterable<String>) {
-    gridfs.delete(BsonDocument("filename", BsonDocument("\$in",
-        BsonArray(paths.map { BsonString(it) })))).awaitSingle()
+    for (filename in paths) {
+      gridfs.find(BsonDocument("filename", BsonString(filename))).asFlow().collect { file ->
+        gridfs.delete(file.objectId).awaitSingleOrNull()
+      }
+    }
   }
 }

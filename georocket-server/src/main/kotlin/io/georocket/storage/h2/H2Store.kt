@@ -15,7 +15,7 @@ import java.io.FileNotFoundException
  * Stores chunks in a H2 database
  * @author Michel Kraemer
  */
-class H2Store(vertx: Vertx) : IndexedStore(vertx) {
+class H2Store(vertx: Vertx, path: String? = null) : IndexedStore(vertx) {
   private val mvStoreHolder: SharedMVStoreHolder
   private val mvstore: MVStore get() = mvStoreHolder.mvStore
 
@@ -27,20 +27,20 @@ class H2Store(vertx: Vertx) : IndexedStore(vertx) {
   init {
     val config = vertx.orCreateContext.config()
 
-    val path = config.getString(ConfigConstants.STORAGE_H2_PATH) ?:
+    val actualPath = path ?: config.getString(ConfigConstants.STORAGE_H2_PATH) ?:
         throw IllegalStateException("Missing configuration item \"" +
             ConfigConstants.STORAGE_H2_PATH + "\"")
 
     val compress = config.getBoolean(ConfigConstants.STORAGE_H2_COMPRESS, false)
     mapName = config.getString(ConfigConstants.STORAGE_H2_MAP_NAME, "georocket")
 
-    mvStoreHolder = SharedMVStoreHolder(path, compress)
+    mvStoreHolder = SharedMVStoreHolder(actualPath, compress)
   }
 
   /**
    * The underlying H2 MVMap
    */
-  private val map: MutableMap<String, String> by lazy {
+  internal val map: MutableMap<String, String> by lazy {
     mvstore.openMap(mapName)
   }
 

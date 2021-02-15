@@ -154,6 +154,7 @@ abstract class IndexedStore(private val vertx: Vertx) : Store {
       if (paths.size >= size) {
         // if there are enough items in the queue, bulk delete them
         doDeleteBulk(paths, cursor.info.totalHits, remainingChunks, correlationId)
+        paths.clear()
         correlationId?.let { updatePurgingTask(it, size) }
         remainingChunks -= size
       }

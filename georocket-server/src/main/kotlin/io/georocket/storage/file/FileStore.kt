@@ -22,18 +22,17 @@ import java.io.FileNotFoundException
  * Stores chunks on the file system
  * @author Michel Kraemer
  */
-class FileStore(private val vertx: Vertx) : IndexedStore(vertx) {
+class FileStore(private val vertx: Vertx, storagePath: String?) : IndexedStore(vertx) {
   /**
    * The folder where the chunks should be saved
    */
   private val root: String
 
   init {
-    val storagePath = vertx.orCreateContext.config().getString(
-        ConfigConstants.STORAGE_FILE_PATH)
-        ?: throw IllegalArgumentException("Missing configuration item \"" +
-            ConfigConstants.STORAGE_FILE_PATH + "\"")
-    this.root = PathUtils.join(storagePath, "file")
+    val actualStoragePath = storagePath ?: vertx.orCreateContext.config().getString(
+        ConfigConstants.STORAGE_FILE_PATH) ?: throw IllegalArgumentException(
+        """Missing configuration item "${ConfigConstants.STORAGE_FILE_PATH}"""")
+    root = PathUtils.join(actualStoragePath, "file")
   }
 
   override suspend fun doAddChunk(chunk: String, layer: String,
@@ -48,7 +47,7 @@ class FileStore(private val vertx: Vertx) : IndexedStore(vertx) {
 
     // generate new file name
     val filename = correlationId + UniqueID.next()
-    val filepath = PathUtils.join(path, filename)
+    val filepath = PathUtils.join(dir, filename)
 
     // open new file
     val f = fs.openAwait(filepath, OpenOptions())
