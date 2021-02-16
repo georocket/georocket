@@ -70,7 +70,7 @@ def assertMongoDBChunkCount(expected) {
 }
 
 def assertS3ObjectCount(expected) {
-    def objects = run("s3cmd ls s3://georocket/", null, true)
+    def objects = run("mc ls minio/georocket/", null, true)
     if (expected == 0) {
         assertEquals("", objects, "Expected no objects in S3. Got ${objects}.")
     } else {
@@ -113,8 +113,9 @@ if (mode == "standalone" || mode == "h2") {
     logSuccess()
 } else if (mode == "s3") {
     logTest("GeoRocket with S3 back-end ...")
-    waitHttp("http://s3:8000", "GET", 403)
-    run("s3cmd mb s3://georocket")
+    waitHttp("http://s3:9000", "GET", 403)
+    run("mc alias set minio http://s3:9000 minioadmin minioadmin")
+    run("mc mb minio/georocket")
     def host = "georocket_s3"
 
     runXMLTests(host)

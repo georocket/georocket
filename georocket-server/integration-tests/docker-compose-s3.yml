@@ -18,13 +18,11 @@ services:
       - elasticsearch
 
   s3:
-    image: scality/s3server:mem-latest
-    # Allow s3 server to be accessed through the "s3" domain name.
-    # If we don't add the domain name to the config file the server will
-    # fail with an authentication error.
-    command: bash -c "node -e \"var conf = require('./config.json'), fs = require('fs'); conf.restEndpoints.s3 = 'eu-central-1'; fs.writeFileSync('config.json', JSON.stringify(conf, undefined, 2));\" && npm start"
+    image: minio/minio
+    command: server /data
 
   elasticsearch:
     image: elasticsearch:6.8.5
     environment:
       - discovery.type=single-node
+      - cluster.routing.allocation.disk.threshold_enabled=false

@@ -3,9 +3,9 @@ georocket:
   storage:
     class: io.georocket.storage.s3.S3Store
     s3:
-      accessKey: accessKey1
-      secretKey: verySecretKey1
-      endpoint: http://s3:8000
+      accessKey: minioadmin
+      secretKey: minioadmin
+      endpoint: http://s3:9000
       region: us-west-1
       bucket: georocket
       pathStyleAccess: true
