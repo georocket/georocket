@@ -2,7 +2,6 @@ package io.georocket.http;
 
 import io.georocket.ServerAPIException;
 import io.georocket.util.HttpException;
-import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.ReplyException;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonObject;
@@ -20,7 +19,6 @@ import static io.georocket.util.ThrowableHelper.throwableToMessage;
 public interface Endpoint {
   /**
    * Create a router that handles HTTP requests for this endpoint
-   * @param vertx the current Vert.x instance
    * @return the router
    */
   Router createRouter();
