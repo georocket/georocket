@@ -7,6 +7,7 @@ import io.georocket.util.UniqueID
 import io.georocket.util.XMLStartElement
 import io.vertx.core.Promise
 import io.vertx.core.Vertx
+import io.vertx.core.buffer.Buffer
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxExtension
@@ -399,7 +400,7 @@ abstract class StorageTest {
     val indexMeta = IndexMeta(IMPORT_ID, ID, TIMESTAMP, TAGS, PROPERTIES, FALLBACK_CRS_STRING)
     GlobalScope.launch(vertx.dispatcher()) {
       ctx.coVerify {
-        store.add(CHUNK_CONTENT, META, indexMeta, path ?: "/")
+        store.add(Buffer.buffer(CHUNK_CONTENT), META, indexMeta, path ?: "/")
         addPromise.future().await()
         validateAfterStoreAdd(ctx, vertx, path)
       }

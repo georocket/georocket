@@ -1,14 +1,14 @@
 package io.georocket.input.json;
 
-import java.util.ArrayDeque;
-import java.util.Deque;
-
-import com.google.common.base.Utf8;
 import de.undercouch.actson.JsonEvent;
 import io.georocket.input.Splitter;
 import io.georocket.storage.JsonChunkMeta;
 import io.georocket.util.JsonStreamEvent;
 import io.georocket.util.StringWindow;
+import io.vertx.core.buffer.Buffer;
+
+import java.util.ArrayDeque;
+import java.util.Deque;
 
 /**
  * Split incoming JSON tokens whenever an object is encountered that is inside
@@ -145,9 +145,10 @@ public class JsonSplitter implements Splitter<JsonStreamEvent, JsonChunkMeta> {
    */
   protected Result<JsonChunkMeta> makeResult(int pos) {
     resultsCreated = true;
-    String chunk = window.getChars(mark, pos);
+    String str = window.getChars(mark, pos);
     window.advanceTo(pos);
-    JsonChunkMeta meta = new JsonChunkMeta(lastFieldName, 0, Utf8.encodedLength(chunk));
-    return new Result<>(chunk, meta);
+    Buffer buf = Buffer.buffer(str);
+    JsonChunkMeta meta = new JsonChunkMeta(lastFieldName, 0, buf.length());
+    return new Result<>(buf, meta);
   }
 }

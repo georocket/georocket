@@ -50,10 +50,11 @@ class MongoDBStore(vertx: Vertx, connectionString: String? = null) : IndexedStor
     return Buffer.buffer(bytebuf.array())
   }
 
-  override suspend fun doAddChunk(chunk: String, layer: String, correlationId: String): String {
+  override suspend fun doAddChunk(chunk: Buffer, layer: String, correlationId: String): String {
     val path = if (layer.isEmpty()) "/" else layer
     val filename = PathUtils.join(path, correlationId + UniqueID.next())
-    gridfs.uploadFromPublisher(filename, Mono.just(ByteBuffer.wrap(chunk.toByteArray()))).awaitSingle()
+    gridfs.uploadFromPublisher(filename, Mono.just(
+        ByteBuffer.wrap(chunk.byteBuf.array()))).awaitSingle()
     return filename
   }
 

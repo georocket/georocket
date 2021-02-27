@@ -1,24 +1,23 @@
 package io.georocket.input.geojson;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import io.georocket.storage.GeoJsonChunkMeta;
+import io.georocket.util.JsonParserTransformer;
+import io.georocket.util.StringWindow;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.json.JsonObject;
+import org.apache.commons.io.IOUtils;
+import org.jooq.lambda.tuple.Tuple;
+import org.jooq.lambda.tuple.Tuple2;
+import org.junit.Test;
+import rx.Observable;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.io.IOUtils;
-import org.jooq.lambda.tuple.Tuple;
-import org.jooq.lambda.tuple.Tuple2;
-import org.junit.Test;
-
-import io.georocket.storage.GeoJsonChunkMeta;
-import io.georocket.util.JsonParserTransformer;
-import io.georocket.util.StringWindow;
-import io.vertx.core.buffer.Buffer;
-import io.vertx.core.json.JsonObject;
-import rx.Observable;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 /**
  * Test for {@link GeoJsonSplitter}

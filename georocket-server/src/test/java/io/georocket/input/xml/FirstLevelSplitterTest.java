@@ -73,7 +73,7 @@ public class FirstLevelSplitterTest {
     XMLChunkMeta meta = new XMLChunkMeta(Arrays.asList(new XMLStartElement("root")),
         XMLHEADER.length() + 7, xml.length() - 8);
     assertEquals(meta, chunk.getMeta());
-    assertEquals(xml, chunk.getChunk());
+    assertEquals(xml, chunk.getChunk().toString());
   }
   
   /**
@@ -95,8 +95,10 @@ public class FirstLevelSplitterTest {
         XMLHEADER.length() + 7, XMLHEADER.length() + 7 + 34);
     assertEquals(meta1, chunk1.getMeta());
     assertEquals(meta2, chunk2.getMeta());
-    assertEquals(XMLHEADER + "<root>\n<object><child></child></object>\n</root>", chunk1.getChunk());
-    assertEquals(XMLHEADER + "<root>\n<object><child2></child2></object>\n</root>", chunk2.getChunk());
+    assertEquals(XMLHEADER + "<root>\n<object><child></child></object>\n</root>",
+            chunk1.getChunk().toString());
+    assertEquals(XMLHEADER + "<root>\n<object><child2></child2></object>\n</root>",
+            chunk2.getChunk().toString());
   }
   
   /**
@@ -120,8 +122,10 @@ public class FirstLevelSplitterTest {
         XMLHEADER.length() + root.length() + 1, XMLHEADER.length() + root.length() + 1 + 38);
     assertEquals(meta1, chunk1.getMeta());
     assertEquals(meta2, chunk2.getMeta());
-    assertEquals(XMLHEADER + root + "\n<p:object><p:child></p:child></p:object>\n</root>", chunk1.getChunk());
-    assertEquals(XMLHEADER + root + "\n<p:object><child2></child2></p:object>\n</root>", chunk2.getChunk());
+    assertEquals(XMLHEADER + root + "\n<p:object><p:child></p:child></p:object>\n</root>",
+            chunk1.getChunk().toString());
+    assertEquals(XMLHEADER + root + "\n<p:object><child2></child2></p:object>\n</root>",
+            chunk2.getChunk().toString());
   }
   
   /**
@@ -145,8 +149,10 @@ public class FirstLevelSplitterTest {
         XMLHEADER.length() + root.length() + 1, XMLHEADER.length() + root.length() + 1 + 34);
     assertEquals(meta1, chunk1.getMeta());
     assertEquals(meta2, chunk2.getMeta());
-    assertEquals(XMLHEADER + root + "\n<object ok=\"ov\"><child></child></object>\n</root>", chunk1.getChunk());
-    assertEquals(XMLHEADER + root + "\n<object><child2></child2></object>\n</root>", chunk2.getChunk());
+    assertEquals(XMLHEADER + root + "\n<object ok=\"ov\"><child></child></object>\n</root>",
+            chunk1.getChunk().toString());
+    assertEquals(XMLHEADER + root + "\n<object><child2></child2></object>\n</root>",
+            chunk2.getChunk().toString());
   }
   
   /**
@@ -171,8 +177,10 @@ public class FirstLevelSplitterTest {
         XMLHEADER.length() + root.length() + 1, XMLHEADER.length() + root.length() + 1 + 38);
     assertEquals(meta1, chunk1.getMeta());
     assertEquals(meta2, chunk2.getMeta());
-    assertEquals(XMLHEADER + root + "\n<p:object ok=\"ov\"><p:child></p:child></p:object>\n</root>", chunk1.getChunk());
-    assertEquals(XMLHEADER + root + "\n<p:object><child2></child2></p:object>\n</root>", chunk2.getChunk());
+    assertEquals(XMLHEADER + root + "\n<p:object ok=\"ov\"><p:child></p:child></p:object>\n</root>",
+            chunk1.getChunk().toString());
+    assertEquals(XMLHEADER + root + "\n<p:object><child2></child2></p:object>\n</root>",
+            chunk2.getChunk().toString());
   }
   
   /**
@@ -188,6 +196,6 @@ public class FirstLevelSplitterTest {
     XMLChunkMeta meta = new XMLChunkMeta(Arrays.asList(new XMLStartElement("root")),
         XMLHEADER.length() + 7, xml.getBytes(StandardCharsets.UTF_8).length - 8);
     assertEquals(meta, chunk.getMeta());
-    assertEquals(xml, chunk.getChunk());
+    assertEquals(xml, chunk.getChunk().toString());
   }
 }

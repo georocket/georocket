@@ -1,20 +1,18 @@
 package io.georocket.input.xml;
 
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Deque;
-import java.util.List;
-
-import javax.xml.stream.XMLStreamReader;
-import javax.xml.stream.events.XMLEvent;
-
-import com.google.common.base.Utf8;
 import io.georocket.input.Splitter;
 import io.georocket.storage.XMLChunkMeta;
 import io.georocket.util.Window;
 import io.georocket.util.XMLStartElement;
 import io.georocket.util.XMLStreamEvent;
+import io.vertx.core.buffer.Buffer;
+
+import javax.xml.stream.XMLStreamReader;
+import javax.xml.stream.events.XMLEvent;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.List;
 
 /**
  * Abstract base class for splitters that split XML streams
@@ -122,23 +120,24 @@ public abstract class XMLSplitter implements Splitter<XMLStreamEvent, XMLChunkMe
    * @return the {@link io.georocket.input.Splitter.Result} object
    */
   protected Result<XMLChunkMeta> makeResult(int pos) {
-    StringBuilder sb = new StringBuilder();
-    sb.append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n");
+    StringBuilder sbStart = new StringBuilder();
+    sbStart.append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n");
     
     // append the full stack of start elements (backwards)
     List<XMLStartElement> chunkParents = new ArrayList<>();
     startElements.descendingIterator().forEachRemaining(e -> {
       chunkParents.add(e);
-      sb.append(e);
-      sb.append("\n");
+      sbStart.append(e);
+      sbStart.append("\n");
     });
     
     // get chunk start in bytes
-    int chunkStart = Utf8.encodedLength(sb);
+    Buffer buf = Buffer.buffer(sbStart.toString());
+    int chunkStart = buf.length();
     
     // append current element
     byte[] bytes = window.getBytes(mark, pos);
-    sb.append(new String(bytes, StandardCharsets.UTF_8));
+    buf.appendBytes(bytes);
     window.advanceTo(pos);
     mark = -1;
     
@@ -146,11 +145,13 @@ public abstract class XMLSplitter implements Splitter<XMLStreamEvent, XMLChunkMe
     int chunkEnd = chunkStart + bytes.length;
     
     // append the full stack of end elements
+    StringBuilder sbEnd = new StringBuilder();
     startElements.iterator().forEachRemaining(e ->
-      sb.append("\n</").append(e.getName()).append(">"));
+      sbEnd.append("\n</").append(e.getName()).append(">"));
+    buf.appendString(sbEnd.toString());
     
     XMLChunkMeta meta = new XMLChunkMeta(chunkParents, chunkStart, chunkEnd);
-    return new Result<>(sb.toString(), meta);
+    return new Result<>(buf, meta);
   }
   
   /**

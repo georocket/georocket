@@ -11,7 +11,7 @@ interface Store {
    * Add a [chunk] with given [chunkMetadata] and [indexMetadata] under the
    * given [layer] to the store
    */
-  suspend fun add(chunk: String, chunkMetadata: ChunkMeta,
+  suspend fun add(chunk: Buffer, chunkMetadata: ChunkMeta,
       indexMetadata: IndexMeta, layer: String)
 
   /**

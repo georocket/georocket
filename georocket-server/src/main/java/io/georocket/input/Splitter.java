@@ -2,6 +2,7 @@ package io.georocket.input;
 
 import io.georocket.storage.ChunkMeta;
 import io.georocket.util.StreamEvent;
+import io.vertx.core.buffer.Buffer;
 import rx.Observable;
 
 /**
@@ -17,7 +18,7 @@ public interface Splitter<E extends StreamEvent, M extends ChunkMeta> {
    * @param <M> the type of the metadata
    */
   public static class Result<M extends ChunkMeta> {
-    private final String chunk;
+    private final Buffer chunk;
     private final M meta;
     
     /**
@@ -25,7 +26,7 @@ public interface Splitter<E extends StreamEvent, M extends ChunkMeta> {
      * @param chunk the chunk
      * @param meta the chunk's metadata
      */
-    public Result(String chunk, M meta) {
+    public Result(Buffer chunk, M meta) {
       this.chunk = chunk;
       this.meta = meta;
     }
@@ -33,7 +34,7 @@ public interface Splitter<E extends StreamEvent, M extends ChunkMeta> {
     /**
      * @return the chunk
      */
-    public String getChunk() {
+    public Buffer getChunk() {
       return chunk;
     }
     

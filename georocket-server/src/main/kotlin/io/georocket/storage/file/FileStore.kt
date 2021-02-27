@@ -33,7 +33,7 @@ class FileStore(private val vertx: Vertx, storagePath: String? = null) : Indexed
     root = PathUtils.join(actualStoragePath, "file")
   }
 
-  override suspend fun doAddChunk(chunk: String, layer: String,
+  override suspend fun doAddChunk(chunk: Buffer, layer: String,
       correlationId: String): String {
     val path = if (layer.isEmpty()) "/" else layer
 
@@ -51,8 +51,7 @@ class FileStore(private val vertx: Vertx, storagePath: String? = null) : Indexed
     val f = fs.openAwait(filepath, OpenOptions())
 
     // write contents to file
-    val buf = Buffer.buffer(chunk)
-    f.writeAwait(buf)
+    f.writeAwait(chunk)
     f.closeAwait()
 
     return PathUtils.join(path, filename)

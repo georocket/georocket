@@ -26,7 +26,7 @@ import java.util.ArrayDeque
  * @author Michel Kraemer
  */
 abstract class IndexedStore(private val vertx: Vertx) : Store {
-  override suspend fun add(chunk: String, chunkMetadata: ChunkMeta,
+  override suspend fun add(chunk: Buffer, chunkMetadata: ChunkMeta,
       indexMetadata: IndexMeta, layer: String) {
     val path = doAddChunk(chunk, layer, indexMetadata.correlationId)
 
@@ -55,7 +55,7 @@ abstract class IndexedStore(private val vertx: Vertx) : Store {
     }
 
     // save chunk to cache and then let indexer know about it
-    IndexableChunkCache.getInstance().put(path, Buffer.buffer(chunk))
+    IndexableChunkCache.getInstance().put(path, chunk)
     vertx.eventBus().send(AddressConstants.INDEXER_ADD, indexMsg)
   }
 
@@ -245,7 +245,7 @@ abstract class IndexedStore(private val vertx: Vertx) : Store {
    * Add a [chunk] to the store at the given [layer]. Returns the full path
    * to the new chunk.
    */
-  protected abstract suspend fun doAddChunk(chunk: String, layer: String,
+  protected abstract suspend fun doAddChunk(chunk: Buffer, layer: String,
       correlationId: String): String
 
   /**

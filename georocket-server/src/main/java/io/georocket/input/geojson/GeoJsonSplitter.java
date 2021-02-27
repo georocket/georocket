@@ -85,8 +85,7 @@ public class GeoJsonSplitter extends JsonSplitter {
     }
     
     if (r != null) {
-      r = new Result<JsonChunkMeta>(r.getChunk(),
-        new GeoJsonChunkMeta(lastType, r.getMeta()));
+      r = new Result<>(r.getChunk(), new GeoJsonChunkMeta(lastType, r.getMeta()));
     }
     
     return r;

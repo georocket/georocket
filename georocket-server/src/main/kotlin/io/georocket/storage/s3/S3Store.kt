@@ -68,7 +68,7 @@ class S3Store(vertx: Vertx, accessKey: String? = null, secretKey: String? = null
     s3 = s3Builder.build()
   }
 
-  override suspend fun doAddChunk(chunk: String, layer: String, correlationId: String): String {
+  override suspend fun doAddChunk(chunk: Buffer, layer: String, correlationId: String): String {
     val path = if (layer.isEmpty()) "/" else layer
 
     // generate new file name
@@ -81,7 +81,7 @@ class S3Store(vertx: Vertx, accessKey: String? = null, secretKey: String? = null
         .key(key)
         .build()
 
-    s3.putObject(objectRequest, AsyncRequestBody.fromString(chunk)).await()
+    s3.putObject(objectRequest, AsyncRequestBody.fromBytes(chunk.byteBuf.array())).await()
 
     return filename
   }
