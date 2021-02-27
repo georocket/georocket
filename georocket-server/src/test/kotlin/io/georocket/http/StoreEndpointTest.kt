@@ -6,7 +6,6 @@ import io.georocket.storage.GeoJsonChunkMeta
 import io.georocket.storage.Store
 import io.georocket.storage.StoreCursor
 import io.georocket.storage.StoreFactory
-import io.georocket.util.io.DelegateChunkReadStream
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -103,7 +102,7 @@ class StoreEndpointTest {
       cursor
     }
 
-    coEvery { store.getOne(chunk1Path) } returns DelegateChunkReadStream(chunk1)
+    coEvery { store.getOne(chunk1Path) } returns chunk1
 
     val client = WebClient.create(vertx)
     GlobalScope.launch(vertx.dispatcher()) {

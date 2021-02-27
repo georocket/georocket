@@ -1,7 +1,6 @@
 package io.georocket.output.geojson
 
 import io.georocket.output.Merger
-import io.georocket.storage.ChunkReadStream
 import io.georocket.storage.GeoJsonChunkMeta
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.streams.WriteStream
@@ -74,7 +73,7 @@ class GeoJsonMerger(optimistic: Boolean) : Merger<GeoJsonChunkMeta> {
     }
   }
 
-  override suspend fun merge(chunk: ChunkReadStream, chunkMetadata: GeoJsonChunkMeta,
+  override suspend fun merge(chunk: Buffer, chunkMetadata: GeoJsonChunkMeta,
       outputStream: WriteStream<Buffer>) {
     mergeStarted = true
     if (!headerWritten) {
@@ -95,7 +94,7 @@ class GeoJsonMerger(optimistic: Boolean) : Merger<GeoJsonChunkMeta> {
       outputStream.write(Buffer.buffer("{\"type\":\"Feature\",\"geometry\":"))
     }
 
-    writeChunk(chunk, chunkMetadata, outputStream)
+    outputStream.write(chunk.slice(chunkMetadata.start, chunkMetadata.end))
 
     if (wrap) {
       outputStream.write(Buffer.buffer("}"))

@@ -5,7 +5,6 @@ import io.georocket.coVerify
 import io.georocket.storage.XMLChunkMeta
 import io.georocket.util.XMLStartElement
 import io.georocket.util.io.BufferWriteStream
-import io.georocket.util.io.DelegateChunkReadStream
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import io.vertx.junit5.VertxExtension
@@ -66,8 +65,8 @@ class MergeNamespacesStrategyTest {
       ctx.coVerify {
         strategy.init(META1)
         strategy.init(META2)
-        strategy.merge(DelegateChunkReadStream(CHUNK1), META1, bws)
-        strategy.merge(DelegateChunkReadStream(CHUNK2), META2, bws)
+        strategy.merge(CHUNK1, META1, bws)
+        strategy.merge(CHUNK2, META2, bws)
         strategy.finish(bws)
         assertThat(bws.buffer.toString("utf-8")).isEqualTo(
             """$XMLHEADER$EXPECTEDROOT$CONTENTS1$CONTENTS2</${EXPECTEDROOT.name}>""")
@@ -88,8 +87,8 @@ class MergeNamespacesStrategyTest {
       ctx.coVerify {
         assertThatThrownBy {
           strategy.init(META1) // skip second init
-          strategy.merge(DelegateChunkReadStream(CHUNK1), META1, bws)
-          strategy.merge(DelegateChunkReadStream(CHUNK2), META2, bws)
+          strategy.merge(CHUNK1, META1, bws)
+          strategy.merge(CHUNK2, META2, bws)
         }.isInstanceOf(IllegalStateException::class.java)
       }
       ctx.completeNow()

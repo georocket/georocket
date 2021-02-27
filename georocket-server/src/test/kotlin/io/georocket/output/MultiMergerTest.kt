@@ -7,7 +7,6 @@ import io.georocket.storage.GeoJsonChunkMeta
 import io.georocket.storage.XMLChunkMeta
 import io.georocket.util.XMLStartElement
 import io.georocket.util.io.BufferWriteStream
-import io.georocket.util.io.DelegateChunkReadStream
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import io.vertx.junit5.VertxExtension
@@ -41,8 +40,7 @@ class MultiMergerTest {
     GlobalScope.launch(vertx.dispatcher()) {
       ctx.coVerify {
         for ((meta, chunk) in metas.zip(chunks)) {
-          val stream = DelegateChunkReadStream(chunk)
-          m.merge(stream, meta, bws)
+          m.merge(chunk, meta, bws)
         }
         m.finish(bws)
         assertThat(contents).isEqualTo(bws.buffer.toString("utf-8"))
@@ -145,9 +143,9 @@ class MultiMergerTest {
     GlobalScope.launch(vertx.dispatcher()) {
       ctx.coVerify {
         m.init(cm1)
-        m.merge(DelegateChunkReadStream(chunk1), cm1, bws)
+        m.merge(chunk1, cm1, bws)
         assertThatThrownBy {
-          m.merge(DelegateChunkReadStream(chunk2), cm2, bws)
+          m.merge(chunk2, cm2, bws)
         }.isInstanceOf(IllegalStateException::class.java)
       }
       ctx.completeNow()

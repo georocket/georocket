@@ -1,6 +1,5 @@
 package io.georocket.output.xml
 
-import io.georocket.storage.ChunkReadStream
 import io.georocket.storage.XMLChunkMeta
 import io.georocket.util.XMLStartElement
 import io.vertx.core.buffer.Buffer
@@ -46,7 +45,7 @@ abstract class AbstractMergeStrategy : MergeStrategy {
     parents!!.forEach { e -> out.write(Buffer.buffer(e.toString())) }
   }
 
-  override suspend fun merge(chunk: ChunkReadStream, chunkMetadata: XMLChunkMeta,
+  override suspend fun merge(chunk: Buffer, chunkMetadata: XMLChunkMeta,
       outputStream: WriteStream<Buffer>) {
     if (!canMerge(chunkMetadata)) {
       throw IllegalStateException("Chunk cannot be merged with this strategy")
@@ -56,7 +55,7 @@ abstract class AbstractMergeStrategy : MergeStrategy {
       writeHeader(outputStream)
       isHeaderWritten = true
     }
-    writeChunk(chunk, chunkMetadata, outputStream)
+    outputStream.write(chunk.slice(chunkMetadata.start, chunkMetadata.end))
   }
 
   override fun finish(outputStream: WriteStream<Buffer>) {

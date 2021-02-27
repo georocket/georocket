@@ -1,5 +1,7 @@
 package io.georocket.storage
 
+import io.vertx.core.buffer.Buffer
+
 /**
  * A store for chunks
  * @author Michel Kraemer
@@ -13,10 +15,9 @@ interface Store {
       indexMetadata: IndexMeta, layer: String)
 
   /**
-   * Get a chunk with a given [path] from the store. The returned
-   * [ChunkReadStream] must be closed after use to release all resources.
+   * Get a chunk with a given [path] from the store
    */
-  suspend fun getOne(path: String): ChunkReadStream
+  suspend fun getOne(path: String): Buffer
 
   /**
    * Delete all chunks from the store that match a given [search] query and

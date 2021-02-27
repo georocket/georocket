@@ -7,11 +7,9 @@ import com.mongodb.reactivestreams.client.gridfs.GridFSBucket
 import com.mongodb.reactivestreams.client.gridfs.GridFSBuckets
 import io.georocket.constants.ConfigConstants.STORAGE_MONGODB_CONNECTION_STRING
 import io.georocket.index.mongodb.SharedMongoClient
-import io.georocket.storage.ChunkReadStream
 import io.georocket.storage.indexed.IndexedStore
 import io.georocket.util.PathUtils
 import io.georocket.util.UniqueID
-import io.georocket.util.io.DelegateChunkReadStream
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import kotlinx.coroutines.flow.collect
@@ -46,11 +44,10 @@ class MongoDBStore(vertx: Vertx, connectionString: String? = null) : IndexedStor
     gridfs = GridFSBuckets.create(db)
   }
 
-  override suspend fun getOne(path: String): ChunkReadStream {
+  override suspend fun getOne(path: String): Buffer {
     val publisher = gridfs.downloadToPublisher(path)
     val bytebuf = publisher.awaitSingle()
-    val buf = Buffer.buffer(bytebuf.array())
-    return DelegateChunkReadStream(buf)
+    return Buffer.buffer(bytebuf.array())
   }
 
   override suspend fun doAddChunk(chunk: String, layer: String, correlationId: String): String {

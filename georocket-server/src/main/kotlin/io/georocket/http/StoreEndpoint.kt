@@ -98,19 +98,16 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
     var accepted = 0L
     var notaccepted = 0L
 
-    for (chunk in data) {
-      val crs = store.getOne(data.chunkPath)
+    for (chunkMeta in data) {
+      val chunk = store.getOne(data.chunkPath)
       try {
-        merger.merge(crs, chunk, out)
+        merger.merge(chunk, chunkMeta, out)
         accepted++
       } catch (e: IllegalStateException) {
         // Chunk cannot be merged. maybe it's a new one that has
         // been added after the merger was initialized. Just
         // ignore it, but emit a warning later
         notaccepted++
-      } finally {
-        // don't forget to close the chunk!
-        crs.close()
       }
     }
 

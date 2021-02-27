@@ -4,7 +4,6 @@ import io.georocket.assertThatThrownBy
 import io.georocket.coVerify
 import io.georocket.storage.GeoJsonChunkMeta
 import io.georocket.util.io.BufferWriteStream
-import io.georocket.util.io.DelegateChunkReadStream
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import io.vertx.junit5.VertxExtension
@@ -36,8 +35,7 @@ class GeoJsonMergerTest {
     GlobalScope.launch(vertx.dispatcher()) {
       ctx.coVerify {
         for ((meta, chunk) in metas.zip(chunks)) {
-          val stream = DelegateChunkReadStream(chunk)
-          m.merge(stream, meta, bws)
+          m.merge(chunk, meta, bws)
         }
         m.finish(bws)
         assertThat(bws.buffer.toString("utf-8")).isEqualTo(jsonContents)
@@ -281,8 +279,8 @@ class GeoJsonMergerTest {
       ctx.coVerify {
         assertThatThrownBy {
           m.init(cm1)
-          m.merge(DelegateChunkReadStream(chunk1), cm1, bws)
-          m.merge(DelegateChunkReadStream(chunk2), cm2, bws)
+          m.merge(chunk1, cm1, bws)
+          m.merge(chunk2, cm2, bws)
         }.isInstanceOf(IllegalStateException::class.java)
       }
       ctx.completeNow()
@@ -313,9 +311,9 @@ class GeoJsonMergerTest {
       ctx.coVerify {
         m.init(cm1)
         m.init(cm2)
-        m.merge(DelegateChunkReadStream(chunk1), cm1, bws)
-        m.merge(DelegateChunkReadStream(chunk2), cm2, bws)
-        m.merge(DelegateChunkReadStream(chunk3), cm3, bws)
+        m.merge(chunk1, cm1, bws)
+        m.merge(chunk2, cm2, bws)
+        m.merge(chunk3, cm3, bws)
         m.finish(bws)
 
         assertThat(jsonContents).isEqualTo(bws.buffer.toString("utf-8"))

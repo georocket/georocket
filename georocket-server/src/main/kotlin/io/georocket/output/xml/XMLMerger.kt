@@ -1,7 +1,6 @@
 package io.georocket.output.xml
 
 import io.georocket.output.Merger
-import io.georocket.storage.ChunkReadStream
 import io.georocket.storage.XMLChunkMeta
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.streams.WriteStream
@@ -57,7 +56,7 @@ class XMLMerger(private val optimistic: Boolean) : Merger<XMLChunkMeta> {
     return strategy.init(chunkMetadata)
   }
 
-  override suspend fun merge(chunk: ChunkReadStream, chunkMetadata: XMLChunkMeta,
+  override suspend fun merge(chunk: Buffer, chunkMetadata: XMLChunkMeta,
       outputStream: WriteStream<Buffer>) {
     mergeStarted = true
     if (!initialized) {

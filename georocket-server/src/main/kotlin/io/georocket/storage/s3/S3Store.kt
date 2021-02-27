@@ -1,11 +1,9 @@
 package io.georocket.storage.s3
 
 import io.georocket.constants.ConfigConstants
-import io.georocket.storage.ChunkReadStream
 import io.georocket.storage.indexed.IndexedStore
 import io.georocket.util.PathUtils
 import io.georocket.util.UniqueID
-import io.georocket.util.io.DelegateChunkReadStream
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import kotlinx.coroutines.future.await
@@ -88,7 +86,7 @@ class S3Store(vertx: Vertx, accessKey: String? = null, secretKey: String? = null
     return filename
   }
 
-  override suspend fun getOne(path: String): ChunkReadStream {
+  override suspend fun getOne(path: String): Buffer {
     val key = PathUtils.removeLeadingSlash(PathUtils.normalize(path))
 
     val getObjectRequest = GetObjectRequest.builder()
@@ -97,9 +95,7 @@ class S3Store(vertx: Vertx, accessKey: String? = null, secretKey: String? = null
         .build()
 
     val response = s3.getObject(getObjectRequest, AsyncResponseTransformer.toBytes()).await()
-    val chunk = Buffer.buffer(response.asByteArrayUnsafe())
-
-    return DelegateChunkReadStream(chunk)
+    return Buffer.buffer(response.asByteArrayUnsafe())
   }
 
   override suspend fun doDeleteChunks(paths: Iterable<String>) {

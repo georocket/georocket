@@ -5,7 +5,6 @@ import io.georocket.coVerify
 import io.georocket.storage.XMLChunkMeta
 import io.georocket.util.XMLStartElement
 import io.georocket.util.io.BufferWriteStream
-import io.georocket.util.io.DelegateChunkReadStream
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import io.vertx.junit5.VertxExtension
@@ -43,8 +42,8 @@ class AllSameStrategyTest {
       ctx.coVerify {
         strategy.init(cm)
         strategy.init(cm)
-        strategy.merge(DelegateChunkReadStream(chunk1), cm, bws)
-        strategy.merge(DelegateChunkReadStream(chunk2), cm, bws)
+        strategy.merge(chunk1, cm, bws)
+        strategy.merge(chunk2, cm, bws)
         strategy.finish(bws)
 
         assertThat(bws.buffer.toString("utf-8")).isEqualTo(
@@ -65,8 +64,8 @@ class AllSameStrategyTest {
     GlobalScope.launch(vertx.dispatcher()) {
       ctx.coVerify {
         strategy.init(cm) // skip second init
-        strategy.merge(DelegateChunkReadStream(chunk1), cm, bws)
-        strategy.merge(DelegateChunkReadStream(chunk2), cm, bws)
+        strategy.merge(chunk1, cm, bws)
+        strategy.merge(chunk2, cm, bws)
         strategy.finish(bws)
         assertThat(bws.buffer.toString("utf-8")).isEqualTo(
             """$XMLHEADER<root><test chunk="1"></test><test chunk="2"></test></root>""")
@@ -111,7 +110,7 @@ class AllSameStrategyTest {
       ctx.coVerify {
         strategy.init(cm)
         assertThatThrownBy {
-          strategy.merge(DelegateChunkReadStream(chunk2), cm2, bws)
+          strategy.merge(chunk2, cm2, bws)
         }.isInstanceOf(IllegalStateException::class.java)
       }
       ctx.completeNow()

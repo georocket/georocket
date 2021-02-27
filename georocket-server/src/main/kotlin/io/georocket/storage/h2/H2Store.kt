@@ -1,11 +1,9 @@
 package io.georocket.storage.h2
 
 import io.georocket.constants.ConfigConstants
-import io.georocket.storage.ChunkReadStream
 import io.georocket.storage.indexed.IndexedStore
 import io.georocket.util.PathUtils
 import io.georocket.util.UniqueID
-import io.georocket.util.io.DelegateChunkReadStream
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import java.io.FileNotFoundException
@@ -37,12 +35,11 @@ class H2Store(vertx: Vertx, path: String? = null) : IndexedStore(vertx) {
     map.close()
   }
 
-  override suspend fun getOne(path: String): ChunkReadStream {
+  override suspend fun getOne(path: String): Buffer {
     val finalPath = PathUtils.normalize(path)
     val chunkStr = map[finalPath]
         ?: throw FileNotFoundException("Could not find chunk: $finalPath")
-    val chunk = Buffer.buffer(chunkStr)
-    return DelegateChunkReadStream(chunk)
+    return Buffer.buffer(chunkStr)
   }
 
   override suspend fun doAddChunk(chunk: String, layer: String,

@@ -6,7 +6,6 @@ import io.georocket.output.geojson.GeoJsonMerger
 import io.georocket.storage.XMLChunkMeta
 import java.lang.IllegalStateException
 import io.georocket.storage.GeoJsonChunkMeta
-import io.georocket.storage.ChunkReadStream
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.streams.WriteStream
 
@@ -56,7 +55,7 @@ class MultiMerger(private val optimistic: Boolean) : Merger<ChunkMeta> {
     }
   }
 
-  override suspend fun merge(chunk: ChunkReadStream, chunkMetadata: ChunkMeta,
+  override suspend fun merge(chunk: Buffer, chunkMetadata: ChunkMeta,
       outputStream: WriteStream<Buffer>) {
     ensureMerger(chunkMetadata)
 

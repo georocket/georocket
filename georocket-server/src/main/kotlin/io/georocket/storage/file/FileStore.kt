@@ -1,7 +1,6 @@
 package io.georocket.storage.file
 
 import io.georocket.constants.ConfigConstants
-import io.georocket.storage.ChunkReadStream
 import io.georocket.storage.indexed.IndexedStore
 import io.georocket.util.PathUtils
 import io.georocket.util.UniqueID
@@ -13,8 +12,7 @@ import io.vertx.kotlin.core.file.deleteAwait
 import io.vertx.kotlin.core.file.existsAwait
 import io.vertx.kotlin.core.file.mkdirsAwait
 import io.vertx.kotlin.core.file.openAwait
-import io.vertx.kotlin.core.file.openOptionsOf
-import io.vertx.kotlin.core.file.propsAwait
+import io.vertx.kotlin.core.file.readFileAwait
 import io.vertx.kotlin.core.file.writeAwait
 import java.io.FileNotFoundException
 
@@ -60,7 +58,7 @@ class FileStore(private val vertx: Vertx, storagePath: String? = null) : Indexed
     return PathUtils.join(path, filename)
   }
 
-  override suspend fun getOne(path: String): ChunkReadStream {
+  override suspend fun getOne(path: String): Buffer {
     val absolutePath = PathUtils.join(root, path)
 
     // check if chunk exists
@@ -69,14 +67,7 @@ class FileStore(private val vertx: Vertx, storagePath: String? = null) : Indexed
       throw FileNotFoundException("Could not find chunk: $path")
     }
 
-    // get chunk's size
-    val props = fs.propsAwait(absolutePath)
-    val size = props.size()
-
-    // open chunk
-    val f = fs.openAwait(absolutePath, openOptionsOf(create = false, write = false))
-
-    return FileChunkReadStream(size, f)
+    return fs.readFileAwait(absolutePath)
   }
 
   override suspend fun doDeleteChunks(paths: Iterable<String>) {

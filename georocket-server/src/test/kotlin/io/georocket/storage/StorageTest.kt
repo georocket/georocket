@@ -16,7 +16,6 @@ import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.dispatcher
-import io.vertx.kotlin.coroutines.toChannel
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.assertj.core.api.Assertions.assertThat
@@ -279,10 +278,9 @@ abstract class StorageTest {
       prepareData(ctx, vertx, null)
 
       val store = createStore(vertx)
-      val h = store.getOne(ID)
-      val receivedChunk = h.toChannel(vertx).receive().toString()
+      val chunk = store.getOne(ID).toString()
       ctx.verify {
-        assertThat(receivedChunk).isEqualTo(CHUNK_CONTENT)
+        assertThat(chunk).isEqualTo(CHUNK_CONTENT)
       }
 
       ctx.completeNow()

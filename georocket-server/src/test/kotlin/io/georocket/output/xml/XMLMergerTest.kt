@@ -4,7 +4,6 @@ import io.georocket.coVerify
 import io.georocket.storage.XMLChunkMeta
 import io.georocket.util.XMLStartElement
 import io.georocket.util.io.BufferWriteStream
-import io.georocket.util.io.DelegateChunkReadStream
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import io.vertx.junit5.VertxExtension
@@ -53,8 +52,7 @@ class XMLMergerTest {
       ctx.coVerify {
         try {
           for ((meta, chunk) in metas.zip(chunks)) {
-            val stream = DelegateChunkReadStream(chunk)
-            m.merge(stream, meta, bws)
+            m.merge(chunk, meta, bws)
           }
           m.finish(bws)
           assertThat(bws.buffer.toString("utf-8")).isEqualTo("""$XMLHEADER$xmlContents""")

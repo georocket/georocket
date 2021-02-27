@@ -1,5 +1,9 @@
 package io.georocket.index
 
+import com.fasterxml.aalto.AsyncXMLStreamReader
+import com.fasterxml.aalto.stax.InputFactoryImpl
+import de.undercouch.actson.JsonEvent
+import de.undercouch.actson.JsonParser
 import io.georocket.constants.AddressConstants
 import io.georocket.constants.ConfigConstants
 import io.georocket.index.elasticsearch.ElasticsearchClient
@@ -11,7 +15,6 @@ import io.georocket.index.xml.StreamIndexer
 import io.georocket.index.xml.XMLIndexerFactory
 import io.georocket.query.DefaultQueryCompiler
 import io.georocket.storage.ChunkMeta
-import io.georocket.storage.ChunkReadStream
 import io.georocket.storage.GeoJsonChunkMeta
 import io.georocket.storage.IndexMeta
 import io.georocket.storage.JsonChunkMeta
@@ -22,14 +25,13 @@ import io.georocket.tasks.IndexingTask
 import io.georocket.tasks.RemovingTask
 import io.georocket.tasks.TaskError
 import io.georocket.util.FilteredServiceLoader
-import io.georocket.util.JsonParserTransformer
+import io.georocket.util.JsonStreamEvent
 import io.georocket.util.MapUtils
 import io.georocket.util.MimeTypeUtils.belongsTo
 import io.georocket.util.StreamEvent
 import io.georocket.util.ThrowableHelper.throwableToCode
 import io.georocket.util.ThrowableHelper.throwableToMessage
-import io.georocket.util.XMLParserTransformer
-import io.georocket.util.io.DelegateChunkReadStream
+import io.georocket.util.XMLStreamEvent
 import io.georocket.util.rxAwait
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.eventbus.Message
@@ -37,12 +39,10 @@ import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.kotlin.coroutines.CoroutineVerticle
-import io.vertx.rx.java.RxHelper
 import kotlinx.coroutines.launch
 import org.jooq.lambda.tuple.Tuple
 import org.jooq.lambda.tuple.Tuple3
 import rx.Completable
-import rx.Observable
 import java.time.Instant
 import java.util.HashMap
 
@@ -346,13 +346,9 @@ class IndexerVerticle : CoroutineVerticle() {
    * @param path the chunk's path
    * @return the chunk
    */
-  private suspend fun getChunkFromStore(path: String): ChunkReadStream {
+  private suspend fun getChunkFromStore(path: String): Buffer {
     val chunk = IndexableChunkCache.getInstance()[path]
-    return if (chunk != null) {
-      DelegateChunkReadStream(chunk)
-    } else {
-      store.getOne(path)
-    }
+    return chunk ?: store.getOne(path)
   }
 
   /**
@@ -367,18 +363,6 @@ class IndexerVerticle : CoroutineVerticle() {
       indexMeta: IndexMeta): Map<String, Any> {
     val chunk = getChunkFromStore(path)
 
-    // select indexers and parser depending on the mime type
-    val mimeType = chunkMeta.mimeType
-    val (factories, parserTransformer) = if (belongsTo(mimeType, "application", "xml") ||
-        belongsTo(mimeType, "text", "xml")) {
-      xmlIndexerFactories to XMLParserTransformer()
-    } else if (belongsTo(mimeType, "application", "json")) {
-      jsonIndexerFactories to JsonParserTransformer()
-    } else {
-      throw IllegalArgumentException("Unexpected mime type '${mimeType}' " +
-              "while trying to index chunk '$path'")
-    }
-
     // call meta indexers
     val metaResults = mutableMapOf<String, Any>()
     for (metaIndexerFactory in metaIndexerFactories) {
@@ -387,33 +371,40 @@ class IndexerVerticle : CoroutineVerticle() {
       metaResults.putAll(metaIndexer.result)
     }
 
-    try {
-      val doc = chunkToDocument(chunk, indexMeta.fallbackCRSString,
-          parserTransformer, factories)
-
-      // add results from meta indexers to converted document
-      return doc + metaResults
-    } finally {
-      chunk.close()
+    // index chunks depending on the mime type
+    val mimeType = chunkMeta.mimeType
+    val doc = if (belongsTo(mimeType, "application", "xml") ||
+        belongsTo(mimeType, "text", "xml")) {
+      chunkToDocument(chunk, indexMeta.fallbackCRSString,
+          xmlIndexerFactories, this::indexXmlChunk)
+    } else if (belongsTo(mimeType, "application", "json")) {
+      chunkToDocument(chunk, indexMeta.fallbackCRSString,
+          jsonIndexerFactories, this::indexJsonChunk)
+    } else {
+      throw IllegalArgumentException("Unexpected mime type '${mimeType}' " +
+              "while trying to index chunk '$path'")
     }
+
+    // add results from meta indexers to converted document
+    return doc + metaResults
   }
 
   /**
    * Convert a chunk to an Elasticsearch document
    * @param chunk the chunk to convert
    * @param fallbackCRSString a string representing the CRS that should be used
-   * to index the chunk if it does not specify a CRS itself (may be null if no
+   * to index the chunk if it does not specify a CRS itself (may be `null` if no
    * CRS is available as fallback)
-   * @param parserTransformer the transformer used to parse the chunk stream
-   * into stream events
-   * @param indexerFactories a sequence of indexer factories that should be
-   * used to index the chunk
-   * @return an observable that will emit the document
+   * @param indexerFactories a list of indexer factories that should be used to
+   * index the chunk
+   * @return the document
    */
-  private suspend fun <T : StreamEvent> chunkToDocument(chunk: ChunkReadStream,
-      fallbackCRSString: String?, parserTransformer: Observable.Transformer<Buffer, T>,
-      indexerFactories: List<IndexerFactory>): Map<String, Any> {
+  private fun <T : StreamEvent> chunkToDocument(chunk: Buffer,
+      fallbackCRSString: String?, indexerFactories: List<IndexerFactory>,
+      indexFunction: (Buffer, List<StreamIndexer<T>>) -> Unit): Map<String, Any> {
+    // initialize indexers
     val indexers = indexerFactories.map { factory ->
+      @Suppress("UNCHECKED_CAST")
       val i = factory.createIndexer() as StreamIndexer<T>
       if (fallbackCRSString != null && i is CRSAware) {
         i.setFallbackCRSString(fallbackCRSString)
@@ -421,16 +412,89 @@ class IndexerVerticle : CoroutineVerticle() {
       i
     }
 
-    return RxHelper.toObservable(chunk)
-        .compose(parserTransformer)
-        .doOnNext { e -> indexers.forEach { it.onEvent(e) } }
-        .last() // "wait" until the whole chunk has been consumed
-        .map {
-          // create the Elasticsearch document
-          val doc = mutableMapOf<String, Any>()
-          indexers.forEach { i -> doc.putAll(i.result) }
-          doc
-        }.toSingle().rxAwait()
+    indexFunction(chunk, indexers)
+
+    // create the Elasticsearch document
+    val doc = mutableMapOf<String, Any>()
+    indexers.forEach { indexer -> doc.putAll(indexer.result) }
+    return doc
+  }
+
+  private fun indexXmlChunk(chunk: Buffer, indexers: List<StreamIndexer<XMLStreamEvent>>) {
+    val parser = InputFactoryImpl().createAsyncForByteArray()
+
+    val processEvents: () -> Boolean = pe@{
+      while (true) {
+        val nextEvent = parser.next()
+        if (nextEvent == AsyncXMLStreamReader.EVENT_INCOMPLETE) {
+          break
+        }
+
+        val pos = parser.location.characterOffset
+        val streamEvent = XMLStreamEvent(nextEvent, pos, parser)
+        indexers.forEach { it.onEvent(streamEvent) }
+
+        if (nextEvent == AsyncXMLStreamReader.END_DOCUMENT) {
+          parser.close()
+          return@pe false
+        }
+      }
+      true
+    }
+
+    val bytes = chunk.bytes
+    var i = 0
+    while (i < bytes.size) {
+      val len = bytes.size - i
+      parser.inputFeeder.feedInput(bytes, i, len)
+      i += len
+      if (!processEvents()) {
+        break
+      }
+    }
+
+    // process remaining events
+    parser.inputFeeder.endOfInput()
+    processEvents()
+  }
+
+  private fun indexJsonChunk(chunk: Buffer, indexers: List<StreamIndexer<JsonStreamEvent>>) {
+    val parser = JsonParser()
+
+    val processEvents: () -> Boolean = pe@{
+      while (true) {
+        val nextEvent = parser.nextEvent()
+        val value = when (nextEvent) {
+          JsonEvent.NEED_MORE_INPUT -> break
+          JsonEvent.ERROR -> throw IllegalStateException("Syntax error")
+          JsonEvent.VALUE_STRING, JsonEvent.FIELD_NAME -> parser.currentString
+          JsonEvent.VALUE_DOUBLE -> parser.currentDouble
+          JsonEvent.VALUE_INT -> parser.currentInt
+          else -> null
+        }
+
+        val streamEvent = JsonStreamEvent(nextEvent, parser.parsedCharacterCount, value)
+        indexers.forEach { it.onEvent(streamEvent) }
+
+        if (nextEvent == JsonEvent.EOF) {
+          return@pe false
+        }
+      }
+      true
+    }
+
+    val bytes = chunk.bytes
+    var i = 0
+    while (i < bytes.size) {
+      i += parser.feeder.feed(bytes, i, bytes.size - i)
+      if (!processEvents()) {
+        break
+      }
+    }
+
+    // process remaining events
+    parser.feeder.done()
+    processEvents()
   }
 
   /**
