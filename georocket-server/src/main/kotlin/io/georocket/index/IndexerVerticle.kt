@@ -570,6 +570,7 @@ class IndexerVerticle : CoroutineVerticle() {
           val doc = openChunkToDocument(path, chunkMeta, indexMeta)
           Tuple.tuple(path, JsonObject(doc), msg)
         } catch (t: Throwable) {
+          log.error("Could not index chunk", t)
           msg.fail(throwableToCode(t), throwableToMessage(t, ""))
           null
         }
