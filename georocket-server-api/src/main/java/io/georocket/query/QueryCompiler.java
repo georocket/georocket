@@ -3,7 +3,7 @@ package io.georocket.query;
 import io.vertx.core.json.JsonObject;
 
 /**
- * Compiles search strings to Elasticsearch documents
+ * Compiles search strings to MongoDB queries
  * @since 1.0.0
  * @author Michel Kraemer
  */
@@ -22,11 +22,6 @@ public interface QueryCompiler {
      * The query should appear in the matching documents
      */
     SHOULD,
-    
-    /**
-     * The query must appear in the matching documents
-     */
-    MUST,
     
     /**
      * The query is the only one that should be applied. Queries by other
@@ -61,9 +56,7 @@ public interface QueryCompiler {
   }
   
   /**
-   * <p>Create an Elasticsearch query for the given search string.</p>
-   * <p>Heads up: implementors may use the helper methods from
-   * {@link ElasticsearchQueryHelper} to build the query.</p>
+   * <p>Create a MongoDB query for the given search string.</p>
    * @param search the search string
    * @return the Elasticsearch query (may be null)
    */
@@ -73,8 +66,6 @@ public interface QueryCompiler {
   
   /**
    * <p>Create an Elasticsearch query for the given GeoRocket query part.</p>
-   * <p>Heads up: implementors may use the helper methods from
-   * {@link ElasticsearchQueryHelper} to build the query.</p>
    * @param queryPart the GeoRocket query part
    * @return the Elasticsearch query (may be null)
    * @since 1.1.0

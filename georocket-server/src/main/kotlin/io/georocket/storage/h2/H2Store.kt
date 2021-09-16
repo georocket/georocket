@@ -43,7 +43,7 @@ class H2Store(vertx: Vertx, path: String? = null) : IndexedStore(vertx) {
 
   override suspend fun doAddChunk(chunk: Buffer, layer: String,
       correlationId: String): String {
-    val path = if (layer.isEmpty()) "/" else layer
+    val path = layer.ifEmpty { "/" }
     val filename = PathUtils.join(path, correlationId + UniqueID.next())
     map[filename] = chunk
     return filename

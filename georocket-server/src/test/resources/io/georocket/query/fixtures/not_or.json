@@ -1,0 +1,12 @@
+{
+  "query": "NOT(foo bar)",
+  "expected": {
+    "$not": {
+      "$or": [{
+        "tags": "foo"
+      }, {
+        "tags": "bar"
+      }]
+    }
+  }
+}

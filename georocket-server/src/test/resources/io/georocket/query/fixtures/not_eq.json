@@ -1,12 +1,8 @@
 {
   "query": "NOT(EQ(foo bar))",
   "expected": {
-    "bool": {
-      "must_not": {
-        "term": {
-          "props.foo": "bar"
-        }
-      }
+    "$not": {
+      "props.foo": "bar"
     }
   }
 }

@@ -65,7 +65,7 @@ public class DefaultMetaIndexerFactory implements MetaIndexerFactory {
     if (queryPart instanceof StringQueryPart) {
       // match values of all fields regardless of their name
       String search = ((StringQueryPart)queryPart).getSearchString();
-      result = ElasticsearchQueryHelper.termQuery("tags", search);
+      result = new JsonObject(ImmutableMap.of("tags", search));
     } else if (queryPart instanceof KeyValueQueryPart) {
       KeyValueQueryPart kvqp = (KeyValueQueryPart)queryPart;
       String key = kvqp.getKey();
@@ -74,19 +74,19 @@ public class DefaultMetaIndexerFactory implements MetaIndexerFactory {
 
       switch (comp) {
         case EQ:
-          result = ElasticsearchQueryHelper.termQuery("props." + key, value);
+          result = new JsonObject(ImmutableMap.of("props." + key, value));
           break;
         case GT:
-          result = ElasticsearchQueryHelper.gtQuery("props." + key, value);
+          result = new JsonObject(ImmutableMap.of("props." + key, ImmutableMap.of("$gt", value)));
           break;
         case GTE:
-          result = ElasticsearchQueryHelper.gteQuery("props." + key, value);
+          result = new JsonObject(ImmutableMap.of("props." + key, ImmutableMap.of("$gte", value)));
           break;
         case LT:
-          result = ElasticsearchQueryHelper.ltQuery("props." + key, value);
+          result = new JsonObject(ImmutableMap.of("props." + key, ImmutableMap.of("$lt", value)));
           break;
         case LTE:
-          result = ElasticsearchQueryHelper.lteQuery("props." + key, value);
+          result = new JsonObject(ImmutableMap.of("props." + key, ImmutableMap.of("$lte", value)));
           break;
       }
 

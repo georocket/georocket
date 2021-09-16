@@ -6,9 +6,7 @@ import de.undercouch.actson.JsonEvent
 import de.undercouch.actson.JsonParser
 import io.georocket.constants.AddressConstants
 import io.georocket.constants.ConfigConstants
-import io.georocket.index.elasticsearch.ElasticsearchClient
-import io.georocket.index.elasticsearch.ElasticsearchClientFactory
-import io.georocket.index.generic.DefaultMetaIndexerFactory
+import io.georocket.index.mongodb.MongoDBIndex
 import io.georocket.index.xml.JsonIndexerFactory
 import io.georocket.index.xml.MetaIndexerFactory
 import io.georocket.index.xml.StreamIndexer
@@ -26,25 +24,22 @@ import io.georocket.tasks.RemovingTask
 import io.georocket.tasks.TaskError
 import io.georocket.util.FilteredServiceLoader
 import io.georocket.util.JsonStreamEvent
-import io.georocket.util.MapUtils
 import io.georocket.util.MimeTypeUtils.belongsTo
 import io.georocket.util.StreamEvent
 import io.georocket.util.ThrowableHelper.throwableToCode
 import io.georocket.util.ThrowableHelper.throwableToMessage
 import io.georocket.util.XMLStreamEvent
-import io.georocket.util.rxAwait
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.eventbus.Message
-import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.core.logging.LoggerFactory
+import io.vertx.kotlin.core.json.json
+import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import kotlinx.coroutines.launch
 import org.jooq.lambda.tuple.Tuple
 import org.jooq.lambda.tuple.Tuple3
-import rx.Completable
 import java.time.Instant
-import java.util.HashMap
 
 /**
  * Generic methods for background indexing of any messages
@@ -53,32 +48,17 @@ import java.util.HashMap
 class IndexerVerticle : CoroutineVerticle() {
   companion object {
     private val log = LoggerFactory.getLogger(IndexerVerticle::class.java)
-
-    /**
-     * Elasticsearch index
-     */
-    private const val INDEX_NAME = "georocket"
-
-    /**
-     * Type of documents stored in the Elasticsearch index
-     */
-    private const val TYPE_NAME = "object"
   }
 
   /**
-   * The Elasticsearch client
+   * The GeoRocket index
    */
-  private lateinit var client: ElasticsearchClient
+  private lateinit var index: Index
 
   /**
    * The GeoRocket store
    */
   private lateinit var store: Store
-
-  /**
-   * Compiles search strings to Elasticsearch documents
-   */
-  private lateinit var queryCompiler: DefaultQueryCompiler
 
   /**
    * A list of [IndexerFactory] objects
@@ -118,32 +98,14 @@ class IndexerVerticle : CoroutineVerticle() {
     jsonIndexerFactories = indexerFactories.filterIsInstance<JsonIndexerFactory>()
     metaIndexerFactories = indexerFactories.filterIsInstance<MetaIndexerFactory>()
 
+    index = MongoDBIndex()
     store = StoreFactory.createStore(vertx)
 
-    queryCompiler = createQueryCompiler()
-    queryCompiler.setQueryCompilers(indexerFactories)
-
-    ElasticsearchClientFactory(vertx).createElasticsearchClient(INDEX_NAME)
-        .doOnSuccess { es -> client = es }
-        .flatMapCompletable { client.ensureIndex() }
-        .andThen(Completable.defer { ensureMapping() })
-        .doOnEach {
-          registerMessageConsumers()
-        }.rxAwait()
-  }
-
-  private fun createQueryCompiler(): DefaultQueryCompiler {
-    val config = vertx.orCreateContext.config()
-    val cls = config.getString(ConfigConstants.QUERY_COMPILER_CLASS, DefaultQueryCompiler::class.java.name)
-    return try {
-      Class.forName(cls).newInstance() as DefaultQueryCompiler
-    } catch (e: ReflectiveOperationException) {
-      throw RuntimeException("Could not create a DefaultQueryCompiler", e)
-    }
+    registerMessageConsumers()
   }
 
   override suspend fun stop() {
-    client.close()
+    index.close()
   }
 
   /**
@@ -206,17 +168,6 @@ class IndexerVerticle : CoroutineVerticle() {
     }
   }
 
-  private fun ensureMapping(): Completable {
-    // merge mappings from all indexers
-    val mappings: Map<String, Any> = HashMap()
-    indexerFactories.filterIsInstance<DefaultMetaIndexerFactory>()
-        .forEach { factory -> MapUtils.deepMerge(mappings, factory.mapping) }
-    indexerFactories.filter { it !is DefaultMetaIndexerFactory }
-        .forEach { factory -> MapUtils.deepMerge(mappings, factory.mapping) }
-
-    return client.putMapping(TYPE_NAME, JsonObject(mappings)).toCompletable()
-  }
-
   /**
    * Insert multiple Elasticsearch documents into the index. Perform a
    * bulk request. This method replies to all messages if the bulk request
@@ -232,32 +183,18 @@ class IndexerVerticle : CoroutineVerticle() {
 
     log.info("Indexing ${chunkPaths.size} chunks")
 
-    val docsToInsert = documents.map { it.limit2() }
-    val messages = documents.map { it.v3 }
+    // TODO bulk insert??
+    for (d in documents) {
+      index.add(d.v1, d.v2)
 
-    val bres = client.bulkInsert(TYPE_NAME, docsToInsert).rxAwait()
-
-    val items = bres.getJsonArray("items")
-    for (i in 0 until items.size()) {
-      val jo = items.getJsonObject(i)
-      val item = jo.getJsonObject("index")
-      val msg = messages[i]
-      if (client.bulkResponseItemHasErrors(item)) {
-        msg.fail(500, client.bulkResponseItemGetErrorMessage(item))
-      } else {
-        msg.reply(null)
-      }
+      // TODO handle exception and send it back to d.v3
+      d.v3.reply(null)
     }
 
+    // log error if one of the inserts failed
     val stopTimeStamp = System.currentTimeMillis()
-    val errorMessage = client.bulkResponseGetErrorMessage(bres)
-    if (errorMessage != null) {
-      log.error("Indexing failed")
-      log.error(errorMessage)
-    } else {
-      log.info("Finished indexing ${chunkPaths.size} chunks in " +
-          (stopTimeStamp - startTimeStamp) + " ms")
-    }
+    log.info("Finished indexing ${chunkPaths.size} chunks in " +
+        (stopTimeStamp - startTimeStamp) + " ms")
   }
 
   /**
@@ -342,18 +279,8 @@ class IndexerVerticle : CoroutineVerticle() {
   }
 
   /**
-   * Get a chunk from the store but first look into the cache of indexable chunks
-   * @param path the chunk's path
-   * @return the chunk
-   */
-  private suspend fun getChunkFromStore(path: String): Buffer {
-    val chunk = IndexableChunkCache.getInstance()[path]
-    return chunk ?: store.getOne(path)
-  }
-
-  /**
-   * Open a chunk and convert it to an Elasticsearch document. Retry operation
-   * several times before failing.
+   * Open a chunk and convert it to a document. Retry operation several times
+   * before failing.
    * @param path the path to the chunk to open
    * @param chunkMeta metadata about the chunk
    * @param indexMeta metadata used to index the chunk
@@ -361,7 +288,7 @@ class IndexerVerticle : CoroutineVerticle() {
    */
   private suspend fun openChunkToDocument(path: String, chunkMeta: ChunkMeta,
       indexMeta: IndexMeta): Map<String, Any> {
-    val chunk = getChunkFromStore(path)
+    val chunk = IndexableChunkCache.getInstance()[path] ?: store.getOne(path)
 
     // call meta indexers
     val metaResults = mutableMapOf<String, Any>()
@@ -390,7 +317,7 @@ class IndexerVerticle : CoroutineVerticle() {
   }
 
   /**
-   * Convert a chunk to an Elasticsearch document
+   * Convert a chunk to a document
    * @param chunk the chunk to convert
    * @param fallbackCRSString a string representing the CRS that should be used
    * to index the chunk if it does not specify a CRS itself (may be `null` if no
@@ -414,7 +341,7 @@ class IndexerVerticle : CoroutineVerticle() {
 
     indexFunction(chunk, indexers)
 
-    // create the Elasticsearch document
+    // create the document
     val doc = mutableMapOf<String, Any>()
     indexers.forEach { indexer -> doc.putAll(indexer.result) }
     return doc
@@ -592,45 +519,18 @@ class IndexerVerticle : CoroutineVerticle() {
   private suspend fun onQuery(body: JsonObject): JsonObject {
     val search = body.getString("search")
     val path = body.getString("path")
-    val scrollId = body.getString("scrollId")
-    val pageSize = body.getInteger("size", 100)
-    val timeout = "1m" // one minute
-    val parameters = JsonObject().put("size", pageSize)
 
-    // We only need the chunk meta. Exclude all other source fields.
-    parameters.put("_source", "chunkMeta")
+    val query = DefaultQueryCompiler(indexerFactories).compileQuery(search, path)
+    val hits = index.getMeta(query)
 
-    val scrollResult = if (scrollId == null) {
-      // Execute a new search. Use a post_filter because we only want to get
-      // a yes/no answer and no scoring (i.e. we only want to get matching
-      // documents and not those that likely match). For the difference between
-      // query and post_filter see the Elasticsearch documentation.
-      val postFilter = queryCompiler.compileQuery(search, path)
-      client.beginScroll(TYPE_NAME, null, postFilter, parameters, timeout)
-    } else {
-      // continue searching
-      client.continueScroll(scrollId, timeout)
-    }.rxAwait()
+    // TODO implement scrolling/paging
 
-    // iterate through all hits and convert them to JSON
-    val hits = scrollResult.getJsonObject("hits")
-    val totalHits = hits.getLong("total")
-    val resultHits = JsonArray()
-    val hitsHits = hits.getJsonArray("hits")
-    for (o in hitsHits) {
-      val hit = o as JsonObject
-      val id = hit.getString("_id")
-      val source = hit.getJsonObject("_source")
-      val jsonMeta = source.getJsonObject("chunkMeta")
-      val meta = getMeta(jsonMeta)
-      val obj = meta.toJsonObject().put("id", id)
-      resultHits.add(obj)
+    return json {
+      obj(
+        "totalHits" to hits.size,
+        "hits" to hits
+      )
     }
-
-    return JsonObject()
-        .put("totalHits", totalHits)
-        .put("hits", resultHits)
-        .put("scrollId", scrollResult.getString("_scroll_id"))
   }
 
   /**
@@ -655,20 +555,21 @@ class IndexerVerticle : CoroutineVerticle() {
 
     // execute bulk request
     val startTimeStamp = System.currentTimeMillis()
-    val bres = client.bulkDelete(TYPE_NAME, paths).rxAwait()
+    index.delete(paths.toList().map { it.toString() })
 
     val stopTimeStamp = System.currentTimeMillis()
-    if (client.bulkResponseHasErrors(bres)) {
-      val error = client.bulkResponseGetErrorMessage(bres)
-      log.error("One or more chunks could not be deleted")
-      log.error(error)
-      updateRemovingTask(correlationId, paths.size(),
-          TaskError("generic_error", error))
-      throw IllegalStateException("One or more chunks could not be deleted")
-    } else {
+    // TODO handle errors
+    // if (client.bulkResponseHasErrors(bres)) {
+    //   val error = client.bulkResponseGetErrorMessage(bres)
+    //   log.error("One or more chunks could not be deleted")
+    //   log.error(error)
+    //   updateRemovingTask(correlationId, paths.size(),
+    //       TaskError("generic_error", error))
+    //   throw IllegalStateException("One or more chunks could not be deleted")
+    // } else {
       log.info("Finished deleting ${paths.size()} chunks from index in "
           + (stopTimeStamp - startTimeStamp) + " ms")
       updateRemovingTask(correlationId, paths.size(), null)
-    }
+    // }
   }
 }

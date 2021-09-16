@@ -43,8 +43,7 @@ public class DefaultQueryCompilerTest {
       throw new RuntimeException(e);
     }
     
-    DefaultQueryCompiler compiler = new DefaultQueryCompiler();
-    compiler.setQueryCompilers(queryCompilers);
+    DefaultQueryCompiler compiler = new DefaultQueryCompiler(queryCompilers);
     JsonObject compiledQuery = compiler.compileQuery(query);
     if (!expected.equals(compiledQuery)) {
       System.out.println(Json.encodePrettily(compiledQuery));
@@ -138,6 +137,14 @@ public class DefaultQueryCompilerTest {
   @Test
   public void not() {
     expectFixture("not");
+  }
+
+  /**
+   * Test query with logical NOT and multiple operands
+   */
+  @Test
+  public void notOr() {
+    expectFixture("not_or");
   }
 
   /**

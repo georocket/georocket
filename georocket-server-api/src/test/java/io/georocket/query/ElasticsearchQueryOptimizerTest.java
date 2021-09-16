@@ -30,7 +30,7 @@ public class ElasticsearchQueryOptimizerTest {
     JsonObject query = fixtureObj.getJsonObject("query");
     JsonObject expected = fixtureObj.getJsonObject("expected");
     
-    JsonObject optimizedQuery = ElasticsearchQueryOptimizer.optimize(query);
+    JsonObject optimizedQuery = ElasticsearchQueryOptimizer.INSTANCE.optimize(query);
     
     if (!expected.equals(optimizedQuery)) {
       System.out.println(Json.encodePrettily(optimizedQuery));

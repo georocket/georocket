@@ -60,15 +60,15 @@ public abstract class GenericAttributeIndexerFactory implements IndexerFactory {
 
       switch (comp) {
         case EQ:
-          return ElasticsearchQueryHelper.termQuery("genAttrs." + key, value);
+          return new JsonObject(ImmutableMap.of("genAttrs." + key, value));
         case GT:
-          return ElasticsearchQueryHelper.gtQuery("genAttrs." + key, value);
+          return new JsonObject(ImmutableMap.of("genAttrs." + key, ImmutableMap.of("$gt", value)));
         case GTE:
-          return ElasticsearchQueryHelper.gteQuery("genAttrs." + key, value);
+          return new JsonObject(ImmutableMap.of("genAttrs." + key, ImmutableMap.of("$gte", value)));
         case LT:
-          return ElasticsearchQueryHelper.ltQuery("genAttrs." + key, value);
+          return new JsonObject(ImmutableMap.of("genAttrs." + key, ImmutableMap.of("$lt", value)));
         case LTE:
-          return ElasticsearchQueryHelper.lteQuery("genAttrs." + key, value);
+          return new JsonObject(ImmutableMap.of("genAttrs." + key, ImmutableMap.of("$lte", value)));
       }
     }
     return null;

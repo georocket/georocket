@@ -77,7 +77,7 @@ class ImporterVerticle : CoroutineVerticle() {
     val contentEncoding = body.getString("contentEncoding")
 
     // get tags
-    val tags: List<String>? = body.getJsonArray("tags")
+    val tags = body.getJsonArray("tags")
       ?.filterNotNull()
       ?.map { it.toString() }
       ?.toList()

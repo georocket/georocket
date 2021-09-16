@@ -4,7 +4,6 @@ import java.util.Map;
 
 import com.google.common.collect.ImmutableMap;
 
-import io.georocket.query.ElasticsearchQueryHelper;
 import io.georocket.query.KeyValueQueryPart;
 import io.georocket.query.KeyValueQueryPart.ComparisonOperator;
 import io.georocket.query.QueryPart;
@@ -55,11 +54,11 @@ public class GmlIdIndexerFactory implements XMLIndexerFactory {
   public JsonObject compileQuery(QueryPart queryPart) {
     if (queryPart instanceof StringQueryPart) {
       String search = ((StringQueryPart)queryPart).getSearchString();
-      return ElasticsearchQueryHelper.termQuery("gmlIds", search);
+      return new JsonObject(ImmutableMap.of("gmlIds", search));
     } else if (queryPart instanceof KeyValueQueryPart) {
       KeyValueQueryPart kvqp = (KeyValueQueryPart)queryPart;
       if (isGmlIdEQ(kvqp)) {
-        return ElasticsearchQueryHelper.termQuery("gmlIds", kvqp.getValue());
+        return new JsonObject(ImmutableMap.of("gmlIds", kvqp.getValue()));
       }
     }
     return null;

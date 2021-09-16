@@ -1,16 +1,8 @@
 {
-  "query": "NOT(foo bar)",
+  "query": "NOT(foo)",
   "expected": {
-    "bool": {
-      "must_not": [{
-        "term": {
-          "tags": "foo"
-        }
-      }, {
-        "term": {
-          "tags": "bar"
-        }
-      }]
+    "$not": {
+      "tags": "foo"
     }
   }
 }

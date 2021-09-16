@@ -56,7 +56,6 @@ public final class ConfigConstants {
   public static final String INDEX_ELASTICSEARCH_COMPRESS_REQUEST_BODIES = "georocket.index.elasticsearch.compressRequestBodies";
   public static final String INDEX_SPATIAL_PRECISION = "georocket.index.spatial.precision";
 
-  public static final String QUERY_COMPILER_CLASS = "georocket.query.defaultQueryCompiler"; // undocumented
   public static final String QUERY_DEFAULT_CRS = "georocket.query.defaultCRS";
 
   public static final String TASKS_RETAIN_SECONDS = "georocket.tasks.retainSeconds";

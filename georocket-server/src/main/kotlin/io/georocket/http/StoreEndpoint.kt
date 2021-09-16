@@ -486,14 +486,14 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
           msg.put("fallbackCRSString", fallbackCRSString)
         }
 
+        // run importer
+        vertx.eventBus().send(AddressConstants.IMPORTER_IMPORT, msg)
+
         request.response()
             .setStatusCode(202) // Accepted
             .putHeader("X-Correlation-Id", correlationId)
             .setStatusMessage("Accepted file - importing in progress")
             .end()
-
-        // run importer
-        vertx.eventBus().send(AddressConstants.IMPORTER_IMPORT, msg)
       } catch (t: Throwable) {
         val duration = System.currentTimeMillis() - startTime
         onReceivingFileFinished(correlationId, duration, t)

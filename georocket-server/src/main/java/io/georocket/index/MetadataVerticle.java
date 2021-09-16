@@ -4,8 +4,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.io.Resources;
 import io.georocket.constants.AddressConstants;
 import io.georocket.constants.ConfigConstants;
-import io.georocket.index.elasticsearch.ElasticsearchClient;
-import io.georocket.index.elasticsearch.ElasticsearchClientFactory;
 import io.georocket.index.generic.DefaultMetaIndexerFactory;
 import io.georocket.query.DefaultQueryCompiler;
 import io.georocket.util.FilteredServiceLoader;
@@ -28,7 +26,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.TimeoutException;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -55,16 +52,6 @@ public class MetadataVerticle extends AbstractVerticle {
   private static final String TYPE_NAME = "object";
 
   /**
-   * The Elasticsearch client
-   */
-  private ElasticsearchClient client;
-
-  /**
-   * Compiles search strings to Elasticsearch documents
-   */
-  private DefaultQueryCompiler queryCompiler;
-
-  /**
    * A list of {@link IndexerFactory} objects
    */
   private List<? extends IndexerFactory> indexerFactories;
@@ -80,8 +67,6 @@ public class MetadataVerticle extends AbstractVerticle {
     // load and copy all indexer factories now and not lazily to avoid
     // concurrent modifications to the service loader's internal cache
     indexerFactories = ImmutableList.copyOf(FilteredServiceLoader.load(IndexerFactory.class));
-    queryCompiler = createQueryCompiler();
-    queryCompiler.setQueryCompilers(indexerFactories);
 
     // create extractors for indexed attributes
     Map<String, Object> attributeMappings = new HashMap<>();
@@ -91,32 +76,7 @@ public class MetadataVerticle extends AbstractVerticle {
       .forEach(mapping -> MapUtils.deepMerge(attributeMappings, mapping));
     indexedAttributeExtractor = attributeMappingsToExtractor(attributeMappings);
 
-    new ElasticsearchClientFactory(vertx.getDelegate()).createElasticsearchClient(INDEX_NAME)
-      .doOnSuccess(es -> {
-        client = es;
-      })
-      .flatMapCompletable(v -> client.ensureIndex())
-      .andThen(Completable.defer(() -> ensureMapping()))
-      .subscribe(() -> {
-        registerMessageConsumers();
-        startFuture.complete();
-      }, startFuture::fail);
-  }
-
-  @Override
-  public void stop() {
-    client.close();
-  }
-
-  private DefaultQueryCompiler createQueryCompiler() {
-    JsonObject config = vertx.getOrCreateContext().config();
-    String cls = config.getString(ConfigConstants.QUERY_COMPILER_CLASS,
-      DefaultQueryCompiler.class.getName());
-    try {
-      return (DefaultQueryCompiler)Class.forName(cls).newInstance();
-    } catch (ReflectiveOperationException e) {
-      throw new RuntimeException("Could not create a DefaultQueryCompiler", e);
-    }
+    startFuture.complete();
   }
 
   /**
@@ -209,7 +169,8 @@ public class MetadataVerticle extends AbstractVerticle {
     indexerFactories.stream().filter(f -> !(f instanceof DefaultMetaIndexerFactory))
       .forEach(factory -> MapUtils.deepMerge(mappings, factory.getMapping()));
 
-    return client.putMapping(TYPE_NAME, new JsonObject(mappings)).toCompletable();
+    // return client.putMapping(TYPE_NAME, new JsonObject(mappings)).toCompletable();
+    return Completable.complete();
   }
 
   /**
@@ -267,28 +228,29 @@ public class MetadataVerticle extends AbstractVerticle {
   }
 
   private Single<JsonObject> executeQuery(JsonObject body) {
-    String search = body.getString("search");
-    String path = body.getString("path");
-    String scrollId = body.getString("scrollId");
-    JsonObject parameters = new JsonObject()
-      .put("size", body.getInteger("pageSize", 100));
-    String timeout = "1m"; // one minute
-
-    if (scrollId == null) {
-      try {
-        // Execute a new search. Use a post_filter because we only want to get
-        // a yes/no answer and no scoring (i.e. we only want to get matching
-        // documents and not those that likely match). For the difference between
-        // query and post_filter see the Elasticsearch documentation.
-        JsonObject postFilter = queryCompiler.compileQuery(search, path);
-        return client.beginScroll(TYPE_NAME, null, postFilter, parameters, timeout);
-      } catch (Throwable t) {
-        return Single.error(t);
-      }
-    } else {
-      // continue searching
-      return client.continueScroll(scrollId, timeout);
-    }
+    // String search = body.getString("search");
+    // String path = body.getString("path");
+    // String scrollId = body.getString("scrollId");
+    // JsonObject parameters = new JsonObject()
+    //   .put("size", body.getInteger("pageSize", 100));
+    // String timeout = "1m"; // one minute
+    //
+    // if (scrollId == null) {
+    //   try {
+    //     // Execute a new search. Use a post_filter because we only want to get
+    //     // a yes/no answer and no scoring (i.e. we only want to get matching
+    //     // documents and not those that likely match). For the difference between
+    //     // query and post_filter see the Elasticsearch documentation.
+    //     JsonObject postFilter = queryCompiler.compileQuery(search, path);
+    //     return client.beginScroll(TYPE_NAME, null, postFilter, parameters, timeout);
+    //   } catch (Throwable t) {
+    //     return Single.error(t);
+    //   }
+    // } else {
+    //   // continue searching
+    //   return client.continueScroll(scrollId, timeout);
+    // }
+    return Single.just(new JsonObject());
   }
 
   /**
@@ -352,7 +314,7 @@ public class MetadataVerticle extends AbstractVerticle {
     JsonObject params) {
     String search = body.getString("search", "");
     String path = body.getString("path", "");
-    JsonObject postFilter = queryCompiler.compileQuery(search, path);
+    JsonObject postFilter = new DefaultQueryCompiler(indexerFactories).compileQuery(search, path, null);
 
     JsonObject updateScript = new JsonObject()
       .put("lang", "painless");
@@ -380,12 +342,13 @@ public class MetadataVerticle extends AbstractVerticle {
    * if an error occurs
    */
   private Completable updateDocuments(JsonObject postFilter, JsonObject updateScript) {
-    return client.updateByQuery(TYPE_NAME, postFilter, updateScript)
-      .flatMapCompletable(sr -> {
-        if (sr.getBoolean("timed_out", true)) {
-          return Completable.error(new TimeoutException());
-        }
-        return Completable.complete();
-      });
+    // return client.updateByQuery(TYPE_NAME, postFilter, updateScript)
+    //   .flatMapCompletable(sr -> {
+    //     if (sr.getBoolean("timed_out", true)) {
+    //       return Completable.error(new TimeoutException());
+    //     }
+    //     return Completable.complete();
+    //   });
+    return Completable.complete();
   }
 }

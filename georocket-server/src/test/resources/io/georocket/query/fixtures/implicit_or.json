@@ -1,16 +1,10 @@
 {
   "query": "foo bar",
   "expected": {
-    "bool": {
-      "should": [{
-        "term": {
-          "tags": "foo"
-        }
-      }, {
-        "term": {
-          "tags": "bar"
-        }
-      }]
-    }
+    "$or": [{
+      "tags": "foo"
+    }, {
+      "tags": "bar"
+    }]
   }
 }
