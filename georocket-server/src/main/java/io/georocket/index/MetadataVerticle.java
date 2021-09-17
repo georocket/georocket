@@ -3,11 +3,8 @@ package io.georocket.index;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.Resources;
 import io.georocket.constants.AddressConstants;
-import io.georocket.constants.ConfigConstants;
-import io.georocket.index.generic.DefaultMetaIndexerFactory;
 import io.georocket.query.DefaultQueryCompiler;
 import io.georocket.util.FilteredServiceLoader;
-import io.georocket.util.MapUtils;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -25,7 +22,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -70,11 +66,11 @@ public class MetadataVerticle extends AbstractVerticle {
 
     // create extractors for indexed attributes
     Map<String, Object> attributeMappings = new HashMap<>();
-    indexerFactories.stream()
-      .map(IndexerFactory::getIndexedAttributeMapping)
-      .filter(Objects::nonNull)
-      .forEach(mapping -> MapUtils.deepMerge(attributeMappings, mapping));
-    indexedAttributeExtractor = attributeMappingsToExtractor(attributeMappings);
+    // indexerFactories.stream()
+    //   .map(IndexerFactory::getIndexedAttributeMapping)
+    //   .filter(Objects::nonNull)
+    //   .forEach(mapping -> MapUtils.deepMerge(attributeMappings, mapping));
+    // indexedAttributeExtractor = attributeMappingsToExtractor(attributeMappings);
 
     startFuture.complete();
   }
@@ -159,18 +155,6 @@ public class MetadataVerticle extends AbstractVerticle {
     } else {
       return Stream.empty();
     }
-  }
-
-  private Completable ensureMapping() {
-    // merge mappings from all indexers
-    Map<String, Object> mappings = new HashMap<>();
-    indexerFactories.stream().filter(f -> f instanceof DefaultMetaIndexerFactory)
-      .forEach(factory -> MapUtils.deepMerge(mappings, factory.getMapping()));
-    indexerFactories.stream().filter(f -> !(f instanceof DefaultMetaIndexerFactory))
-      .forEach(factory -> MapUtils.deepMerge(mappings, factory.getMapping()));
-
-    // return client.putMapping(TYPE_NAME, new JsonObject(mappings)).toCompletable();
-    return Completable.complete();
   }
 
   /**

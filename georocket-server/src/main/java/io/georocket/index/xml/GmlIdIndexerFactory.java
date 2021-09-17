@@ -1,9 +1,6 @@
 package io.georocket.index.xml;
 
-import java.util.Map;
-
 import com.google.common.collect.ImmutableMap;
-
 import io.georocket.query.KeyValueQueryPart;
 import io.georocket.query.KeyValueQueryPart.ComparisonOperator;
 import io.georocket.query.QueryPart;
@@ -20,13 +17,6 @@ public class GmlIdIndexerFactory implements XMLIndexerFactory {
     return new GmlIdIndexer();
   }
   
-  @Override
-  public Map<String, Object> getMapping() {
-    return ImmutableMap.of("properties", ImmutableMap.of("gmlIds", ImmutableMap.of(
-        "type", "keyword" // array of keywords actually, auto-supported by Elasticsearch
-    )));
-  }
-
   /**
    * Test if the given key-value query part refers to a gmlId and if it uses
    * the EQ operator (e.g. EQ(gmlId myId) or EQ(gml:id myId))

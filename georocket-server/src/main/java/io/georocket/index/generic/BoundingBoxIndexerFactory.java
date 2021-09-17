@@ -1,15 +1,5 @@
 package io.georocket.index.generic;
 
-import static io.georocket.query.ElasticsearchQueryHelper.geoShapeQuery;
-import static io.georocket.query.ElasticsearchQueryHelper.shape;
-
-import java.util.Arrays;
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import com.google.common.collect.ImmutableMap;
-
 import io.georocket.constants.ConfigConstants;
 import io.georocket.index.IndexerFactory;
 import io.georocket.util.CoordinateTransformer;
@@ -21,6 +11,13 @@ import org.geotools.referencing.CRS;
 import org.opengis.referencing.FactoryException;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
 import org.opengis.referencing.operation.TransformException;
+
+import java.util.Arrays;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import static io.georocket.query.ElasticsearchQueryHelper.geoShapeQuery;
+import static io.georocket.query.ElasticsearchQueryHelper.shape;
 
 /**
  * Base class for factories creating indexers that manage bounding boxes
@@ -55,43 +52,6 @@ public abstract class BoundingBoxIndexerFactory implements IndexerFactory {
    */
   public void setDefaultCrs(String defaultCrs) {
     this.defaultCrs = defaultCrs;
-  }
-
-  @Override
-  public Map<String, Object> getMapping() {
-    String precisionKey;
-    Object precisionValue = null;
-
-    // check if we have a current Vert.x context from which we can get the config
-    Context ctx = Vertx.currentContext();
-    if (ctx != null) {
-      JsonObject config = ctx.config();
-      if (config != null) {
-        precisionValue = config.getString(ConfigConstants.INDEX_SPATIAL_PRECISION);
-      }
-    }
-
-    if (precisionValue == null) {
-      // use the maximum number of tree levels to achieve highest precision
-      // see org.apache.lucene.spatial.prefix.tree.PackedQuadPrefixTree.MAX_LEVELS_POSSIBLE
-      precisionKey = "tree_levels";
-      precisionValue = 29;
-    } else {
-      precisionKey = "precision";
-    }
-
-    return ImmutableMap.of("properties", ImmutableMap.of("bbox", ImmutableMap.of(
-        "type", "geo_shape",
-        
-        // for a discussion on the tree type to use see
-        // https://github.com/elastic/elasticsearch/issues/14181
-        
-        // quadtree uses less memory and seems to be a lot faster than geohash
-        // see http://tech.taskrabbit.com/blog/2015/06/09/elasticsearch-geohash-vs-geotree/
-        "tree", "quadtree",
-        
-        precisionKey, precisionValue
-    )));
   }
 
   @Override

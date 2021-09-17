@@ -1,10 +1,6 @@
 package io.georocket.index.generic;
 
-import java.util.Map;
-
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-
 import io.georocket.index.IndexerFactory;
 import io.georocket.query.ElasticsearchQueryHelper;
 import io.georocket.query.KeyValueQueryPart;
@@ -19,24 +15,6 @@ import io.vertx.core.json.JsonObject;
  * @author Michel Kraemer
  */
 public abstract class GenericAttributeIndexerFactory implements IndexerFactory {
-  @Override
-  public Map<String, Object> getMapping() {
-    // dynamic mapping: do not analyze generic attributes
-    return ImmutableMap.of("dynamic_templates", ImmutableList.of(ImmutableMap.of(
-        "genAttrsFields", ImmutableMap.of(
-            "path_match", "genAttrs.*",
-            "mapping", ImmutableMap.of(
-                "type", "keyword"
-            )
-        )
-    )));
-  }
-
-  @Override
-  public Map<String, Object> getIndexedAttributeMapping() {
-    return getMapping();
-  }
-
   @Override
   public MatchPriority getQueryPriority(QueryPart queryPart) {
     if (queryPart instanceof StringQueryPart ||
