@@ -314,7 +314,7 @@ public class MetadataVerticle extends AbstractVerticle {
     JsonObject params) {
     String search = body.getString("search", "");
     String path = body.getString("path", "");
-    JsonObject postFilter = new DefaultQueryCompiler(indexerFactories).compileQuery(search, path, null);
+    JsonObject postFilter = new DefaultQueryCompiler(indexerFactories).compileQuery(search, path);
 
     JsonObject updateScript = new JsonObject()
       .put("lang", "painless");

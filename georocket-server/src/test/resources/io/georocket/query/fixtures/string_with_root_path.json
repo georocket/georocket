@@ -1,0 +1,7 @@
+{
+  "query": "bla",
+  "path": "/",
+  "expected": {
+    "tags": "bla"
+  }
+}

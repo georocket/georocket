@@ -517,7 +517,7 @@ class IndexerVerticle : CoroutineVerticle() {
    * @return an observable that emits the results of the query
    */
   private suspend fun onQuery(body: JsonObject): JsonObject {
-    val search = body.getString("search")
+    val search = body.getString("search") ?: ""
     val path = body.getString("path")
 
     val query = DefaultQueryCompiler(indexerFactories).compileQuery(search, path)

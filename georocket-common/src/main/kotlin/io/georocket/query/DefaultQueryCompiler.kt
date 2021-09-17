@@ -29,54 +29,29 @@ import org.antlr.v4.runtime.tree.ParseTreeWalker
  */
 class DefaultQueryCompiler(private val queryCompilers: Collection<QueryCompiler>) : QueryCompiler {
   /**
-   * Compile a search string
-   * @param search the search string to compile
-   * @param path the path where to perform the search (may be null if the
-   * whole data store should be searched)
-   * @param keyExists the name of a property which must exist in the document
-   * @return the compiled query
+   * Compile a [search] string with an optional chunk [path]
    */
-  fun compileQuery(search: String?, path: String?, keyExists: String? = null): JsonObject {
-    val qb = compileQueryNoOptimize(search)
-    val filter = mutableListOf<JsonObject>()
-    // if (path != null && path != "/") {
-    //   val prefix = PathUtils.addTrailingSlash(path)
-    //   val qi: JsonObject = boolQuery(1)
-    //   boolAddShould(qi, termQuery("path", path))
-    //   boolAddShould(qi, prefixQuery("path", prefix))
-    //   filter.add(qi)
-    // }
-    // if (keyExists != null) {
-    //   filter.add(existsQuery(keyExists))
-    // }
-    // if (filter.size > 0) {
-    //   val qr: JsonObject = boolQuery(1)
-    //   boolAddShould(qr, qb)
-    //   filter.forEach(Consumer<JsonObject> { q: JsonObject? ->
-    //     boolAddMust(
-    //       qr,
-    //       q
-    //     )
-    //   })
-    //   return ElasticsearchQueryOptimizer.optimize(qr)
-    // }
-    // return ElasticsearchQueryOptimizer.optimize(qb)
+  fun compileQuery(search: String, path: String?): JsonObject {
+    var qb = compileQuery(search)
+    if (path != null && path != "/") {
+      qb = json {
+        obj(
+          "\$and" to array(
+            qb,
+            obj(
+              "path" to obj(
+                "\$regex" to "^${path.escapeRegex()}"
+              )
+            )
+          )
+        )
+      }
+    }
     return qb
   }
 
   override fun compileQuery(search: String): JsonObject {
-    return ElasticsearchQueryOptimizer.optimize(compileQueryNoOptimize(search))
-  }
-
-  /**
-   *
-   * Create an Elasticsearch query for the given search string but does
-   * not apply the [ElasticsearchQueryOptimizer] to it.
-   * @param search the search string
-   * @return the Elasticsearch query (may be null)
-   */
-  private fun compileQueryNoOptimize(search: String?): JsonObject {
-    if (search == null || search.isEmpty()) {
+    if (search.isEmpty()) {
       // match everything by default
       return JsonObject()
     }
@@ -109,18 +84,16 @@ class DefaultQueryCompiler(private val queryCompilers: Collection<QueryCompiler>
   }
 
   /**
-   * Handle a query part. Pass it to all query compilers and return a
-   * MongoDB query
-   * @param str a string part of a query
-   * @return the MongoDB query
+   * Handle a [queryPart]. Pass it to all query compilers and return a
+   * MongoDB query.
    */
-  private fun makeQuery(str: QueryPart): JsonObject {
+  private fun makeQuery(queryPart: QueryPart): JsonObject {
     val operands = mutableListOf<JsonObject>()
     for (f in queryCompilers) {
-      val mp = f.getQueryPriority(str) ?: continue
+      val mp = f.getQueryPriority(queryPart) ?: continue
       when (mp) {
-        MatchPriority.ONLY -> return f.compileQuery(str)
-        MatchPriority.SHOULD -> operands.add(f.compileQuery(str))
+        MatchPriority.ONLY -> return f.compileQuery(queryPart)
+        MatchPriority.SHOULD -> operands.add(f.compileQuery(queryPart))
         MatchPriority.NONE -> { /* ignore operand */ }
       }
     }
@@ -150,7 +123,6 @@ class DefaultQueryCompiler(private val queryCompilers: Collection<QueryCompiler>
    * A tree listener that compiles a QueryBuilder
    */
   private inner class QueryCompilerListener : QueryBaseListener() {
-
     /**
      * A stack holding the current logical operation on top
      */
@@ -163,7 +135,7 @@ class DefaultQueryCompiler(private val queryCompilers: Collection<QueryCompiler>
 
     /**
      * An object holding the current key-value pair and its comparator
-     * (null if we are not parsing a key-value pair at the moment)
+     * (`null` if we are not parsing a key-value pair at the moment)
      */
     var currentKeyvalue: CurrentKeyValue? = null
 
@@ -172,7 +144,6 @@ class DefaultQueryCompiler(private val queryCompilers: Collection<QueryCompiler>
       currentLogical.add(Logical.OR)
       result.add(mutableListOf())
     }
-
 
     /**
      * Enter a logical expression
