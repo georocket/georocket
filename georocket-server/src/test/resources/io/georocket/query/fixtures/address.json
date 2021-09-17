@@ -1,0 +1,19 @@
+{
+  "query": "Main",
+  "queryCompilers": ["io.georocket.index.xml.XalAddressIndexerFactory"],
+  "expected": {
+    "$or": [{
+      "$or": [{
+        "address.Country": "Main"
+      }, {
+        "address.Locality": "Main"
+      }, {
+        "address.Street": "Main"
+      }, {
+        "address.Number": "Main"
+      }]
+    }, {
+      "tags": "Main"
+    }]
+  }
+}

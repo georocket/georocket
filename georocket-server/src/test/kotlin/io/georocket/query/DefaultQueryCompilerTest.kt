@@ -36,6 +36,14 @@ class DefaultQueryCompilerTest {
   }
 
   /**
+   * Test query against an address
+   */
+  @Test
+  fun address() {
+    expectFixture("address")
+  }
+
+  /**
    * Test query with a single string
    */
   @Test
