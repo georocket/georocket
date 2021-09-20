@@ -1,16 +1,14 @@
 package io.georocket.index
 
-import com.fasterxml.aalto.AsyncXMLStreamReader
-import com.fasterxml.aalto.stax.InputFactoryImpl
-import de.undercouch.actson.JsonEvent
-import de.undercouch.actson.JsonParser
 import io.georocket.constants.AddressConstants
 import io.georocket.constants.ConfigConstants
+import io.georocket.index.geojson.JsonTransformer
 import io.georocket.index.mongodb.MongoDBIndex
 import io.georocket.index.xml.JsonIndexerFactory
 import io.georocket.index.xml.MetaIndexerFactory
 import io.georocket.index.xml.StreamIndexer
 import io.georocket.index.xml.XMLIndexerFactory
+import io.georocket.index.xml.XMLTransformer
 import io.georocket.query.DefaultQueryCompiler
 import io.georocket.storage.ChunkMeta
 import io.georocket.storage.GeoJsonChunkMeta
@@ -23,12 +21,10 @@ import io.georocket.tasks.IndexingTask
 import io.georocket.tasks.RemovingTask
 import io.georocket.tasks.TaskError
 import io.georocket.util.FilteredServiceLoader
-import io.georocket.util.JsonStreamEvent
 import io.georocket.util.MimeTypeUtils.belongsTo
 import io.georocket.util.StreamEvent
 import io.georocket.util.ThrowableHelper.throwableToCode
 import io.georocket.util.ThrowableHelper.throwableToMessage
-import io.georocket.util.XMLStreamEvent
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.eventbus.Message
 import io.vertx.core.json.JsonObject
@@ -36,6 +32,7 @@ import io.vertx.core.logging.LoggerFactory
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.CoroutineVerticle
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import org.jooq.lambda.tuple.Tuple
 import org.jooq.lambda.tuple.Tuple3
@@ -303,10 +300,10 @@ class IndexerVerticle : CoroutineVerticle() {
     val doc = if (belongsTo(mimeType, "application", "xml") ||
         belongsTo(mimeType, "text", "xml")) {
       chunkToDocument(chunk, indexMeta.fallbackCRSString,
-          xmlIndexerFactories, this::indexXmlChunk)
+          xmlIndexerFactories, XMLTransformer())
     } else if (belongsTo(mimeType, "application", "json")) {
       chunkToDocument(chunk, indexMeta.fallbackCRSString,
-          jsonIndexerFactories, this::indexJsonChunk)
+          jsonIndexerFactories, JsonTransformer())
     } else {
       throw IllegalArgumentException("Unexpected mime type '${mimeType}' " +
               "while trying to index chunk '$path'")
@@ -326,9 +323,9 @@ class IndexerVerticle : CoroutineVerticle() {
    * index the chunk
    * @return the document
    */
-  private fun <T : StreamEvent> chunkToDocument(chunk: Buffer,
+  private suspend fun <T : StreamEvent> chunkToDocument(chunk: Buffer,
       fallbackCRSString: String?, indexerFactories: List<IndexerFactory>,
-      indexFunction: (Buffer, List<StreamIndexer<T>>) -> Unit): Map<String, Any> {
+      transformer: Transformer<T>): Map<String, Any> {
     // initialize indexers
     val indexers = indexerFactories.map { factory ->
       @Suppress("UNCHECKED_CAST")
@@ -339,89 +336,19 @@ class IndexerVerticle : CoroutineVerticle() {
       i
     }
 
-    indexFunction(chunk, indexers)
+    // perform indexing
+    val c = Channel<T>(100)
+    launch {
+      transformer.transformTo(chunk, c)
+    }
+    for (e in c) {
+      indexers.forEach { it.onEvent(e) }
+    }
 
     // create the document
     val doc = mutableMapOf<String, Any>()
     indexers.forEach { indexer -> doc.putAll(indexer.result) }
     return doc
-  }
-
-  private fun indexXmlChunk(chunk: Buffer, indexers: List<StreamIndexer<XMLStreamEvent>>) {
-    val parser = InputFactoryImpl().createAsyncForByteArray()
-
-    val processEvents: () -> Boolean = pe@{
-      while (true) {
-        val nextEvent = parser.next()
-        if (nextEvent == AsyncXMLStreamReader.EVENT_INCOMPLETE) {
-          break
-        }
-
-        val pos = parser.location.characterOffset
-        val streamEvent = XMLStreamEvent(nextEvent, pos, parser)
-        indexers.forEach { it.onEvent(streamEvent) }
-
-        if (nextEvent == AsyncXMLStreamReader.END_DOCUMENT) {
-          parser.close()
-          return@pe false
-        }
-      }
-      true
-    }
-
-    val bytes = chunk.bytes
-    var i = 0
-    while (i < bytes.size) {
-      val len = bytes.size - i
-      parser.inputFeeder.feedInput(bytes, i, len)
-      i += len
-      if (!processEvents()) {
-        break
-      }
-    }
-
-    // process remaining events
-    parser.inputFeeder.endOfInput()
-    processEvents()
-  }
-
-  private fun indexJsonChunk(chunk: Buffer, indexers: List<StreamIndexer<JsonStreamEvent>>) {
-    val parser = JsonParser()
-
-    val processEvents: () -> Boolean = pe@{
-      while (true) {
-        val nextEvent = parser.nextEvent()
-        val value = when (nextEvent) {
-          JsonEvent.NEED_MORE_INPUT -> break
-          JsonEvent.ERROR -> throw IllegalStateException("Syntax error")
-          JsonEvent.VALUE_STRING, JsonEvent.FIELD_NAME -> parser.currentString
-          JsonEvent.VALUE_DOUBLE -> parser.currentDouble
-          JsonEvent.VALUE_INT -> parser.currentInt
-          else -> null
-        }
-
-        val streamEvent = JsonStreamEvent(nextEvent, parser.parsedCharacterCount, value)
-        indexers.forEach { it.onEvent(streamEvent) }
-
-        if (nextEvent == JsonEvent.EOF) {
-          return@pe false
-        }
-      }
-      true
-    }
-
-    val bytes = chunk.bytes
-    var i = 0
-    while (i < bytes.size) {
-      i += parser.feeder.feed(bytes, i, bytes.size - i)
-      if (!processEvents()) {
-        break
-      }
-    }
-
-    // process remaining events
-    parser.feeder.done()
-    processEvents()
   }
 
   /**

@@ -27,7 +27,8 @@ import org.antlr.v4.runtime.tree.ParseTreeWalker
  * Default implementation of [QueryCompiler]
  * @author Michel Kraemer
  */
-class DefaultQueryCompiler(private val queryCompilers: Collection<QueryCompiler>) : QueryCompiler {
+class DefaultQueryCompiler(private val queryCompilers: Collection<QueryCompiler>) :
+  QueryCompiler {
   /**
    * Compile a [search] string with an optional chunk [path]
    */
