@@ -614,6 +614,9 @@ NOTE: This operation supports GZIP. Clients may upload compressed files to GeoRo
 | *tags* +
   _(optional)_
 | A comma-separated list of tags (i.e. labels) to attach to each imported chunk.
+| *properties* +
+  _(optional)_
+| A comma-separated list of properties to set. Each property should be defined in the form `key:value`.
 | *fallbackCRS* +
   _(optional)_
 | GeoRocket is able to automatically detect the coordinate reference system (CRS) of an imported file. If this is, for any reason, not possible, you may manually specify a reference system with this parameter. GeoRocket will only use it if it does not find a valid one in the imported file. Values for this parameter must be in the form `EPSG:<code>` (e.g. `EPSG:25832`). See the http://www.epsg-registry.org/[EPSG registry] for more information.

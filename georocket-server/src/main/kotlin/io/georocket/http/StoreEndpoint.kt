@@ -387,7 +387,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
 
     val layer = Endpoint.getEndpointPath(context)
     val tagsStr = request.getParam("tags")
-    val propertiesStr = request.getParam("props")
+    val propertiesStr = request.getParam("properties")
     val fallbackCRSString = request.getParam("fallbackCRS")
 
     val tags = if (StringUtils.isNotEmpty(tagsStr))
