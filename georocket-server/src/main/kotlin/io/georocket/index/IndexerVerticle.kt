@@ -25,6 +25,7 @@ import io.georocket.util.MimeTypeUtils.belongsTo
 import io.georocket.util.StreamEvent
 import io.georocket.util.ThrowableHelper.throwableToCode
 import io.georocket.util.ThrowableHelper.throwableToMessage
+import io.georocket.util.debounce
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.eventbus.Message
 import io.vertx.core.json.JsonObject
@@ -118,15 +119,27 @@ class IndexerVerticle : CoroutineVerticle() {
    * Register consumer for add messages
    */
   private fun registerAdd() {
+    val queue = ArrayDeque<Message<JsonObject>>()
+
+    val doAdd: suspend () -> Unit = {
+      val toAdd = mutableListOf<Message<JsonObject>>()
+      while (!queue.isEmpty()) {
+        toAdd.add(queue.removeFirst())
+      }
+      onAdd(toAdd)
+    }
+
+    val onBulkAdd = debounce(vertx) { doAdd() }
+
     vertx.eventBus().consumer<JsonObject>(AddressConstants.INDEXER_ADD) { msg ->
-      launch {
-        try {
-          // TODO bulk insert
-          onAdd(listOf(msg))
-        } catch (t: Throwable) {
-          log.error("Could not index document", t)
-          msg.fail(throwableToCode(t), throwableToMessage(t, ""))
+      queue.add(msg)
+      // TODO make chunk size configurable?
+      if (queue.size >= 200) {
+        launch {
+          doAdd()
         }
+      } else {
+        onBulkAdd()
       }
     }
   }
@@ -180,10 +193,8 @@ class IndexerVerticle : CoroutineVerticle() {
 
     log.info("Indexing ${chunkPaths.size} chunks")
 
-    // TODO bulk insert??
+    index.addMany(documents.map { it.v1 to it.v2 })
     for (d in documents) {
-      index.add(d.v1, d.v2)
-
       // TODO handle exception and send it back to d.v3
       d.v3.reply(null)
     }
@@ -368,9 +379,6 @@ class IndexerVerticle : CoroutineVerticle() {
 
   /**
    * Will be called when chunks should be added to the index
-   * @param messages the list of add messages that contain the paths to
-   * the chunks to be indexed
-   * @return a Completable that completes when the operation has finished
    */
   private suspend fun onAdd(messages: List<Message<JsonObject>>) {
     startIndexerTasks(messages)

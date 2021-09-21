@@ -106,6 +106,12 @@ suspend fun <T> MongoCollection<T>.insertOneAwait(document: T) {
   }
 }
 
+suspend fun <T> MongoCollection<T>.insertManyAwait(documents: List<T>) {
+  wrapCoroutine {
+    insertMany(documents)
+  }
+}
+
 suspend fun <T> MongoCollection<T>.deleteManyAwait(filter: JsonObject): DeleteResult {
   return wrapCoroutine {
     deleteMany(JsonObjectBsonAdapter(filter))

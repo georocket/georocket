@@ -7,6 +7,8 @@ interface Index {
 
   suspend fun add(id: String, doc: JsonObject)
 
+  suspend fun addMany(docs: List<Pair<String, JsonObject>>)
+
   suspend fun getMeta(query: JsonObject): List<JsonObject>
 
   suspend fun delete(ids: List<String>)

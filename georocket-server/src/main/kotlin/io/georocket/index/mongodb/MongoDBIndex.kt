@@ -7,6 +7,7 @@ import com.mongodb.reactivestreams.client.MongoDatabase
 import io.georocket.index.Index
 import io.georocket.util.deleteManyAwait
 import io.georocket.util.findAwait
+import io.georocket.util.insertManyAwait
 import io.georocket.util.insertOneAwait
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.json
@@ -44,6 +45,15 @@ class MongoDBIndex : Index {
     val copy = doc.copy()
     copy.put(INTERNAL_ID, id)
     collDocuments.insertOneAwait(copy)
+  }
+
+  override suspend fun addMany(docs: List<Pair<String, JsonObject>>) {
+    val copies = docs.map { d ->
+      val copy = d.second.copy()
+      copy.put(INTERNAL_ID, d.first)
+      copy
+    }
+    collDocuments.insertManyAwait(copies)
   }
 
   override suspend fun getMeta(query: JsonObject): List<JsonObject> {
