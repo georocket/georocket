@@ -76,10 +76,15 @@ open class BoundingBoxIndexer : Indexer {
 
     return mapOf(
       "bbox" to mapOf(
-        "type" to "envelope",
+        "type" to "Polygon",
         "coordinates" to listOf(
-          listOf(minX, maxY),  // upper left
-          listOf(maxX, minY) // lower right
+          listOf(
+            listOf(minX, minY),
+            listOf(maxX, minY),
+            listOf(maxX, maxY),
+            listOf(minX, maxY),
+            listOf(minX, minY)
+          )
         )
       )
     )
