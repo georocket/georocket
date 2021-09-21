@@ -9,7 +9,7 @@ apply plugin: 'maven'
 mainClassName = 'io.georocket.GeoRocketCliKt'
 
 repositories {
-    jcenter()
+    mavenCentral()
     exclusiveContent {
         forRepository {
             maven {

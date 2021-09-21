@@ -2,16 +2,18 @@
   "query": "1,2,3,4",
   "queryCompilers": ["io.georocket.index.xml.XMLBoundingBoxIndexerFactory"],
   "expected": {
-    "geo_shape": {
-      "bbox": {
-        "shape": {
-          "type": "envelope",
-          "coordinates": [
+    "bbox": {
+      "$geoIntersects": {
+        "$geometry": {
+          "type": "Polygon",
+          "coordinates": [[
+            [1.0, 2.0],
+            [3.0, 2.0],
+            [3.0, 4.0],
             [1.0, 4.0],
-            [3.0, 2.0]
-          ]
-        },
-        "relation": "intersects"
+            [1.0, 2.0]
+          ]]
+        }
       }
     }
   }

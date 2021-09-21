@@ -2,25 +2,23 @@
   "query": "1,2,3,4 foobar",
   "queryCompilers": ["io.georocket.index.xml.XMLBoundingBoxIndexerFactory"],
   "expected": {
-    "bool": {
-      "should": [{
-        "geo_shape": {
-          "bbox": {
-            "shape": {
-              "type": "envelope",
-              "coordinates": [
-                [1.0, 4.0],
-                [3.0, 2.0]
-              ]
-            },
-            "relation": "intersects"
+    "$or": [{
+      "bbox": {
+        "$geoIntersects": {
+          "$geometry": {
+            "type": "Polygon",
+            "coordinates": [[
+              [1.0, 2.0],
+              [3.0, 2.0],
+              [3.0, 4.0],
+              [1.0, 4.0],
+              [1.0, 2.0]
+            ]]
           }
         }
-      }, {
-        "term": {
-          "tags": "foobar"
-        }
-      }]
-    }
+      }
+    }, {
+      "tags": "foobar"
+    }]
   }
 }

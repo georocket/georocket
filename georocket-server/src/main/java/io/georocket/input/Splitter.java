@@ -3,7 +3,6 @@ package io.georocket.input;
 import io.georocket.storage.ChunkMeta;
 import io.georocket.util.StreamEvent;
 import io.vertx.core.buffer.Buffer;
-import rx.Observable;
 
 /**
  * Splits input tokens and returns chunks
@@ -53,18 +52,4 @@ public interface Splitter<E extends StreamEvent, M extends ChunkMeta> {
    * <code>null</code> if no result was produced
    */
   Result<M> onEvent(E event);
-  
-  /**
-   * Observable version of {@link #onEvent(StreamEvent)}
-   * @param event the stream event
-   * @return an observable that will emit a {@link Result} object (containing
-   * a chunk and metadata) or emit nothing if no chunk was produced
-   */
-  default Observable<Result<M>> onEventObservable(E event) {
-    Result<M> result = onEvent(event);
-    if (result == null) {
-      return Observable.empty();
-    }
-    return Observable.just(result);
-  }
 }

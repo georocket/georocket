@@ -1,0 +1,13 @@
+{
+  "query": "bla",
+  "path": "/mypath",
+  "expected": {
+    "$and": [{
+      "tags": "bla"
+    }, {
+      "path": {
+        "$regex": "^/mypath"
+      }
+    }]
+  }
+}

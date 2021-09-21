@@ -25,11 +25,9 @@ import io.vertx.kotlin.core.deployVerticleAwait
 import io.vertx.kotlin.core.http.httpServerOptionsOf
 import io.vertx.kotlin.core.http.listenAwait
 import io.vertx.kotlin.coroutines.CoroutineVerticle
-import io.vertx.rx.java.RxHelper
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.IOUtils
 import org.yaml.snakeyaml.Yaml
-import rx.plugins.RxJavaHooks
 import java.io.File
 import java.io.IOException
 import java.lang.management.ManagementFactory
@@ -354,11 +352,6 @@ suspend fun main() {
   }
 
   val vertx = Vertx.vertx()
-
-  // register schedulers that run Rx operations on the Vert.x event bus
-  RxJavaHooks.setOnComputationScheduler { RxHelper.scheduler(vertx) }
-  RxJavaHooks.setOnIOScheduler { RxHelper.blockingScheduler(vertx) }
-  RxJavaHooks.setOnNewThreadScheduler { RxHelper.scheduler(vertx) }
 
   val options = DeploymentOptions()
   try {
