@@ -1,13 +1,12 @@
 package io.georocket.index.geojson
 
-import io.georocket.util.JsonStreamEvent
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -31,9 +30,7 @@ class GeoJsonGenericAttributeIndexerTest {
     val expectedMap = mapOf("genAttrs" to expected)
 
     CoroutineScope(vertx.dispatcher()).launch {
-      val c = Channel<JsonStreamEvent>(100)
-      JsonTransformer().transformTo(Buffer.buffer(json), c)
-      for (e in c) {
+      JsonTransformer().transform(Buffer.buffer(json)).collect { e ->
         indexer.onEvent(e)
       }
 

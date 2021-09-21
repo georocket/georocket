@@ -32,7 +32,7 @@ import io.vertx.core.logging.LoggerFactory
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.CoroutineVerticle
-import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import org.jooq.lambda.tuple.Tuple
 import org.jooq.lambda.tuple.Tuple3
@@ -337,11 +337,7 @@ class IndexerVerticle : CoroutineVerticle() {
     }
 
     // perform indexing
-    val c = Channel<T>(100)
-    launch {
-      transformer.transformTo(chunk, c)
-    }
-    for (e in c) {
+    transformer.transform(chunk).collect { e ->
       indexers.forEach { it.onEvent(e) }
     }
 

@@ -26,6 +26,7 @@ dependencies {
 
     compile "io.vertx:vertx-core:$vertxVersion"
     compile "io.vertx:vertx-lang-kotlin:$vertxVersion"
+    compile "io.vertx:vertx-lang-kotlin-coroutines:$vertxVersion"
     compile "io.vertx:vertx-rx-java:$vertxVersion"
 
     compile 'com.fasterxml:aalto-xml:1.0.0'
