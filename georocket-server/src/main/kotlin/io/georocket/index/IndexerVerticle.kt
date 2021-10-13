@@ -179,12 +179,10 @@ class IndexerVerticle : CoroutineVerticle() {
   }
 
   /**
-   * Insert multiple Elasticsearch documents into the index. Perform a
-   * bulk request. This method replies to all messages if the bulk request
-   * was successful.
+   * Insert multiple documents into the index. Perform a bulk request. This
+   * method replies to all messages when the bulk request has finished.
    * @param documents a list of tuples containing document IDs, documents to
    * index, and the respective messages from which the documents were created
-   * @return a Completable that completes when the operation has finished
    */
   private suspend fun insertDocuments(documents: List<Tuple3<String, JsonObject, Message<JsonObject>>>) {
     val startTimeStamp = System.currentTimeMillis()
@@ -443,7 +441,7 @@ class IndexerVerticle : CoroutineVerticle() {
   }
 
   /**
-   * Write result of a query given the Elasticsearch response
+   * Handle a query
    * @param body the message containing the query
    * @return an observable that emits the results of the query
    */

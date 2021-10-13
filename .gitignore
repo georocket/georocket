@@ -16,5 +16,4 @@ gradle.properties
 .idea/
 *.iml
 /conf
-/elasticsearch
 /storage

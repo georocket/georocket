@@ -17,8 +17,7 @@ public class ServerAPIException extends NoStackTraceThrowable {
   public static final String INVALID_PROPERTY_SYNTAX_ERROR = "invalid_property_syntax_error";
 
   /**
-   * The server issued an HTTP request (e.g. store API or Elasticsearch query)
-   * which failed
+   * The server issued an HTTP request which failed
    * @since 1.1.0
    */
   public static final String HTTP_ERROR = "http_error";
