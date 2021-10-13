@@ -18,5 +18,7 @@ open class GenericAttributeIndexer : Indexer {
     result.putIfAbsent(key, value)
   }
 
-  override fun getResult() = mapOf("genAttrs" to result)
+  override fun getResult() = mapOf("genAttrs" to result.entries.map { e ->
+    mapOf("key" to e.key, "value" to e.value)
+  })
 }
