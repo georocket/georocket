@@ -12,7 +12,7 @@ import io.georocket.commands.console.ImportProgressRenderer
 import io.georocket.util.SizeFormat
 import io.georocket.util.coroutines.awaitBlockingConcurrent
 import io.georocket.util.formatUntilNow
-import io.vertx.core.Future
+import io.vertx.core.Promise
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.file.OpenOptions
 import io.vertx.core.streams.ReadStream
@@ -226,7 +226,7 @@ class ImportCommand : AbstractGeoRocketCommand() {
       progress.totalFiles = files.size
 
       val filesWithSizes = getFileSizes(files)
-      val totalSize = filesWithSizes.map { it.second }.sum()
+      val totalSize = filesWithSizes.sumOf { it.second }
       progress.totalSize = totalSize
 
       var bytesImported = 0L
@@ -273,8 +273,8 @@ class ImportCommand : AbstractGeoRocketCommand() {
       options.compression = Compression.GZIP
 
       val alreadyCompressed = path.endsWith(".gz", true)
-      val resultFuture = Future.future<ImportResult>()
-      val out = client.store.startImport(options, resultFuture).toChannel(vertx)
+      val resultPromise = Promise.promise<ImportResult>()
+      val out = client.store.startImport(options, resultPromise).toChannel(vertx)
 
       val baos = ByteArrayOutputStream()
       val os = if (alreadyCompressed) {
@@ -307,7 +307,7 @@ class ImportCommand : AbstractGeoRocketCommand() {
       out.close()
       progress.current = bytesWritten
 
-      resultFuture.await()
+      resultPromise.future().await()
       return Metrics(fileSize, compressedBytesWritten)
     } finally {
       file.close()

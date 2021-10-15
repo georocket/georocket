@@ -326,10 +326,9 @@ private fun overwriteWithEnvironmentVariables(conf: JsonObject) {
  */
 fun overwriteWithEnvironmentVariables(conf: JsonObject, env: Map<String, String>) {
   val names = ConfigConstants.getConfigKeys()
-      .map { s -> s.toUpperCase().replace(".", "_") to s }
-      .toMap()
+    .associateBy { s -> s.uppercase().replace(".", "_") }
   env.forEach { (key, v) ->
-    val name = names[key.toUpperCase()]
+    val name = names[key.uppercase()]
     if (name != null) {
       val yaml = Yaml()
       val newVal = yaml.load<Any>(v)
@@ -343,13 +342,8 @@ fun overwriteWithEnvironmentVariables(conf: JsonObject, env: Map<String, String>
  */
 suspend fun main() {
   // print banner
-  try {
-    val u = GeoRocket::class.java.getResource("georocket_banner.txt")
-    val banner = IOUtils.toString(u, StandardCharsets.UTF_8)
-    println(banner)
-  } catch (e: IOException) {
-    // ignore
-  }
+  val banner = GeoRocket::class.java.getResource("georocket_banner.txt")!!.readText()
+  println(banner)
 
   val vertx = Vertx.vertx()
 
