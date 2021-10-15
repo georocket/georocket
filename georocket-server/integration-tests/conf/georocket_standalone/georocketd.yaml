@@ -4,7 +4,3 @@ georocket:
     class: io.georocket.storage.file.FileStore
     file:
       path: $GEOROCKET_HOME/storage
-
-  index:
-    elasticsearch:
-      hosts: ["elasticsearch:9200"]

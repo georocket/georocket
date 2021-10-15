@@ -10,13 +10,3 @@ services:
     image: georocket/georocket
     volumes:
       - ./conf/georocket_h2:/usr/local/georocket-server/conf
-    links:
-      - elasticsearch
-    depends_on:
-      - elasticsearch
-
-  elasticsearch:
-    image: elasticsearch:6.8.5
-    environment:
-      - discovery.type=single-node
-      - cluster.routing.allocation.disk.threshold_enabled=false

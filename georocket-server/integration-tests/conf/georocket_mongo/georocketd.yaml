@@ -4,7 +4,3 @@ georocket:
     class: io.georocket.storage.mongodb.MongoDBStore
     mongodb:
       connectionString: mongodb://mongo:27017/georocket
-
-  index:
-    elasticsearch:
-      hosts: ["elasticsearch:9200"]

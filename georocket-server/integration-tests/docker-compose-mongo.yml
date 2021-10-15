@@ -13,15 +13,6 @@ services:
       - ./conf/georocket_mongo:/usr/local/georocket-server/conf
     links:
       - mongo
-      - elasticsearch
-    depends_on:
-      - elasticsearch
 
   mongo:
     image: mongo
-
-  elasticsearch:
-    image: elasticsearch:6.8.5
-    environment:
-      - discovery.type=single-node
-      - cluster.routing.allocation.disk.threshold_enabled=false

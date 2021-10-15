@@ -10,7 +10,3 @@ georocket:
       bucket: georocket
       pathStyleAccess: true
       requestExpirySeconds: 600
-
-  index:
-    elasticsearch:
-      hosts: ["elasticsearch:9200"]

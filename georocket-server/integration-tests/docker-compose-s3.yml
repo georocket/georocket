@@ -13,16 +13,7 @@ services:
       - ./conf/georocket_s3:/usr/local/georocket-server/conf
     links:
       - s3
-      - elasticsearch
-    depends_on:
-      - elasticsearch
 
   s3:
     image: minio/minio
     command: server /data
-
-  elasticsearch:
-    image: elasticsearch:6.8.5
-    environment:
-      - discovery.type=single-node
-      - cluster.routing.allocation.disk.threshold_enabled=false
