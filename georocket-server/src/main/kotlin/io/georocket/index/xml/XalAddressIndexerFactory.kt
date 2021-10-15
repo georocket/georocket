@@ -36,8 +36,10 @@ class XalAddressIndexerFactory : XMLIndexerFactory {
           jsonObjectOf("\$or" to XalAddressIndexer.Companion.Keys.values().map { key ->
             jsonObjectOf("address.${key.key}" to v)
           })
-        } else {
+        } else if (XalAddressIndexer.Companion.Keys.values().map { it.key }.contains(queryPart.key)) {
           jsonObjectOf("address.${queryPart.key}" to v)
+        } else {
+          null
         }
       }
 
