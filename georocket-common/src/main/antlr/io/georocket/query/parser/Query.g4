@@ -18,6 +18,7 @@ expr
   | gte
   | lt
   | lte
+  | number
   | string
   ;
 
@@ -54,8 +55,17 @@ lte
  ;
 
 keyvalue
- : string WS+ string
+ : string WS+ value
  ;
+
+value
+  : number
+  | string
+  ;
+
+number
+  : NUMBER
+  ;
 
 string
   : QUOTED_STRING
@@ -74,4 +84,5 @@ QUOTED_STRING
     setText(s);
   }
   ;
+NUMBER : [+-]? ( [0-9]+ ( '.' [0-9]* )? ( [eE] [+-]? [0-9]+ )? | '.' [0-9]+ ( [eE] [+-]? [0-9]+ )? ) ;
 STRING : ~[ \n\r\"\'()]+ ;

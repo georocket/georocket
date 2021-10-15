@@ -1,9 +1,8 @@
 package io.georocket.index.xml
 
-import io.georocket.query.KeyValueQueryPart
-import io.georocket.query.KeyValueQueryPart.ComparisonOperator
 import io.georocket.query.QueryCompiler.MatchPriority
 import io.georocket.query.QueryPart
+import io.georocket.query.QueryPart.ComparisonOperator
 import io.georocket.query.StringQueryPart
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.jsonObjectOf
@@ -16,51 +15,29 @@ class XalAddressIndexerFactory : XMLIndexerFactory {
   override fun createIndexer() = XalAddressIndexer()
 
   override fun getQueryPriority(queryPart: QueryPart): MatchPriority {
-    return if (queryPart is StringQueryPart || queryPart is KeyValueQueryPart) {
-      MatchPriority.SHOULD
-    } else {
-      MatchPriority.NONE
+    return when (queryPart) {
+      is StringQueryPart -> MatchPriority.SHOULD
+      else -> MatchPriority.NONE
     }
   }
 
   override fun compileQuery(queryPart: QueryPart): JsonObject? {
     return when (queryPart) {
       is StringQueryPart -> {
-        jsonObjectOf("\$or" to XalAddressIndexer.Companion.Keys.values().map { key ->
-          jsonObjectOf("address.${key.key}" to queryPart.searchString)
-        })
-      }
+        val v: Any = when (queryPart.comparisonOperator) {
+          null, ComparisonOperator.EQ -> queryPart.value
+          ComparisonOperator.GT -> jsonObjectOf("\$gt" to queryPart.value)
+          ComparisonOperator.GTE -> jsonObjectOf("\$gte" to queryPart.value)
+          ComparisonOperator.LT -> jsonObjectOf("\$lt" to queryPart.value)
+          ComparisonOperator.LTE -> jsonObjectOf("\$lte" to queryPart.value)
+        }
 
-      is KeyValueQueryPart -> {
-        val name = "address.${queryPart.key}"
-        when (queryPart.comparisonOperator) {
-          ComparisonOperator.EQ -> jsonObjectOf(
-            name to queryPart.value
-          )
-
-          ComparisonOperator.GT -> jsonObjectOf(
-            name to jsonObjectOf(
-              "\$gt" to queryPart.value
-            )
-          )
-
-          ComparisonOperator.GTE -> jsonObjectOf(
-            name to jsonObjectOf(
-              "\$gte" to queryPart.value
-            )
-          )
-
-          ComparisonOperator.LT -> jsonObjectOf(
-            name to jsonObjectOf(
-              "\$lt" to queryPart.value
-            )
-          )
-
-          ComparisonOperator.LTE -> jsonObjectOf(
-            name to jsonObjectOf(
-              "\$lte" to queryPart.value
-            )
-          )
+        if (queryPart.key == null) {
+          jsonObjectOf("\$or" to XalAddressIndexer.Companion.Keys.values().map { key ->
+            jsonObjectOf("address.${key.key}" to v)
+          })
+        } else {
+          jsonObjectOf("address.${queryPart.key}" to v)
         }
       }
 

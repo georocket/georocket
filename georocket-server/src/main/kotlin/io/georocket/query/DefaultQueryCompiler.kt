@@ -1,7 +1,7 @@
 package io.georocket.query
 
-import io.georocket.query.KeyValueQueryPart.ComparisonOperator
 import io.georocket.query.QueryCompiler.MatchPriority
+import io.georocket.query.QueryPart.ComparisonOperator
 import io.georocket.query.parser.QueryBaseListener
 import io.georocket.query.parser.QueryLexer
 import io.georocket.query.parser.QueryParser
@@ -13,6 +13,7 @@ import io.georocket.query.parser.QueryParser.KeyvalueContext
 import io.georocket.query.parser.QueryParser.LtContext
 import io.georocket.query.parser.QueryParser.LteContext
 import io.georocket.query.parser.QueryParser.NotContext
+import io.georocket.query.parser.QueryParser.NumberContext
 import io.georocket.query.parser.QueryParser.OrContext
 import io.georocket.query.parser.QueryParser.StringContext
 import io.vertx.core.json.JsonObject
@@ -27,8 +28,7 @@ import org.antlr.v4.runtime.tree.ParseTreeWalker
  * Default implementation of [QueryCompiler]
  * @author Michel Kraemer
  */
-class DefaultQueryCompiler(private val queryCompilers: Collection<QueryCompiler>) :
-  QueryCompiler {
+class DefaultQueryCompiler(private val queryCompilers: Collection<QueryCompiler>) : QueryCompiler {
   /**
    * Compile a [search] string with an optional chunk [path]
    */
@@ -51,7 +51,14 @@ class DefaultQueryCompiler(private val queryCompilers: Collection<QueryCompiler>
     return qb
   }
 
-  override fun compileQuery(search: String): JsonObject {
+  override fun compileQuery(queryPart: QueryPart): JsonObject? {
+    if (queryPart is StringQueryPart) {
+      return compileQuery(queryPart.value)
+    }
+    return null
+  }
+
+  private fun compileQuery(search: String): JsonObject {
     if (search.isEmpty()) {
       // match everything by default
       return JsonObject()
@@ -80,7 +87,7 @@ class DefaultQueryCompiler(private val queryCompilers: Collection<QueryCompiler>
     }
   }
 
-  override fun getQueryPriority(search: String): MatchPriority {
+  override fun getQueryPriority(queryPart: QueryPart): MatchPriority {
     return MatchPriority.ONLY
   }
 
@@ -88,13 +95,12 @@ class DefaultQueryCompiler(private val queryCompilers: Collection<QueryCompiler>
    * Handle a [queryPart]. Pass it to all query compilers and return a
    * MongoDB query.
    */
-  private fun makeQuery(queryPart: QueryPart): JsonObject {
+  private fun makeQuery(queryPart: QueryPart): JsonObject? {
     val operands = mutableListOf<JsonObject>()
     for (f in queryCompilers) {
-      val mp = f.getQueryPriority(queryPart) ?: continue
-      when (mp) {
+      when (f.getQueryPriority(queryPart)) {
         MatchPriority.ONLY -> return f.compileQuery(queryPart)
-        MatchPriority.SHOULD -> operands.add(f.compileQuery(queryPart))
+        MatchPriority.SHOULD -> f.compileQuery(queryPart)?.let { operands.add(it) }
         MatchPriority.NONE -> { /* ignore operand */ }
       }
     }
@@ -117,7 +123,7 @@ class DefaultQueryCompiler(private val queryCompilers: Collection<QueryCompiler>
     OR, AND, NOT
   }
 
-  private data class CurrentKeyValue(val key: String? = null, val value: String? = null,
+  private data class CurrentKeyValue(val key: String? = null, val value: Any? = null,
     val comp: ComparisonOperator? = null)
 
   /**
@@ -218,9 +224,25 @@ class DefaultQueryCompiler(private val queryCompilers: Collection<QueryCompiler>
           currentKeyvalue?.copy(key = str)
         }
       } else {
-        val sqp = StringQueryPart(str)
-        val q = makeQuery(sqp)
-        result.first().add(q)
+        makeQuery(StringQueryPart(str))?.let { result.first().add(it) }
+      }
+    }
+
+    override fun enterNumber(ctx: NumberContext) {
+      val l = ctx.text.toLongOrNull()
+      if (l != null) {
+        if (currentKeyvalue != null) {
+          currentKeyvalue = currentKeyvalue?.copy(value = l)
+        } else {
+          makeQuery(LongQueryPart(l))?.let { result.first().add(it) }
+        }
+      } else {
+        val d = ctx.text.toDouble()
+        if (currentKeyvalue != null) {
+          currentKeyvalue = currentKeyvalue?.copy(value = d)
+        } else {
+          makeQuery(DoubleQueryPart(d))?.let { result.first().add(it) }
+        }
       }
     }
 
@@ -245,10 +267,14 @@ class DefaultQueryCompiler(private val queryCompilers: Collection<QueryCompiler>
     }
 
     override fun exitKeyvalue(ctx: KeyvalueContext) {
-      val kvqp = KeyValueQueryPart(currentKeyvalue!!.key!!,
-        currentKeyvalue!!.value!!, currentKeyvalue!!.comp!!)
-      val q = makeQuery(kvqp)
-      result.first().add(q)
+      val cv = currentKeyvalue!!
+      val kvqp = when (cv.value) {
+        is String -> StringQueryPart(cv.value, cv.key, cv.comp)
+        is Long -> LongQueryPart(cv.value, cv.key, cv.comp)
+        is Double -> DoubleQueryPart(cv.value, cv.key, cv.comp)
+        else -> throw RuntimeException("Illegal value type `${cv.value?.javaClass}'")
+      }
+      makeQuery(kvqp)?.let { result.first().add(it) }
       currentKeyvalue = null
     }
   }

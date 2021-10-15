@@ -2,6 +2,7 @@ package io.georocket.index.generic
 
 import io.georocket.index.Indexer
 import io.georocket.query.QueryCompiler.MatchPriority
+import io.georocket.query.StringQueryPart
 import io.vertx.core.json.JsonObject
 import org.assertj.core.api.Assertions.assertThat
 import org.geotools.referencing.CRS
@@ -24,8 +25,8 @@ class BoundingBoxIndexerFactoryTest {
   @Test
   fun testInvalid() {
     val factory = BoundingBoxIndexerFactoryImpl()
-    assertThat(factory.getQueryPriority("")).isEqualTo(MatchPriority.NONE)
-    assertThat(factory.getQueryPriority("42")).isEqualTo(MatchPriority.NONE)
+    assertThat(factory.getQueryPriority(StringQueryPart(""))).isEqualTo(MatchPriority.NONE)
+    assertThat(factory.getQueryPriority(StringQueryPart("42"))).isEqualTo(MatchPriority.NONE)
   }
 
   /**
@@ -34,7 +35,7 @@ class BoundingBoxIndexerFactoryTest {
   @Test
   fun testQuery() {
     val point = "3477534.683,5605739.857"
-    val query = "$point,$point"
+    val query = StringQueryPart("$point,$point")
     val factory = BoundingBoxIndexerFactoryImpl()
 
     assertThat(factory.getQueryPriority(query)).isEqualTo(MatchPriority.ONLY)
@@ -50,15 +51,17 @@ class BoundingBoxIndexerFactoryTest {
   fun testEPSG() {
     val point = "3477534.683,5605739.857"
     val query = "EPSG:31467:$point,$point"
+    val queryPart = StringQueryPart(query)
+    val lowerQueryPart = StringQueryPart(query.lowercase())
     val factory = BoundingBoxIndexerFactoryImpl()
 
-    assertThat(factory.getQueryPriority(query)).isEqualTo(MatchPriority.ONLY)
-    assertThat(factory.getQueryPriority(query.toLowerCase())).isEqualTo(MatchPriority.ONLY)
+    assertThat(factory.getQueryPriority(queryPart)).isEqualTo(MatchPriority.ONLY)
+    assertThat(factory.getQueryPriority(lowerQueryPart)).isEqualTo(MatchPriority.ONLY)
 
     val destination = listOf(8.681739535269804, 50.58691850210496,
       8.681739535269804, 50.58691850210496)
-    testQuery(factory.compileQuery(query), destination)
-    testQuery(factory.compileQuery(query.toLowerCase()), destination)
+    testQuery(factory.compileQuery(queryPart), destination)
+    testQuery(factory.compileQuery(lowerQueryPart), destination)
   }
 
   /**
@@ -68,16 +71,18 @@ class BoundingBoxIndexerFactoryTest {
   fun testEPSGDefault() {
     val point = "3477534.683,5605739.857"
     val query = "$point,$point"
+    val queryPart = StringQueryPart(query)
+    val lowerQueryPart = StringQueryPart(query.lowercase())
     val factory = BoundingBoxIndexerFactoryImpl()
     factory.defaultCrs = "EPSG:31467"
 
-    assertThat(factory.getQueryPriority(query)).isEqualTo(MatchPriority.ONLY)
-    assertThat(factory.getQueryPriority(query.toLowerCase())).isEqualTo(MatchPriority.ONLY)
+    assertThat(factory.getQueryPriority(queryPart)).isEqualTo(MatchPriority.ONLY)
+    assertThat(factory.getQueryPriority(lowerQueryPart)).isEqualTo(MatchPriority.ONLY)
 
     val destination = listOf(8.681739535269804, 50.58691850210496,
       8.681739535269804, 50.58691850210496)
-    testQuery(factory.compileQuery(query), destination)
-    testQuery(factory.compileQuery(query.toLowerCase()), destination)
+    testQuery(factory.compileQuery(queryPart), destination)
+    testQuery(factory.compileQuery(lowerQueryPart), destination)
   }
 
   /**
@@ -86,7 +91,7 @@ class BoundingBoxIndexerFactoryTest {
   @Test
   fun testEPSGDefaultQueryOverride() {
     val point = "3477534.683,5605739.857"
-    val query = "EPSG:31467:$point,$point"
+    val query = StringQueryPart("EPSG:31467:$point,$point")
     val factory = BoundingBoxIndexerFactoryImpl()
     factory.defaultCrs = "invalid string"
 
@@ -104,7 +109,7 @@ class BoundingBoxIndexerFactoryTest {
   fun testWKTDefault() {
     val wkt = CRS.decode("epsg:31467").toWKT()
     val point = "3477534.683,5605739.857"
-    val query = "$point,$point"
+    val query = StringQueryPart("$point,$point")
     val factory = BoundingBoxIndexerFactoryImpl()
     factory.defaultCrs = wkt
 
@@ -116,8 +121,11 @@ class BoundingBoxIndexerFactoryTest {
   /**
    * Test if [jsonQuery] contains correct [coordinates]
    */
-  private fun testQuery(jsonQuery: JsonObject, coordinates: List<Double>) {
-    val jsonCoords = jsonQuery
+  private fun testQuery(jsonQuery: JsonObject?, coordinates: List<Double>) {
+    assertThat(jsonQuery).isNotNull
+    assert(jsonQuery != null)
+
+    val jsonCoords = jsonQuery!!
       .getJsonObject("bbox")
       .getJsonObject("\$geoIntersects")
       .getJsonObject("\$geometry")

@@ -1,16 +1,20 @@
 {
-  "query": "EQ(foo bar)",
+  "query": "GT(foo \"12\")",
   "queryCompilers": ["io.georocket.index.xml.XMLGenericAttributeIndexerFactory"],
   "expected": {
     "$or": [{
       "genAttrs": {
         "$elemMatch": {
           "key": "foo",
-          "value": "bar"
+          "value": {
+            "$gt": "12"
+          }
         }
       }
     }, {
-      "props.foo": "bar"
+      "props.foo": {
+        "$gt": "12"
+      }
     }]
   }
 }

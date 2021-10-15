@@ -108,11 +108,27 @@ class DefaultQueryCompilerTest {
   }
 
   /**
+   * Test query with key-value pair and operator: equal (a number)
+   */
+  @Test
+  fun eqNumber() {
+    expectFixture("eq_number")
+  }
+
+  /**
    * Test query with key-value pair and operator: greater than
    */
   @Test
   fun gt() {
     expectFixture("gt")
+  }
+
+  /**
+   * Test query with key-value pair and operator: greater than (a string)
+   */
+  @Test
+  fun gtString() {
+    expectFixture("gt_string")
   }
 
   /**

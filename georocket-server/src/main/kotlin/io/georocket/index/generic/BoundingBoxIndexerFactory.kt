@@ -3,6 +3,8 @@ package io.georocket.index.generic
 import io.georocket.constants.ConfigConstants
 import io.georocket.index.IndexerFactory
 import io.georocket.query.QueryCompiler.MatchPriority
+import io.georocket.query.QueryPart
+import io.georocket.query.StringQueryPart
 import io.georocket.util.CoordinateTransformer
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
@@ -38,20 +40,28 @@ abstract class BoundingBoxIndexerFactory : IndexerFactory {
     }
   }
 
-  override fun getQueryPriority(search: String): MatchPriority {
-    return if (BBOX_REGEX.matches(search)) {
-      MatchPriority.ONLY
-    } else {
-      MatchPriority.NONE
+  override fun getQueryPriority(queryPart: QueryPart): MatchPriority {
+    return when (queryPart) {
+      is StringQueryPart -> if (BBOX_REGEX.matches(queryPart.value)) {
+        MatchPriority.ONLY
+      } else {
+        MatchPriority.NONE
+      }
+
+      else -> MatchPriority.NONE
     }
   }
 
-  override fun compileQuery(search: String): JsonObject {
-    val index = search.lastIndexOf(':')
+  override fun compileQuery(queryPart: QueryPart): JsonObject? {
+    if (queryPart !is StringQueryPart) {
+      return null
+    }
+
+    val index = queryPart.value.lastIndexOf(':')
     val (crsCode, co) = if (index > 0) {
-      search.substring(0, index) to search.substring(index + 1)
+      queryPart.value.substring(0, index) to queryPart.value.substring(index + 1)
     } else {
-      null to search
+      null to queryPart.value
     }
 
     val crs = if (crsCode != null) {

@@ -11,11 +11,14 @@ open class GenericAttributeIndexer : Indexer {
   /**
    * Map collecting all attributes parsed
    */
-  private val result = mutableMapOf<String, String>()
+  private val result = mutableMapOf<String, Any>()
 
   protected fun put(key: String, value: String) {
+    // auto-convert to numbers
+    val v = value.toLongOrNull() ?: value.toDoubleOrNull() ?: value
+
     // never overwrite attributes already collected!
-    result.putIfAbsent(key, value)
+    result.putIfAbsent(key, v)
   }
 
   override fun getResult() = mapOf("genAttrs" to result.entries.map { e ->
