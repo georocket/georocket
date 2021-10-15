@@ -49,6 +49,7 @@ public final class ConfigConstants {
   public static final String INDEX_MAX_BULK_SIZE = "georocket.index.maxBulkSize";
   public static final String INDEX_INDEXABLE_CHUNK_CACHE_MAX_SIZE = "georocket.index.indexableChunkCache.maxSize";
   public static final String INDEX_INDEXABLE_CHUNK_CACHE_MAX_TIME_SECONDS = "georocket.index.indexableChunkCache.maxTimeSeconds";
+  public static final String INDEX_MONGODB_CONNECTION_STRING = "georocket.index.mongodb.connectionString";
   public static final String INDEX_ELASTICSEARCH_HOST = "georocket.index.elasticsearch.host";
   public static final String INDEX_ELASTICSEARCH_PORT = "georocket.index.elasticsearch.port";
   public static final String INDEX_ELASTICSEARCH_HOSTS = "georocket.index.elasticsearch.hosts";

@@ -96,7 +96,7 @@ class IndexerVerticle : CoroutineVerticle() {
     jsonIndexerFactories = indexerFactories.filterIsInstance<JsonIndexerFactory>()
     metaIndexerFactories = indexerFactories.filterIsInstance<MetaIndexerFactory>()
 
-    index = MongoDBIndex()
+    index = MongoDBIndex(vertx)
     store = StoreFactory.createStore(vertx)
 
     registerMessageConsumers()

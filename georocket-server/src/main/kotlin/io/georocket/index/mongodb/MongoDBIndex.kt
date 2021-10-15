@@ -4,16 +4,18 @@ import com.mongodb.ConnectionString
 import com.mongodb.reactivestreams.client.MongoClient
 import com.mongodb.reactivestreams.client.MongoCollection
 import com.mongodb.reactivestreams.client.MongoDatabase
+import io.georocket.constants.ConfigConstants
 import io.georocket.index.Index
 import io.georocket.util.deleteManyAwait
 import io.georocket.util.findAwait
 import io.georocket.util.insertManyAwait
 import io.georocket.util.insertOneAwait
+import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 
-class MongoDBIndex : Index {
+class MongoDBIndex(vertx: Vertx, connectionString: String? = null) : Index {
   companion object {
     private const val ID = "id"
     private const val INTERNAL_ID = "_id"
@@ -27,10 +29,16 @@ class MongoDBIndex : Index {
   private val collDocuments: MongoCollection<JsonObject>
 
   init {
-    // TODO make connectionString configurable
-    val connectionString = "mongodb://localhost:27017/georocket"
+    val config = vertx.orCreateContext.config()
 
-    val cs = ConnectionString(connectionString)
+    val actualConnectionString = connectionString ?:
+      config.getString(ConfigConstants.INDEX_MONGODB_CONNECTION_STRING) ?:
+      config.getString(ConfigConstants.STORAGE_MONGODB_CONNECTION_STRING) ?:
+      throw IllegalArgumentException("Missing configuration item `" +
+          ConfigConstants.INDEX_MONGODB_CONNECTION_STRING + "' or `" +
+          ConfigConstants.STORAGE_MONGODB_CONNECTION_STRING + "'")
+
+    val cs = ConnectionString(actualConnectionString)
     client = SharedMongoClient.create(cs)
     db = client.getDatabase(cs.database)
 
