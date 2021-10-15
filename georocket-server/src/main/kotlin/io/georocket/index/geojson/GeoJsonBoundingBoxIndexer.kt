@@ -2,14 +2,13 @@ package io.georocket.index.geojson
 
 import de.undercouch.actson.JsonEvent
 import io.georocket.index.generic.BoundingBoxIndexer
-import io.georocket.index.xml.JsonIndexer
 import io.georocket.util.JsonStreamEvent
 
 /**
  * Indexes bounding boxes of GeoJSON chunks
  * @author Michel Kraemer
  */
-class GeoJsonBoundingBoxIndexer : BoundingBoxIndexer(), JsonIndexer {
+class GeoJsonBoundingBoxIndexer : BoundingBoxIndexer<JsonStreamEvent>() {
   /**
    * The current level in the parsed GeoJSON chunk. Will be increased
    * every time the start of an object or an array is found and decreased

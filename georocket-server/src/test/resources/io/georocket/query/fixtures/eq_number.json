@@ -1,6 +1,6 @@
 {
   "query": "EQ(foo 5)",
-  "queryCompilers": ["io.georocket.index.xml.XMLGenericAttributeIndexerFactory"],
+  "queryCompilers": ["io.georocket.index.generic.GenericAttributeIndexerFactory"],
   "expected": {
     "genAttrs": {
       "$elemMatch": {

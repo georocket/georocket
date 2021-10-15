@@ -1,11 +1,17 @@
 package io.georocket.index.generic
 
 import io.georocket.constants.ConfigConstants
+import io.georocket.index.Indexer
 import io.georocket.index.IndexerFactory
+import io.georocket.index.geojson.GeoJsonBoundingBoxIndexer
+import io.georocket.index.xml.XMLBoundingBoxIndexer
 import io.georocket.query.QueryCompiler.MatchPriority
 import io.georocket.query.QueryPart
 import io.georocket.query.StringQueryPart
 import io.georocket.util.CoordinateTransformer
+import io.georocket.util.JsonStreamEvent
+import io.georocket.util.StreamEvent
+import io.georocket.util.XMLStreamEvent
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.jsonArrayOf
@@ -16,7 +22,7 @@ import org.geotools.referencing.CRS
  * Base class for factories creating indexers that manage bounding boxes
  * @author Michel Kraemer
  */
-abstract class BoundingBoxIndexerFactory : IndexerFactory {
+class BoundingBoxIndexerFactory : IndexerFactory {
   companion object {
     private const val FLOAT_REGEX = "[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?"
     private const val COMMA_REGEX = "\\s*,\\s*"
@@ -38,6 +44,16 @@ abstract class BoundingBoxIndexerFactory : IndexerFactory {
         defaultCrs = config.getString(ConfigConstants.QUERY_DEFAULT_CRS)
       }
     }
+  }
+
+  @Suppress("UNCHECKED_CAST")
+  override fun <T : StreamEvent> createIndexer(eventType: Class<T>): Indexer<T>? {
+    if (eventType.isAssignableFrom(XMLStreamEvent::class.java)) {
+      return XMLBoundingBoxIndexer() as Indexer<T>
+    } else if (eventType.isAssignableFrom(JsonStreamEvent::class.java)) {
+      return GeoJsonBoundingBoxIndexer() as Indexer<T>
+    }
+    return null
   }
 
   override fun getQueryPriority(queryPart: QueryPart): MatchPriority {

@@ -1,5 +1,6 @@
 package io.georocket.index.xml
 
+import io.georocket.index.Indexer
 import io.georocket.util.XMLStreamEvent
 import javax.xml.stream.events.XMLEvent
 
@@ -7,7 +8,7 @@ import javax.xml.stream.events.XMLEvent
  * Indexes GML IDs
  * @author Michel Kraemer
  */
-class GmlIdIndexer : XMLIndexer {
+class GmlIdIndexer : Indexer<XMLStreamEvent> {
   companion object {
     private const val NS_GML = "http://www.opengis.net/gml"
     private const val NS_GML_3_2 = "http://www.opengis.net/gml/3.2"
@@ -35,5 +36,5 @@ class GmlIdIndexer : XMLIndexer {
     }
   }
 
-  override fun getResult() = mapOf("gmlIds" to ids.toList())
+  override fun makeResult() = mapOf("gmlIds" to ids.toList())
 }

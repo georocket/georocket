@@ -38,7 +38,7 @@ class GeoJsonBoundingBoxIndexerTest {
       indexer.onEvent(e)
     }
 
-    assertThat(indexer.result).isEqualTo(expectedMap)
+    assertThat(indexer.makeResult()).isEqualTo(expectedMap)
   }
 
   /**

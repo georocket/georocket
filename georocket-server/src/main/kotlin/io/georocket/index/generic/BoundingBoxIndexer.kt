@@ -1,13 +1,14 @@
 package io.georocket.index.generic
 
 import io.georocket.index.Indexer
+import io.georocket.util.StreamEvent
 import io.vertx.core.logging.LoggerFactory
 
 /**
  * Base class for all indexers that create Bounding Boxes
  * @author Michel Kraemer
  */
-open class BoundingBoxIndexer : Indexer {
+abstract class BoundingBoxIndexer<T : StreamEvent> : Indexer<T> {
   companion object {
     private val log = LoggerFactory.getLogger(BoundingBoxIndexer::class.java)
   }
@@ -61,7 +62,7 @@ open class BoundingBoxIndexer : Indexer {
     return minX >= -180.0 && minY >= -90.0 && maxX <= 180.0 && maxY <= 90.0
   }
 
-  override fun getResult(): Map<String, Any> {
+  override fun makeResult(): Map<String, Any> {
     if (!boundingBoxInitialized) {
       // the chunk's bounding box is unknown. do not add it to the index
       return emptyMap()

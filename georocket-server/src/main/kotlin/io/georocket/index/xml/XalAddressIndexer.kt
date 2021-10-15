@@ -1,5 +1,6 @@
 package io.georocket.index.xml
 
+import io.georocket.index.Indexer
 import io.georocket.util.XMLStreamEvent
 import javax.xml.stream.events.XMLEvent
 
@@ -33,7 +34,7 @@ import javax.xml.stream.events.XMLEvent
  *
  * @author Michel Kraemer
  */
-class XalAddressIndexer : XMLIndexer {
+class XalAddressIndexer : Indexer<XMLStreamEvent> {
   companion object {
     private const val NS_XAL = "urn:oasis:names:tc:ciq:xsdschema:xAL:2.0"
 
@@ -73,5 +74,5 @@ class XalAddressIndexer : XMLIndexer {
     }
   }
 
-  override fun getResult(): Map<String, Any> = mapOf("address" to result)
+  override fun makeResult(): Map<String, Any> = mapOf("address" to result)
 }

@@ -4,10 +4,6 @@ import io.georocket.constants.AddressConstants
 import io.georocket.constants.ConfigConstants
 import io.georocket.index.geojson.JsonTransformer
 import io.georocket.index.mongodb.MongoDBIndex
-import io.georocket.index.xml.JsonIndexerFactory
-import io.georocket.index.xml.MetaIndexerFactory
-import io.georocket.index.xml.StreamIndexer
-import io.georocket.index.xml.XMLIndexerFactory
 import io.georocket.index.xml.XMLTransformer
 import io.georocket.query.DefaultQueryCompiler
 import io.georocket.storage.ChunkMeta
@@ -21,10 +17,12 @@ import io.georocket.tasks.IndexingTask
 import io.georocket.tasks.RemovingTask
 import io.georocket.tasks.TaskError
 import io.georocket.util.FilteredServiceLoader
+import io.georocket.util.JsonStreamEvent
 import io.georocket.util.MimeTypeUtils.belongsTo
 import io.georocket.util.StreamEvent
 import io.georocket.util.ThrowableHelper.throwableToCode
 import io.georocket.util.ThrowableHelper.throwableToMessage
+import io.georocket.util.XMLStreamEvent
 import io.georocket.util.debounce
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.eventbus.Message
@@ -59,24 +57,14 @@ class IndexerVerticle : CoroutineVerticle() {
   private lateinit var store: Store
 
   /**
+   * A list of [MetaIndexerFactory] objects
+   */
+  private lateinit var metaIndexerFactories: List<MetaIndexerFactory>
+
+  /**
    * A list of [IndexerFactory] objects
    */
   private lateinit var indexerFactories: List<IndexerFactory>
-
-  /**
-   * A view on [indexerFactories] containing only [XMLIndexerFactory] objects
-   */
-  private lateinit var xmlIndexerFactories: List<XMLIndexerFactory>
-
-  /**
-   * A view on [indexerFactories] containing only [JsonIndexerFactory] objects
-   */
-  private lateinit var jsonIndexerFactories: List<JsonIndexerFactory>
-
-  /**
-   * A view on [indexerFactories] containing only [MetaIndexerFactory] objects
-   */
-  private lateinit var metaIndexerFactories: List<MetaIndexerFactory>
 
   /**
    * The maximum number of chunks to index in one bulk
@@ -91,10 +79,8 @@ class IndexerVerticle : CoroutineVerticle() {
 
     // load and copy all indexer factories now and not lazily to avoid
     // concurrent modifications to the service loader's internal cache
+    metaIndexerFactories = FilteredServiceLoader.load(MetaIndexerFactory::class.java).toList()
     indexerFactories = FilteredServiceLoader.load(IndexerFactory::class.java).toList()
-    xmlIndexerFactories = indexerFactories.filterIsInstance<XMLIndexerFactory>()
-    jsonIndexerFactories = indexerFactories.filterIsInstance<JsonIndexerFactory>()
-    metaIndexerFactories = indexerFactories.filterIsInstance<MetaIndexerFactory>()
 
     index = MongoDBIndex(vertx)
     store = StoreFactory.createStore(vertx)
@@ -300,8 +286,8 @@ class IndexerVerticle : CoroutineVerticle() {
     val metaResults = mutableMapOf<String, Any>()
     for (metaIndexerFactory in metaIndexerFactories) {
       val metaIndexer = metaIndexerFactory.createIndexer()
-      metaIndexer.onIndexChunk(path, chunkMeta, indexMeta)
-      metaResults.putAll(metaIndexer.result)
+      val metaResult = metaIndexer.onChunk(path, chunkMeta, indexMeta)
+      metaResults.putAll(metaResult)
     }
 
     // index chunks depending on the mime type
@@ -309,10 +295,10 @@ class IndexerVerticle : CoroutineVerticle() {
     val doc = if (belongsTo(mimeType, "application", "xml") ||
         belongsTo(mimeType, "text", "xml")) {
       chunkToDocument(chunk, indexMeta.fallbackCRSString,
-          xmlIndexerFactories, XMLTransformer())
+        XMLStreamEvent::class.java, XMLTransformer())
     } else if (belongsTo(mimeType, "application", "json")) {
       chunkToDocument(chunk, indexMeta.fallbackCRSString,
-          jsonIndexerFactories, JsonTransformer())
+        JsonStreamEvent::class.java, JsonTransformer())
     } else {
       throw IllegalArgumentException("Unexpected mime type '${mimeType}' " +
               "while trying to index chunk '$path'")
@@ -324,25 +310,16 @@ class IndexerVerticle : CoroutineVerticle() {
 
   /**
    * Convert a chunk to a document
-   * @param chunk the chunk to convert
-   * @param fallbackCRSString a string representing the CRS that should be used
-   * to index the chunk if it does not specify a CRS itself (may be `null` if no
-   * CRS is available as fallback)
-   * @param indexerFactories a list of indexer factories that should be used to
-   * index the chunk
-   * @return the document
    */
   private suspend fun <T : StreamEvent> chunkToDocument(chunk: Buffer,
-      fallbackCRSString: String?, indexerFactories: List<IndexerFactory>,
-      transformer: Transformer<T>): Map<String, Any> {
+      fallbackCRSString: String?, type: Class<T>, transformer: Transformer<T>): Map<String, Any> {
     // initialize indexers
-    val indexers = indexerFactories.map { factory ->
-      @Suppress("UNCHECKED_CAST")
-      val i = factory.createIndexer() as StreamIndexer<T>
-      if (fallbackCRSString != null && i is CRSAware) {
-        i.setFallbackCRSString(fallbackCRSString)
+    val indexers = indexerFactories.mapNotNull { factory ->
+      factory.createIndexer(type)?.also { i ->
+        if (fallbackCRSString != null && i is CRSAware) {
+          i.setFallbackCRSString(fallbackCRSString)
+        }
       }
-      i
     }
 
     // perform indexing
@@ -352,7 +329,7 @@ class IndexerVerticle : CoroutineVerticle() {
 
     // create the document
     val doc = mutableMapOf<String, Any>()
-    indexers.forEach { indexer -> doc.putAll(indexer.result) }
+    indexers.forEach { indexer -> doc.putAll(indexer.makeResult()) }
     return doc
   }
 
@@ -449,7 +426,8 @@ class IndexerVerticle : CoroutineVerticle() {
     val search = body.getString("search") ?: ""
     val path = body.getString("path")
 
-    val query = DefaultQueryCompiler(indexerFactories).compileQuery(search, path)
+    val query = DefaultQueryCompiler(metaIndexerFactories + indexerFactories).compileQuery(search, path)
+
     val hits = index.getMeta(query)
 
     // TODO implement scrolling/paging

@@ -1,5 +1,6 @@
 package io.georocket.index.xml
 
+import io.georocket.index.Indexer
 import io.georocket.util.XMLStreamEvent
 import javax.xml.stream.events.XMLEvent
 
@@ -8,7 +9,7 @@ import javax.xml.stream.events.XMLEvent
  * CRS found.
  * @author Michel Kraemer
  */
-class XMLCRSIndexer : XMLIndexer {
+class XMLCRSIndexer : Indexer<XMLStreamEvent> {
   /**
    * The string of the detected CRS
    */
@@ -26,5 +27,5 @@ class XMLCRSIndexer : XMLIndexer {
     }
   }
 
-  override fun getResult() = crs?.let { mapOf<String, Any>("crs" to it) } ?: emptyMap()
+  override fun makeResult() = crs?.let { mapOf<String, Any>("crs" to it) } ?: emptyMap()
 }

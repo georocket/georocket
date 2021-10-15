@@ -1,9 +1,13 @@
 package io.georocket.index.xml
 
+import io.georocket.index.Indexer
+import io.georocket.index.IndexerFactory
 import io.georocket.query.QueryCompiler.MatchPriority
 import io.georocket.query.QueryPart
 import io.georocket.query.QueryPart.ComparisonOperator
 import io.georocket.query.StringQueryPart
+import io.georocket.util.StreamEvent
+import io.georocket.util.XMLStreamEvent
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.jsonObjectOf
 
@@ -11,8 +15,14 @@ import io.vertx.kotlin.core.json.jsonObjectOf
  * Create instances of [GmlIdIndexer]
  * @author Michel Kraemer
  */
-class GmlIdIndexerFactory : XMLIndexerFactory {
-  override fun createIndexer() = GmlIdIndexer()
+class GmlIdIndexerFactory : IndexerFactory {
+  override fun <T : StreamEvent> createIndexer(eventType: Class<T>): Indexer<T>? {
+    if (eventType.isAssignableFrom(XMLStreamEvent::class.java)) {
+      @Suppress("UNCHECKED_CAST")
+      return GmlIdIndexer() as Indexer<T>
+    }
+    return null
+  }
 
   /**
    * Test if the given key-value query part refers to a gmlId and if it uses

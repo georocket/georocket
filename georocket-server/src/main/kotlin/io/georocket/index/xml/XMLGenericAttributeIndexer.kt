@@ -8,7 +8,7 @@ import javax.xml.stream.events.XMLEvent
  * Indexer for CityGML generic attributes
  * @author Michel Kraemer
  */
-class XMLGenericAttributeIndexer : GenericAttributeIndexer(), XMLIndexer {
+class XMLGenericAttributeIndexer : GenericAttributeIndexer<XMLStreamEvent>() {
   /**
    * The key of the currently parsed generic attribute
    */

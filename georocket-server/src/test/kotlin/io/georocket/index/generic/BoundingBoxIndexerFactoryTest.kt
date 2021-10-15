@@ -1,6 +1,5 @@
 package io.georocket.index.generic
 
-import io.georocket.index.Indexer
 import io.georocket.query.QueryCompiler.MatchPriority
 import io.georocket.query.StringQueryPart
 import io.vertx.core.json.JsonObject
@@ -13,18 +12,12 @@ import org.junit.jupiter.api.Test
  * @author Michel Kraemer
  */
 class BoundingBoxIndexerFactoryTest {
-  private class BoundingBoxIndexerFactoryImpl : BoundingBoxIndexerFactory() {
-    override fun createIndexer(): Indexer {
-      throw NotImplementedError()
-    }
-  }
-
   /**
    * Test if the factory returns NONE for invalid queries
    */
   @Test
   fun testInvalid() {
-    val factory = BoundingBoxIndexerFactoryImpl()
+    val factory = BoundingBoxIndexerFactory()
     assertThat(factory.getQueryPriority(StringQueryPart(""))).isEqualTo(MatchPriority.NONE)
     assertThat(factory.getQueryPriority(StringQueryPart("42"))).isEqualTo(MatchPriority.NONE)
   }
@@ -36,7 +29,7 @@ class BoundingBoxIndexerFactoryTest {
   fun testQuery() {
     val point = "3477534.683,5605739.857"
     val query = StringQueryPart("$point,$point")
-    val factory = BoundingBoxIndexerFactoryImpl()
+    val factory = BoundingBoxIndexerFactory()
 
     assertThat(factory.getQueryPriority(query)).isEqualTo(MatchPriority.ONLY)
 
@@ -53,7 +46,7 @@ class BoundingBoxIndexerFactoryTest {
     val query = "EPSG:31467:$point,$point"
     val queryPart = StringQueryPart(query)
     val lowerQueryPart = StringQueryPart(query.lowercase())
-    val factory = BoundingBoxIndexerFactoryImpl()
+    val factory = BoundingBoxIndexerFactory()
 
     assertThat(factory.getQueryPriority(queryPart)).isEqualTo(MatchPriority.ONLY)
     assertThat(factory.getQueryPriority(lowerQueryPart)).isEqualTo(MatchPriority.ONLY)
@@ -73,7 +66,7 @@ class BoundingBoxIndexerFactoryTest {
     val query = "$point,$point"
     val queryPart = StringQueryPart(query)
     val lowerQueryPart = StringQueryPart(query.lowercase())
-    val factory = BoundingBoxIndexerFactoryImpl()
+    val factory = BoundingBoxIndexerFactory()
     factory.defaultCrs = "EPSG:31467"
 
     assertThat(factory.getQueryPriority(queryPart)).isEqualTo(MatchPriority.ONLY)
@@ -92,7 +85,7 @@ class BoundingBoxIndexerFactoryTest {
   fun testEPSGDefaultQueryOverride() {
     val point = "3477534.683,5605739.857"
     val query = StringQueryPart("EPSG:31467:$point,$point")
-    val factory = BoundingBoxIndexerFactoryImpl()
+    val factory = BoundingBoxIndexerFactory()
     factory.defaultCrs = "invalid string"
 
     assertThat(factory.getQueryPriority(query)).isEqualTo(MatchPriority.ONLY)
@@ -110,7 +103,7 @@ class BoundingBoxIndexerFactoryTest {
     val wkt = CRS.decode("epsg:31467").toWKT()
     val point = "3477534.683,5605739.857"
     val query = StringQueryPart("$point,$point")
-    val factory = BoundingBoxIndexerFactoryImpl()
+    val factory = BoundingBoxIndexerFactory()
     factory.defaultCrs = wkt
 
     val destination = listOf(8.681739535269804, 50.58691850210496,

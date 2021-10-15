@@ -35,7 +35,7 @@ class GeoJsonGenericAttributeIndexerTest {
       }
 
       ctx.verify {
-        assertThat(indexer.result).isEqualTo(expectedMap)
+        assertThat(indexer.makeResult()).isEqualTo(expectedMap)
       }
 
       ctx.completeNow()

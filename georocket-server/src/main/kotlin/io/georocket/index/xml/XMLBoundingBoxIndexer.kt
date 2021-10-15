@@ -17,7 +17,7 @@ import javax.xml.stream.events.XMLEvent
  * Indexes bounding boxes of inserted chunks
  * @author Michel Kraemer
  */
-class XMLBoundingBoxIndexer : BoundingBoxIndexer(), XMLIndexer, CRSAware {
+class XMLBoundingBoxIndexer : BoundingBoxIndexer<XMLStreamEvent>(), CRSAware {
   /**
    * The string of the detected CRS
    */

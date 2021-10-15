@@ -1,6 +1,6 @@
 {
   "query": "EQ(foo bar)",
-  "queryCompilers": ["io.georocket.index.xml.XMLGenericAttributeIndexerFactory"],
+  "queryCompilers": ["io.georocket.index.generic.GenericAttributeIndexerFactory"],
   "expected": {
     "$or": [{
       "genAttrs": {

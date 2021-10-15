@@ -12,7 +12,6 @@ import de.undercouch.actson.JsonEvent.VALUE_NULL
 import de.undercouch.actson.JsonEvent.VALUE_STRING
 import de.undercouch.actson.JsonEvent.VALUE_TRUE
 import io.georocket.index.generic.GenericAttributeIndexer
-import io.georocket.index.xml.JsonIndexer
 import io.georocket.util.JsonStreamEvent
 import java.lang.IllegalArgumentException
 
@@ -20,7 +19,7 @@ import java.lang.IllegalArgumentException
  * Indexer for properties in GeoJSON features
  * @author Michel Kraemer
  */
-class GeoJsonGenericAttributeIndexer : GenericAttributeIndexer(), JsonIndexer {
+class GeoJsonGenericAttributeIndexer : GenericAttributeIndexer<JsonStreamEvent>() {
   /**
    * The current level in the parsed GeoJSON chunk. Will be increased
    * every time the start of an object or an array is found and decreased

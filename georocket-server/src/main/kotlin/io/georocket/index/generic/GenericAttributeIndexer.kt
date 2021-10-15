@@ -1,13 +1,14 @@
 package io.georocket.index.generic
 
 import io.georocket.index.Indexer
+import io.georocket.util.StreamEvent
 
 /**
  * Base class for all indexers that find generic attributes (i.e. properties,
  * key-value pairs) in chunks
  * @author Michel Kraemer
  */
-open class GenericAttributeIndexer : Indexer {
+abstract class GenericAttributeIndexer<T : StreamEvent> : Indexer<T> {
   /**
    * Map collecting all attributes parsed
    */
@@ -21,7 +22,7 @@ open class GenericAttributeIndexer : Indexer {
     result.putIfAbsent(key, v)
   }
 
-  override fun getResult() = mapOf("genAttrs" to result.entries.map { e ->
+  override fun makeResult() = mapOf("genAttrs" to result.entries.map { e ->
     mapOf("key" to e.key, "value" to e.value)
   })
 }

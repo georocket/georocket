@@ -33,7 +33,7 @@ class XalAddressIndexerTest {
       indexer.onEvent(e)
     }
 
-    Assertions.assertThat(indexer.result).isEqualTo(expectedMap)
+    Assertions.assertThat(indexer.makeResult()).isEqualTo(expectedMap)
   }
 
   /**
