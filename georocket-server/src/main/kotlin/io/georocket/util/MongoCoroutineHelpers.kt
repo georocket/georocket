@@ -1,6 +1,7 @@
 package io.georocket.util
 
 import com.mongodb.client.result.DeleteResult
+import com.mongodb.client.result.UpdateResult
 import com.mongodb.reactivestreams.client.MongoCollection
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.mongo.impl.JsonObjectBsonAdapter
@@ -100,6 +101,17 @@ suspend fun <T> MongoCollection<T>.findAwait(filter: JsonObject, limit: Int = -1
   }
 }
 
+suspend inline fun <T, reified TResult> MongoCollection<T>.distinctAwait(fieldName: String,
+  filter: JsonObject): List<TResult> = distinctAwait(fieldName, filter, TResult::class.java)
+
+suspend fun <T, TResult> MongoCollection<T>.distinctAwait(fieldName: String,
+    filter: JsonObject, resultClass: Class<TResult>): List<TResult> {
+  return suspendCancellableCoroutine { cont: CancellableContinuation<List<TResult>> ->
+    val f = distinct(fieldName, JsonObjectBsonAdapter(filter), resultClass)
+    f.subscribe(CollectionSubscriber(cont))
+  }
+}
+
 suspend fun <T> MongoCollection<T>.insertOneAwait(document: T) {
   wrapCoroutine {
     insertOne(document)
@@ -110,6 +122,13 @@ suspend fun <T> MongoCollection<T>.insertManyAwait(documents: List<T>) {
   wrapCoroutine {
     insertMany(documents)
   }
+}
+
+suspend fun <T> MongoCollection<T>.updateManyAwait(filter: JsonObject,
+  update: JsonObject): UpdateResult {
+  return wrapCoroutine {
+    updateMany(JsonObjectBsonAdapter(filter), JsonObjectBsonAdapter(update))
+  } ?: throw IllegalStateException("Update operation did not produce a result")
 }
 
 suspend fun <T> MongoCollection<T>.deleteManyAwait(filter: JsonObject): DeleteResult {

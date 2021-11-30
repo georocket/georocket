@@ -50,12 +50,12 @@ interface Store {
   /**
    * Get all values of the [property] of all chunks matching a given [search] query [path]
    */
-  suspend fun getPropertyValues(search: String?, path: String, property: String): Cursor<String>
+  suspend fun getPropertyValues(search: String?, path: String, property: String): List<String>
 
   /**
    * Set the [properties] of a list of chunks selected by [search] and [path]
    */
-  suspend fun setProperties(search: String?, path: String, properties: Map<String, String>)
+  suspend fun setProperties(search: String?, path: String, properties: Map<String, Any>)
 
   /**
    * Remove the [properties] of a list of chunks selected by [search] and [path]

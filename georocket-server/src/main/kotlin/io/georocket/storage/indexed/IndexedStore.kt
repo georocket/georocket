@@ -196,19 +196,17 @@ abstract class IndexedStore(private val vertx: Vertx) : Store {
   }
 
   override suspend fun getPropertyValues(search: String?, path: String,
-      property: String): Cursor<String> {
-    TODO()
-    /*val template = JsonObject()
+      property: String): List<String> {
+    val msg = JsonObject()
         .put("search", search)
         .put("property", property)
         .put("path", path)
-    IndexedAsyncCursor({ o: Any? -> Objects.toString(o) },
-        AddressConstants.METADATA_GET_PROPERTY_VALUES, vertx, template)
-        .start(handler)*/
+    return vertx.eventBus().requestAwait<JsonArray>(
+      AddressConstants.METADATA_GET_PROPERTY_VALUES, msg).body().map { it.toString() }
   }
 
   override suspend fun setProperties(search: String?, path: String,
-      properties: Map<String, String>) {
+      properties: Map<String, Any>) {
     val msg = JsonObject()
         .put("search", search)
         .put("properties", JsonObject.mapFrom(properties))

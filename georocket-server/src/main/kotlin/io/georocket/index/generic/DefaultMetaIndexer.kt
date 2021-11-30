@@ -21,7 +21,9 @@ class DefaultMetaIndexer : MetaIndexer {
     }
 
     if (indexMeta.properties != null) {
-      result["props"] = indexMeta.properties
+      result["props"] = indexMeta.properties.entries.map { e ->
+        mapOf("key" to e.key, "value" to e.value)
+      }
     }
 
     if (indexMeta.correlationId != null) {

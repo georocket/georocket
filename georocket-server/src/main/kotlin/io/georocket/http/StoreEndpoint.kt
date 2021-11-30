@@ -328,32 +328,30 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
    * Get the values of the specified [property] of all chunks matching the
    * given [search] query and [path]
    */
-  private suspend fun getPropertyValues(search: String, path: String,
+  private suspend fun getPropertyValues(search: String?, path: String,
       property: String, response: HttpServerResponse) {
     var first = true
     response.isChunked = true
-    response.write("[")
+    response.setStatusCode(200).write("[")
 
     try {
-      val cursor = store.getPropertyValues(search, path, property)
+      val values = store.getPropertyValues(search, path, property)
 
-      while (cursor.hasNext()) {
-        val x = cursor.next()
-
+      for (v in values) {
         if (first) {
           first = false
         } else {
           response.write(",")
         }
 
-        response.write("\"" + StringEscapeUtils.escapeJson(x) + "\"")
+        response.write("\"" + StringEscapeUtils.escapeJson(v) + "\"")
       }
 
       response
           .write("]")
-          .setStatusCode(200)
           .end()
     } catch (t: Throwable) {
+      log.error("Could not fetch property values", t)
       Endpoint.fail(response, t)
     }
   }
@@ -393,22 +391,11 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
     val tags = if (StringUtils.isNotEmpty(tagsStr))
       tagsStr.split(",").map { it.trim() } else null
 
-    val properties = mutableMapOf<String, Any>()
-    if (StringUtils.isNotEmpty(propertiesStr)) {
-      val regex = "(?<!" + Pattern.quote("\\") + ")" + Pattern.quote(":")
-      val parts = propertiesStr.split(",").map { it.trim() }
-      for (part in parts) {
-        val property = part.split(regex)
-        if (property.size != 2) {
-          request.response()
-              .setStatusCode(400)
-              .end("Invalid property syntax: $part")
-          return
-        }
-        val key = StringEscapeUtils.unescapeJava(property[0].trim())
-        val value = StringEscapeUtils.unescapeJava(property[1].trim())
-        properties[key] = value
-      }
+    val properties = try {
+      parseProperties(propertiesStr)
+    } catch (t: Throwable) {
+      Endpoint.fail(context.response(), t)
+      return
     }
 
     // get temporary filename
@@ -561,7 +548,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
    * Remove [properties] from all chunks matching the given [search] query
    * and [path]
    */
-  private suspend fun removeProperties(search: String, path: String,
+  private suspend fun removeProperties(search: String?, path: String,
       properties: String, response: HttpServerResponse) {
     val list = properties.split(",")
     try {
@@ -577,7 +564,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
   /**
    * Remove [tags] from all chunks matching the given [search] query and [path]
    */
-  private suspend fun removeTags(search: String, path: String, tags: String,
+  private suspend fun removeTags(search: String?, path: String, tags: String,
       response: HttpServerResponse) {
     val list = tags.split(",")
     try {
@@ -638,7 +625,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
       if (StringUtils.isNotEmpty(properties) || StringUtils.isNotEmpty(tags)) {
         try {
           if (StringUtils.isNotEmpty(properties)) {
-            val parsedProperties = parseProperties(properties.split(","))
+            val parsedProperties = parseProperties(properties)
             store.setProperties(search, path, parsedProperties)
           }
 
@@ -661,13 +648,15 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
   }
 
   /**
-   * Parse list of [properties] in the form `key:value` to a map
+   * Parse list of [properties] in the form `key:value[,key:value,...]` to a map
    */
-  private fun parseProperties(properties: List<String>): Map<String, String> {
-    val props = mutableMapOf<String, String>()
+  private fun parseProperties(properties: String): Map<String, Any> {
+    val propertiesList = properties.split(",")
+
+    val props = mutableMapOf<String, Any>()
     val regex = ("(?<!" + Pattern.quote("\\") + ")" + Pattern.quote(":")).toRegex()
 
-    for (part in properties.map { it.trim() }) {
+    for (part in propertiesList.map { it.trim() }) {
       val property = part.split(regex)
       if (property.size != 2) {
         throw ServerAPIException(ServerAPIException.INVALID_PROPERTY_SYNTAX_ERROR,
@@ -675,7 +664,11 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
       }
       val key = StringEscapeUtils.unescapeJava(property[0].trim())
       val value = StringEscapeUtils.unescapeJava(property[1].trim())
-      props[key] = value
+
+      // auto-convert to numbers
+      val v = value.toLongOrNull() ?: value.toDoubleOrNull() ?: value
+
+      props[key] = v
     }
 
     return props

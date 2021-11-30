@@ -7,9 +7,19 @@ interface Index {
 
   suspend fun add(id: String, doc: JsonObject)
 
-  suspend fun addMany(docs: List<Pair<String, JsonObject>>)
+  suspend fun addMany(docs: Collection<Pair<String, JsonObject>>)
 
   suspend fun getMeta(query: JsonObject): List<JsonObject>
 
-  suspend fun delete(ids: List<String>)
+  suspend fun addTags(query: JsonObject, tags: Collection<String>)
+
+  suspend fun removeTags(query: JsonObject, tags: Collection<String>)
+
+  suspend fun setProperties(query: JsonObject, properties: Map<String, Any>)
+
+  suspend fun removeProperties(query: JsonObject, properties: Collection<String>)
+
+  suspend fun getPropertyValues(query: JsonObject, propertyName: String): List<String>
+
+  suspend fun delete(ids: Collection<String>)
 }

@@ -7,12 +7,15 @@ import com.mongodb.reactivestreams.client.MongoDatabase
 import io.georocket.constants.ConfigConstants
 import io.georocket.index.Index
 import io.georocket.util.deleteManyAwait
+import io.georocket.util.distinctAwait
 import io.georocket.util.findAwait
 import io.georocket.util.insertManyAwait
 import io.georocket.util.insertOneAwait
+import io.georocket.util.updateManyAwait
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.json
+import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.core.json.obj
 
 class MongoDBIndex(vertx: Vertx, connectionString: String? = null) : Index {
@@ -55,7 +58,7 @@ class MongoDBIndex(vertx: Vertx, connectionString: String? = null) : Index {
     collDocuments.insertOneAwait(copy)
   }
 
-  override suspend fun addMany(docs: List<Pair<String, JsonObject>>) {
+  override suspend fun addMany(docs: Collection<Pair<String, JsonObject>>) {
     val copies = docs.map { d ->
       val copy = d.second.copy()
       copy.put(INTERNAL_ID, d.first)
@@ -78,7 +81,63 @@ class MongoDBIndex(vertx: Vertx, connectionString: String? = null) : Index {
     }
   }
 
-  override suspend fun delete(ids: List<String>) {
+  override suspend fun addTags(query: JsonObject, tags: Collection<String>) {
+    collDocuments.updateManyAwait(query, jsonObjectOf(
+      "\$addToSet" to jsonObjectOf(
+        "tags" to jsonObjectOf(
+          "\$each" to tags
+        )
+      )
+    ))
+  }
+
+  override suspend fun removeTags(query: JsonObject, tags: Collection<String>) {
+    collDocuments.updateManyAwait(query, jsonObjectOf(
+      "\$pull" to jsonObjectOf(
+        "tags" to jsonObjectOf(
+          "\$in" to tags
+        )
+      )
+    ))
+  }
+
+  override suspend fun setProperties(query: JsonObject, properties: Map<String, Any>) {
+    // convert to key-value pairs
+    val props = properties.entries.map { e ->
+      mapOf("key" to e.key, "value" to e.value)
+    }
+
+    // remove properties with these keys (if they exist)
+    removeProperties(query, properties.keys)
+
+    // now insert them (again or for the first time)
+    collDocuments.updateManyAwait(query, jsonObjectOf(
+      "\$push" to jsonObjectOf(
+        "props" to jsonObjectOf(
+          "\$each" to props
+        )
+      )
+    ))
+  }
+
+  override suspend fun removeProperties(query: JsonObject, properties: Collection<String>) {
+    collDocuments.updateManyAwait(query, jsonObjectOf(
+      "\$pull" to jsonObjectOf(
+        "props" to jsonObjectOf(
+          "key" to jsonObjectOf(
+            "\$in" to properties.toList()
+          )
+        )
+      )
+    ))
+  }
+
+  override suspend fun getPropertyValues(query: JsonObject, propertyName: String): List<String> {
+    // TODO use propertyName!!!!!
+    return collDocuments.distinctAwait("props.value", query)
+  }
+
+  override suspend fun delete(ids: Collection<String>) {
     collDocuments.deleteManyAwait(json {
       obj(
         INTERNAL_ID to obj(
