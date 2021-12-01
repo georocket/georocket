@@ -101,13 +101,17 @@ suspend fun <T> MongoCollection<T>.findAwait(filter: JsonObject, limit: Int = -1
   }
 }
 
-suspend inline fun <T, reified TResult> MongoCollection<T>.distinctAwait(fieldName: String,
-  filter: JsonObject): List<TResult> = distinctAwait(fieldName, filter, TResult::class.java)
+suspend fun <T, R> MongoCollection<T>.distinctAwait(fieldName: String,
+  filter: JsonObject, resultClass: Class<R>): List<R> {
+  return suspendCancellableCoroutine { cont: CancellableContinuation<List<R>> ->
+    val d = distinct(fieldName, JsonObjectBsonAdapter(filter), resultClass)
+    d.subscribe(CollectionSubscriber(cont))
+  }
+}
 
-suspend fun <T, TResult> MongoCollection<T>.distinctAwait(fieldName: String,
-    filter: JsonObject, resultClass: Class<TResult>): List<TResult> {
-  return suspendCancellableCoroutine { cont: CancellableContinuation<List<TResult>> ->
-    val f = distinct(fieldName, JsonObjectBsonAdapter(filter), resultClass)
+suspend fun <T> MongoCollection<T>.aggregateAwait(pipeline: List<JsonObject>): List<T> {
+  return suspendCancellableCoroutine { cont: CancellableContinuation<List<T>> ->
+    val f = aggregate(pipeline.map { JsonObjectBsonAdapter(it) }, documentClass)
     f.subscribe(CollectionSubscriber(cont))
   }
 }

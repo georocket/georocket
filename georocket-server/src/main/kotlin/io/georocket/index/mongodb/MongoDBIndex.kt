@@ -6,8 +6,8 @@ import com.mongodb.reactivestreams.client.MongoCollection
 import com.mongodb.reactivestreams.client.MongoDatabase
 import io.georocket.constants.ConfigConstants
 import io.georocket.index.Index
+import io.georocket.util.aggregateAwait
 import io.georocket.util.deleteManyAwait
-import io.georocket.util.distinctAwait
 import io.georocket.util.findAwait
 import io.georocket.util.insertManyAwait
 import io.georocket.util.insertOneAwait
@@ -132,9 +132,40 @@ class MongoDBIndex(vertx: Vertx, connectionString: String? = null) : Index {
     ))
   }
 
-  override suspend fun getPropertyValues(query: JsonObject, propertyName: String): List<String> {
-    // TODO use propertyName!!!!!
-    return collDocuments.distinctAwait("props.value", query)
+  override suspend fun getPropertyValues(query: JsonObject, propertyName: String): List<Any?> {
+    val result = collDocuments.aggregateAwait(listOf(
+      jsonObjectOf("\$unwind" to jsonObjectOf(
+        "path" to "\$props"
+      )),
+      jsonObjectOf("\$match" to jsonObjectOf(
+        "props.key" to propertyName
+      )),
+      jsonObjectOf("\$group" to jsonObjectOf(
+        "_id" to null,
+        "values" to jsonObjectOf(
+          "\$addToSet" to "\$props.value"
+        )
+      ))
+    ))
+    return result[0].getJsonArray("values").list
+  }
+
+  override suspend fun getAttributeValues(query: JsonObject, attributeName: String): List<Any?> {
+    val result = collDocuments.aggregateAwait(listOf(
+      jsonObjectOf("\$unwind" to jsonObjectOf(
+        "path" to "\$genAttrs"
+      )),
+      jsonObjectOf("\$match" to jsonObjectOf(
+        "genAttrs.key" to attributeName
+      )),
+      jsonObjectOf("\$group" to jsonObjectOf(
+        "_id" to null,
+        "values" to jsonObjectOf(
+          "\$addToSet" to "\$genAttrs.value"
+        )
+      ))
+    ))
+    return result[0].getJsonArray("values").list
   }
 
   override suspend fun delete(ids: Collection<String>) {

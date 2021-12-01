@@ -3,7 +3,6 @@ package io.georocket.storage.indexed
 import io.georocket.constants.AddressConstants
 import io.georocket.index.IndexableChunkCache
 import io.georocket.storage.ChunkMeta
-import io.georocket.storage.Cursor
 import io.georocket.storage.DeleteMeta
 import io.georocket.storage.IndexMeta
 import io.georocket.storage.Store
@@ -184,25 +183,23 @@ abstract class IndexedStore(private val vertx: Vertx) : Store {
   }
 
   override suspend fun getAttributeValues(search: String?, path: String,
-      attribute: String): Cursor<Any> {
-    TODO()
-    /*val template = JsonObject()
-        .put("search", search)
-        .put("attribute", attribute)
-        .put("path", path)
-    IndexedAsyncCursor(Function.identity(),
-        AddressConstants.METADATA_GET_ATTRIBUTE_VALUES, vertx, template)
-        .start(handler)*/
+      attribute: String): List<Any?> {
+    val msg = JsonObject()
+      .put("search", search)
+      .put("attribute", attribute)
+      .put("path", path)
+    return vertx.eventBus().requestAwait<JsonArray>(
+      AddressConstants.METADATA_GET_ATTRIBUTE_VALUES, msg).body().toList()
   }
 
   override suspend fun getPropertyValues(search: String?, path: String,
-      property: String): List<String> {
+      property: String): List<Any?> {
     val msg = JsonObject()
         .put("search", search)
         .put("property", property)
         .put("path", path)
     return vertx.eventBus().requestAwait<JsonArray>(
-      AddressConstants.METADATA_GET_PROPERTY_VALUES, msg).body().map { it.toString() }
+      AddressConstants.METADATA_GET_PROPERTY_VALUES, msg).body().toList()
   }
 
   override suspend fun setProperties(search: String?, path: String,

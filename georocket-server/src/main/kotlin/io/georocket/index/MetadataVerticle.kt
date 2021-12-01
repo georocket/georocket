@@ -53,7 +53,18 @@ class MetadataVerticle : CoroutineVerticle() {
   }
 
   private fun onGetAttributeValues(msg: Message<JsonObject>) {
-    TODO()
+    launch {
+      val body = msg.body()
+      val search = body.getString("search") ?: ""
+      val path = body.getString("path")
+      val attributeName = body.getString("attribute")
+
+      val query = DefaultQueryCompiler(metaIndexerFactories + indexerFactories).compileQuery(search, path)
+
+      val values = index.getAttributeValues(query, attributeName)
+
+      msg.reply(JsonArray(values))
+    }
   }
 
   private fun onGetPropertyValues(msg: Message<JsonObject>) {

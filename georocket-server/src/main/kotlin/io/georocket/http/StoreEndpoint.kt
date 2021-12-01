@@ -294,32 +294,28 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
    * Get the values of the specified [attribute] of all chunks matching the
    * given [search] query and [path]
    */
-  private suspend fun getAttributeValues(search: String, path: String,
+  private suspend fun getAttributeValues(search: String?, path: String,
       attribute: String, response: HttpServerResponse) {
     var first = true
     response.isChunked = true
-    response.write("[")
+    response.setStatusCode(200).write("[")
 
-    val cursor = store.getAttributeValues(search, path, attribute)
+    val values = store.getAttributeValues(search, path, attribute)
 
     try {
-      while (cursor.hasNext()) {
-        val x = cursor.next()
-
+      for (v in values) {
         if (first) {
           first = false
         } else {
           response.write(",")
         }
 
-        response.write(Json.mapper.writeValueAsString(x))
+        response.write(Json.mapper.writeValueAsString(v))
       }
 
-      response
-          .write("]")
-          .setStatusCode(200)
-          .end()
+      response.write("]").end()
     } catch (t: Throwable) {
+      log.error("Could not fetch attribute values", t)
       Endpoint.fail(response, t)
     }
   }
@@ -344,12 +340,10 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
           response.write(",")
         }
 
-        response.write("\"" + StringEscapeUtils.escapeJson(v) + "\"")
+        response.write(Json.mapper.writeValueAsString(v))
       }
 
-      response
-          .write("]")
-          .end()
+      response.write("]").end()
     } catch (t: Throwable) {
       log.error("Could not fetch property values", t)
       Endpoint.fail(response, t)
