@@ -1,6 +1,10 @@
 {
   "query": "bla",
   "expected": {
-    "tags": "bla"
+    "$or": [{
+      "tags": "bla"
+    }, {
+      "props.value": "bla"
+    }]
   }
 }

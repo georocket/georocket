@@ -3,7 +3,11 @@
   "path": "/mypath",
   "expected": {
     "$and": [{
-      "tags": "bla"
+      "$or": [{
+        "tags": "bla"
+      }, {
+        "props.value": "bla"
+      }]
     }, {
       "path": {
         "$regex": "^/mypath"

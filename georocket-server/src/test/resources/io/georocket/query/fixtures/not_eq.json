@@ -2,7 +2,12 @@
   "query": "NOT(EQ(foo bar))",
   "expected": {
     "$not": {
-      "props.foo": "bar"
+      "props": {
+        "$elemMatch": {
+          "key": "foo",
+          "value": "bar"
+        }
+      }
     }
   }
 }

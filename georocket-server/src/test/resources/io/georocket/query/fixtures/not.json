@@ -2,7 +2,11 @@
   "query": "NOT(foo)",
   "expected": {
     "$not": {
-      "tags": "foo"
+      "$or": [{
+        "tags": "foo"
+      }, {
+        "props.value": "foo"
+      }]
     }
   }
 }

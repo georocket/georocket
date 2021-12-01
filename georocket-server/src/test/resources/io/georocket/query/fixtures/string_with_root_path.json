@@ -2,6 +2,10 @@
   "query": "bla",
   "path": "/",
   "expected": {
-    "tags": "bla"
+    "$or": [{
+      "tags": "bla"
+    }, {
+      "props.value": "bla"
+    }]
   }
 }

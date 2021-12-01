@@ -2,11 +2,20 @@
   "query": "EQ(foo 5)",
   "queryCompilers": ["io.georocket.index.generic.GenericAttributeIndexerFactory"],
   "expected": {
-    "genAttrs": {
-      "$elemMatch": {
-        "key": "foo",
-        "value": 5
+    "$or": [{
+      "genAttrs": {
+        "$elemMatch": {
+          "key": "foo",
+          "value": 5
+        }
       }
-    }
+    }, {
+      "props": {
+        "$elemMatch": {
+          "key": "foo",
+          "value": 5
+        }
+      }
+    }]
   }
 }

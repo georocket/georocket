@@ -12,8 +12,13 @@
         }
       }
     }, {
-      "props.foo": {
-        "$gt": "12"
+      "props": {
+        "$elemMatch": {
+          "key": "foo",
+          "value": {
+            "$gt": "12"
+          }
+        }
       }
     }]
   }

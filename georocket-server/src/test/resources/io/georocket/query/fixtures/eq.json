@@ -10,7 +10,12 @@
         }
       }
     }, {
-      "props.foo": "bar"
+      "props": {
+        "$elemMatch": {
+          "key": "foo",
+          "value": "bar"
+        }
+      }
     }]
   }
 }

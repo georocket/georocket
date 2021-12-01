@@ -1,6 +1,8 @@
 package io.georocket.index.generic
 
 import io.georocket.index.MetaIndexerFactory
+import io.georocket.query.DoubleQueryPart
+import io.georocket.query.LongQueryPart
 import io.georocket.query.QueryCompiler.MatchPriority
 import io.georocket.query.QueryPart
 import io.georocket.query.QueryPart.ComparisonOperator
@@ -18,19 +20,20 @@ class DefaultMetaIndexerFactory : MetaIndexerFactory {
 
   override fun getQueryPriority(queryPart: QueryPart): MatchPriority {
     return when (queryPart) {
-      is StringQueryPart -> MatchPriority.SHOULD
-      else -> MatchPriority.NONE
+      is StringQueryPart, is LongQueryPart, is DoubleQueryPart -> MatchPriority.SHOULD
     }
   }
 
   override fun compileQuery(queryPart: QueryPart): JsonObject? {
     return when (queryPart) {
-      // TODO support LongQueryPart and DoubleQueryPart too
-      is StringQueryPart -> {
+      is StringQueryPart, is LongQueryPart, is DoubleQueryPart -> {
         if (queryPart.key == null) {
           // match values of all fields regardless of their name
           val search = queryPart.value
-          jsonObjectOf("tags" to search)
+          jsonObjectOf("\$or" to jsonArrayOf(
+            jsonObjectOf("tags" to search),
+            jsonObjectOf("props.value" to search)
+          ))
         } else {
           val v: Any = when (queryPart.comparisonOperator) {
             null, ComparisonOperator.EQ -> queryPart.value
@@ -40,8 +43,15 @@ class DefaultMetaIndexerFactory : MetaIndexerFactory {
             ComparisonOperator.LTE -> jsonObjectOf("\$lte" to queryPart.value)
           }
 
-          val name = "props.${queryPart.key}"
-          val r = jsonObjectOf(name to v)
+          val m = if (queryPart.key != null) {
+            mapOf("key" to queryPart.key, "value" to v)
+          } else {
+            mapOf("value" to v)
+          }
+
+          val r = jsonObjectOf("props" to jsonObjectOf(
+            "\$elemMatch" to m
+          ))
 
           if (queryPart.comparisonOperator == ComparisonOperator.EQ && queryPart.key == "correlationId") {
             jsonObjectOf(

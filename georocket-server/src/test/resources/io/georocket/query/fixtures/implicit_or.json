@@ -2,9 +2,17 @@
   "query": "foo bar",
   "expected": {
     "$or": [{
-      "tags": "foo"
+      "$or": [{
+        "tags": "foo"
+      }, {
+        "props.value": "foo"
+      }]
     }, {
-      "tags": "bar"
+      "$or": [{
+        "tags": "bar"
+      }, {
+        "props.value": "bar"
+      }]
     }]
   }
 }

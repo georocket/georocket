@@ -3,24 +3,52 @@
   "expected": {
     "$or": [{
       "$and": [{
-        "tags": "foo"
-      }, {
-        "tags": "bar"
+        "$or": [{
+          "tags": "foo"
+        }, {
+          "props.value": "foo"
+        }]
       }, {
         "$or": [{
-          "tags": "test1"
+          "tags": "bar"
         }, {
-          "tags": "test2"
+          "props.value": "bar"
+        }]
+      }, {
+        "$or": [{
+          "$or": [{
+            "tags": "test1"
+          }, {
+            "props.value": "test1"
+          }]
+        }, {
+          "$or": [{
+            "tags": "test2"
+          }, {
+            "props.value": "test2"
+          }]
         }]
       }]
     }, {
-      "tags": "hello"
+      "$or": [{
+        "tags": "hello"
+      }, {
+        "props.value": "hello"
+      }]
     }, {
       "$not": {
         "$or": [{
-          "tags": "world"
+          "$or": [{
+            "tags": "world"
+          }, {
+            "props.value": "world"
+          }]
         }, {
-          "tags": "you"
+          "$or": [{
+            "tags": "you"
+          }, {
+            "props.value": "you"
+          }]
         }]
       }
     }]

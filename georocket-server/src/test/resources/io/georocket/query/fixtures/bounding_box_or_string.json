@@ -18,7 +18,11 @@
         }
       }
     }, {
-      "tags": "foobar"
+      "$or": [{
+        "tags": "foobar"
+      }, {
+        "props.value": "foobar"
+      }]
     }]
   }
 }

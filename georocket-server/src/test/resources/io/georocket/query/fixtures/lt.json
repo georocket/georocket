@@ -2,13 +2,24 @@
   "query": "LT(foo 12)",
   "queryCompilers": ["io.georocket.index.generic.GenericAttributeIndexerFactory"],
   "expected": {
-    "genAttrs": {
-      "$elemMatch": {
-        "key": "foo",
-        "value": {
-          "$lt": 12
+    "$or": [{
+      "genAttrs": {
+        "$elemMatch": {
+          "key": "foo",
+          "value": {
+            "$lt": 12
+          }
         }
       }
-    }
+    }, {
+      "props": {
+        "$elemMatch": {
+          "key": "foo",
+          "value": {
+            "$lt": 12
+          }
+        }
+      }
+    }]
   }
 }
