@@ -236,15 +236,15 @@ class XMLTests extends StoreTests {
         assertFound("EQ(test1 2)", "ID_146_D")
         assertNotFound("EQ(test1 1)")
         
-        assertValues("", "property", "test1", ["2"])
+        assertValues("", "property", "test1", [2])
 
         // update property value
         run("curl -sS -X PUT http://${georocketHost}:63020/store/"
                 + "?search=ID_147_D&properties="
                 + URLEncoder.encode('test1:3,test2:3', 'UTF-8'), null, true)
 
-        assertValues("", "property", "test1", ["2", "3"])
-        assertValues("", "property", "test2", ["3"])
+        assertValues("", "property", "test1", [2, 3])
+        assertValues("", "property", "test2", [3])
     }
 
     /**
@@ -279,20 +279,19 @@ class XMLTests extends StoreTests {
      * @param query the query to search for
      */
     def assertValues(query, field, name, values) {
-        // TODO re-enable this after refactoring
-        // testUntilOK({
-        //     def exportedContents = run("curl -sS -X GET http://${georocketHost}:63020/store/"
-        //             + "?search=" + URLEncoder.encode(query, 'UTF-8')
-        //             + "&$field=$name", null, true)
-        //     try {
-        //         List results = new JsonSlurper().parseText(exportedContents)
-        //         Collections.sort(values)
-        //         Collections.sort(results)
-        //         Objects.equals(values, results)
-        //     } catch (ignored) {
-        //         return false
-        //     }
-        // }, "GeoRocket metadata", "Values for $name not found")
+        testUntilOK({
+            def exportedContents = run("curl -sS -X GET http://${georocketHost}:63020/store/"
+                    + "?search=" + URLEncoder.encode(query, 'UTF-8')
+                    + "&$field=$name", null, true)
+            try {
+                List results = new JsonSlurper().parseText(exportedContents)
+                Collections.sort(values)
+                Collections.sort(results)
+                Objects.equals(values, results)
+            } catch (ignored) {
+                return false
+            }
+        }, "GeoRocket metadata", "Values for $name not found")
     }
 
     /**

@@ -36,8 +36,7 @@ if [[ -z $MODE ]]; then
 fi
 
 cleanup () {
-  docker-compose -f docker-compose-$MODE.yml -p ci kill
-  docker-compose -f docker-compose-$MODE.yml -p ci rm -f
+  docker-compose -f docker-compose-$MODE.yml -p ci rm -sf
 }
 trap 'cleanup ; printf "${RED}Tests Failed For Unexpected Reasons${NC}\n"' HUP INT QUIT PIPE TERM
 docker-compose -f docker-compose-$MODE.yml -p ci build && docker-compose -f docker-compose-$MODE.yml -p ci up -d --force-recreate
@@ -45,8 +44,8 @@ if [ $? -ne 0 ] ; then
   printf "${RED}Docker Compose Failed${NC}\n"
   exit -1
 fi
-docker logs -f ci_integration-tester_1 &
-TEST_EXIT_CODE=`docker wait ci_integration-tester_1`
+docker logs -f ci-integration-tester-1 &
+TEST_EXIT_CODE=`docker wait ci-integration-tester-1`
 if [ -z ${TEST_EXIT_CODE+x} ] || [ "$TEST_EXIT_CODE" -ne 0 ] ; then
   printf "${RED}Tests Failed${NC} - Exit Code: $TEST_EXIT_CODE\n"
   printf "LOGS ================================================================\n"
