@@ -147,7 +147,7 @@ class MongoDBIndex(vertx: Vertx, connectionString: String? = null) : Index {
         )
       ))
     ))
-    return result[0].getJsonArray("values").list
+    return result.firstOrNull()?.getJsonArray("values")?.list ?: emptyList()
   }
 
   override suspend fun getAttributeValues(query: JsonObject, attributeName: String): List<Any?> {
