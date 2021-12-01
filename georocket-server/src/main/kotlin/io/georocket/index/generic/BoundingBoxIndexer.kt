@@ -75,19 +75,28 @@ abstract class BoundingBoxIndexer<T : StreamEvent> : Indexer<T> {
       return emptyMap()
     }
 
-    return mapOf(
-      "bbox" to mapOf(
-        "type" to "Polygon",
-        "coordinates" to listOf(
-          listOf(
-            listOf(minX, minY),
-            listOf(maxX, minY),
-            listOf(maxX, maxY),
-            listOf(minX, maxY),
-            listOf(minX, minY)
+    return if (minX == maxX && minY == maxY) {
+      mapOf(
+        "bbox" to mapOf(
+          "type" to "Point",
+          "coordinates" to listOf(minX, minY)
+        )
+      )
+    } else {
+      mapOf(
+        "bbox" to mapOf(
+          "type" to "Polygon",
+          "coordinates" to listOf(
+            listOf(
+              listOf(minX, minY),
+              listOf(maxX, minY),
+              listOf(maxX, maxY),
+              listOf(minX, maxY),
+              listOf(minX, minY)
+            )
           )
         )
       )
-    )
+    }
   }
 }
