@@ -54,8 +54,8 @@ class MongoDBStoreTest : StorageTest() {
     }
   }
 
-  override fun createStore(vertx: Vertx): Store {
-    return MongoDBStore(vertx, mongoConnector.connectionString.toString())
+  override suspend fun createStore(vertx: Vertx): Store {
+    return MongoDBStore.create(vertx, mongoConnector.connectionString.toString())
   }
 
   override suspend fun prepareData(ctx: VertxTestContext, vertx: Vertx,

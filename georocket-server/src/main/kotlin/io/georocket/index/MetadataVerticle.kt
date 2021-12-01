@@ -36,7 +36,7 @@ class MetadataVerticle : CoroutineVerticle() {
     metaIndexerFactories = FilteredServiceLoader.load(MetaIndexerFactory::class.java).toList()
     indexerFactories = FilteredServiceLoader.load(IndexerFactory::class.java).toList()
 
-    index = MongoDBIndex(vertx)
+    index = MongoDBIndex.create(vertx)
 
     vertx.eventBus().consumer(AddressConstants.METADATA_GET_ATTRIBUTE_VALUES,
       this::onGetAttributeValues)

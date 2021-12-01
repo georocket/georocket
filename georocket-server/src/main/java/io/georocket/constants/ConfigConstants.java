@@ -38,6 +38,7 @@ public final class ConfigConstants {
   public static final String STORAGE_H2_COMPRESS = "georocket.storage.h2.compress";
   public static final String STORAGE_H2_MAP_NAME = "georocket.storage.h2.mapName"; // undocumented
   public static final String STORAGE_FILE_PATH = "georocket.storage.file.path";
+  public static final String STORAGE_MONGODB_EMBEDDED = "georocket.storage.mongodb.embedded";
   public static final String STORAGE_MONGODB_CONNECTION_STRING = "georocket.storage.mongodb.connectionString";
   public static final String STORAGE_S3_ACCESS_KEY = "georocket.storage.s3.accessKey";
   public static final String STORAGE_S3_SECRET_KEY = "georocket.storage.s3.secretKey";
@@ -49,6 +50,7 @@ public final class ConfigConstants {
   public static final String INDEX_MAX_BULK_SIZE = "georocket.index.maxBulkSize";
   public static final String INDEX_INDEXABLE_CHUNK_CACHE_MAX_SIZE = "georocket.index.indexableChunkCache.maxSize";
   public static final String INDEX_INDEXABLE_CHUNK_CACHE_MAX_TIME_SECONDS = "georocket.index.indexableChunkCache.maxTimeSeconds";
+  public static final String INDEX_MONGODB_EMBEDDED = "georocket.index.mongodb.embedded";
   public static final String INDEX_MONGODB_CONNECTION_STRING = "georocket.index.mongodb.connectionString";
   public static final String INDEX_ELASTICSEARCH_HOST = "georocket.index.elasticsearch.host";
   public static final String INDEX_ELASTICSEARCH_PORT = "georocket.index.elasticsearch.port";

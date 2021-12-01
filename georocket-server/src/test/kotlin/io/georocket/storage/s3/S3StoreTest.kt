@@ -70,7 +70,7 @@ class S3StoreTest : StorageTest() {
     s3.close()
   }
 
-  override fun createStore(vertx: Vertx): Store {
+  override suspend fun createStore(vertx: Vertx): Store {
     return S3Store(vertx, ACCESS_KEY, SECRET_KEY, endpoint, BUCKET)
   }
 

@@ -18,32 +18,44 @@ import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.core.json.obj
 
-class MongoDBIndex(vertx: Vertx, connectionString: String? = null) : Index {
+class MongoDBIndex private constructor() : Index {
   companion object {
     private const val ID = "id"
     private const val INTERNAL_ID = "_id"
     private const val CHUNK_META = "chunkMeta"
     private const val COLL_DOCUMENTS = "documents"
+
+    suspend fun create(vertx: Vertx, connectionString: String? = null): MongoDBIndex {
+      val r = MongoDBIndex()
+      r.start(vertx, connectionString)
+      return r
+    }
   }
 
-  private val client: MongoClient
-  private val db: MongoDatabase
+  private lateinit var client: MongoClient
+  private lateinit var db: MongoDatabase
 
-  private val collDocuments: MongoCollection<JsonObject>
+  private lateinit var collDocuments: MongoCollection<JsonObject>
 
-  init {
+  private suspend fun start(vertx: Vertx, connectionString: String?) {
     val config = vertx.orCreateContext.config()
 
-    val actualConnectionString = connectionString ?:
-      config.getString(ConfigConstants.INDEX_MONGODB_CONNECTION_STRING) ?:
-      config.getString(ConfigConstants.STORAGE_MONGODB_CONNECTION_STRING) ?:
-      throw IllegalArgumentException("Missing configuration item `" +
-          ConfigConstants.INDEX_MONGODB_CONNECTION_STRING + "' or `" +
-          ConfigConstants.STORAGE_MONGODB_CONNECTION_STRING + "'")
-
-    val cs = ConnectionString(actualConnectionString)
-    client = SharedMongoClient.create(cs)
-    db = client.getDatabase(cs.database)
+    val embedded = config.getBoolean(ConfigConstants.INDEX_MONGODB_EMBEDDED)
+      ?: config.getBoolean(ConfigConstants.STORAGE_MONGODB_EMBEDDED) ?: false
+    if (embedded) {
+      client = SharedMongoClient.createEmbedded(vertx)
+      db = client.getDatabase(SharedMongoClient.DEFAULT_EMBEDDED_DATABASE)
+    } else {
+      val actualConnectionString = connectionString ?:
+        config.getString(ConfigConstants.INDEX_MONGODB_CONNECTION_STRING) ?:
+        config.getString(ConfigConstants.STORAGE_MONGODB_CONNECTION_STRING) ?:
+        throw IllegalArgumentException("Missing configuration item `" +
+            ConfigConstants.INDEX_MONGODB_CONNECTION_STRING + "' or `" +
+            ConfigConstants.STORAGE_MONGODB_CONNECTION_STRING + "'")
+      val cs = ConnectionString(actualConnectionString)
+      client = SharedMongoClient.create(cs)
+      db = client.getDatabase(cs.database)
+    }
 
     collDocuments = db.getCollection(COLL_DOCUMENTS, JsonObject::class.java)
   }

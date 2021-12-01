@@ -168,7 +168,7 @@ abstract class StorageTest {
   /**
    * Create the store under test
    */
-  protected abstract fun createStore(vertx: Vertx): Store
+  protected abstract suspend fun createStore(vertx: Vertx): Store
 
   /**
    * Prepare test data for (every) test. Will be called during every test.
@@ -294,28 +294,28 @@ abstract class StorageTest {
    */
   @Test
   fun testDeleteNonExistingEntity(ctx: VertxTestContext, vertx: Vertx) {
-    val store = createStore(vertx)
-
-    // register add
-    vertx.eventBus().consumer<Any>(AddressConstants.INDEXER_ADD).handler {
-      ctx.failNow(IllegalStateException("Indexer should not be notified for " +
-          "a add event after Store::delete was called!"))
-    }
-
-    // register delete
-    vertx.eventBus().consumer<Any>(AddressConstants.INDEXER_DELETE).handler {
-      ctx.failNow(IllegalStateException("INDEXER_DELETE should not be " +
-          "notified if no file was found."))
-    }
-
-    // register query
-    var queryCalled = false
-    vertx.eventBus().consumer<Any>(AddressConstants.INDEXER_QUERY).handler { r ->
-      queryCalled = true
-      r.fail(404, "NOT FOUND")
-    }
-
     GlobalScope.launch(vertx.dispatcher()) {
+      val store = createStore(vertx)
+
+      // register add
+      vertx.eventBus().consumer<Any>(AddressConstants.INDEXER_ADD).handler {
+        ctx.failNow(IllegalStateException("Indexer should not be notified for " +
+            "a add event after Store::delete was called!"))
+      }
+
+      // register delete
+      vertx.eventBus().consumer<Any>(AddressConstants.INDEXER_DELETE).handler {
+        ctx.failNow(IllegalStateException("INDEXER_DELETE should not be " +
+            "notified if no file was found."))
+      }
+
+      // register query
+      var queryCalled = false
+      vertx.eventBus().consumer<Any>(AddressConstants.INDEXER_QUERY).handler { r ->
+        queryCalled = true
+        r.fail(404, "NOT FOUND")
+      }
+
       ctx.coVerify {
         store.delete(SEARCH, "NOT_EXISTING_PATH", DeleteMeta(CORRELATION_ID))
         assertThat(queryCalled).isTrue()
@@ -330,34 +330,34 @@ abstract class StorageTest {
    */
   @Test
   fun testDeleteNonExistingEntityWithPath(ctx: VertxTestContext, vertx: Vertx) {
-    val store = createStore(vertx)
-
-    // register add
-    vertx.eventBus().consumer<Any>(AddressConstants.INDEXER_ADD).handler {
-      ctx.failNow(IllegalStateException("Indexer should not be notified for " +
-          "a add event after Store::delete was called!"))
-    }
-
-    // register delete
-    var deleteCalled = false
-    vertx.eventBus().consumer<JsonObject>(AddressConstants.INDEXER_DELETE).handler { req ->
-      val msg = req.body()
-      ctx.verify {
-        assertThat(msg.map).containsKey("paths")
-        val paths = msg.getJsonArray("paths")
-        assertThat(paths.list).hasSize(1)
-        val notifiedPath = paths.getString(0)
-        assertThat(notifiedPath).isEqualTo(PATH_TO_NON_EXISTING_ENTITY)
-
-        deleteCalled = true
-        req.reply(null) // Value is not used in Store
-      }
-    }
-
-    // register query
-    val queryPromise = mockIndexerQuery(ctx, vertx, null)
-
     GlobalScope.launch(vertx.dispatcher()) {
+      val store = createStore(vertx)
+
+      // register add
+      vertx.eventBus().consumer<Any>(AddressConstants.INDEXER_ADD).handler {
+        ctx.failNow(IllegalStateException("Indexer should not be notified for " +
+            "a add event after Store::delete was called!"))
+      }
+
+      // register delete
+      var deleteCalled = false
+      vertx.eventBus().consumer<JsonObject>(AddressConstants.INDEXER_DELETE).handler { req ->
+        val msg = req.body()
+        ctx.verify {
+          assertThat(msg.map).containsKey("paths")
+          val paths = msg.getJsonArray("paths")
+          assertThat(paths.list).hasSize(1)
+          val notifiedPath = paths.getString(0)
+          assertThat(notifiedPath).isEqualTo(PATH_TO_NON_EXISTING_ENTITY)
+
+          deleteCalled = true
+          req.reply(null) // Value is not used in Store
+        }
+      }
+
+      // register query
+      val queryPromise = mockIndexerQuery(ctx, vertx, null)
+
       ctx.coVerify {
         store.delete(SEARCH, PATH_TO_NON_EXISTING_ENTITY, DeleteMeta(CORRELATION_ID))
         queryPromise.future().await()
@@ -371,34 +371,35 @@ abstract class StorageTest {
    * Add test data and compare the data with the stored one
    */
   private fun testAdd(ctx: VertxTestContext, vertx: Vertx, path: String?) {
-    val store = createStore(vertx)
-
-    val addPromise = Promise.promise<Unit>()
-    vertx.eventBus().consumer<JsonObject>(AddressConstants.INDEXER_ADD).handler { h ->
-      val index = h.body()
-      ctx.verify {
-        assertThat(index.getJsonObject("meta")).isEqualTo(META.toJsonObject())
-        assertThat(index.getJsonArray("tags")).isEqualTo(JsonArray(TAGS))
-        assertThat(index.getJsonObject("properties")).isEqualTo(JsonObject(PROPERTIES))
-        assertThat(index.getString("fallbackCRSString")).isEqualTo(FALLBACK_CRS_STRING)
-      }
-      addPromise.complete()
-    }
-
-    // register delete
-    vertx.eventBus().consumer<Any>(AddressConstants.INDEXER_DELETE).handler {
-      ctx.failNow(IllegalStateException("Indexer should not be notified for " +
-          "a delete event after Store::add was called!"))
-    }
-
-    // register query
-    vertx.eventBus().consumer<Any>(AddressConstants.INDEXER_QUERY).handler {
-      ctx.failNow(IllegalStateException("Indexer should not be notified for " +
-          "a query event after Store::add was called!"))
-    }
-
-    val indexMeta = IndexMeta(IMPORT_ID, ID, TIMESTAMP, TAGS, PROPERTIES, FALLBACK_CRS_STRING)
     GlobalScope.launch(vertx.dispatcher()) {
+      val store = createStore(vertx)
+
+      val addPromise = Promise.promise<Unit>()
+      vertx.eventBus().consumer<JsonObject>(AddressConstants.INDEXER_ADD).handler { h ->
+        val index = h.body()
+        ctx.verify {
+          assertThat(index.getJsonObject("meta")).isEqualTo(META.toJsonObject())
+          assertThat(index.getJsonArray("tags")).isEqualTo(JsonArray(TAGS))
+          assertThat(index.getJsonObject("properties")).isEqualTo(JsonObject(PROPERTIES))
+          assertThat(index.getString("fallbackCRSString")).isEqualTo(FALLBACK_CRS_STRING)
+        }
+        addPromise.complete()
+      }
+
+      // register delete
+      vertx.eventBus().consumer<Any>(AddressConstants.INDEXER_DELETE).handler {
+        ctx.failNow(IllegalStateException("Indexer should not be notified for " +
+            "a delete event after Store::add was called!"))
+      }
+
+      // register query
+      vertx.eventBus().consumer<Any>(AddressConstants.INDEXER_QUERY).handler {
+        ctx.failNow(IllegalStateException("Indexer should not be notified for " +
+            "a query event after Store::add was called!"))
+      }
+
+      val indexMeta = IndexMeta(IMPORT_ID, ID, TIMESTAMP, TAGS, PROPERTIES, FALLBACK_CRS_STRING)
+
       ctx.coVerify {
         store.add(Buffer.buffer(CHUNK_CONTENT), META, indexMeta, path ?: "/")
         addPromise.future().await()

@@ -82,7 +82,7 @@ class IndexerVerticle : CoroutineVerticle() {
     metaIndexerFactories = FilteredServiceLoader.load(MetaIndexerFactory::class.java).toList()
     indexerFactories = FilteredServiceLoader.load(IndexerFactory::class.java).toList()
 
-    index = MongoDBIndex(vertx)
+    index = MongoDBIndex.create(vertx)
     store = StoreFactory.createStore(vertx)
 
     registerMessageConsumers()

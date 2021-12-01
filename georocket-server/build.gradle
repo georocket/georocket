@@ -72,6 +72,9 @@ dependencies {
     compile 'org.xerial.snappy:snappy-java:1.1.4'
     implementation 'io.projectreactor:reactor-core:3.4.2'
 
+    // embedded mongodb for standalone mode
+    implementation 'de.flapdoodle.embed:de.flapdoodle.embed.mongo:3.2.0'
+
     // necessary for ALPN / HTTP/2
     runtime "io.netty:netty-tcnative-boringssl-static:2.0.36.Final"
 
@@ -80,7 +83,6 @@ dependencies {
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.4.2'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-reactive:1.4.2'
 
-    testImplementation 'de.flapdoodle.embed:de.flapdoodle.embed.mongo:2.0.0'
     testImplementation 'com.github.tomakehurst:wiremock-jre8:2.25.1'
     testImplementation 'org.mongodb:mongodb-driver:3.6.1'
 

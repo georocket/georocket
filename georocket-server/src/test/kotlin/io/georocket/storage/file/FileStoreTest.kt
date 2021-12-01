@@ -35,7 +35,7 @@ class FileStoreTest : StorageTest() {
     fileDestination = PathUtils.join(fileStoreRoot, "file")
   }
 
-  override fun createStore(vertx: Vertx): Store {
+  override suspend fun createStore(vertx: Vertx): Store {
     return FileStore(vertx, fileStoreRoot)
   }
 

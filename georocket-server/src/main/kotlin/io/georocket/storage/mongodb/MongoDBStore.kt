@@ -6,6 +6,7 @@ import com.mongodb.reactivestreams.client.MongoDatabase
 import com.mongodb.reactivestreams.client.gridfs.GridFSBucket
 import com.mongodb.reactivestreams.client.gridfs.GridFSBuckets
 import io.georocket.constants.ConfigConstants.STORAGE_MONGODB_CONNECTION_STRING
+import io.georocket.constants.ConfigConstants.STORAGE_MONGODB_EMBEDDED
 import io.georocket.index.mongodb.SharedMongoClient
 import io.georocket.storage.indexed.IndexedStore
 import io.georocket.util.PathUtils
@@ -25,21 +26,34 @@ import java.nio.ByteBuffer
  * Stores chunks in MongoDB
  * @author Michel Kraemer
  */
-class MongoDBStore(vertx: Vertx, connectionString: String? = null) : IndexedStore(vertx) {
-  private val client: MongoClient
-  private val db: MongoDatabase
-  private val gridfs: GridFSBucket
+class MongoDBStore private constructor(vertx: Vertx) : IndexedStore(vertx) {
+  companion object {
+    suspend fun create(vertx: Vertx, connectionString: String? = null): MongoDBStore {
+      val r = MongoDBStore(vertx)
+      r.start(vertx, connectionString)
+      return r
+    }
+  }
 
-  init {
+  private lateinit var client: MongoClient
+  private lateinit var db: MongoDatabase
+  private lateinit var gridfs: GridFSBucket
+
+  private suspend fun start(vertx: Vertx, connectionString: String?) {
     val config = vertx.orCreateContext.config()
 
-    val actualConnectionString = connectionString ?: config.getString(
-        STORAGE_MONGODB_CONNECTION_STRING) ?: throw IllegalArgumentException(
-            """Missing configuration item "$STORAGE_MONGODB_CONNECTION_STRING"""")
-
-    val cs = ConnectionString(actualConnectionString)
-    client = SharedMongoClient.create(cs)
-    db = client.getDatabase(cs.database)
+    val embedded = config.getBoolean(STORAGE_MONGODB_EMBEDDED, false)
+    if (embedded) {
+      client = SharedMongoClient.createEmbedded(vertx)
+      db = client.getDatabase(SharedMongoClient.DEFAULT_EMBEDDED_DATABASE)
+    } else {
+      val actualConnectionString = connectionString ?: config.getString(
+          STORAGE_MONGODB_CONNECTION_STRING) ?: throw IllegalArgumentException(
+              """Missing configuration item "$STORAGE_MONGODB_CONNECTION_STRING"""")
+      val cs = ConnectionString(actualConnectionString)
+      client = SharedMongoClient.create(cs)
+      db = client.getDatabase(cs.database)
+    }
 
     gridfs = GridFSBuckets.create(db)
   }

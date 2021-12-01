@@ -37,7 +37,7 @@ class H2StoreTest : StorageTest() {
     store.close()
   }
 
-  override fun createStore(vertx: Vertx): H2Store {
+  override suspend fun createStore(vertx: Vertx): H2Store {
     return store
   }
 
