@@ -644,7 +644,11 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
   /**
    * Parse list of [properties] in the form `key:value[,key:value,...]` to a map
    */
-  private fun parseProperties(properties: String): Map<String, Any> {
+  private fun parseProperties(properties: String?): Map<String, Any> {
+    if (properties == null) {
+      return emptyMap()
+    }
+
     val propertiesList = properties.split(",")
 
     val props = mutableMapOf<String, Any>()
