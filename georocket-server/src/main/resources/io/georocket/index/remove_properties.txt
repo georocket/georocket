@@ -1,8 +1,0 @@
-if (ctx._source.props != null) {
-    for (current in params.properties) {
-        ctx._source.props.remove(current);
-    }
-    if (ctx._source.props.size() == 0) {
-        ctx._source.remove("props");
-    }
-}
