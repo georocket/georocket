@@ -6,6 +6,7 @@ import de.undercouch.actson.JsonEvent
 import de.undercouch.actson.JsonParser
 import io.georocket.constants.AddressConstants
 import io.georocket.constants.ConfigConstants
+import io.georocket.index.MainIndexer
 import io.georocket.index.xml.XMLCRSIndexer
 import io.georocket.input.geojson.GeoJsonSplitter
 import io.georocket.input.xml.FirstLevelSplitter
@@ -46,6 +47,7 @@ class ImporterVerticle : CoroutineVerticle() {
 
   private lateinit var store: Store
   private lateinit var incoming: String
+  private lateinit var indexer: MainIndexer
 
   override suspend fun start() {
     log.info("Launching importer ...")
@@ -53,6 +55,7 @@ class ImporterVerticle : CoroutineVerticle() {
     store = StoreFactory.createStore(vertx)
     val storagePath = config.getString(ConfigConstants.STORAGE_FILE_PATH)
     incoming = "$storagePath/incoming"
+    indexer = MainIndexer.create(coroutineContext, vertx)
 
     vertx.eventBus().localConsumer<JsonObject>(AddressConstants.IMPORTER_IMPORT) { msg ->
       launch {
@@ -63,6 +66,7 @@ class ImporterVerticle : CoroutineVerticle() {
 
   override suspend fun stop() {
     store.close()
+    indexer.close()
   }
 
   /**
@@ -243,7 +247,8 @@ class ImporterVerticle : CoroutineVerticle() {
 
         val result = splitter.onEvent(streamEvent)
         if (result != null) {
-          store.add(result.chunk, result.meta, indexMeta, layer)
+          val path = store.add(result.chunk, result.meta, indexMeta, layer)
+          indexer.add(result.chunk, result.meta, indexMeta, path)
           chunksAdded++
           updateProgress(chunksAdded, false)
         }
@@ -276,6 +281,9 @@ class ImporterVerticle : CoroutineVerticle() {
     // process remaining events
     parser.inputFeeder.endOfInput()
     processEvents()
+
+    // wait for remaining chunks to be indexed
+    indexer.flushAdd()
 
     updateProgress(chunksAdded, true)
 
@@ -321,7 +329,8 @@ class ImporterVerticle : CoroutineVerticle() {
         val streamEvent = JsonStreamEvent(nextEvent, parser.parsedCharacterCount, value)
         val result = splitter.onEvent(streamEvent)
         if (result != null) {
-          store.add(result.chunk, result.meta, indexMeta, layer)
+          val path = store.add(result.chunk, result.meta, indexMeta, layer)
+          indexer.add(result.chunk, result.meta, indexMeta, path)
           chunksAdded++
           updateProgress(chunksAdded, false)
         }
@@ -351,6 +360,9 @@ class ImporterVerticle : CoroutineVerticle() {
     // process remaining events
     parser.feeder.done()
     processEvents()
+
+    // wait for remaining chunks to be indexed
+    indexer.flushAdd()
 
     updateProgress(chunksAdded, true)
 

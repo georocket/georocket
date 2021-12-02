@@ -1,6 +1,8 @@
 package io.georocket.storage.file
 
 import io.georocket.constants.ConfigConstants
+import io.georocket.storage.ChunkMeta
+import io.georocket.storage.IndexMeta
 import io.georocket.storage.indexed.IndexedStore
 import io.georocket.util.PathUtils
 import io.georocket.util.UniqueID
@@ -33,9 +35,9 @@ class FileStore(private val vertx: Vertx, storagePath: String? = null) : Indexed
     root = PathUtils.join(actualStoragePath, "file")
   }
 
-  override suspend fun doAddChunk(chunk: Buffer, layer: String,
-      correlationId: String): String {
-    val path = if (layer.isEmpty()) "/" else layer
+  override suspend fun add(chunk: Buffer, chunkMetadata: ChunkMeta,
+      indexMetadata: IndexMeta, layer: String): String {
+    val path = layer.ifEmpty { "/" }
 
     val dir = PathUtils.join(root, path)
 
@@ -44,7 +46,7 @@ class FileStore(private val vertx: Vertx, storagePath: String? = null) : Indexed
     fs.mkdirsAwait(dir)
 
     // generate new file name
-    val filename = correlationId + UniqueID.next()
+    val filename = indexMetadata.correlationId + UniqueID.next()
     val filepath = PathUtils.join(dir, filename)
 
     // open new file

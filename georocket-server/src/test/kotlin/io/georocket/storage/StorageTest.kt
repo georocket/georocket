@@ -297,12 +297,6 @@ abstract class StorageTest {
     GlobalScope.launch(vertx.dispatcher()) {
       val store = createStore(vertx)
 
-      // register add
-      vertx.eventBus().consumer<Any>(AddressConstants.INDEXER_ADD).handler {
-        ctx.failNow(IllegalStateException("Indexer should not be notified for " +
-            "a add event after Store::delete was called!"))
-      }
-
       // register delete
       vertx.eventBus().consumer<Any>(AddressConstants.INDEXER_DELETE).handler {
         ctx.failNow(IllegalStateException("INDEXER_DELETE should not be " +
@@ -332,12 +326,6 @@ abstract class StorageTest {
   fun testDeleteNonExistingEntityWithPath(ctx: VertxTestContext, vertx: Vertx) {
     GlobalScope.launch(vertx.dispatcher()) {
       val store = createStore(vertx)
-
-      // register add
-      vertx.eventBus().consumer<Any>(AddressConstants.INDEXER_ADD).handler {
-        ctx.failNow(IllegalStateException("Indexer should not be notified for " +
-            "a add event after Store::delete was called!"))
-      }
 
       // register delete
       var deleteCalled = false
@@ -374,18 +362,6 @@ abstract class StorageTest {
     GlobalScope.launch(vertx.dispatcher()) {
       val store = createStore(vertx)
 
-      val addPromise = Promise.promise<Unit>()
-      vertx.eventBus().consumer<JsonObject>(AddressConstants.INDEXER_ADD).handler { h ->
-        val index = h.body()
-        ctx.verify {
-          assertThat(index.getJsonObject("meta")).isEqualTo(META.toJsonObject())
-          assertThat(index.getJsonArray("tags")).isEqualTo(JsonArray(TAGS))
-          assertThat(index.getJsonObject("properties")).isEqualTo(JsonObject(PROPERTIES))
-          assertThat(index.getString("fallbackCRSString")).isEqualTo(FALLBACK_CRS_STRING)
-        }
-        addPromise.complete()
-      }
-
       // register delete
       vertx.eventBus().consumer<Any>(AddressConstants.INDEXER_DELETE).handler {
         ctx.failNow(IllegalStateException("Indexer should not be notified for " +
@@ -402,7 +378,6 @@ abstract class StorageTest {
 
       ctx.coVerify {
         store.add(Buffer.buffer(CHUNK_CONTENT), META, indexMeta, path ?: "/")
-        addPromise.future().await()
         validateAfterStoreAdd(ctx, vertx, path)
       }
       ctx.completeNow()
@@ -418,12 +393,6 @@ abstract class StorageTest {
       val resultPath = prepareData(ctx, vertx, path)
 
       val store = createStore(vertx)
-
-      // register add
-      vertx.eventBus().consumer<Any>(AddressConstants.INDEXER_ADD).handler {
-        ctx.failNow(IllegalStateException("Indexer should not be notified for " +
-            "a add event after Store::delete was called!"))
-      }
 
       // register delete
       val deletePromise = Promise.promise<Unit>()
@@ -467,12 +436,6 @@ abstract class StorageTest {
       vertx.eventBus().consumer<Any>(AddressConstants.INDEXER_DELETE).handler {
         ctx.failNow(IllegalStateException("Indexer should not be notified for " +
             "a delete event after Store::get was called!"))
-      }
-
-      // register query
-      vertx.eventBus().consumer<Any?>(AddressConstants.INDEXER_ADD).handler {
-        ctx.failNow(IllegalStateException("Indexer should not be notified for " +
-            "an add event after Store::get was called!"))
       }
 
       val resultPath = prepareData(ctx, vertx, path)

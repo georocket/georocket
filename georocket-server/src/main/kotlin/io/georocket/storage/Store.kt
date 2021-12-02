@@ -16,10 +16,10 @@ interface Store {
 
   /**
    * Add a [chunk] with given [chunkMetadata] and [indexMetadata] under the
-   * given [layer] to the store
+   * given [layer] to the store. Return the path to the added chunk.
    */
   suspend fun add(chunk: Buffer, chunkMetadata: ChunkMeta,
-      indexMetadata: IndexMeta, layer: String)
+      indexMetadata: IndexMeta, layer: String): String
 
   /**
    * Get a chunk with a given [path] from the store

@@ -1,22 +1,16 @@
 package io.georocket.storage.indexed
 
 import io.georocket.constants.AddressConstants
-import io.georocket.index.IndexableChunkCache
-import io.georocket.storage.ChunkMeta
 import io.georocket.storage.DeleteMeta
-import io.georocket.storage.IndexMeta
 import io.georocket.storage.Store
 import io.georocket.storage.StoreCursor
 import io.georocket.tasks.PurgingTask
 import io.georocket.tasks.TaskError
 import io.vertx.core.Vertx
-import io.vertx.core.buffer.Buffer
 import io.vertx.core.eventbus.ReplyException
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.eventbus.requestAwait
-import io.vertx.kotlin.core.json.json
-import io.vertx.kotlin.core.json.obj
 import java.time.Instant
 import java.util.ArrayDeque
 
@@ -25,39 +19,6 @@ import java.util.ArrayDeque
  * @author Michel Kraemer
  */
 abstract class IndexedStore(private val vertx: Vertx) : Store {
-  override suspend fun add(chunk: Buffer, chunkMetadata: ChunkMeta,
-      indexMetadata: IndexMeta, layer: String) {
-    val path = doAddChunk(chunk, layer, indexMetadata.correlationId)
-
-    // start indexing
-    val indexMsg = json {
-      obj(
-          "path" to path,
-          "meta" to chunkMetadata.toJsonObject()
-      )
-    }
-    if (indexMetadata.correlationId != null) {
-      indexMsg.put("correlationId", indexMetadata.correlationId)
-    }
-    if (indexMetadata.filename != null) {
-      indexMsg.put("filename", indexMetadata.filename)
-    }
-    indexMsg.put("timestamp", indexMetadata.timestamp)
-    if (indexMetadata.tags != null) {
-      indexMsg.put("tags", JsonArray(indexMetadata.tags))
-    }
-    if (indexMetadata.fallbackCRSString != null) {
-      indexMsg.put("fallbackCRSString", indexMetadata.fallbackCRSString)
-    }
-    if (indexMetadata.properties != null) {
-      indexMsg.put("properties", JsonObject(indexMetadata.properties))
-    }
-
-    // save chunk to cache and then let indexer know about it
-    IndexableChunkCache.getInstance().put(path, chunk)
-    vertx.eventBus().send(AddressConstants.INDEXER_ADD, indexMsg)
-  }
-
   /**
    * Send a message to the task verticle telling it that we are now starting
    * to delete [totalChunks] chunks from the store
@@ -235,13 +196,6 @@ abstract class IndexedStore(private val vertx: Vertx) : Store {
         .put("path", path)
     vertx.eventBus().requestAwait<Any>(AddressConstants.METADATA_REMOVE_TAGS, msg)
   }
-
-  /**
-   * Add a [chunk] to the store at the given [layer]. Returns the full path
-   * to the new chunk.
-   */
-  protected abstract suspend fun doAddChunk(chunk: Buffer, layer: String,
-      correlationId: String): String
 
   /**
    * Delete all chunks with the given paths from the store

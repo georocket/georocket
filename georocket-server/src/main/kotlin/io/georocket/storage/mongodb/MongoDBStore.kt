@@ -11,6 +11,8 @@ import io.georocket.constants.ConfigConstants.INDEX_MONGODB_EMBEDDED
 import io.georocket.constants.ConfigConstants.STORAGE_MONGODB_CONNECTION_STRING
 import io.georocket.constants.ConfigConstants.STORAGE_MONGODB_EMBEDDED
 import io.georocket.index.mongodb.SharedMongoClient
+import io.georocket.storage.ChunkMeta
+import io.georocket.storage.IndexMeta
 import io.georocket.storage.indexed.IndexedStore
 import io.georocket.util.PathUtils
 import io.georocket.util.UniqueID
@@ -84,9 +86,10 @@ class MongoDBStore private constructor(vertx: Vertx) : IndexedStore(vertx) {
     return result
   }
 
-  override suspend fun doAddChunk(chunk: Buffer, layer: String, correlationId: String): String {
+  override suspend fun add(chunk: Buffer, chunkMetadata: ChunkMeta,
+      indexMetadata: IndexMeta, layer: String): String {
     val path = layer.ifEmpty { "/" }
-    val filename = PathUtils.join(path, correlationId + UniqueID.next())
+    val filename = PathUtils.join(path, indexMetadata.correlationId + UniqueID.next())
     gridfs.uploadFromPublisher(filename, Mono.just(
         ByteBuffer.wrap(chunk.byteBuf.array()))).awaitSingle()
     return filename
