@@ -85,6 +85,10 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
     return router
   }
 
+  override fun close() {
+    store.close()
+  }
+
   /**
    * Perform a search and merge all retrieved chunks using the given merger
    * @param merger the merger

@@ -1,6 +1,7 @@
 package io.georocket
 
 import io.georocket.constants.ConfigConstants
+import io.georocket.http.Endpoint
 import io.georocket.http.GeneralEndpoint
 import io.georocket.http.StoreEndpoint
 import io.georocket.http.TaskEndpoint
@@ -42,6 +43,8 @@ private lateinit var geoRocketHome: File
  * @author Michel Kraemer
  */
 class GeoRocket : CoroutineVerticle() {
+  private val endpoints = mutableListOf<Endpoint>()
+
   /**
    * Deploy the http server.
    * @return a single that will complete when the http server was started.
@@ -139,6 +142,10 @@ class GeoRocket : CoroutineVerticle() {
           .end(ServerAPIException.toJson("endpoint_not_found", reason).toString())
     }
 
+    endpoints.add(ge)
+    endpoints.add(se)
+    endpoints.add(te)
+
     return router
   }
 
@@ -199,6 +206,10 @@ class GeoRocket : CoroutineVerticle() {
         JsonObject().put("type", ExtensionVerticle.MESSAGE_POST_INIT))
 
     log.info("GeoRocket launched successfully.")
+  }
+
+  override suspend fun stop() {
+    endpoints.forEach { it.close() }
   }
 
   /**

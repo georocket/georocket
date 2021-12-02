@@ -63,6 +63,10 @@ class ImporterVerticle : CoroutineVerticle() {
     }
   }
 
+  override suspend fun stop() {
+    store.close()
+  }
+
   /**
    * Receives a name of a file to import
    */

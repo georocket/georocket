@@ -52,6 +52,10 @@ class MetadataVerticle : CoroutineVerticle() {
       this::onRemoveTags)
   }
 
+  override suspend fun stop() {
+    index.close()
+  }
+
   private fun onGetAttributeValues(msg: Message<JsonObject>) {
     launch {
       val body = msg.body()

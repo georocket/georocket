@@ -90,6 +90,7 @@ class IndexerVerticle : CoroutineVerticle() {
 
   override suspend fun stop() {
     index.close()
+    store.close()
   }
 
   /**

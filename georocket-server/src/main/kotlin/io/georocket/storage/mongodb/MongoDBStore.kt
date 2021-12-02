@@ -64,6 +64,10 @@ class MongoDBStore private constructor(vertx: Vertx) : IndexedStore(vertx) {
     gridfs = GridFSBuckets.create(db)
   }
 
+  override fun close() {
+    client.close()
+  }
+
   override suspend fun getOne(path: String): Buffer {
     val publisher = gridfs.downloadToPublisher(path)
     val bytebuf = publisher.awaitSingle()

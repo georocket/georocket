@@ -8,6 +8,13 @@ import io.vertx.core.buffer.Buffer
  */
 interface Store {
   /**
+   * Release all resources and close this store
+   */
+  fun close() {
+    // nothing to do by default
+  }
+
+  /**
    * Add a [chunk] with given [chunkMetadata] and [indexMetadata] under the
    * given [layer] to the store
    */

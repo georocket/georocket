@@ -28,10 +28,7 @@ class H2Store(vertx: Vertx, path: String? = null) : IndexedStore(vertx) {
     map = SharedMVMap.create(actualPath, mapName, compress)
   }
 
-  /**
-   * Release all resources and close this store
-   */
-  fun close() {
+  override fun close() {
     map.close()
   }
 

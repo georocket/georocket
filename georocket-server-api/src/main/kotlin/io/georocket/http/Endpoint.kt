@@ -22,6 +22,10 @@ interface Endpoint {
    */
   suspend fun createRouter(): Router
 
+  fun close() {
+    // nothing to do by default
+  }
+
   companion object {
     /**
      * Get absolute data store path from request
