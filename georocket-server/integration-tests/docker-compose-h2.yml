@@ -10,3 +10,8 @@ services:
     image: georocket/georocket
     volumes:
       - ./conf/georocket_h2:/usr/local/georocket-server/conf
+    links:
+      - mongo
+
+  mongo:
+    image: mongo

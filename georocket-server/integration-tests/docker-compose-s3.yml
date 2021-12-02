@@ -13,7 +13,11 @@ services:
       - ./conf/georocket_s3:/usr/local/georocket-server/conf
     links:
       - s3
+      - mongo
 
   s3:
     image: minio/minio
     command: server /data
+
+  mongo:
+    image: mongo

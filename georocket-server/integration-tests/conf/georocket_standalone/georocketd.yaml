@@ -1,6 +1,11 @@
 georocket:
   host: 0.0.0.0
   storage:
-    class: io.georocket.storage.file.FileStore
+    driver: file
     file:
       path: $GEOROCKET_HOME/storage
+  index:
+    mongodb:
+      embedded: true
+  embeddedMongoDB:
+    storagePath: $GEOROCKET_HOME/storage/mongodb

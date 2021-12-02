@@ -1,7 +1,7 @@
 georocket:
   host: 0.0.0.0
   storage:
-    class: io.georocket.storage.s3.S3Store
+    driver: s3
     s3:
       accessKey: minioadmin
       secretKey: minioadmin
@@ -10,3 +10,6 @@ georocket:
       bucket: georocket
       pathStyleAccess: true
       requestExpirySeconds: 600
+  index:
+    mongodb:
+      connectionString: mongodb://mongo:27017/georocket

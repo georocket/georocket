@@ -1,6 +1,7 @@
 georocket:
   host: 0.0.0.0
   storage:
-    class: io.georocket.storage.mongodb.MongoDBStore
+    driver: mongodb
+  index:
     mongodb:
       connectionString: mongodb://mongo:27017/georocket
