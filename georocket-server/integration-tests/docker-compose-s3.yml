@@ -3,6 +3,7 @@ services:
   integration-tester:
     build: .
     command: s3
+    container_name: ci-integration-tester
     links:
       - georocket_s3
       - s3

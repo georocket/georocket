@@ -3,6 +3,7 @@ services:
   integration-tester:
     build: .
     command: mongo
+    container_name: ci-integration-tester
     links:
       - georocket_mongo
       - mongo

@@ -3,6 +3,7 @@ services:
   integration-tester:
     build: .
     command: standalone
+    container_name: ci-integration-tester
     links:
       - georocket_standalone
 

@@ -3,6 +3,7 @@ services:
   integration-tester:
     build: .
     command: h2
+    container_name: ci-integration-tester
     links:
       - georocket_h2
 
