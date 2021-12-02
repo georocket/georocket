@@ -5,13 +5,11 @@ import io.georocket.index.mongodb.MongoDBIndex
 import io.georocket.query.DefaultQueryCompiler
 import io.georocket.storage.Store
 import io.georocket.storage.StoreFactory
-import io.georocket.tasks.IndexingTask
 import io.georocket.tasks.RemovingTask
 import io.georocket.tasks.TaskError
 import io.georocket.util.FilteredServiceLoader
 import io.georocket.util.ThrowableHelper.throwableToCode
 import io.georocket.util.ThrowableHelper.throwableToMessage
-import io.vertx.core.eventbus.Message
 import io.vertx.core.json.JsonObject
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.kotlin.core.json.json
@@ -108,49 +106,6 @@ class IndexerVerticle : CoroutineVerticle() {
         }
       }
     }
-  }
-
-  /**
-   * Send indexer tasks for the correlation IDs in the given messages
-   * to the task verticle
-   * @param messages the messages
-   * @param incIndexedChunks if the number of indexed chunks should be increased
-   */
-  private fun startIndexerTasks(messages: List<Message<JsonObject>>,
-      incIndexedChunks: Boolean = false) {
-    var currentTask: IndexingTask? = null
-
-    for (msg in messages) {
-      val body = msg.body()
-      val correlationId = body.getString("correlationId")
-      if (currentTask == null) {
-        currentTask = IndexingTask(correlationId)
-        currentTask.startTime = Instant.now()
-      } else if (currentTask.correlationId != correlationId) {
-        vertx.eventBus().publish(AddressConstants.TASK_INC,
-            JsonObject.mapFrom(currentTask))
-        currentTask = IndexingTask(correlationId)
-        currentTask.startTime = Instant.now()
-      }
-
-      if (incIndexedChunks) {
-        currentTask.indexedChunks = currentTask.indexedChunks + 1
-      }
-    }
-
-    if (currentTask != null) {
-      vertx.eventBus().publish(AddressConstants.TASK_INC,
-          JsonObject.mapFrom(currentTask))
-    }
-  }
-
-  /**
-   * Send indexer tasks to the task verticle and accumulate the number of
-   * indexed chunks for the correlation IDs in the given messages
-   * @param messages the messages
-   */
-  private fun updateIndexerTasks(messages: List<Message<JsonObject>>) {
-    startIndexerTasks(messages, true)
   }
 
   /**
