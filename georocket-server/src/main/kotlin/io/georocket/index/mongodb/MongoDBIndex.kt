@@ -4,6 +4,7 @@ import com.mongodb.ConnectionString
 import com.mongodb.reactivestreams.client.MongoClient
 import com.mongodb.reactivestreams.client.MongoCollection
 import com.mongodb.reactivestreams.client.MongoDatabase
+import io.georocket.constants.ConfigConstants.EMBEDDED_MONGODB_STORAGE_PATH
 import io.georocket.constants.ConfigConstants.INDEX_MONGODB_CONNECTION_STRING
 import io.georocket.constants.ConfigConstants.INDEX_MONGODB_EMBEDDED
 import io.georocket.index.Index
@@ -26,9 +27,10 @@ class MongoDBIndex private constructor() : Index {
     private const val CHUNK_META = "chunkMeta"
     private const val COLL_DOCUMENTS = "documents"
 
-    suspend fun create(vertx: Vertx, connectionString: String? = null): MongoDBIndex {
+    suspend fun create(vertx: Vertx, connectionString: String? = null,
+        storagePath: String? = null): MongoDBIndex {
       val r = MongoDBIndex()
-      r.start(vertx, connectionString)
+      r.start(vertx, connectionString, storagePath)
       return r
     }
   }
@@ -38,12 +40,18 @@ class MongoDBIndex private constructor() : Index {
 
   private lateinit var collDocuments: MongoCollection<JsonObject>
 
-  private suspend fun start(vertx: Vertx, connectionString: String?) {
+  private suspend fun start(vertx: Vertx, connectionString: String?,
+      storagePath: String?) {
     val config = vertx.orCreateContext.config()
+
+    val actualStoragePath = storagePath ?: config.getString(
+      EMBEDDED_MONGODB_STORAGE_PATH) ?:
+        throw IllegalStateException("Missing configuration item `" +
+            EMBEDDED_MONGODB_STORAGE_PATH + "'")
 
     val embedded = config.getBoolean(INDEX_MONGODB_EMBEDDED, false)
     if (embedded) {
-      client = SharedMongoClient.createEmbedded(vertx)
+      client = SharedMongoClient.createEmbedded(vertx, actualStoragePath)
       db = client.getDatabase(SharedMongoClient.DEFAULT_EMBEDDED_DATABASE)
     } else {
       val actualConnectionString = connectionString ?:

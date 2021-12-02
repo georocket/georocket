@@ -5,6 +5,7 @@ import com.mongodb.reactivestreams.client.MongoClient
 import com.mongodb.reactivestreams.client.MongoDatabase
 import com.mongodb.reactivestreams.client.gridfs.GridFSBucket
 import com.mongodb.reactivestreams.client.gridfs.GridFSBuckets
+import io.georocket.constants.ConfigConstants.EMBEDDED_MONGODB_STORAGE_PATH
 import io.georocket.constants.ConfigConstants.INDEX_MONGODB_CONNECTION_STRING
 import io.georocket.constants.ConfigConstants.INDEX_MONGODB_EMBEDDED
 import io.georocket.constants.ConfigConstants.STORAGE_MONGODB_CONNECTION_STRING
@@ -30,9 +31,10 @@ import java.nio.ByteBuffer
  */
 class MongoDBStore private constructor(vertx: Vertx) : IndexedStore(vertx) {
   companion object {
-    suspend fun create(vertx: Vertx, connectionString: String? = null): MongoDBStore {
+    suspend fun create(vertx: Vertx, connectionString: String? = null,
+        storagePath: String? = null): MongoDBStore {
       val r = MongoDBStore(vertx)
-      r.start(vertx, connectionString)
+      r.start(vertx, connectionString, storagePath)
       return r
     }
   }
@@ -41,13 +43,19 @@ class MongoDBStore private constructor(vertx: Vertx) : IndexedStore(vertx) {
   private lateinit var db: MongoDatabase
   private lateinit var gridfs: GridFSBucket
 
-  private suspend fun start(vertx: Vertx, connectionString: String?) {
+  private suspend fun start(vertx: Vertx, connectionString: String?,
+      storagePath: String?) {
     val config = vertx.orCreateContext.config()
+
+    val actualStoragePath = storagePath ?: config.getString(
+      EMBEDDED_MONGODB_STORAGE_PATH) ?:
+        throw IllegalStateException("Missing configuration item `" +
+            EMBEDDED_MONGODB_STORAGE_PATH + "'")
 
     val embedded = config.getBoolean(STORAGE_MONGODB_EMBEDDED) ?:
       config.getBoolean(INDEX_MONGODB_EMBEDDED) ?: false
     if (embedded) {
-      client = SharedMongoClient.createEmbedded(vertx)
+      client = SharedMongoClient.createEmbedded(vertx, actualStoragePath)
       db = client.getDatabase(SharedMongoClient.DEFAULT_EMBEDDED_DATABASE)
     } else {
       val actualConnectionString = connectionString ?:

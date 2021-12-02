@@ -10,6 +10,7 @@ import de.flapdoodle.embed.mongo.MongodStarter
 import de.flapdoodle.embed.mongo.config.Defaults
 import de.flapdoodle.embed.mongo.config.MongodConfig
 import de.flapdoodle.embed.mongo.config.Net
+import de.flapdoodle.embed.mongo.config.Storage
 import de.flapdoodle.embed.mongo.distribution.Version
 import de.flapdoodle.embed.process.runtime.Network
 import io.vertx.core.Vertx
@@ -63,7 +64,7 @@ class SharedMongoClient(private val key: ConnectionString,
       }
     }
 
-    suspend fun createEmbedded(vertx: Vertx): SharedMongoClient {
+    suspend fun createEmbedded(vertx: Vertx, storagePath: String): SharedMongoClient {
       return vertx.executeBlockingAwait<SharedMongoClient> { p ->
         synchronized(this) {
           if (mongodExecutable == null) {
@@ -72,9 +73,11 @@ class SharedMongoClient(private val key: ConnectionString,
               val runtimeConfig = Defaults.runtimeConfigFor(Command.MongoD, log).build()
               val starter = MongodStarter.getInstance(runtimeConfig)
               val port = Network.freeServerPort(Network.getLocalHost())
+              val replication = Storage(storagePath, null, 0)
               val mongodConfig = MongodConfig.builder()
                 .version(Version.Main.PRODUCTION)
                 .net(Net(port, Network.localhostIsIPv6()))
+                .replication(replication)
                 .build()
               mongodExecutable = starter.prepare(mongodConfig)
               mongodExecutable!!.start()
