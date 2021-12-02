@@ -71,7 +71,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
   private lateinit var store: Store
   private lateinit var storagePath: String
 
-  override fun createRouter(): Router {
+  override suspend fun createRouter(): Router {
     store = StoreFactory.createStore(vertx)
     storagePath = vertx.orCreateContext.config()
         .getString(ConfigConstants.STORAGE_FILE_PATH)

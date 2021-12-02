@@ -115,7 +115,7 @@ class GeoRocket : CoroutineVerticle() {
   /**
    * Create a [Router] and add routes for `/store/` to it
    */
-  private fun createRouter(): Router {
+  private suspend fun createRouter(): Router {
     val router = Router.router(vertx)
 
     val corsEnable = config.getBoolean(ConfigConstants.HTTP_CORS_ENABLE, false)
@@ -129,7 +129,7 @@ class GeoRocket : CoroutineVerticle() {
     val se = StoreEndpoint(coroutineContext, vertx)
     router.mountSubRouter("/store", se.createRouter())
 
-    val te = TaskEndpoint(vertx)
+    val te = TaskEndpoint(coroutineContext, vertx)
     router.mountSubRouter("/tasks", te.createRouter())
 
     router.route().handler { ctx ->
