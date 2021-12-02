@@ -44,13 +44,12 @@ class MongoDBIndex private constructor() : Index {
       storagePath: String?) {
     val config = vertx.orCreateContext.config()
 
-    val actualStoragePath = storagePath ?: config.getString(
-      EMBEDDED_MONGODB_STORAGE_PATH) ?:
-        throw IllegalStateException("Missing configuration item `" +
-            EMBEDDED_MONGODB_STORAGE_PATH + "'")
-
     val embedded = config.getBoolean(INDEX_MONGODB_EMBEDDED, false)
     if (embedded) {
+      val actualStoragePath = storagePath ?: config.getString(
+        EMBEDDED_MONGODB_STORAGE_PATH) ?:
+          throw IllegalStateException("Missing configuration item `" +
+              EMBEDDED_MONGODB_STORAGE_PATH + "'")
       client = SharedMongoClient.createEmbedded(vertx, actualStoragePath)
       db = client.getDatabase(SharedMongoClient.DEFAULT_EMBEDDED_DATABASE)
     } else {
