@@ -23,7 +23,6 @@ import io.georocket.util.XMLStreamEvent
 import io.georocket.util.io.GzipReadStream
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.eventbus.Message
-import io.vertx.core.file.AsyncFile
 import io.vertx.core.json.JsonObject
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.core.streams.ReadStream
@@ -47,7 +46,6 @@ class ImporterVerticle : CoroutineVerticle() {
 
   private lateinit var store: Store
   private lateinit var incoming: String
-  private val filesBeingImported = mutableSetOf<AsyncFile>()
 
   override suspend fun start() {
     log.info("Launching importer ...")
@@ -96,7 +94,6 @@ class ImporterVerticle : CoroutineVerticle() {
 
     val fs = vertx.fileSystem()
     val f = fs.openAwait(filepath, openOptionsOf(create = false, write = false))
-    filesBeingImported.add(f)
 
     try {
       val chunkCount = importFile(f, contentType, correlationId, filename,
@@ -110,8 +107,6 @@ class ImporterVerticle : CoroutineVerticle() {
       log.error("Failed to import [$correlationId] to layer '$layer'" +
           " after $duration ms", t)
     } finally {
-      filesBeingImported.remove(f)
-
       // delete file from 'incoming' folder
       log.debug("Deleting $filepath from incoming folder")
       f.closeAwait()
@@ -137,7 +132,7 @@ class ImporterVerticle : CoroutineVerticle() {
   private suspend fun importFile(file: ReadStream<Buffer>, contentType: String,
       correlationId: String, filename: String, timestamp: Long, layer: String,
       tags: List<String>?, properties: Map<String, Any>?, fallbackCRSString: String?,
-      contentEncoding: String?): Int {
+      contentEncoding: String?): Long {
     val f = if ("gzip" == contentEncoding) {
       log.debug("Importing file compressed with GZIP")
       GzipReadStream(file)
@@ -153,24 +148,31 @@ class ImporterVerticle : CoroutineVerticle() {
     startTask.startTime = Instant.now()
     vertx.eventBus().publish(AddressConstants.TASK_INC, JsonObject.mapFrom(startTask))
 
+    var lastProgress = 0L
+    val progressUpdater = { progress: Long, final: Boolean ->
+      val diff = progress - lastProgress
+      if (diff >= 100 || final) {
+        // let the task verticle know that we imported n chunks
+        val currentTask = ImportingTask(correlationId)
+        currentTask.importedChunks = diff
+        vertx.eventBus().publish(AddressConstants.TASK_INC,
+          JsonObject.mapFrom(currentTask))
+        lastProgress = progress
+      }
+    }
+
     try {
       val result = if (belongsTo(contentType, "application", "xml") ||
           belongsTo(contentType, "text", "xml")) {
         importXML(f, correlationId, filename, timestamp, layer, tags,
-            properties, fallbackCRSString)
+            properties, fallbackCRSString, progressUpdater)
       } else if (belongsTo(contentType, "application", "json")) {
-        importJSON(f, correlationId, filename, timestamp, layer, tags, properties)
+        importJSON(f, correlationId, filename, timestamp, layer, tags,
+          properties, progressUpdater)
       } else {
         throw IllegalArgumentException("Received an unexpected content " +
             "type '$contentType' while trying to import file '$filename'")
       }
-
-      // let the task verticle know that we imported n chunks
-      // TODO this should happen WHILE we are importing (e.g. every 100 chunks)
-      val currentTask = ImportingTask(correlationId)
-      currentTask.importedChunks = result.toLong()
-      vertx.eventBus().publish(AddressConstants.TASK_INC,
-          JsonObject.mapFrom(currentTask))
 
       // let the task verticle know that the import process has finished
       val endTask = ImportingTask(correlationId)
@@ -204,8 +206,9 @@ class ImporterVerticle : CoroutineVerticle() {
    */
   private suspend fun importXML(f: ReadStream<Buffer>, correlationId: String,
       filename: String, timestamp: Long, layer: String, tags: List<String>?,
-      properties: Map<String, Any>?, fallbackCRSString: String?): Int {
-    var chunksAdded = 0
+      properties: Map<String, Any>?, fallbackCRSString: String?,
+      updateProgress: (Long, Boolean) -> Unit): Long {
+    var chunksAdded = 0L
 
     val bomFilter = UTF8BomFilter()
     val window = Window()
@@ -217,7 +220,7 @@ class ImporterVerticle : CoroutineVerticle() {
       IndexMeta(correlationId, filename, timestamp, tags, properties, crsString)
     }
 
-    var indexMeta = makeIndexMeta(null)
+    var indexMeta = makeIndexMeta(fallbackCRSString)
 
     val processEvents: suspend () -> Boolean = pe@{
       while (true) {
@@ -242,6 +245,7 @@ class ImporterVerticle : CoroutineVerticle() {
         if (result != null) {
           store.add(result.chunk, result.meta, indexMeta, layer)
           chunksAdded++
+          updateProgress(chunksAdded, false)
         }
 
         if (nextEvent == AsyncXMLStreamReader.END_DOCUMENT) {
@@ -273,6 +277,8 @@ class ImporterVerticle : CoroutineVerticle() {
     parser.inputFeeder.endOfInput()
     processEvents()
 
+    updateProgress(chunksAdded, true)
+
     return chunksAdded
   }
 
@@ -289,8 +295,8 @@ class ImporterVerticle : CoroutineVerticle() {
    */
   private suspend fun importJSON(f: ReadStream<Buffer>, correlationId: String,
       filename: String, timestamp: Long, layer: String, tags: List<String>?,
-      properties: Map<String, Any>?): Int {
-    var chunksAdded = 0
+      properties: Map<String, Any>?, updateProgress: (Long, Boolean) -> Unit): Long {
+    var chunksAdded = 0L
 
     val bomFilter = UTF8BomFilter()
     val window = StringWindow()
@@ -317,6 +323,7 @@ class ImporterVerticle : CoroutineVerticle() {
         if (result != null) {
           store.add(result.chunk, result.meta, indexMeta, layer)
           chunksAdded++
+          updateProgress(chunksAdded, false)
         }
 
         if (nextEvent == JsonEvent.EOF) {
@@ -344,6 +351,8 @@ class ImporterVerticle : CoroutineVerticle() {
     // process remaining events
     parser.feeder.done()
     processEvents()
+
+    updateProgress(chunksAdded, true)
 
     return chunksAdded
   }
