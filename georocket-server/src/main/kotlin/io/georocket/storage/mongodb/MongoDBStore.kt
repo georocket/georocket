@@ -5,6 +5,8 @@ import com.mongodb.reactivestreams.client.MongoClient
 import com.mongodb.reactivestreams.client.MongoDatabase
 import com.mongodb.reactivestreams.client.gridfs.GridFSBucket
 import com.mongodb.reactivestreams.client.gridfs.GridFSBuckets
+import io.georocket.constants.ConfigConstants.INDEX_MONGODB_CONNECTION_STRING
+import io.georocket.constants.ConfigConstants.INDEX_MONGODB_EMBEDDED
 import io.georocket.constants.ConfigConstants.STORAGE_MONGODB_CONNECTION_STRING
 import io.georocket.constants.ConfigConstants.STORAGE_MONGODB_EMBEDDED
 import io.georocket.index.mongodb.SharedMongoClient
@@ -42,14 +44,18 @@ class MongoDBStore private constructor(vertx: Vertx) : IndexedStore(vertx) {
   private suspend fun start(vertx: Vertx, connectionString: String?) {
     val config = vertx.orCreateContext.config()
 
-    val embedded = config.getBoolean(STORAGE_MONGODB_EMBEDDED, false)
+    val embedded = config.getBoolean(STORAGE_MONGODB_EMBEDDED) ?:
+      config.getBoolean(INDEX_MONGODB_EMBEDDED) ?: false
     if (embedded) {
       client = SharedMongoClient.createEmbedded(vertx)
       db = client.getDatabase(SharedMongoClient.DEFAULT_EMBEDDED_DATABASE)
     } else {
-      val actualConnectionString = connectionString ?: config.getString(
-          STORAGE_MONGODB_CONNECTION_STRING) ?: throw IllegalArgumentException(
-              """Missing configuration item "$STORAGE_MONGODB_CONNECTION_STRING"""")
+      val actualConnectionString = connectionString ?:
+        config.getString(STORAGE_MONGODB_CONNECTION_STRING) ?:
+        config.getString(INDEX_MONGODB_CONNECTION_STRING) ?:
+        throw IllegalArgumentException("Missing configuration item `" +
+            STORAGE_MONGODB_CONNECTION_STRING + "' or `" +
+            INDEX_MONGODB_CONNECTION_STRING + "'")
       val cs = ConnectionString(actualConnectionString)
       client = SharedMongoClient.create(cs)
       db = client.getDatabase(cs.database)

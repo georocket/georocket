@@ -4,7 +4,8 @@ import com.mongodb.ConnectionString
 import com.mongodb.reactivestreams.client.MongoClient
 import com.mongodb.reactivestreams.client.MongoCollection
 import com.mongodb.reactivestreams.client.MongoDatabase
-import io.georocket.constants.ConfigConstants
+import io.georocket.constants.ConfigConstants.INDEX_MONGODB_CONNECTION_STRING
+import io.georocket.constants.ConfigConstants.INDEX_MONGODB_EMBEDDED
 import io.georocket.index.Index
 import io.georocket.util.aggregateAwait
 import io.georocket.util.deleteManyAwait
@@ -40,18 +41,15 @@ class MongoDBIndex private constructor() : Index {
   private suspend fun start(vertx: Vertx, connectionString: String?) {
     val config = vertx.orCreateContext.config()
 
-    val embedded = config.getBoolean(ConfigConstants.INDEX_MONGODB_EMBEDDED)
-      ?: config.getBoolean(ConfigConstants.STORAGE_MONGODB_EMBEDDED) ?: false
+    val embedded = config.getBoolean(INDEX_MONGODB_EMBEDDED, false)
     if (embedded) {
       client = SharedMongoClient.createEmbedded(vertx)
       db = client.getDatabase(SharedMongoClient.DEFAULT_EMBEDDED_DATABASE)
     } else {
       val actualConnectionString = connectionString ?:
-        config.getString(ConfigConstants.INDEX_MONGODB_CONNECTION_STRING) ?:
-        config.getString(ConfigConstants.STORAGE_MONGODB_CONNECTION_STRING) ?:
+        config.getString(INDEX_MONGODB_CONNECTION_STRING) ?:
         throw IllegalArgumentException("Missing configuration item `" +
-            ConfigConstants.INDEX_MONGODB_CONNECTION_STRING + "' or `" +
-            ConfigConstants.STORAGE_MONGODB_CONNECTION_STRING + "'")
+            INDEX_MONGODB_CONNECTION_STRING + "'")
       val cs = ConnectionString(actualConnectionString)
       client = SharedMongoClient.create(cs)
       db = client.getDatabase(cs.database)
