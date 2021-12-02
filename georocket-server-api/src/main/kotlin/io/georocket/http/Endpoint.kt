@@ -22,7 +22,7 @@ interface Endpoint {
    */
   suspend fun createRouter(): Router
 
-  fun close() {
+  suspend fun close() {
     // nothing to do by default
   }
 

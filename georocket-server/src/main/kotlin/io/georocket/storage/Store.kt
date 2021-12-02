@@ -48,34 +48,4 @@ interface Store {
    * Continue scrolling with a given [scrollId]
    */
   suspend fun scroll(scrollId: String): StoreCursor
-
-  /**
-   * Get all values of the [attribute] of all chunks matching a given [search] query [path]
-   */
-  suspend fun getAttributeValues(search: String?, path: String, attribute: String): List<Any?>
-
-  /**
-   * Get all values of the [property] of all chunks matching a given [search] query [path]
-   */
-  suspend fun getPropertyValues(search: String?, path: String, property: String): List<Any?>
-
-  /**
-   * Set the [properties] of a list of chunks selected by [search] and [path]
-   */
-  suspend fun setProperties(search: String?, path: String, properties: Map<String, Any>)
-
-  /**
-   * Remove the [properties] of a list of chunks selected by [search] and [path]
-   */
-  suspend fun removeProperties(search: String?, path: String, properties: List<String>)
-
-  /**
-   * Append [tags] to a list of chunks selected by [search] and [path]
-   */
-  suspend fun appendTags(search: String?, path: String, tags: List<String>)
-
-  /**
-   * Remove [tags] from a list of chunks selected by [search] and [path]
-   */
-  suspend fun removeTags(search: String?, path: String, tags: List<String>)
 }

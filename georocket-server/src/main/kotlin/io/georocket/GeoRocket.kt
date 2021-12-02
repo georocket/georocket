@@ -6,7 +6,6 @@ import io.georocket.http.GeneralEndpoint
 import io.georocket.http.StoreEndpoint
 import io.georocket.http.TaskEndpoint
 import io.georocket.index.IndexerVerticle
-import io.georocket.index.MetadataVerticle
 import io.georocket.tasks.TaskVerticle
 import io.georocket.util.FilteredServiceLoader
 import io.georocket.util.JsonUtils
@@ -197,7 +196,6 @@ class GeoRocket : CoroutineVerticle() {
     vertx.deployVerticleAwait(TaskVerticle(), options)
     vertx.deployVerticleAwait(IndexerVerticle(), options)
     vertx.deployVerticleAwait(ImporterVerticle(), options)
-    vertx.deployVerticleAwait(MetadataVerticle(), options)
 
     // deploy HTTP server
     deployHttpServer()

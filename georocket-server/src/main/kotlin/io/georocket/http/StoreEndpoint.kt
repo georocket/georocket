@@ -3,8 +3,13 @@ package io.georocket.http
 import io.georocket.ServerAPIException
 import io.georocket.constants.AddressConstants
 import io.georocket.constants.ConfigConstants
+import io.georocket.index.Index
+import io.georocket.index.IndexerFactory
+import io.georocket.index.MetaIndexerFactory
+import io.georocket.index.mongodb.MongoDBIndex
 import io.georocket.output.Merger
 import io.georocket.output.MultiMerger
+import io.georocket.query.DefaultQueryCompiler
 import io.georocket.storage.ChunkMeta
 import io.georocket.storage.DeleteMeta
 import io.georocket.storage.Store
@@ -12,6 +17,7 @@ import io.georocket.storage.StoreCursor
 import io.georocket.storage.StoreFactory
 import io.georocket.tasks.ReceivingTask
 import io.georocket.tasks.TaskError
+import io.georocket.util.FilteredServiceLoader
 import io.georocket.util.HttpException
 import io.georocket.util.MimeTypeUtils
 import io.vertx.core.Vertx
@@ -42,6 +48,7 @@ import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
 import java.time.Instant
+import java.util.Locale
 import java.util.regex.Pattern
 import kotlin.coroutines.CoroutineContext
 
@@ -71,10 +78,32 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
   private lateinit var store: Store
   private lateinit var storagePath: String
 
+  /**
+   * The GeoRocket index
+   */
+  private lateinit var index: Index
+
+  /**
+   * A list of [MetaIndexerFactory] objects
+   */
+  private lateinit var metaIndexerFactories: List<MetaIndexerFactory>
+
+  /**
+   * A list of [IndexerFactory] objects
+   */
+  private lateinit var indexerFactories: List<IndexerFactory>
+
   override suspend fun createRouter(): Router {
     store = StoreFactory.createStore(vertx)
     storagePath = vertx.orCreateContext.config()
         .getString(ConfigConstants.STORAGE_FILE_PATH)
+
+    index = MongoDBIndex.create(vertx)
+
+    // load and copy all indexer factories now and not lazily to avoid
+    // concurrent modifications to the service loader's internal cache
+    metaIndexerFactories = FilteredServiceLoader.load(MetaIndexerFactory::class.java).toList()
+    indexerFactories = FilteredServiceLoader.load(IndexerFactory::class.java).toList()
 
     val router = Router.router(vertx)
     router.get("/*").handler(this::onGet)
@@ -85,7 +114,8 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
     return router
   }
 
-  override fun close() {
+  override suspend fun close() {
+    index.close()
     store.close()
   }
 
@@ -245,7 +275,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
    */
   private fun isTrailerAccepted(request: HttpServerRequest): Boolean {
     val te = request.getHeader("TE")
-    return te != null && te.toLowerCase().contains("trailers")
+    return te != null && te.lowercase(Locale.getDefault()).contains("trailers")
   }
 
   /**
@@ -304,7 +334,9 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
     response.isChunked = true
     response.setStatusCode(200).write("[")
 
-    val values = store.getAttributeValues(search, path, attribute)
+    val query = DefaultQueryCompiler(metaIndexerFactories + indexerFactories)
+      .compileQuery(search ?: "", path)
+    val values = index.getAttributeValues(query, attribute)
 
     try {
       for (v in values) {
@@ -335,7 +367,9 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
     response.setStatusCode(200).write("[")
 
     try {
-      val values = store.getPropertyValues(search, path, property)
+      val query = DefaultQueryCompiler(metaIndexerFactories + indexerFactories)
+        .compileQuery(search ?: "", path)
+      val values = index.getPropertyValues(query, property)
 
       for (v in values) {
         if (first) {
@@ -550,7 +584,9 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
       properties: String, response: HttpServerResponse) {
     val list = properties.split(",")
     try {
-      store.removeProperties(search, path, list)
+      val query = DefaultQueryCompiler(metaIndexerFactories + indexerFactories)
+        .compileQuery(search ?: "", path)
+      index.removeProperties(query, list)
       response
           .setStatusCode(204)
           .end()
@@ -566,7 +602,9 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
       response: HttpServerResponse) {
     val list = tags.split(",")
     try {
-      store.removeTags(search, path, list)
+      val query = DefaultQueryCompiler(metaIndexerFactories + indexerFactories)
+        .compileQuery(search ?: "", path)
+      index.removeTags(query, list)
       response
           .setStatusCode(204)
           .end()
@@ -615,20 +653,25 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
     val path = Endpoint.getEndpointPath(context)
     val response = context.response()
     val request = context.request()
-    val search = request.getParam("search")
+    val search = request.getParam("search") ?: ""
     val properties = request.getParam("properties")
     val tags = request.getParam("tags")
 
     launch {
       if (StringUtils.isNotEmpty(properties) || StringUtils.isNotEmpty(tags)) {
+        val query = DefaultQueryCompiler(metaIndexerFactories + indexerFactories)
+          .compileQuery(search, path)
+
         try {
           if (StringUtils.isNotEmpty(properties)) {
             val parsedProperties = parseProperties(properties)
-            store.setProperties(search, path, parsedProperties)
+            if (parsedProperties.isNotEmpty()) {
+              index.setProperties(query, parsedProperties)
+            }
           }
 
           if (StringUtils.isNotEmpty(tags)) {
-            store.appendTags(search, path, tags.split(","))
+            index.addTags(query, tags.split(","))
           }
 
           response

@@ -143,60 +143,6 @@ abstract class IndexedStore(private val vertx: Vertx) : Store {
     doDeleteChunks(paths)
   }
 
-  override suspend fun getAttributeValues(search: String?, path: String,
-      attribute: String): List<Any?> {
-    val msg = JsonObject()
-      .put("search", search)
-      .put("attribute", attribute)
-      .put("path", path)
-    return vertx.eventBus().requestAwait<JsonArray>(
-      AddressConstants.METADATA_GET_ATTRIBUTE_VALUES, msg).body().toList()
-  }
-
-  override suspend fun getPropertyValues(search: String?, path: String,
-      property: String): List<Any?> {
-    val msg = JsonObject()
-        .put("search", search)
-        .put("property", property)
-        .put("path", path)
-    return vertx.eventBus().requestAwait<JsonArray>(
-      AddressConstants.METADATA_GET_PROPERTY_VALUES, msg).body().toList()
-  }
-
-  override suspend fun setProperties(search: String?, path: String,
-      properties: Map<String, Any>) {
-    val msg = JsonObject()
-        .put("search", search)
-        .put("properties", JsonObject.mapFrom(properties))
-        .put("path", path)
-    vertx.eventBus().requestAwait<Any>(AddressConstants.METADATA_SET_PROPERTIES, msg)
-  }
-
-  override suspend fun removeProperties(search: String?, path: String,
-      properties: List<String>) {
-    val msg = JsonObject()
-        .put("search", search)
-        .put("properties", JsonArray(properties))
-        .put("path", path)
-    vertx.eventBus().requestAwait<Any>(AddressConstants.METADATA_REMOVE_PROPERTIES, msg)
-  }
-
-  override suspend fun appendTags(search: String?, path: String, tags: List<String>) {
-    val msg = JsonObject()
-        .put("search", search)
-        .put("tags", JsonArray(tags))
-        .put("path", path)
-    vertx.eventBus().requestAwait<Any>(AddressConstants.METADATA_APPEND_TAGS, msg)
-  }
-
-  override suspend fun removeTags(search: String?, path: String, tags: List<String>) {
-    val msg = JsonObject()
-        .put("search", search)
-        .put("tags", JsonArray(tags))
-        .put("path", path)
-    vertx.eventBus().requestAwait<Any>(AddressConstants.METADATA_REMOVE_TAGS, msg)
-  }
-
   /**
    * Delete all chunks with the given paths from the store
    */
