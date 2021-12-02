@@ -24,10 +24,10 @@ georocket:
   # Back-end configuration
   storage:
     # The data store implementation to use
-    # class: io.georocket.storage.file.FileStore
-    class: io.georocket.storage.h2.H2Store
-    # class: io.georocket.storage.mongodb.MongoDBStore
-    # class: io.georocket.storage.s3.S3Store
+    # driver: file
+    # driver: h2
+    driver: mongodb
+    # driver: s3
 
     # Configuration for the file back-end
     file:

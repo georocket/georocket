@@ -63,7 +63,7 @@ class StoreEndpointTest {
 
     store = mockk()
     mockkObject(StoreFactory)
-    every { StoreFactory.createStore(any()) } returns store
+    coEvery { StoreFactory.createStore(any()) } returns store
 
     val config = json {
       obj(

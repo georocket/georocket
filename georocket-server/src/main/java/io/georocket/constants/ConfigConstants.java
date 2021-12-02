@@ -33,7 +33,7 @@ public final class ConfigConstants {
 
   public static final String LOG_CONFIG = "georocket.logConfig";
 
-  public static final String STORAGE_CLASS = "georocket.storage.class";
+  public static final String STORAGE_DRIVER = "georocket.storage.driver";
   public static final String STORAGE_H2_PATH = "georocket.storage.h2.path";
   public static final String STORAGE_H2_COMPRESS = "georocket.storage.h2.compress";
   public static final String STORAGE_H2_MAP_NAME = "georocket.storage.h2.mapName"; // undocumented
