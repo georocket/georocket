@@ -2,8 +2,12 @@
 # - Build GeoRocket with `./gradlew installDist`
 # - Run `docker build -t georocket .`
 
-FROM openjdk:11-jre-slim
+FROM ubuntu:21.10
 MAINTAINER Michel Kraemer <michel.kraemer@igd.fraunhofer.de>
+
+RUN apt-get update \
+  && apt-get install -y openjdk-11-jdk \
+  && rm -rf /var/lib/apt/lists/*
 
 # add GeoRocket user
 RUN adduser --disabled-password --gecos "" --uid 1000 --home /usr/local/georocket-server georocket
