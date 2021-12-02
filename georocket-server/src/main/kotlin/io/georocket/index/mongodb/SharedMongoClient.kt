@@ -4,8 +4,10 @@ import com.mongodb.ConnectionString
 import com.mongodb.MongoClientSettings
 import com.mongodb.reactivestreams.client.MongoClient
 import com.mongodb.reactivestreams.client.MongoClients
+import de.flapdoodle.embed.mongo.Command
 import de.flapdoodle.embed.mongo.MongodExecutable
 import de.flapdoodle.embed.mongo.MongodStarter
+import de.flapdoodle.embed.mongo.config.Defaults
 import de.flapdoodle.embed.mongo.config.MongodConfig
 import de.flapdoodle.embed.mongo.config.Net
 import de.flapdoodle.embed.mongo.distribution.Version
@@ -21,14 +23,16 @@ import org.bson.codecs.IntegerCodec
 import org.bson.codecs.LongCodec
 import org.bson.codecs.StringCodec
 import org.bson.codecs.configuration.CodecRegistries
+import org.slf4j.LoggerFactory
 import java.util.concurrent.TimeUnit
-
 
 class SharedMongoClient(private val key: ConnectionString,
     private val client: MongoClient) : MongoClient by client {
   private var instanceCount = 0
 
   companion object {
+    private val log = LoggerFactory.getLogger(SharedMongoClient::class.java)
+
     const val DEFAULT_EMBEDDED_DATABASE = "georocket"
     private const val DEFAULT_MAX_CONNECTION_IDLE_TIME_MS = 60000L
     private val sharedInstances = mutableMapOf<ConnectionString, SharedMongoClient>()
@@ -63,8 +67,10 @@ class SharedMongoClient(private val key: ConnectionString,
       return vertx.executeBlockingAwait<SharedMongoClient> { p ->
         synchronized(this) {
           if (mongodExecutable == null) {
+            log.info("Launching embedded MongoDB instance ...")
             try {
-              val starter = MongodStarter.getDefaultInstance()
+              val runtimeConfig = Defaults.runtimeConfigFor(Command.MongoD, log).build()
+              val starter = MongodStarter.getInstance(runtimeConfig)
               val port = Network.freeServerPort(Network.getLocalHost())
               val mongodConfig = MongodConfig.builder()
                 .version(Version.Main.PRODUCTION)
