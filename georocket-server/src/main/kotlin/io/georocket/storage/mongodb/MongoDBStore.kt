@@ -77,8 +77,11 @@ class MongoDBStore private constructor(vertx: Vertx) : IndexedStore(vertx) {
 
   override suspend fun getOne(path: String): Buffer {
     val publisher = gridfs.downloadToPublisher(path)
-    val bytebuf = publisher.awaitSingle()
-    return Buffer.buffer(bytebuf.array())
+    val result = Buffer.buffer()
+    publisher.asFlow().collect { buf ->
+      result.appendBuffer(Buffer.buffer(buf.array()))
+    }
+    return result
   }
 
   override suspend fun doAddChunk(chunk: Buffer, layer: String, correlationId: String): String {
