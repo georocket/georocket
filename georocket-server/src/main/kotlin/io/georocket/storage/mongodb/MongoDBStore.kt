@@ -2,6 +2,7 @@ package io.georocket.storage.mongodb
 
 import com.mongodb.ConnectionString
 import com.mongodb.reactivestreams.client.MongoClient
+import com.mongodb.reactivestreams.client.MongoCollection
 import com.mongodb.reactivestreams.client.MongoDatabase
 import com.mongodb.reactivestreams.client.gridfs.GridFSBucket
 import com.mongodb.reactivestreams.client.gridfs.GridFSBuckets
@@ -16,13 +17,14 @@ import io.georocket.storage.IndexMeta
 import io.georocket.storage.indexed.IndexedStore
 import io.georocket.util.PathUtils
 import io.georocket.util.UniqueID
+import io.georocket.util.deleteManyAwait
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
+import io.vertx.core.json.JsonObject
+import io.vertx.kotlin.core.json.jsonObjectOf
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.reactive.asFlow
-import kotlinx.coroutines.reactive.awaitSingle
 import kotlinx.coroutines.reactive.awaitSingleOrNull
-import org.bson.BsonDocument
 import org.bson.BsonString
 import reactor.core.publisher.Mono
 import java.nio.ByteBuffer
@@ -44,6 +46,8 @@ class MongoDBStore private constructor(vertx: Vertx) : IndexedStore(vertx) {
   private lateinit var client: MongoClient
   private lateinit var db: MongoDatabase
   private lateinit var gridfs: GridFSBucket
+  private lateinit var collFiles: MongoCollection<JsonObject>
+  private lateinit var collChunks: MongoCollection<JsonObject>
 
   private suspend fun start(vertx: Vertx, connectionString: String?,
       storagePath: String?) {
@@ -71,6 +75,8 @@ class MongoDBStore private constructor(vertx: Vertx) : IndexedStore(vertx) {
     }
 
     gridfs = GridFSBuckets.create(db)
+    collFiles = db.getCollection("fs.files", JsonObject::class.java)
+    collChunks = db.getCollection("fs.chunks", JsonObject::class.java)
   }
 
   override fun close() {
@@ -90,17 +96,21 @@ class MongoDBStore private constructor(vertx: Vertx) : IndexedStore(vertx) {
       indexMetadata: IndexMeta, layer: String): String {
     val path = layer.ifEmpty { "/" }
     val filename = PathUtils.join(path, indexMetadata.correlationId + UniqueID.next())
-    gridfs.uploadFromPublisher(filename, Mono.just(
-        ByteBuffer.wrap(chunk.byteBuf.array()))).awaitSingle()
+    gridfs.uploadFromPublisher(BsonString(filename), filename, Mono.just(
+        ByteBuffer.wrap(chunk.byteBuf.array()))).awaitSingleOrNull()
     return filename
   }
 
   override suspend fun delete(paths: Collection<String>) {
-    // TODO optimize?
-    for (filename in paths) {
-      gridfs.find(BsonDocument("filename", BsonString(filename))).asFlow().collect { file ->
-        gridfs.delete(file.objectId).awaitSingleOrNull()
-      }
-    }
+    collFiles.deleteManyAwait(jsonObjectOf(
+      "_id" to jsonObjectOf(
+        "\$in" to paths
+      )
+    ))
+    collChunks.deleteManyAwait(jsonObjectOf(
+      "files_id" to jsonObjectOf(
+        "\$in" to paths
+      )
+    ))
   }
 }
