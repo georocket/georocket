@@ -7,8 +7,6 @@ import com.mongodb.client.model.Indexes
 import com.mongodb.reactivestreams.client.MongoClient
 import com.mongodb.reactivestreams.client.MongoCollection
 import com.mongodb.reactivestreams.client.MongoDatabase
-import com.mongodb.reactivestreams.client.gridfs.GridFSBucket
-import com.mongodb.reactivestreams.client.gridfs.GridFSBuckets
 import io.georocket.constants.ConfigConstants.EMBEDDED_MONGODB_STORAGE_PATH
 import io.georocket.constants.ConfigConstants.INDEX_MONGODB_CONNECTION_STRING
 import io.georocket.constants.ConfigConstants.INDEX_MONGODB_EMBEDDED
@@ -50,7 +48,6 @@ class MongoDBStore private constructor(vertx: Vertx) : IndexedStore(vertx) {
 
   private lateinit var client: MongoClient
   private lateinit var db: MongoDatabase
-  private lateinit var gridfs: GridFSBucket
   private lateinit var collChunks: MongoCollection<BsonDocument>
 
   private suspend fun start(vertx: Vertx, connectionString: String?,
@@ -78,7 +75,6 @@ class MongoDBStore private constructor(vertx: Vertx) : IndexedStore(vertx) {
       db = client.getDatabase(cs.database)
     }
 
-    gridfs = GridFSBuckets.create(db)
     collChunks = db.getCollection("chunks", BsonDocument::class.java)
 
     collChunks.createIndexes(listOf(
