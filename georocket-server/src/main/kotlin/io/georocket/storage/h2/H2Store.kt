@@ -1,7 +1,6 @@
 package io.georocket.storage.h2
 
 import io.georocket.constants.ConfigConstants
-import io.georocket.storage.ChunkMeta
 import io.georocket.storage.IndexMeta
 import io.georocket.storage.indexed.IndexedStore
 import io.georocket.util.PathUtils
@@ -40,12 +39,13 @@ class H2Store(vertx: Vertx, path: String? = null) : IndexedStore(vertx) {
         ?: throw FileNotFoundException("Could not find chunk: $finalPath")
   }
 
-  override suspend fun add(chunk: Buffer, chunkMetadata: ChunkMeta,
-      indexMetadata: IndexMeta, layer: String): String {
+  override fun makePath(indexMetadata: IndexMeta, layer: String): String {
     val path = layer.ifEmpty { "/" }
-    val filename = PathUtils.join(path, indexMetadata.correlationId + UniqueID.next())
-    map[filename] = chunk
-    return filename
+    return PathUtils.join(path, indexMetadata.correlationId + UniqueID.next())
+  }
+
+  override suspend fun add(chunk: Buffer, path: String) {
+    map[path] = chunk
   }
 
   override suspend fun delete(paths: Collection<String>) {

@@ -33,6 +33,8 @@ import io.vertx.kotlin.core.file.openAwait
 import io.vertx.kotlin.core.file.openOptionsOf
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.toChannel
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import java.time.Instant
 
@@ -226,6 +228,16 @@ class ImporterVerticle : CoroutineVerticle() {
 
     var indexMeta = makeIndexMeta(fallbackCRSString)
 
+    var flushQueueJob: Deferred<Unit>? = null
+    val batchSize = 200 // TODO make configurable
+    val queue = mutableListOf<Pair<Buffer, String>>()
+    suspend fun flushQueue() {
+      val start = System.currentTimeMillis()
+      store.addMany(queue)
+      log.info("Finished importing $batchSize chunks in ${System.currentTimeMillis() - start} ms")
+      queue.clear()
+    }
+
     val processEvents: suspend () -> Boolean = pe@{
       while (true) {
         val nextEvent = parser.next()
@@ -247,7 +259,14 @@ class ImporterVerticle : CoroutineVerticle() {
 
         val result = splitter.onEvent(streamEvent)
         if (result != null) {
-          val path = store.add(result.chunk, result.meta, indexMeta, layer)
+          val path = store.makePath(indexMeta, layer)
+          queue.add(result.chunk to path)
+          if (queue.size >= batchSize) {
+            flushQueueJob?.await()
+            flushQueueJob = async {
+              flushQueue()
+            }
+          }
           indexer.add(result.chunk, result.meta, indexMeta, path)
           chunksAdded++
           updateProgress(chunksAdded, false)
@@ -282,7 +301,9 @@ class ImporterVerticle : CoroutineVerticle() {
     parser.inputFeeder.endOfInput()
     processEvents()
 
-    // wait for remaining chunks to be indexed
+    // wait for remaining chunks to be imported and indexed
+    flushQueueJob?.await()
+    flushQueue()
     indexer.flushAdd()
 
     updateProgress(chunksAdded, true)
@@ -314,6 +335,16 @@ class ImporterVerticle : CoroutineVerticle() {
     val indexMeta = IndexMeta(correlationId, filename, timestamp, tags,
         properties, null)
 
+    var flushQueueJob: Deferred<Unit>? = null
+    val batchSize = 200 // TODO make configurable
+    val queue = mutableListOf<Pair<Buffer, String>>()
+    suspend fun flushQueue() {
+      val start = System.currentTimeMillis()
+      store.addMany(queue)
+      log.info("Finished importing $batchSize chunks in ${System.currentTimeMillis() - start} ms")
+      queue.clear()
+    }
+
     val processEvents: suspend () -> Boolean = pe@{
       while (true) {
         val nextEvent = parser.nextEvent()
@@ -329,7 +360,14 @@ class ImporterVerticle : CoroutineVerticle() {
         val streamEvent = JsonStreamEvent(nextEvent, parser.parsedCharacterCount, value)
         val result = splitter.onEvent(streamEvent)
         if (result != null) {
-          val path = store.add(result.chunk, result.meta, indexMeta, layer)
+          val path = store.makePath(indexMeta, layer)
+          queue.add(result.chunk to path)
+          if (queue.size >= batchSize) {
+            flushQueueJob?.await()
+            flushQueueJob = async {
+              flushQueue()
+            }
+          }
           indexer.add(result.chunk, result.meta, indexMeta, path)
           chunksAdded++
           updateProgress(chunksAdded, false)
@@ -361,7 +399,9 @@ class ImporterVerticle : CoroutineVerticle() {
     parser.feeder.done()
     processEvents()
 
-    // wait for remaining chunks to be indexed
+    // wait for remaining chunks to be imported and indexed
+    flushQueueJob?.await()
+    flushQueue()
     indexer.flushAdd()
 
     updateProgress(chunksAdded, true)

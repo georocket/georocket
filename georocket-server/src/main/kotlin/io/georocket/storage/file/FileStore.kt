@@ -1,7 +1,6 @@
 package io.georocket.storage.file
 
 import io.georocket.constants.ConfigConstants
-import io.georocket.storage.ChunkMeta
 import io.georocket.storage.IndexMeta
 import io.georocket.storage.indexed.IndexedStore
 import io.georocket.util.PathUtils
@@ -35,19 +34,19 @@ class FileStore(private val vertx: Vertx, storagePath: String? = null) : Indexed
     root = PathUtils.join(actualStoragePath, "file")
   }
 
-  override suspend fun add(chunk: Buffer, chunkMetadata: ChunkMeta,
-      indexMetadata: IndexMeta, layer: String): String {
+  override fun makePath(indexMetadata: IndexMeta, layer: String): String {
     val path = layer.ifEmpty { "/" }
+    val filename = indexMetadata.correlationId + UniqueID.next()
+    return PathUtils.join(path, filename)
+  }
 
-    val dir = PathUtils.join(root, path)
+  override suspend fun add(chunk: Buffer, path: String) {
+    val filepath = PathUtils.join(root, path)
+    val parent = filepath.substring(0, filepath.lastIndexOf('/'))
 
     // create storage folder
     val fs = vertx.fileSystem()
-    fs.mkdirsAwait(dir)
-
-    // generate new file name
-    val filename = indexMetadata.correlationId + UniqueID.next()
-    val filepath = PathUtils.join(dir, filename)
+    fs.mkdirsAwait(parent)
 
     // open new file
     val f = fs.openAwait(filepath, OpenOptions())
@@ -55,8 +54,6 @@ class FileStore(private val vertx: Vertx, storagePath: String? = null) : Indexed
     // write contents to file
     f.writeAwait(chunk)
     f.closeAwait()
-
-    return PathUtils.join(path, filename)
   }
 
   override suspend fun getOne(path: String): Buffer {

@@ -64,7 +64,7 @@ def finishGeoJsonTests(String georocketHost) {
 
 def assertMongoDBChunkCount(expected) {
     def chunkCountInMongo = run('mongo mongo/georocket --quiet '
-        + '--eval "db.fs.chunks.count()"', null, true).trim()
+        + '--eval "db.chunks.count()"', null, true).trim()
     assertEquals(chunkCountInMongo, String.valueOf(expected),
         "Expected ${expected} chunks in MongoDB. Got ${chunkCountInMongo}.")
 }

@@ -95,8 +95,6 @@ class MainIndexer private constructor(override val coroutineContext: CoroutineCo
     if (documents.isNotEmpty()) {
       val startTimeStamp = System.currentTimeMillis()
 
-      log.info("Indexing ${documents.size} chunks")
-
       index.addMany(documents)
 
       // log error if one of the inserts failed

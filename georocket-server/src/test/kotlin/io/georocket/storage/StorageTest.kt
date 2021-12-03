@@ -4,7 +4,6 @@ import io.georocket.coVerify
 import io.georocket.constants.AddressConstants
 import io.georocket.util.PathUtils
 import io.georocket.util.UniqueID
-import io.georocket.util.XMLStartElement
 import io.vertx.core.Promise
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
@@ -54,22 +53,6 @@ abstract class StorageTest {
      * this test do not use the Indexer)
      */
     protected const val SEARCH = "irrelevant but necessary value"
-
-    /**
-     * Test data: version 1.0 XML standalone header
-     */
-    protected const val XML_HEADER = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>${"\n"}"""
-
-    /**
-     * Test data: a valid xml with header
-     */
-    protected const val XML = """$XML_HEADER<root>${"\n"}<object><child></child></object>${"\n"}</root>"""
-
-    /**
-     * Test data: metadata for a chunk
-     */
-    protected val META = XMLChunkMeta(listOf(XMLStartElement("root")),
-        XML_HEADER.length + 7, XML.length - 8)
 
     /**
      * Test data: fallback CRS for chunk indexing
@@ -294,7 +277,8 @@ abstract class StorageTest {
       val indexMeta = IndexMeta(IMPORT_ID, ID, TIMESTAMP, TAGS, PROPERTIES, FALLBACK_CRS_STRING)
 
       ctx.coVerify {
-        store.add(Buffer.buffer(CHUNK_CONTENT), META, indexMeta, path ?: "/")
+        val p = store.makePath(indexMeta, path ?: "/")
+        store.add(Buffer.buffer(CHUNK_CONTENT), p)
         validateAfterStoreAdd(ctx, vertx, path)
       }
       ctx.completeNow()

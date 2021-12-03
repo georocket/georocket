@@ -48,16 +48,8 @@ public final class ConfigConstants {
   public static final String STORAGE_S3_PATH_STYLE_ACCESS = "georocket.storage.s3.pathStyleAccess";
 
   public static final String INDEX_MAX_BULK_SIZE = "georocket.index.maxBulkSize";
-  public static final String INDEX_INDEXABLE_CHUNK_CACHE_MAX_SIZE = "georocket.index.indexableChunkCache.maxSize";
-  public static final String INDEX_INDEXABLE_CHUNK_CACHE_MAX_TIME_SECONDS = "georocket.index.indexableChunkCache.maxTimeSeconds";
   public static final String INDEX_MONGODB_EMBEDDED = "georocket.index.mongodb.embedded";
   public static final String INDEX_MONGODB_CONNECTION_STRING = "georocket.index.mongodb.connectionString";
-  public static final String INDEX_ELASTICSEARCH_HOST = "georocket.index.elasticsearch.host";
-  public static final String INDEX_ELASTICSEARCH_PORT = "georocket.index.elasticsearch.port";
-  public static final String INDEX_ELASTICSEARCH_HOSTS = "georocket.index.elasticsearch.hosts";
-  public static final String INDEX_ELASTICSEARCH_AUTO_UPDATE_HOSTS_INTERVAL_SECONDS = "georocket.index.elasticsearch.autoUpdateHostsIntervalSeconds";
-  public static final String INDEX_ELASTICSEARCH_COMPRESS_REQUEST_BODIES = "georocket.index.elasticsearch.compressRequestBodies";
-  public static final String INDEX_SPATIAL_PRECISION = "georocket.index.spatial.precision";
 
   public static final String EMBEDDED_MONGODB_STORAGE_PATH = "georocket.embeddedMongoDB.storagePath";
 

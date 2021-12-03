@@ -14,12 +14,19 @@ interface Store {
     // nothing to do by default
   }
 
+  fun makePath(indexMetadata: IndexMeta, layer: String): String
+
   /**
-   * Add a [chunk] with given [chunkMetadata] and [indexMetadata] under the
-   * given [layer] to the store. Return the path to the added chunk.
+   * Add a [chunk] with given [path] to the store
    */
-  suspend fun add(chunk: Buffer, chunkMetadata: ChunkMeta,
-      indexMetadata: IndexMeta, layer: String): String
+  suspend fun add(chunk: Buffer, path: String)
+
+  /**
+   * Bulk-add many [chunks] with paths to the store
+   */
+  suspend fun addMany(chunks: Collection<Pair<Buffer, String>>) {
+    chunks.forEach { add(it.first, it.second) }
+  }
 
   /**
    * Get a chunk with a given [path] from the store

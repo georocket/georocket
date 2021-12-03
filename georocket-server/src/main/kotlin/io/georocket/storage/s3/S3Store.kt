@@ -1,7 +1,6 @@
 package io.georocket.storage.s3
 
 import io.georocket.constants.ConfigConstants
-import io.georocket.storage.ChunkMeta
 import io.georocket.storage.IndexMeta
 import io.georocket.storage.indexed.IndexedStore
 import io.georocket.util.PathUtils
@@ -70,23 +69,19 @@ class S3Store(vertx: Vertx, accessKey: String? = null, secretKey: String? = null
     s3 = s3Builder.build()
   }
 
-  override suspend fun add(chunk: Buffer, chunkMetadata: ChunkMeta,
-      indexMetadata: IndexMeta, layer: String): String {
+  override fun makePath(indexMetadata: IndexMeta, layer: String): String {
     val path = layer.ifEmpty { "/" }
-
-    // generate new file name
     val id = indexMetadata.correlationId + UniqueID.next()
-    val filename = PathUtils.join(path, id)
-    val key = PathUtils.removeLeadingSlash(filename)
+    return PathUtils.join(path, id)
+  }
 
+  override suspend fun add(chunk: Buffer, path: String) {
+    val key = PathUtils.removeLeadingSlash(path)
     val objectRequest = PutObjectRequest.builder()
         .bucket(bucket)
         .key(key)
         .build()
-
     s3.putObject(objectRequest, AsyncRequestBody.fromBytes(chunk.byteBuf.array())).await()
-
-    return filename
   }
 
   override suspend fun getOne(path: String): Buffer {
