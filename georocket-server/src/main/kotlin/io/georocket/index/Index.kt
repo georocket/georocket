@@ -23,5 +23,5 @@ interface Index {
 
   suspend fun getAttributeValues(query: JsonObject, attributeName: String): List<Any?>
 
-  suspend fun delete(ids: Collection<String>)
+  suspend fun delete(query: JsonObject)
 }

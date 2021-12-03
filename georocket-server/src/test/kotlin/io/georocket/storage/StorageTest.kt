@@ -103,16 +103,6 @@ abstract class StorageTest {
     val ID = UniqueID.next()
 
     /**
-     * A dummy correlation ID
-     */
-    protected val CORRELATION_ID = UniqueID.next()
-
-    /**
-     * Test data: path to a non existing entity
-     */
-    protected val PATH_TO_NON_EXISTING_ENTITY = ID
-
-    /**
      * Test data: the parents of one hit
      */
     protected val PARENTS = JsonArray()
@@ -289,84 +279,11 @@ abstract class StorageTest {
   }
 
   /**
-   * Call [Store.delete] with a  non-existing path and expects a success (no
-   * exceptions or failure codes).
-   */
-  @Test
-  fun testDeleteNonExistingEntity(ctx: VertxTestContext, vertx: Vertx) {
-    GlobalScope.launch(vertx.dispatcher()) {
-      val store = createStore(vertx)
-
-      // register delete
-      vertx.eventBus().consumer<Any>(AddressConstants.INDEXER_DELETE).handler {
-        ctx.failNow(IllegalStateException("INDEXER_DELETE should not be " +
-            "notified if no file was found."))
-      }
-
-      // register query
-      var queryCalled = false
-      vertx.eventBus().consumer<Any>(AddressConstants.INDEXER_QUERY).handler { r ->
-        queryCalled = true
-        r.fail(404, "NOT FOUND")
-      }
-
-      ctx.coVerify {
-        store.delete(SEARCH, "NOT_EXISTING_PATH", DeleteMeta(CORRELATION_ID))
-        assertThat(queryCalled).isTrue()
-      }
-      ctx.completeNow()
-    }
-  }
-
-  /**
-   * Call [Store.delete] with an existing path but non-existing entity and
-   * expects a success (no exceptions or failure codes).
-   */
-  @Test
-  fun testDeleteNonExistingEntityWithPath(ctx: VertxTestContext, vertx: Vertx) {
-    GlobalScope.launch(vertx.dispatcher()) {
-      val store = createStore(vertx)
-
-      // register delete
-      var deleteCalled = false
-      vertx.eventBus().consumer<JsonObject>(AddressConstants.INDEXER_DELETE).handler { req ->
-        val msg = req.body()
-        ctx.verify {
-          assertThat(msg.map).containsKey("paths")
-          val paths = msg.getJsonArray("paths")
-          assertThat(paths.list).hasSize(1)
-          val notifiedPath = paths.getString(0)
-          assertThat(notifiedPath).isEqualTo(PATH_TO_NON_EXISTING_ENTITY)
-
-          deleteCalled = true
-          req.reply(null) // Value is not used in Store
-        }
-      }
-
-      // register query
-      val queryPromise = mockIndexerQuery(ctx, vertx, null)
-
-      ctx.coVerify {
-        store.delete(SEARCH, PATH_TO_NON_EXISTING_ENTITY, DeleteMeta(CORRELATION_ID))
-        queryPromise.future().await()
-        assertThat(deleteCalled).isTrue()
-      }
-      ctx.completeNow()
-    }
-  }
-
-  /**
    * Add test data and compare the data with the stored one
    */
   private fun testAdd(ctx: VertxTestContext, vertx: Vertx, path: String?) {
     GlobalScope.launch(vertx.dispatcher()) {
       val store = createStore(vertx)
-
-      // register delete
-      vertx.eventBus().consumer<Any>(AddressConstants.INDEXER_DELETE).handler {
-        ctx.failNow(IllegalStateException("Indexer should not be notified for " +
-            "a delete event after Store::add was called!"))
-      }
 
       // register query
       vertx.eventBus().consumer<Any>(AddressConstants.INDEXER_QUERY).handler {
@@ -394,30 +311,13 @@ abstract class StorageTest {
 
       val store = createStore(vertx)
 
-      // register delete
-      val deletePromise = Promise.promise<Unit>()
-      vertx.eventBus().consumer<JsonObject>(AddressConstants.INDEXER_DELETE).handler { req ->
-        ctx.verify {
-          val msg = req.body()
-          assertThat(msg.map).containsKey("paths")
-          val paths = msg.getJsonArray("paths")
-          assertThat(paths.list).hasSize(1)
-          val notifiedPath = paths.getString(0)
-          assertThat(notifiedPath).isEqualTo(resultPath)
-
-          deletePromise.complete()
-          req.reply(null) // Value is not used in Store
-        }
-      }
-
       // register query
       val queryPromise = mockIndexerQuery(ctx, vertx, path)
-      store.delete(SEARCH, path ?: "/", DeleteMeta(CORRELATION_ID))
+      store.delete(listOf(resultPath))
 
       validateAfterStoreDelete(ctx, vertx, resultPath)
 
       queryPromise.future().await()
-      deletePromise.future().await()
 
       ctx.completeNow()
     }
@@ -431,12 +331,6 @@ abstract class StorageTest {
     GlobalScope.launch(vertx.dispatcher()) {
       // register query
       val queryPromise = mockIndexerQuery(ctx, vertx, path)
-
-      // register delete
-      vertx.eventBus().consumer<Any>(AddressConstants.INDEXER_DELETE).handler {
-        ctx.failNow(IllegalStateException("Indexer should not be notified for " +
-            "a delete event after Store::get was called!"))
-      }
 
       val resultPath = prepareData(ctx, vertx, path)
 

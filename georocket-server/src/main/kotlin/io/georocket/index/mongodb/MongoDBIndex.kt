@@ -185,13 +185,7 @@ class MongoDBIndex private constructor() : Index {
     return result[0].getJsonArray("values").list
   }
 
-  override suspend fun delete(ids: Collection<String>) {
-    collDocuments.deleteManyAwait(json {
-      obj(
-        INTERNAL_ID to obj(
-          "\$in" to ids
-        )
-      )
-    })
+  override suspend fun delete(query: JsonObject) {
+    collDocuments.deleteManyAwait(query)
   }
 }

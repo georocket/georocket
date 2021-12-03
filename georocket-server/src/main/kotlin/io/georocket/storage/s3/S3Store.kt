@@ -101,7 +101,7 @@ class S3Store(vertx: Vertx, accessKey: String? = null, secretKey: String? = null
     return Buffer.buffer(response.asByteArrayUnsafe())
   }
 
-  override suspend fun doDeleteChunks(paths: Iterable<String>) {
+  override suspend fun delete(paths: Collection<String>) {
     // only delete 1000 chunks in one request (this is the maximum number
     // specified by the S3 API)
     val windows = paths.windowed(1000, 1000, true)

@@ -11,7 +11,6 @@ import io.georocket.output.Merger
 import io.georocket.output.MultiMerger
 import io.georocket.query.DefaultQueryCompiler
 import io.georocket.storage.ChunkMeta
-import io.georocket.storage.DeleteMeta
 import io.georocket.storage.Store
 import io.georocket.storage.StoreCursor
 import io.georocket.storage.StoreFactory
@@ -278,6 +277,11 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
     return te != null && te.lowercase(Locale.getDefault()).contains("trailers")
   }
 
+  private fun compileQuery(search: String?, path: String): JsonObject {
+    return DefaultQueryCompiler(metaIndexerFactories + indexerFactories)
+      .compileQuery(search ?: "", path)
+  }
+
   /**
    * Retrieve all chunks matching the specified query and path
    */
@@ -334,8 +338,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
     response.isChunked = true
     response.setStatusCode(200).write("[")
 
-    val query = DefaultQueryCompiler(metaIndexerFactories + indexerFactories)
-      .compileQuery(search ?: "", path)
+    val query = compileQuery(search, path)
     val values = index.getAttributeValues(query, attribute)
 
     try {
@@ -367,8 +370,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
     response.setStatusCode(200).write("[")
 
     try {
-      val query = DefaultQueryCompiler(metaIndexerFactories + indexerFactories)
-        .compileQuery(search ?: "", path)
+      val query = compileQuery(search, path)
       val values = index.getPropertyValues(query, property)
 
       for (v in values) {
@@ -569,9 +571,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
       } else if (StringUtils.isNotEmpty(tags)) {
         removeTags(search, path, tags, response)
       } else {
-        val strAsync = request.getParam("async")
-        val async = BooleanUtils.toBoolean(strAsync)
-        deleteChunks(search, path, async, response)
+        deleteChunks(search, path, response)
       }
     }
   }
@@ -584,8 +584,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
       properties: String, response: HttpServerResponse) {
     val list = properties.split(",")
     try {
-      val query = DefaultQueryCompiler(metaIndexerFactories + indexerFactories)
-        .compileQuery(search ?: "", path)
+      val query = compileQuery(search, path)
       index.removeProperties(query, list)
       response
           .setStatusCode(204)
@@ -602,8 +601,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
       response: HttpServerResponse) {
     val list = tags.split(",")
     try {
-      val query = DefaultQueryCompiler(metaIndexerFactories + indexerFactories)
-        .compileQuery(search ?: "", path)
+      val query = compileQuery(search, path)
       index.removeTags(query, list)
       response
           .setStatusCode(204)
@@ -617,31 +615,19 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
    * Delete all chunks matching the given [search] query and [path]. The
    * [async] flag specifies if chunks should be deleted asynchronously or not.
    */
-  private suspend fun deleteChunks(search: String?, path: String, async: Boolean,
+  private suspend fun deleteChunks(search: String?, path: String,
       response: HttpServerResponse) {
-    val correlationId = ObjectId().toString()
-    val deleteMeta = DeleteMeta(correlationId)
-    if (async) {
+    try {
+      val query = compileQuery(search, path)
+      val hits = index.getMeta(query)
+      index.delete(query)
+      store.delete(hits.map { it.getString("id") })
       response
-          .setStatusCode(202) // Accepted
-          .putHeader("X-Correlation-Id", correlationId)
+          .setStatusCode(204) // No Content
           .end()
-      try {
-        store.delete(search, path, deleteMeta)
-      } catch (t: Throwable) {
-        log.error("Could not delete chunks", t)
-      }
-    } else {
-      try {
-        store.delete(search, path, deleteMeta)
-        response
-            .setStatusCode(204) // No Content
-            .putHeader("X-Correlation-Id", correlationId)
-            .end()
-      } catch (t: Throwable) {
-        log.error("Could not delete chunks", t)
-        Endpoint.fail(response, t)
-      }
+    } catch (t: Throwable) {
+      log.error("Could not delete chunks", t)
+      Endpoint.fail(response, t)
     }
   }
 
@@ -659,8 +645,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
 
     launch {
       if (StringUtils.isNotEmpty(properties) || StringUtils.isNotEmpty(tags)) {
-        val query = DefaultQueryCompiler(metaIndexerFactories + indexerFactories)
-          .compileQuery(search, path)
+        val query = compileQuery(search, path)
 
         try {
           if (StringUtils.isNotEmpty(properties)) {

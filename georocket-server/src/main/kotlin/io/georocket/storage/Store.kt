@@ -27,11 +27,9 @@ interface Store {
   suspend fun getOne(path: String): Buffer
 
   /**
-   * Delete all chunks from the store that match a given [search] query and
-   * [path]. Callers should pass a [deleteMetadata] object with a unique
-   * `correlationId` so the deletion process can be tracked correctly.
+   * Delete all chunks from the store that match a given [paths]
    */
-  suspend fun delete(search: String?, path: String, deleteMetadata: DeleteMeta)
+  suspend fun delete(paths: Collection<String>)
 
   /**
    * Get a number of chunks from the store using a given [search] query and [path]

@@ -95,7 +95,8 @@ class MongoDBStore private constructor(vertx: Vertx) : IndexedStore(vertx) {
     return filename
   }
 
-  override suspend fun doDeleteChunks(paths: Iterable<String>) {
+  override suspend fun delete(paths: Collection<String>) {
+    // TODO optimize?
     for (filename in paths) {
       gridfs.find(BsonDocument("filename", BsonString(filename))).asFlow().collect { file ->
         gridfs.delete(file.objectId).awaitSingleOrNull()

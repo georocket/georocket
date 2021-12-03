@@ -48,7 +48,7 @@ class H2Store(vertx: Vertx, path: String? = null) : IndexedStore(vertx) {
     return filename
   }
 
-  override suspend fun doDeleteChunks(paths: Iterable<String>) {
+  override suspend fun delete(paths: Collection<String>) {
     paths.forEach { map.remove(it) }
   }
 }

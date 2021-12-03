@@ -71,7 +71,7 @@ class FileStore(private val vertx: Vertx, storagePath: String? = null) : Indexed
     return fs.readFileAwait(absolutePath)
   }
 
-  override suspend fun doDeleteChunks(paths: Iterable<String>) {
+  override suspend fun delete(paths: Collection<String>) {
     val fs = vertx.fileSystem()
     for (path in paths) {
       val absolutePath = PathUtils.join(root, path)
