@@ -10,8 +10,6 @@ repositories {
 }
 
 dependencies {
-    compile project(':georocket-common-api')
-
     compile "io.vertx:vertx-core:$vertxVersion"
     compile "io.vertx:vertx-web:$vertxVersion"
     
