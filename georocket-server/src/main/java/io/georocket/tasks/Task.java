@@ -18,9 +18,7 @@ import java.util.List;
   property = "type")
 @JsonSubTypes({
   @JsonSubTypes.Type(value = ImportingTask.class, name = "importing"),
-  @JsonSubTypes.Type(value = PurgingTask.class, name = "purging"),
   @JsonSubTypes.Type(value = ReceivingTask.class, name = "receiving"),
-  @JsonSubTypes.Type(value = RemovingTask.class, name = "removing")
 })
 @JsonInclude(value = JsonInclude.Include.NON_NULL)
 public interface Task {

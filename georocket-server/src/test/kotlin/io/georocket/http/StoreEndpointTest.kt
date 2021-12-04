@@ -2,12 +2,11 @@ package io.georocket.http
 
 import io.georocket.coVerify
 import io.georocket.constants.ConfigConstants
+import io.georocket.index.mongodb.MongoDBIndex
 import io.georocket.storage.GeoJsonChunkMeta
 import io.georocket.storage.Store
-import io.georocket.storage.StoreCursor
 import io.georocket.storage.StoreFactory
 import io.mockk.coEvery
-import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
@@ -46,6 +45,7 @@ import java.nio.file.Path
 class StoreEndpointTest {
   private var port: Int = 0
   private lateinit var store: Store
+  private lateinit var index: MongoDBIndex
 
   private class EndpointVerticle(private val port: Int) : CoroutineVerticle() {
     override suspend fun start() {
@@ -64,6 +64,10 @@ class StoreEndpointTest {
     store = mockk()
     mockkObject(StoreFactory)
     coEvery { StoreFactory.createStore(any()) } returns store
+
+    index = mockk()
+    mockkObject(MongoDBIndex)
+    coEvery { MongoDBIndex.create(any()) } returns index
 
     val config = json {
       obj(
@@ -90,18 +94,7 @@ class StoreEndpointTest {
 
     val cm = GeoJsonChunkMeta("Polygon", "geometries", 0, chunk1.length())
 
-    coEvery { store.get(null, "/") } answers {
-      val cursor = mockk<StoreCursor>()
-
-      coEvery { cursor.hasNext() } returns true andThen false
-      coEvery { cursor.next() } returns cm
-
-      every { cursor.iterator() } returns cursor
-      every { cursor.chunkPath } returns chunk1Path
-
-      cursor
-    }
-
+    coEvery { index.getMeta(any()) } returns listOf(cm.toJsonObject().put("id", chunk1Path))
     coEvery { store.getOne(chunk1Path) } returns chunk1
 
     val client = WebClient.create(vertx)

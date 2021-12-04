@@ -1,20 +1,11 @@
 package io.georocket.storage
 
 import io.georocket.coVerify
-import io.georocket.constants.AddressConstants
-import io.georocket.util.PathUtils
 import io.georocket.util.UniqueID
-import io.vertx.core.Promise
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
-import io.vertx.core.json.JsonArray
-import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
-import io.vertx.kotlin.core.json.array
-import io.vertx.kotlin.core.json.json
-import io.vertx.kotlin.core.json.obj
-import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -33,6 +24,8 @@ import org.junit.jupiter.api.extension.ExtendWith
  *
  * @author Andrej Sajenko
  * @author Michel Kraemer
+ *
+ * TODO rewrite completely
  */
 @ExtendWith(VertxExtension::class)
 abstract class StorageTest {
@@ -47,12 +40,6 @@ abstract class StorageTest {
      */
     @JvmStatic
     val CHUNK_CONTENT = "<b>This is a chunk content</b>"
-
-    /**
-     * Test data: search for a Store (value is irrelevant for the test, because
-     * this test do not use the Indexer)
-     */
-    protected const val SEARCH = "irrelevant but necessary value"
 
     /**
      * Test data: fallback CRS for chunk indexing
@@ -84,58 +71,6 @@ abstract class StorageTest {
      */
     @JvmStatic
     val ID = UniqueID.next()
-
-    /**
-     * Test data: the parents of one hit
-     */
-    protected val PARENTS = JsonArray()
-
-    /**
-     * Test data: start of a hit
-     */
-    protected const val START = 0
-
-    /**
-     * Test data: end of a hit
-     */
-    protected const val END = 5
-
-    /**
-     * Test data: Total amount of hits
-     */
-    protected const val TOTAL_HITS = 1L
-
-    /**
-     * Test data: scroll id
-     */
-    protected const val SCROLL_ID = "0"
-
-    /**
-     * Create a JsonObject from an optional [pathPrefix] to simulate a reply
-     * from an indexer
-     */
-    protected fun createIndexerQueryReply(pathPrefix: String?): JsonObject {
-      val path = if (pathPrefix != null && pathPrefix.isNotBlank()) {
-        PathUtils.join(pathPrefix, ID)
-      } else {
-        ID
-      }
-
-      return json {
-        obj(
-            "totalHits" to TOTAL_HITS,
-            "scrollId" to SCROLL_ID,
-            "hits" to array(
-                obj(
-                    "parents" to PARENTS,
-                    "start" to START,
-                    "end" to END,
-                    "id" to path
-                )
-            )
-        )
-      }
-    }
   }
 
   /**
@@ -179,22 +114,6 @@ abstract class StorageTest {
   protected abstract suspend fun validateAfterStoreDelete(ctx: VertxTestContext,
       vertx: Vertx, path: String)
 
-  private fun mockIndexerQuery(ctx: VertxTestContext, vertx: Vertx, path: String?): Promise<Unit> {
-    val result = Promise.promise<Unit>()
-    vertx.eventBus().consumer<JsonObject>(AddressConstants.INDEXER_QUERY).handler { request ->
-      val msg = request.body()
-      ctx.verify {
-        assertThat(msg.map).containsKey("size")
-        assertThat(msg.map).containsKey("search")
-        val indexSearch = msg.getString("search")
-        assertThat(indexSearch).isEqualTo(SEARCH)
-        request.reply(createIndexerQueryReply(path))
-        result.complete()
-      }
-    }
-    return result
-  }
-
   /**
    * Call [testAdd] with `null` as path
    */
@@ -209,38 +128,6 @@ abstract class StorageTest {
   @Test
   fun testAddWithSubfolder(ctx: VertxTestContext, vertx: Vertx) {
     testAdd(ctx, vertx, TEST_FOLDER)
-  }
-
-  /**
-   * Call [testDelete] with `null` as path.
-   */
-  @Test
-  fun testDeleteWithoutSubfolder(ctx: VertxTestContext, vertx: Vertx) {
-    testDelete(ctx, vertx, null)
-  }
-
-  /**
-   * Call [testDelete] with a path.
-   */
-  @Test
-  fun testDeleteWithSubfolder(ctx: VertxTestContext, vertx: Vertx) {
-    testDelete(ctx, vertx, TEST_FOLDER)
-  }
-
-  /**
-   * Call [testGet] with null as path.
-   */
-  @Test
-  fun testGetWithoutSubfolder(ctx: VertxTestContext, vertx: Vertx) {
-    testGet(ctx, vertx, null)
-  }
-
-  /**
-   * Call [testGet] with a path.
-   */
-  @Test
-  fun testGetWithSubfolder(ctx: VertxTestContext, vertx: Vertx) {
-    testGet(ctx, vertx, TEST_FOLDER)
   }
 
   /**
@@ -267,13 +154,6 @@ abstract class StorageTest {
   private fun testAdd(ctx: VertxTestContext, vertx: Vertx, path: String?) {
     GlobalScope.launch(vertx.dispatcher()) {
       val store = createStore(vertx)
-
-      // register query
-      vertx.eventBus().consumer<Any>(AddressConstants.INDEXER_QUERY).handler {
-        ctx.failNow(IllegalStateException("Indexer should not be notified for " +
-            "a query event after Store::add was called!"))
-      }
-
       val indexMeta = IndexMeta(IMPORT_ID, ID, TIMESTAMP, TAGS, PROPERTIES, FALLBACK_CRS_STRING)
 
       ctx.coVerify {
@@ -281,57 +161,6 @@ abstract class StorageTest {
         store.add(Buffer.buffer(CHUNK_CONTENT), p)
         validateAfterStoreAdd(ctx, vertx, path)
       }
-      ctx.completeNow()
-    }
-  }
-
-  /**
-   * Add test data and try to delete them with the [Store.delete] method,
-   * then check the storage for any data
-   */
-  private fun testDelete(ctx: VertxTestContext, vertx: Vertx, path: String?) {
-    GlobalScope.launch(vertx.dispatcher()) {
-      val resultPath = prepareData(ctx, vertx, path)
-
-      val store = createStore(vertx)
-
-      // register query
-      val queryPromise = mockIndexerQuery(ctx, vertx, path)
-      store.delete(listOf(resultPath))
-
-      validateAfterStoreDelete(ctx, vertx, resultPath)
-
-      queryPromise.future().await()
-
-      ctx.completeNow()
-    }
-  }
-
-  /**
-   * Add test data with meta data and try to retrieve them with the
-   * [Store.get] method
-   */
-  private fun testGet(ctx: VertxTestContext, vertx: Vertx, path: String?) {
-    GlobalScope.launch(vertx.dispatcher()) {
-      // register query
-      val queryPromise = mockIndexerQuery(ctx, vertx, path)
-
-      val resultPath = prepareData(ctx, vertx, path)
-
-      val store = createStore(vertx)
-      val cursor = store.get(SEARCH, resultPath)
-
-      ctx.coVerify {
-        assertThat(cursor.hasNext()).isTrue
-        val meta = cursor.next()
-        assertThat(meta.getEnd()).isEqualTo(END)
-        assertThat(meta.getStart()).isEqualTo(START)
-        val fileName = cursor.chunkPath
-        assertThat(fileName).isEqualTo(PathUtils.join(path, ID))
-      }
-
-      queryPromise.future().await()
-
       ctx.completeNow()
     }
   }

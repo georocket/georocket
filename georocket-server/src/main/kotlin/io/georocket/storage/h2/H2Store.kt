@@ -2,7 +2,7 @@ package io.georocket.storage.h2
 
 import io.georocket.constants.ConfigConstants
 import io.georocket.storage.IndexMeta
-import io.georocket.storage.indexed.IndexedStore
+import io.georocket.storage.Store
 import io.georocket.util.PathUtils
 import io.georocket.util.UniqueID
 import io.vertx.core.Vertx
@@ -13,7 +13,7 @@ import java.io.FileNotFoundException
  * Stores chunks in a H2 database
  * @author Michel Kraemer
  */
-class H2Store(vertx: Vertx, path: String? = null) : IndexedStore(vertx) {
+class H2Store(vertx: Vertx, path: String? = null) : Store {
   internal val map: SharedMVMap
 
   init {

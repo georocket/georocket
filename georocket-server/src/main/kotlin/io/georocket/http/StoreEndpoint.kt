@@ -7,13 +7,14 @@ import io.georocket.index.Index
 import io.georocket.index.IndexerFactory
 import io.georocket.index.MetaIndexerFactory
 import io.georocket.index.mongodb.MongoDBIndex
-import io.georocket.output.Merger
 import io.georocket.output.MultiMerger
 import io.georocket.query.DefaultQueryCompiler
 import io.georocket.storage.ChunkMeta
+import io.georocket.storage.GeoJsonChunkMeta
+import io.georocket.storage.JsonChunkMeta
 import io.georocket.storage.Store
-import io.georocket.storage.StoreCursor
 import io.georocket.storage.StoreFactory
+import io.georocket.storage.XMLChunkMeta
 import io.georocket.tasks.ReceivingTask
 import io.georocket.tasks.TaskError
 import io.georocket.util.FilteredServiceLoader
@@ -119,123 +120,6 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
   }
 
   /**
-   * Perform a search and merge all retrieved chunks using the given merger
-   * @param merger the merger
-   * @param data Data to merge into the response
-   * @param out the response to write the merged chunks to
-   * @param trailersAllowed `true` if the HTTP client accepts trailers
-   * @return a single that will emit one item when all chunks have been merged
-   */
-  private suspend fun doMerge(merger: Merger<ChunkMeta>, data: StoreCursor,
-      out: HttpServerResponse, trailersAllowed: Boolean) {
-    var accepted = 0L
-    var notaccepted = 0L
-
-    for (chunkMeta in data) {
-      val chunk = store.getOne(data.chunkPath)
-      try {
-        merger.merge(chunk, chunkMeta, out)
-        accepted++
-      } catch (e: IllegalStateException) {
-        // Chunk cannot be merged. maybe it's a new one that has
-        // been added after the merger was initialized. Just
-        // ignore it, but emit a warning later
-        notaccepted++
-      }
-    }
-
-    if (notaccepted > 0) {
-      log.warn("Could not merge " + notaccepted + " chunks "
-          + "because the merger did not accept them. Most likely "
-          + "these are new chunks that were added while "
-          + "merging was in progress or those that were ignored "
-          + "during optimistic merging. If this worries you, "
-          + "just repeat the request.")
-    }
-
-    if (trailersAllowed) {
-      out.putTrailer(TRAILER_UNMERGED_CHUNKS, notaccepted.toString())
-    }
-
-    if (accepted > 0) {
-      merger.finish(out)
-    } else {
-      throw FileNotFoundException("Not Found")
-    }
-  }
-
-  /**
-   * Read the routing [context], select the right [StoreCursor] and set
-   * response headers. For the first call to this method within a request,
-   * [preview] must equal `true`, and for the second one (if there is one),
-   * the parameter must equal `false`. This method must not be called more than
-   * two times within a request.
-   */
-  private suspend fun prepareCursor(context: RoutingContext, preview: Boolean): StoreCursor {
-    val request = context.request()
-    val response = context.response()
-
-    val scroll = request.getParam("scroll")
-    val scrollIdParam = request.getParam("scrollId")
-    val scrolling = BooleanUtils.toBoolean(scroll) || scrollIdParam != null
-
-    // if we're generating a preview, split the scrollId param at ':' and
-    // use the first part. Otherwise use the second one.
-    val scrollId = if (scrollIdParam != null) {
-      val scrollIdParts = scrollIdParam.split(":")
-      if (preview) {
-        scrollIdParts[0]
-      } else {
-        scrollIdParts[1]
-      }
-    } else {
-      null
-    }
-
-    val path = Endpoint.getEndpointPath(context)
-    val search = request.getParam("search")
-    val strSize = request.getParam("size")
-    val size = strSize?.toInt() ?: 100
-
-    val cursor = if (scrolling) {
-      if (scrollId == null) {
-        store.scroll(search, path, size)
-      } else {
-        store.scroll(scrollId)
-      }
-    } else {
-      store.get(search, path)
-    }
-
-    if (scrolling) {
-      // create a new scrollId consisting of the one used for the preview and
-      // the other one used for the real query
-      var newScrollId = cursor.info.scrollId
-
-      if (!preview) {
-        var oldScrollId = response.headers()["X-Scroll-Id"]
-
-        if (isOptimisticMerging(request)) {
-          oldScrollId = "0"
-        } else if (oldScrollId == null) {
-          throw IllegalStateException("A preview must be generated " +
-              "before the actual request can be made. This usually happens " +
-              "when the merger is initialized.")
-        }
-
-        newScrollId = "$oldScrollId:$newScrollId"
-      }
-
-      response
-          .putHeader("X-Scroll-Id", newScrollId)
-          .putHeader("X-Total-Hits", cursor.info.totalHits.toString())
-          .putHeader("X-Hits", cursor.info.currentHits.toString())
-    }
-
-    return cursor
-  }
-
-  /**
    * Handles the HTTP GET request for a bunch of chunks
    */
   private fun onGet(context: RoutingContext) {
@@ -283,11 +167,32 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
   }
 
   /**
+   * Extract a path string and a [ChunkMeta] object from a given [hit] object
+   */
+  private fun createChunkMeta(hit: JsonObject): Pair<String, ChunkMeta> {
+    val path = hit.getString("id")
+    val mimeType = hit.getString("mimeType", XMLChunkMeta.MIME_TYPE)
+    return path to if (MimeTypeUtils.belongsTo(mimeType, "application", "xml") ||
+      MimeTypeUtils.belongsTo(mimeType, "text", "xml")) {
+      XMLChunkMeta(hit)
+    } else if (MimeTypeUtils.belongsTo(mimeType, "application", "geo+json")) {
+      GeoJsonChunkMeta(hit)
+    } else if (MimeTypeUtils.belongsTo(mimeType, "application", "json")) {
+      JsonChunkMeta(hit)
+    } else {
+      ChunkMeta(hit)
+    }
+  }
+
+  /**
    * Retrieve all chunks matching the specified query and path
    */
   private suspend fun getChunks(context: RoutingContext) {
     val request = context.request()
     val response = context.response()
+
+    val path = Endpoint.getEndpointPath(context)
+    val search = request.getParam("search")
 
     // Our responses must always be chunked because we cannot calculate
     // the exact content-length beforehand. We perform two searches, one to
@@ -305,20 +210,52 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
     }
 
     try {
-      // perform two searches: first initialize the merger and then
-      // merge all retrieved chunks
+      val query = compileQuery(search, path)
+      val metas = index.getMeta(query).map { createChunkMeta(it) }
+
       val merger = MultiMerger(optimisticMerging)
 
       // skip initialization if optimistic merging is enabled
       if (!optimisticMerging) {
-        val cursor = prepareCursor(context, true)
-        while (cursor.hasNext()) {
-          val cm = cursor.next()
-          merger.init(cm)
+        metas.forEach { merger.init(it.second) }
+      }
+
+      // merge chunks
+      var accepted = 0L
+      var notaccepted = 0L
+
+      for (chunkMeta in metas) {
+        val chunk = store.getOne(chunkMeta.first)
+        try {
+          merger.merge(chunk, chunkMeta.second, response)
+          accepted++
+        } catch (e: IllegalStateException) {
+          // Chunk cannot be merged. maybe it's a new one that has
+          // been added after the merger was initialized. Just
+          // ignore it, but emit a warning later
+          notaccepted++
         }
       }
 
-      doMerge(merger, prepareCursor(context, false), response, isTrailerAccepted)
+      if (notaccepted > 0) {
+        log.warn("Could not merge " + notaccepted + " chunks "
+            + "because the merger did not accept them. Most likely "
+            + "these are new chunks that were added while "
+            + "merging was in progress or those that were ignored "
+            + "during optimistic merging. If this worries you, "
+            + "just repeat the request.")
+      }
+
+      if (isTrailerAccepted) {
+        response.putTrailer(TRAILER_UNMERGED_CHUNKS, notaccepted.toString())
+      }
+
+      if (accepted > 0) {
+        merger.finish(response)
+      } else {
+        throw FileNotFoundException("Not Found")
+      }
+
       response.end()
     } catch (t: Throwable) {
       if (t !is FileNotFoundException) {
@@ -612,8 +549,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
   }
 
   /**
-   * Delete all chunks matching the given [search] query and [path]. The
-   * [async] flag specifies if chunks should be deleted asynchronously or not.
+   * Delete all chunks matching the given [search] query and [path].
    */
   private suspend fun deleteChunks(search: String?, path: String,
       response: HttpServerResponse) {

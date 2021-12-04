@@ -2,7 +2,7 @@ package io.georocket.storage.s3
 
 import io.georocket.constants.ConfigConstants
 import io.georocket.storage.IndexMeta
-import io.georocket.storage.indexed.IndexedStore
+import io.georocket.storage.Store
 import io.georocket.util.PathUtils
 import io.georocket.util.UniqueID
 import io.vertx.core.Vertx
@@ -27,7 +27,7 @@ import java.net.URI
  * @author Michel Kraemer
  */
 class S3Store(vertx: Vertx, accessKey: String? = null, secretKey: String? = null,
-    endpoint: String? = null, bucket: String? = null, region: String? = null) : IndexedStore(vertx) {
+    endpoint: String? = null, bucket: String? = null, region: String? = null) : Store {
   private val bucket: String
   private val s3: S3AsyncClient
 

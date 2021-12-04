@@ -2,7 +2,7 @@ package io.georocket.storage.file
 
 import io.georocket.constants.ConfigConstants
 import io.georocket.storage.IndexMeta
-import io.georocket.storage.indexed.IndexedStore
+import io.georocket.storage.Store
 import io.georocket.util.PathUtils
 import io.georocket.util.UniqueID
 import io.vertx.core.Vertx
@@ -21,7 +21,7 @@ import java.io.FileNotFoundException
  * Stores chunks on the file system
  * @author Michel Kraemer
  */
-class FileStore(private val vertx: Vertx, storagePath: String? = null) : IndexedStore(vertx) {
+class FileStore(private val vertx: Vertx, storagePath: String? = null) : Store {
   /**
    * The folder where the chunks should be saved
    */

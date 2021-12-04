@@ -14,7 +14,7 @@ import io.georocket.constants.ConfigConstants.STORAGE_MONGODB_CONNECTION_STRING
 import io.georocket.constants.ConfigConstants.STORAGE_MONGODB_EMBEDDED
 import io.georocket.index.mongodb.SharedMongoClient
 import io.georocket.storage.IndexMeta
-import io.georocket.storage.indexed.IndexedStore
+import io.georocket.storage.Store
 import io.georocket.util.PathUtils
 import io.georocket.util.UniqueID
 import io.georocket.util.deleteManyAwait
@@ -34,13 +34,13 @@ import java.lang.Integer.min
  * Stores chunks in MongoDB
  * @author Michel Kraemer
  */
-class MongoDBStore private constructor(vertx: Vertx) : IndexedStore(vertx) {
+class MongoDBStore private constructor() : Store {
   companion object {
     private const val MAX_BINARY_DATA_SIZE = 1024 * 1024 * 15
 
     suspend fun create(vertx: Vertx, connectionString: String? = null,
         storagePath: String? = null): MongoDBStore {
-      val r = MongoDBStore(vertx)
+      val r = MongoDBStore()
       r.start(vertx, connectionString, storagePath)
       return r
     }

@@ -37,20 +37,4 @@ interface Store {
    * Delete all chunks from the store that match a given [paths]
    */
   suspend fun delete(paths: Collection<String>)
-
-  /**
-   * Get a number of chunks from the store using a given [search] query and [path]
-   */
-  suspend fun get(search: String?, path: String): StoreCursor
-
-  /**
-   * Start scrolling over chunks matching the given [search] query and [path]
-   * but load only one frame with a given [size].
-   */
-  suspend fun scroll(search: String?, path: String, size: Int): StoreCursor
-
-  /**
-   * Continue scrolling with a given [scrollId]
-   */
-  suspend fun scroll(scrollId: String): StoreCursor
 }
