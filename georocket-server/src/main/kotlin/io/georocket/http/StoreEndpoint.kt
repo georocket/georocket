@@ -9,12 +9,8 @@ import io.georocket.index.MetaIndexerFactory
 import io.georocket.index.mongodb.MongoDBIndex
 import io.georocket.output.MultiMerger
 import io.georocket.query.DefaultQueryCompiler
-import io.georocket.storage.ChunkMeta
-import io.georocket.storage.GeoJsonChunkMeta
-import io.georocket.storage.JsonChunkMeta
 import io.georocket.storage.Store
 import io.georocket.storage.StoreFactory
-import io.georocket.storage.XMLChunkMeta
 import io.georocket.tasks.ReceivingTask
 import io.georocket.tasks.TaskError
 import io.georocket.util.FilteredServiceLoader
@@ -167,24 +163,6 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
   }
 
   /**
-   * Extract a path string and a [ChunkMeta] object from a given [hit] object
-   */
-  private fun createChunkMeta(hit: JsonObject): Pair<String, ChunkMeta> {
-    val path = hit.getString("id")
-    val mimeType = hit.getString("mimeType", XMLChunkMeta.MIME_TYPE)
-    return path to if (MimeTypeUtils.belongsTo(mimeType, "application", "xml") ||
-      MimeTypeUtils.belongsTo(mimeType, "text", "xml")) {
-      XMLChunkMeta(hit)
-    } else if (MimeTypeUtils.belongsTo(mimeType, "application", "geo+json")) {
-      GeoJsonChunkMeta(hit)
-    } else if (MimeTypeUtils.belongsTo(mimeType, "application", "json")) {
-      JsonChunkMeta(hit)
-    } else {
-      ChunkMeta(hit)
-    }
-  }
-
-  /**
    * Retrieve all chunks matching the specified query and path
    */
   private suspend fun getChunks(context: RoutingContext) {
@@ -194,6 +172,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
     val path = Endpoint.getEndpointPath(context)
     val search = request.getParam("search")
 
+    // TODO this is not necessarily true anymore!
     // Our responses must always be chunked because we cannot calculate
     // the exact content-length beforehand. We perform two searches, one to
     // initialize the merger and one to do the actual merge. The problem is
@@ -211,7 +190,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
 
     try {
       val query = compileQuery(search, path)
-      val metas = index.getMeta(query).map { createChunkMeta(it) }
+      val metas = index.getMeta(query)
 
       val merger = MultiMerger(optimisticMerging)
 
@@ -555,9 +534,9 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
       response: HttpServerResponse) {
     try {
       val query = compileQuery(search, path)
-      val hits = index.getMeta(query)
+      val paths = index.getPaths(query)
       index.delete(query)
-      store.delete(hits.map { it.getString("id") })
+      store.delete(paths)
       response
           .setStatusCode(204) // No Content
           .end()

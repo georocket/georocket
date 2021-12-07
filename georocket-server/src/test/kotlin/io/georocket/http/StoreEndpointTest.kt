@@ -94,7 +94,7 @@ class StoreEndpointTest {
 
     val cm = GeoJsonChunkMeta("Polygon", "geometries", 0, chunk1.length())
 
-    coEvery { index.getMeta(any()) } returns listOf(cm.toJsonObject().put("id", chunk1Path))
+    coEvery { index.getMeta(any()) } returns listOf(chunk1Path to cm)
     coEvery { store.getOne(chunk1Path) } returns chunk1
 
     val client = WebClient.create(vertx)

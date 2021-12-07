@@ -5,6 +5,7 @@ import io.georocket.http.Endpoint
 import io.georocket.http.GeneralEndpoint
 import io.georocket.http.StoreEndpoint
 import io.georocket.http.TaskEndpoint
+import io.georocket.ogcapifeatures.OgcApiFeaturesEndpoint
 import io.georocket.tasks.TaskVerticle
 import io.georocket.util.FilteredServiceLoader
 import io.georocket.util.JsonUtils
@@ -133,6 +134,9 @@ class GeoRocket : CoroutineVerticle() {
     val te = TaskEndpoint(coroutineContext, vertx)
     router.mountSubRouter("/tasks", te.createRouter())
 
+    val ogc = OgcApiFeaturesEndpoint(coroutineContext, vertx)
+    router.mountSubRouter("/ogcapifeatures", ogc.createRouter())
+
     router.route().handler { ctx ->
       val reason = "The endpoint ${ctx.request().path()} does not exist"
       ctx.response()
@@ -143,6 +147,7 @@ class GeoRocket : CoroutineVerticle() {
     endpoints.add(ge)
     endpoints.add(se)
     endpoints.add(te)
+    endpoints.add(ogc)
 
     return router
   }

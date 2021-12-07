@@ -22,6 +22,7 @@ public final class ConfigConstants {
   public static final String HTTP_CERT_PATH = "georocket.http.certPath";
   public static final String HTTP_KEY_PATH = "georocket.http.keyPath";
   public static final String HTTP_ALPN = "georocket.http.alpn";
+  public static final String HTTP_POST_MAX_SIZE = "georocket.http.postMaxSize";
 
   public static final String HTTP_CORS_ENABLE = "georocket.http.cors.enable";
   public static final String HTTP_CORS_ALLOW_ORIGIN = "georocket.http.cors.allowOrigin";
@@ -61,8 +62,6 @@ public final class ConfigConstants {
   public static final int DEFAULT_PORT = 63020;
 
   public static final int DEFAULT_INDEX_MAX_BULK_SIZE = 200;
-  public static final long DEFAULT_INDEX_INDEXABLE_CHUNK_CACHE_MAX_SIZE = 1024L * 1024 * 64; // 64 MB
-  public static final long DEFAULT_INDEX_INDEXABLE_CHUNK_CACHE_MAX_TIME_SECONDS = 60;
 
   public static final long DEFAULT_TASKS_RETAIN_SECONDS = 60 * 2;
 

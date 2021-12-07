@@ -1,5 +1,6 @@
 package io.georocket.index
 
+import io.georocket.storage.ChunkMeta
 import io.vertx.core.json.JsonObject
 
 interface Index {
@@ -9,7 +10,9 @@ interface Index {
 
   suspend fun addMany(docs: Collection<Pair<String, JsonObject>>)
 
-  suspend fun getMeta(query: JsonObject): List<JsonObject>
+  suspend fun getMeta(query: JsonObject): List<Pair<String, ChunkMeta>>
+
+  suspend fun getPaths(query: JsonObject): List<String>
 
   suspend fun addTags(query: JsonObject, tags: Collection<String>)
 
@@ -24,4 +27,12 @@ interface Index {
   suspend fun getAttributeValues(query: JsonObject, attributeName: String): List<Any?>
 
   suspend fun delete(query: JsonObject)
+
+  suspend fun getCollections(): List<String>
+
+  suspend fun addCollection(name: String)
+
+  suspend fun existsCollection(name: String): Boolean
+
+  suspend fun deleteCollection(name: String)
 }

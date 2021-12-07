@@ -8,7 +8,13 @@ import io.georocket.constants.ConfigConstants.EMBEDDED_MONGODB_STORAGE_PATH
 import io.georocket.constants.ConfigConstants.INDEX_MONGODB_CONNECTION_STRING
 import io.georocket.constants.ConfigConstants.INDEX_MONGODB_EMBEDDED
 import io.georocket.index.Index
+import io.georocket.storage.ChunkMeta
+import io.georocket.storage.GeoJsonChunkMeta
+import io.georocket.storage.JsonChunkMeta
+import io.georocket.storage.XMLChunkMeta
+import io.georocket.util.MimeTypeUtils
 import io.georocket.util.aggregateAwait
+import io.georocket.util.countDocumentsAwait
 import io.georocket.util.deleteManyAwait
 import io.georocket.util.findAwait
 import io.georocket.util.insertManyAwait
@@ -22,10 +28,10 @@ import io.vertx.kotlin.core.json.obj
 
 class MongoDBIndex private constructor() : Index {
   companion object {
-    private const val ID = "id"
     private const val INTERNAL_ID = "_id"
     private const val CHUNK_META = "chunkMeta"
     private const val COLL_DOCUMENTS = "documents"
+    private const val COLL_COLLECTIONS = "ogcapifeatures.collections"
 
     suspend fun create(vertx: Vertx, connectionString: String? = null,
         storagePath: String? = null): MongoDBIndex {
@@ -39,6 +45,7 @@ class MongoDBIndex private constructor() : Index {
   private lateinit var db: MongoDatabase
 
   private lateinit var collDocuments: MongoCollection<JsonObject>
+  private lateinit var collCollections: MongoCollection<JsonObject>
 
   private suspend fun start(vertx: Vertx, connectionString: String?,
       storagePath: String?) {
@@ -63,6 +70,7 @@ class MongoDBIndex private constructor() : Index {
     }
 
     collDocuments = db.getCollection(COLL_DOCUMENTS, JsonObject::class.java)
+    collCollections = db.getCollection(COLL_COLLECTIONS, JsonObject::class.java)
   }
 
   override suspend fun close() {
@@ -84,18 +92,41 @@ class MongoDBIndex private constructor() : Index {
     collDocuments.insertManyAwait(copies)
   }
 
-  override suspend fun getMeta(query: JsonObject): List<JsonObject> {
+  /**
+   * Extract a path string and a [ChunkMeta] object from a given [hit] object
+   */
+  private fun createChunkMeta(hit: JsonObject): Pair<String, ChunkMeta> {
+    val path = hit.getString(INTERNAL_ID)
+    val cm = hit.getJsonObject(CHUNK_META)
+    val mimeType = cm.getString("mimeType", XMLChunkMeta.MIME_TYPE)
+    return path to if (MimeTypeUtils.belongsTo(mimeType, "application", "xml") ||
+      MimeTypeUtils.belongsTo(mimeType, "text", "xml")) {
+      XMLChunkMeta(cm)
+    } else if (MimeTypeUtils.belongsTo(mimeType, "application", "geo+json")) {
+      GeoJsonChunkMeta(cm)
+    } else if (MimeTypeUtils.belongsTo(mimeType, "application", "json")) {
+      JsonChunkMeta(cm)
+    } else {
+      ChunkMeta(cm)
+    }
+  }
+
+  override suspend fun getMeta(query: JsonObject): List<Pair<String, ChunkMeta>> {
     val results = collDocuments.findAwait(query, projection = json {
       obj(
         CHUNK_META to 1
       )
     })
-    return results.map {
-      val id = it.getString(INTERNAL_ID)
-      val cm = it.getJsonObject(CHUNK_META)
-      cm.put(ID, id)
-      cm
-    }
+    return results.map { createChunkMeta(it) }
+  }
+
+  override suspend fun getPaths(query: JsonObject): List<String> {
+    val results = collDocuments.findAwait(query, projection = json {
+      obj(
+        INTERNAL_ID to 1
+      )
+    })
+    return results.map { it.getString(INTERNAL_ID) }
   }
 
   override suspend fun addTags(query: JsonObject, tags: Collection<String>) {
@@ -187,5 +218,33 @@ class MongoDBIndex private constructor() : Index {
 
   override suspend fun delete(query: JsonObject) {
     collDocuments.deleteManyAwait(query)
+  }
+
+  /**
+   * Get a list of all collections
+   */
+  override suspend fun getCollections(): List<String> {
+    return collCollections.findAwait(jsonObjectOf()).map { it.getString("name") }
+  }
+
+  /**
+   * Add a collection with a given [name]
+   */
+  override suspend fun addCollection(name: String) {
+    collCollections.insertOneAwait(jsonObjectOf("name" to name))
+  }
+
+  /**
+   * Test if a collection with a given [name] exists
+   */
+  override suspend fun existsCollection(name: String): Boolean {
+    return collCollections.countDocumentsAwait(jsonObjectOf("name" to name)) > 0
+  }
+
+  /**
+   * Delete one or more collections with the given [name]
+   */
+  override suspend fun deleteCollection(name: String) {
+    collCollections.deleteManyAwait(jsonObjectOf("name" to name))
   }
 }

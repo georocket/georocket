@@ -1,5 +1,6 @@
 package io.georocket.util
 
+import com.mongodb.client.model.CountOptions
 import com.mongodb.client.result.DeleteResult
 import com.mongodb.client.result.UpdateResult
 import com.mongodb.reactivestreams.client.MongoCollection
@@ -79,6 +80,17 @@ private suspend fun <T> wrapCoroutine(f: () -> Publisher<T>): T? {
   return suspendCancellableCoroutine { cont: CancellableContinuation<T?> ->
     f().subscribe(OneSubscriber(cont))
   }
+}
+
+suspend fun <T> MongoCollection<T>.countDocumentsAwait(filter: JsonObject,
+  limit: Int = -1): Long {
+  return wrapCoroutine {
+    val options = CountOptions()
+    if (limit >= 0) {
+      options.limit(limit)
+    }
+    countDocuments(JsonObjectBsonAdapter(filter), options)
+  } ?: 0
 }
 
 suspend fun <T> MongoCollection<T>.findAwait(filter: JsonObject, limit: Int = -1,
