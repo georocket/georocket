@@ -229,7 +229,7 @@ public class ImportParams {
    * {@link StoreClient#startImport(ImportParams, io.vertx.core.Handler)}.
    * The caller is responsible for compressing the data, for example by
    * wrapping the {@link io.vertx.core.streams.WriteStream} into a
-   * {@link io.georocket.util.io.GzipWriteStream}.
+   * io.georocket.util.io.GzipWriteStream.
    * @param compression the compression method (may be {@code null} if
    * no compression should be used)
    * @return a reference to this, so the API can be used fluently

@@ -1,8 +1,5 @@
 package io.georocket.constants;
 
-import io.georocket.config.ConfigKeysProvider;
-import io.georocket.util.FilteredServiceLoader;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -70,31 +67,12 @@ public final class ConfigConstants {
   }
 
   /**
-   * Get all configuration keys from this class and all extensions registered
-   * through the Service Provider Interface API.
-   * @see ConfigKeysProvider
+   * Get all configuration keys by enumerating over all string constants beginning
+   * with the prefix {@code georocket}
    * @return the list of configuration keys
    */
   public static List<String> getConfigKeys() {
-    List<String> r = getConfigKeys(ConfigConstants.class);
-
-    FilteredServiceLoader<ConfigKeysProvider> loader =
-        FilteredServiceLoader.load(ConfigKeysProvider.class);
-    for (ConfigKeysProvider ccp : loader) {
-      r.addAll(ccp.getConfigKeys());
-    }
-
-    return r;
-  }
-
-  /**
-   * Get all configuration keys by enumerating over all string constants beginning
-   * with the prefix {@code georocket} from a given class
-   * @param cls the class to inspect
-   * @return the list of configuration keys
-   */
-  public static List<String> getConfigKeys(Class<?> cls) {
-    return Arrays.stream(cls.getFields())
+    return Arrays.stream(ConfigConstants.class.getFields())
       .map(f -> {
         try {
           return f.get(null);

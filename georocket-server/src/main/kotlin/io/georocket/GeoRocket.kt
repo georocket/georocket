@@ -7,7 +7,6 @@ import io.georocket.http.StoreEndpoint
 import io.georocket.http.TaskEndpoint
 import io.georocket.ogcapifeatures.OgcApiFeaturesEndpoint
 import io.georocket.tasks.TaskVerticle
-import io.georocket.util.FilteredServiceLoader
 import io.georocket.util.JsonUtils
 import io.georocket.util.SizeFormat
 import io.vertx.core.DeploymentOptions
@@ -188,23 +187,12 @@ class GeoRocket : CoroutineVerticle() {
 
     val options = DeploymentOptions().setConfig(config)
 
-    // deploy extension verticles
-    for (verticle in FilteredServiceLoader.load(ExtensionVerticle::class.java)) {
-      vertx.deployVerticleAwait(verticle, options)
-    }
-
-    vertx.eventBus().publish(ExtensionVerticle.EXTENSION_VERTICLE_ADDRESS,
-        JsonObject().put("type", ExtensionVerticle.MESSAGE_ON_INIT))
-
-    // deploy other verticles
+    // deploy verticles
     vertx.deployVerticleAwait(TaskVerticle(), options)
     vertx.deployVerticleAwait(ImporterVerticle(), options)
 
     // deploy HTTP server
     deployHttpServer()
-
-    vertx.eventBus().publish(ExtensionVerticle.EXTENSION_VERTICLE_ADDRESS,
-        JsonObject().put("type", ExtensionVerticle.MESSAGE_POST_INIT))
 
     log.info("GeoRocket launched successfully.")
   }
