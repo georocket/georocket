@@ -2,11 +2,4 @@ include 'georocket-cli'
 include 'georocket-client-api'
 include 'georocket-common'
 include 'georocket-server'
-include 'georocket-server-api'
 include 'docs'
-
-// include extension projects (if there are any)
-def extSettings = '../georocket-ext-settings.gradle'
-if (file(extSettings).exists()) {
-    apply from: extSettings
-}

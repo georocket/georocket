@@ -22,8 +22,6 @@ repositories {
 }
 
 dependencies {
-    compile project(':georocket-server-api')
-
     compile "io.vertx:vertx-core:$vertxVersion"
     compile "io.vertx:vertx-lang-kotlin:$vertxVersion"
     compile "io.vertx:vertx-lang-kotlin-coroutines:$vertxVersion"
