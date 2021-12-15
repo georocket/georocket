@@ -10,6 +10,7 @@ services:
 
   georocket_mongo:
     image: georocket/georocket
+    command: server
     volumes:
       - ./conf/georocket_mongo:/usr/local/georocket-server/conf
     links:

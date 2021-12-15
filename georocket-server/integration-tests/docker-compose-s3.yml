@@ -10,6 +10,7 @@ services:
 
   georocket_s3:
     image: georocket/georocket
+    command: server
     volumes:
       - ./conf/georocket_s3:/usr/local/georocket-server/conf
     links:

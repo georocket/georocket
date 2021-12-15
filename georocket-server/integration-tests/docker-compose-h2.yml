@@ -9,6 +9,7 @@ services:
 
   georocket_h2:
     image: georocket/georocket
+    command: server
     volumes:
       - ./conf/georocket_h2:/usr/local/georocket-server/conf
     links:

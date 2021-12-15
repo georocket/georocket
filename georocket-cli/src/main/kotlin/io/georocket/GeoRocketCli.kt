@@ -11,7 +11,6 @@ import io.georocket.client.GeoRocketClient
 import io.georocket.commands.AbstractGeoRocketCommand
 import io.georocket.commands.DeleteCommand
 import io.georocket.commands.ExportCommand
-import io.georocket.commands.HelpCommand
 import io.georocket.commands.ImportCommand
 import io.georocket.commands.PropertyCommand
 import io.georocket.commands.SearchCommand
@@ -83,10 +82,7 @@ class GeoRocketCli : AbstractGeoRocketCommand() {
           command = SearchCommand::class),
       CommandDesc(longName = "delete",
           description = "delete from the GeoRocket data store",
-          command = DeleteCommand::class),
-      CommandDesc(longName = "help",
-          description = "display help for a given command",
-          command = HelpCommand::class)
+          command = DeleteCommand::class)
   )
   var command: AbstractGeoRocketCommand? = null
 

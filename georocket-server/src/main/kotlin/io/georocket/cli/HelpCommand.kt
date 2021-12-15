@@ -1,16 +1,15 @@
-package io.georocket.commands
+package io.georocket.cli
 
 import de.undercouch.underline.InputReader
 import de.undercouch.underline.UnknownAttributes
-import io.georocket.GeoRocketCli
-import io.vertx.kotlin.coroutines.awaitEvent
+import io.georocket.Main
 import java.io.PrintWriter
 import java.util.ArrayList
 
 /**
  * Displays a command's help
  */
-class HelpCommand : AbstractGeoRocketCommand() {
+class HelpCommand : GeoRocketCommand() {
   override val usageName = "help"
   override val usageDescription = "Display a command's help"
 
@@ -20,11 +19,11 @@ class HelpCommand : AbstractGeoRocketCommand() {
   @set:UnknownAttributes("COMMAND")
   var commands: List<String> = ArrayList()
 
-  override suspend fun doRun(remainingArgs: Array<String>, i: InputReader,
-      o: PrintWriter): Int {
+  override suspend fun doRun(remainingArgs: Array<String>, reader: InputReader,
+      writer: PrintWriter): Int {
     // simply forward commands to GeoRocketCli and append '-h'
-    val cmd = GeoRocketCli()
+    val cmd = Main()
     val args = commands + "-h"
-    return cmd.runAwait(args.toTypedArray(), i, o)
+    return cmd.coRun(args.toTypedArray(), reader, writer)
   }
 }
