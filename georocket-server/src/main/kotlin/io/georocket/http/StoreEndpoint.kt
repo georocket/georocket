@@ -179,6 +179,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
       val merger = MultiMerger(optimisticMerging)
 
       // skip initialization if optimistic merging is enabled
+      // TODO is this really necessary anymore?
       if (!optimisticMerging) {
         metas.forEach { merger.init(it.second) }
       }
