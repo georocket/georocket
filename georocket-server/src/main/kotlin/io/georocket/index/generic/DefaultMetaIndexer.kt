@@ -26,9 +26,7 @@ class DefaultMetaIndexer : MetaIndexer {
       }
     }
 
-    if (indexMeta.correlationId != null) {
-      result["correlationId"] = indexMeta.correlationId
-    }
+    result["correlationId"] = indexMeta.correlationId
 
     return result
   }

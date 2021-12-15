@@ -75,7 +75,7 @@ class XMLBoundingBoxIndexer : BoundingBoxIndexer<XMLStreamEvent>(), CRSAware {
     return false
   }
 
-  override fun setFallbackCRSString(crsStr: String) {
+  override fun setFallbackCRSString(crs: String?) {
     handleSrsName(crsStr)
   }
 

@@ -24,7 +24,7 @@ class DefaultMetaIndexerFactory : MetaIndexerFactory {
     }
   }
 
-  override fun compileQuery(queryPart: QueryPart): JsonObject? {
+  override fun compileQuery(queryPart: QueryPart): JsonObject {
     return when (queryPart) {
       is StringQueryPart, is LongQueryPart, is DoubleQueryPart -> {
         if (queryPart.key == null) {
@@ -65,8 +65,6 @@ class DefaultMetaIndexerFactory : MetaIndexerFactory {
           }
         }
       }
-
-      else  -> null
     }
   }
 }

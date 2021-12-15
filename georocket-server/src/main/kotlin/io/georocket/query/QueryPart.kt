@@ -47,18 +47,21 @@ sealed interface QueryPart {
  * @author Michel Kraemer
  */
 data class StringQueryPart(override val value: String, override val key: String? = null,
-  override val comparisonOperator: QueryPart.ComparisonOperator? = null) : QueryPart
+  override val comparisonOperator: QueryPart.ComparisonOperator? = null) :
+  QueryPart
 
 /**
  * A part of a GeoRocket query representing a long number
  * @author Michel Kraemer
  */
 data class LongQueryPart(override val value: Long, override val key: String? = null,
-  override val comparisonOperator: QueryPart.ComparisonOperator? = null) : QueryPart
+  override val comparisonOperator: QueryPart.ComparisonOperator? = null) :
+  QueryPart
 
 /**
  * A part of a GeoRocket query representing a double number
  * @author Michel Kraemer
  */
 data class DoubleQueryPart(override val value: Double, override val key: String? = null,
-  override val comparisonOperator: QueryPart.ComparisonOperator? = null) : QueryPart
+  override val comparisonOperator: QueryPart.ComparisonOperator? = null) :
+  QueryPart
