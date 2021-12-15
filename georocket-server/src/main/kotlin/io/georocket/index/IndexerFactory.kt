@@ -1,5 +1,9 @@
 package io.georocket.index
 
+import io.georocket.index.generic.BoundingBoxIndexerFactory
+import io.georocket.index.generic.GenericAttributeIndexerFactory
+import io.georocket.index.xml.GmlIdIndexerFactory
+import io.georocket.index.xml.XalAddressIndexerFactory
 import io.georocket.query.QueryCompiler
 import io.georocket.util.StreamEvent
 
@@ -8,6 +12,15 @@ import io.georocket.util.StreamEvent
  * @author Michel Kraemer
  */
 interface IndexerFactory : QueryCompiler {
+  companion object {
+    val ALL = listOf(
+      BoundingBoxIndexerFactory(),
+      GenericAttributeIndexerFactory(),
+      GmlIdIndexerFactory(),
+      XalAddressIndexerFactory()
+    )
+  }
+
   /**
    * Returns a new instance of [Indexer] for the given [eventType]. Returns
    * `null` if the type is not supported.

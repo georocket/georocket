@@ -13,7 +13,6 @@ import io.georocket.storage.Store
 import io.georocket.storage.StoreFactory
 import io.georocket.tasks.ReceivingTask
 import io.georocket.tasks.TaskError
-import io.georocket.util.FilteredServiceLoader
 import io.georocket.util.HttpException
 import io.georocket.util.MimeTypeUtils
 import io.vertx.core.Vertx
@@ -79,27 +78,12 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
    */
   private lateinit var index: Index
 
-  /**
-   * A list of [MetaIndexerFactory] objects
-   */
-  private lateinit var metaIndexerFactories: List<MetaIndexerFactory>
-
-  /**
-   * A list of [IndexerFactory] objects
-   */
-  private lateinit var indexerFactories: List<IndexerFactory>
-
   override suspend fun createRouter(): Router {
     store = StoreFactory.createStore(vertx)
     storagePath = vertx.orCreateContext.config()
         .getString(ConfigConstants.STORAGE_FILE_PATH)
 
     index = MongoDBIndex.create(vertx)
-
-    // load and copy all indexer factories now and not lazily to avoid
-    // concurrent modifications to the service loader's internal cache
-    metaIndexerFactories = FilteredServiceLoader.load(MetaIndexerFactory::class.java).toList()
-    indexerFactories = FilteredServiceLoader.load(IndexerFactory::class.java).toList()
 
     val router = Router.router(vertx)
     router.get("/*").handler(this::onGet)
@@ -158,7 +142,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
   }
 
   private fun compileQuery(search: String?, path: String): JsonObject {
-    return DefaultQueryCompiler(metaIndexerFactories + indexerFactories)
+    return DefaultQueryCompiler(MetaIndexerFactory.ALL + IndexerFactory.ALL)
       .compileQuery(search ?: "", path)
   }
 

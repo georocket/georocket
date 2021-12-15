@@ -7,7 +7,6 @@ import io.georocket.index.mongodb.MongoDBIndex
 import io.georocket.index.xml.XMLTransformer
 import io.georocket.storage.ChunkMeta
 import io.georocket.storage.IndexMeta
-import io.georocket.util.FilteredServiceLoader
 import io.georocket.util.JsonStreamEvent
 import io.georocket.util.MimeTypeUtils
 import io.georocket.util.StreamEvent
@@ -42,26 +41,11 @@ class MainIndexer private constructor(override val coroutineContext: CoroutineCo
    */
   private var maxBulkSize = 0
 
-  /**
-   * A list of [MetaIndexerFactory] objects
-   */
-  private lateinit var metaIndexerFactories: List<MetaIndexerFactory>
-
-  /**
-   * A list of [IndexerFactory] objects
-   */
-  private lateinit var indexerFactories: List<IndexerFactory>
-
   private suspend fun init() {
     index = MongoDBIndex.create(vertx)
 
     val config = vertx.orCreateContext.config()
     maxBulkSize = config.getInteger(INDEX_MAX_BULK_SIZE, DEFAULT_INDEX_MAX_BULK_SIZE)
-
-    // load and copy all indexer factories now and not lazily to avoid
-    // concurrent modifications to the service loader's internal cache
-    metaIndexerFactories = FilteredServiceLoader.load(MetaIndexerFactory::class.java).toList()
-    indexerFactories = FilteredServiceLoader.load(IndexerFactory::class.java).toList()
   }
 
   suspend fun close() {
@@ -107,7 +91,7 @@ class MainIndexer private constructor(override val coroutineContext: CoroutineCo
   private suspend fun queuedChunkToDocument(queued: Queued): Map<String, Any> {
     // call meta indexers
     val metaResults = mutableMapOf<String, Any>()
-    for (metaIndexerFactory in metaIndexerFactories) {
+    for (metaIndexerFactory in MetaIndexerFactory.ALL) {
       val metaIndexer = metaIndexerFactory.createIndexer()
       val metaResult = metaIndexer.onChunk(queued.path, queued.chunkMeta, queued.indexMeta)
       metaResults.putAll(metaResult)
@@ -137,7 +121,7 @@ class MainIndexer private constructor(override val coroutineContext: CoroutineCo
   private suspend fun <T : StreamEvent> chunkToDocument(chunk: Buffer,
     fallbackCRSString: String?, type: Class<T>, transformer: Transformer<T>): Map<String, Any> {
     // initialize indexers
-    val indexers = indexerFactories.mapNotNull { factory ->
+    val indexers = IndexerFactory.ALL.mapNotNull { factory ->
       factory.createIndexer(type)?.also { i ->
         if (fallbackCRSString != null && i is CRSAware) {
           i.setFallbackCRSString(fallbackCRSString)

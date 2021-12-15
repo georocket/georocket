@@ -1,4 +1,0 @@
-io.georocket.index.generic.BoundingBoxIndexerFactory
-io.georocket.index.generic.GenericAttributeIndexerFactory
-io.georocket.index.xml.GmlIdIndexerFactory
-io.georocket.index.xml.XalAddressIndexerFactory
