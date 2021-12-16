@@ -1,10 +1,11 @@
-package io.georocket.commands
+package io.georocket.cli
 
 import de.undercouch.underline.InputReader
 import de.undercouch.underline.Option
 import de.undercouch.underline.OptionDesc
 import de.undercouch.underline.UnknownAttributes
-import io.georocket.util.coroutines.getPropertyValues
+import io.georocket.index.Index
+import io.georocket.storage.Store
 import io.vertx.core.impl.NoStackTraceThrowable
 import io.vertx.core.logging.LoggerFactory
 import java.io.PrintWriter
@@ -12,7 +13,7 @@ import java.io.PrintWriter
 /**
  * Get all values of a property
  */
-class GetPropertyCommand : AbstractGeoRocketCommand() {
+class GetPropertyCommand : DataCommand() {
   companion object {
     private val log = LoggerFactory.getLogger(GetPropertyCommand::class.java)
   }
@@ -43,29 +44,28 @@ class GetPropertyCommand : AbstractGeoRocketCommand() {
   }
 
   override fun checkArguments(): Boolean {
-    if (property == null || property!!.isEmpty()) {
+    if (property.isNullOrBlank()) {
       error("no property given")
       return false
     }
     return super.checkArguments()
   }
 
-  override suspend fun doRun(remainingArgs: Array<String>, i: InputReader,
-      o: PrintWriter): Int {
-    return createClient().use { client ->
-      try {
-        val r = client.store.getPropertyValues(property, query, layer)
-        for (buf in r) {
-          o.write(buf.toString())
-        }
-        0
-      } catch (t: Throwable) {
-        error(t.message)
-        if (t !is NoStackTraceThrowable) {
-          log.error("Could not get values of property $property", t)
-        }
-        1
+  override suspend fun doRun(remainingArgs: Array<String>, reader: InputReader,
+      writer: PrintWriter, store: Store, index: Index): Int {
+    return try {
+      val query = compileQuery(query, layer)
+      val r = index.getPropertyValues(query, property!!)
+      for (buf in r) {
+        writer.appendLine(buf.toString())
       }
+      0
+    } catch (t: Throwable) {
+      error(t.message)
+      if (t !is NoStackTraceThrowable) {
+        log.error("Could not get values of property $property", t)
+      }
+      1
     }
   }
 }

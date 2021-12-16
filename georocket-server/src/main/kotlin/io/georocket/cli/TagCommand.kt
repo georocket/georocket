@@ -1,4 +1,4 @@
-package io.georocket.commands
+package io.georocket.cli
 
 import de.undercouch.underline.CommandDesc
 import de.undercouch.underline.CommandDescList
@@ -8,7 +8,7 @@ import java.io.PrintWriter
 /**
  * Update tags of existing chunks in the GeoRocket data store
  */
-class TagCommand : AbstractGeoRocketCommand() {
+class TagCommand : GeoRocketCommand() {
   @set:CommandDescList(
       CommandDesc(longName = "add",
           description = "add tags to existing chunks",
@@ -16,7 +16,7 @@ class TagCommand : AbstractGeoRocketCommand() {
       CommandDesc(longName = "rm",
           description = "remove tags from existing chunks",
           command = RemoveTagCommand::class))
-  var subcommand: AbstractGeoRocketCommand? = null
+  var subcommand: GeoRocketCommand? = null
 
   override fun checkArguments(): Boolean {
     if (subcommand == null) {
@@ -31,8 +31,8 @@ class TagCommand : AbstractGeoRocketCommand() {
   override val usageDescription =
       "Modify tags of existing chunks in the GeoRocket data store"
 
-  override suspend fun doRun(remainingArgs: Array<String>, i: InputReader,
-      o: PrintWriter): Int {
-    return subcommand!!.runAwait(remainingArgs, i, o)
+  override suspend fun doRun(remainingArgs: Array<String>, reader: InputReader,
+      writer: PrintWriter): Int {
+    return subcommand!!.coRun(remainingArgs, reader, writer)
   }
 }

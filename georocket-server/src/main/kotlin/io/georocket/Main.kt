@@ -9,8 +9,10 @@ import de.undercouch.underline.StandardInputReader
 import io.georocket.cli.DeleteCommand
 import io.georocket.cli.GeoRocketCommand
 import io.georocket.cli.HelpCommand
+import io.georocket.cli.PropertyCommand
 import io.georocket.cli.SearchCommand
 import io.georocket.cli.ServerCommand
+import io.georocket.cli.TagCommand
 import io.georocket.constants.ConfigConstants
 import io.georocket.util.JsonUtils
 import io.vertx.core.Vertx
@@ -45,6 +47,12 @@ class Main : GeoRocketCommand() {
   var displayVersion: Boolean = false
 
   @set:CommandDescList(
+    CommandDesc(longName = "property",
+      description = "update properties of existing chunks in GeoRocket",
+      command = PropertyCommand::class),
+    CommandDesc(longName = "tag",
+      description = "update tags of existing chunks in GeoRocket",
+      command = TagCommand::class),
     CommandDesc(longName = "search",
       description = "search the GeoRocket data store",
       command = SearchCommand::class),

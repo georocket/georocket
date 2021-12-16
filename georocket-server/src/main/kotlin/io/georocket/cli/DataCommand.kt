@@ -8,6 +8,7 @@ import io.georocket.index.mongodb.MongoDBIndex
 import io.georocket.query.DefaultQueryCompiler
 import io.georocket.storage.Store
 import io.georocket.storage.StoreFactory
+import io.georocket.util.PathUtils
 import io.vertx.core.json.JsonObject
 import java.io.PrintWriter
 
@@ -15,9 +16,9 @@ import java.io.PrintWriter
  * A command that deals with the [Store] and the [Index]
  */
 abstract class DataCommand : GeoRocketCommand() {
-  protected fun compileQuery(search: String?, path: String): JsonObject {
+  protected fun compileQuery(search: String?, layer: String?): JsonObject {
     return DefaultQueryCompiler(MetaIndexerFactory.ALL + IndexerFactory.ALL)
-      .compileQuery(search ?: "", path)
+      .compileQuery(search ?: "", PathUtils.addLeadingSlash(layer ?: ""))
   }
 
   override suspend fun doRun(remainingArgs: Array<String>, reader: InputReader,

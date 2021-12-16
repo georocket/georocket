@@ -10,8 +10,6 @@ import de.undercouch.underline.StandardInputReader
 import io.georocket.client.GeoRocketClient
 import io.georocket.commands.AbstractGeoRocketCommand
 import io.georocket.commands.ImportCommand
-import io.georocket.commands.PropertyCommand
-import io.georocket.commands.TagCommand
 import io.georocket.util.JsonUtils
 import io.vertx.core.Vertx
 import io.vertx.core.VertxOptions
@@ -65,12 +63,6 @@ class GeoRocketCli : AbstractGeoRocketCommand() {
       CommandDesc(longName = "import",
           description = "import one or more files into GeoRocket",
           command = ImportCommand::class),
-      CommandDesc(longName = "property",
-          description = "update properties of existing chunks in GeoRocket",
-          command = PropertyCommand::class),
-      CommandDesc(longName = "tag",
-          description = "update tags of existing chunks in GeoRocket",
-          command = TagCommand::class)
   )
   var command: AbstractGeoRocketCommand? = null
 

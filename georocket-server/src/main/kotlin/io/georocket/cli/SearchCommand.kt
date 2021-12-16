@@ -67,7 +67,7 @@ class SearchCommand : DataCommand() {
       writer: PrintWriter, store: Store, index: Index): Int {
     return try {
       val ws = PrintWriteStream(writer)
-      val query = compileQuery(query, PathUtils.addLeadingSlash(layer ?: ""))
+      val query = compileQuery(query, layer)
       val metas = index.getMeta(query)
 
       val merger = MultiMerger(optimisticMerging)

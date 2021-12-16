@@ -50,7 +50,7 @@ class DeleteCommand : DataCommand() {
   override suspend fun doRun(remainingArgs: Array<String>, reader: InputReader,
       writer: PrintWriter, store: Store, index: Index): Int {
     return try {
-      val query = compileQuery(query, PathUtils.addLeadingSlash(layer ?: ""))
+      val query = compileQuery(query, layer)
       val paths = index.getPaths(query)
       index.delete(query)
       store.delete(paths)
