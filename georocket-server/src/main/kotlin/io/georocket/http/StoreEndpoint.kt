@@ -6,6 +6,7 @@ import io.georocket.constants.ConfigConstants
 import io.georocket.index.Index
 import io.georocket.index.IndexerFactory
 import io.georocket.index.MetaIndexerFactory
+import io.georocket.index.PropertiesParser
 import io.georocket.index.mongodb.MongoDBIndex
 import io.georocket.output.MultiMerger
 import io.georocket.query.DefaultQueryCompiler
@@ -33,9 +34,9 @@ import io.vertx.kotlin.core.file.writeAwait
 import io.vertx.kotlin.coroutines.toChannel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import org.antlr.v4.runtime.misc.ParseCancellationException
 import org.apache.commons.lang3.BooleanUtils
 import org.apache.commons.lang3.StringUtils
-import org.apache.commons.text.StringEscapeUtils
 import org.apache.http.ParseException
 import org.apache.http.entity.ContentType
 import org.bson.types.ObjectId
@@ -44,7 +45,6 @@ import java.io.FileNotFoundException
 import java.io.IOException
 import java.time.Instant
 import java.util.Locale
-import java.util.regex.Pattern
 import kotlin.coroutines.CoroutineContext
 
 /**
@@ -581,26 +581,11 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
       return emptyMap()
     }
 
-    val propertiesList = properties.split(",")
-
-    val props = mutableMapOf<String, Any>()
-    val regex = ("(?<!" + Pattern.quote("\\") + ")" + Pattern.quote(":")).toRegex()
-
-    for (part in propertiesList.map { it.trim() }) {
-      val property = part.split(regex)
-      if (property.size != 2) {
-        throw ServerAPIException(ServerAPIException.INVALID_PROPERTY_SYNTAX_ERROR,
-            "Invalid property syntax: $part")
-      }
-      val key = StringEscapeUtils.unescapeJava(property[0].trim())
-      val value = StringEscapeUtils.unescapeJava(property[1].trim())
-
-      // auto-convert to numbers
-      val v = value.toLongOrNull() ?: value.toDoubleOrNull() ?: value
-
-      props[key] = v
+    return try {
+      PropertiesParser.parse(properties)
+    } catch (t: ParseCancellationException) {
+      throw ServerAPIException(ServerAPIException.INVALID_PROPERTY_SYNTAX_ERROR,
+        "Invalid property syntax: ${t.message}")
     }
-
-    return props
   }
 }

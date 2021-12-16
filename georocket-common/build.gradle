@@ -47,6 +47,8 @@ dependencies {
 
     testCompile 'junit:junit:4.12'
     testCompile "io.vertx:vertx-unit:$vertxVersion"
+    testImplementation "io.vertx:vertx-junit5:$vertxVersion"
+    testImplementation "org.assertj:assertj-core:3.18.1"
 
     antlr 'org.antlr:antlr4:4.5.3'
 }
