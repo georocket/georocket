@@ -17,5 +17,15 @@ data class ImportingTask(
   /**
    * The number of chunks already imported by this task
    */
-  var importedChunks: Long = 0,
+  val importedChunks: Long = 0,
+
+  /**
+   * The total size of the file to be imported in bytes
+   */
+  val bytesTotal: Long,
+
+  /**
+   * The number of bytes completely processed from the file to be imported
+   */
+  val bytesProcessed: Long = 0
 ) : Task

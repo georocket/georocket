@@ -31,6 +31,7 @@ import io.vertx.kotlin.core.file.closeAwait
 import io.vertx.kotlin.core.file.deleteAwait
 import io.vertx.kotlin.core.file.openAwait
 import io.vertx.kotlin.core.file.openOptionsOf
+import io.vertx.kotlin.core.file.propsAwait
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.toChannel
 import kotlinx.coroutines.Deferred
@@ -98,10 +99,12 @@ class ImporterVerticle : CoroutineVerticle() {
     log.info("Importing [$correlationId] to layer '$layer'")
 
     val fs = vertx.fileSystem()
+    val props = fs.propsAwait(filepath)
+    val fileSize = props.size()
     val f = fs.openAwait(filepath, openOptionsOf(create = false, write = false))
 
     try {
-      val chunkCount = importFile(f, contentType, correlationId, filename,
+      val chunkCount = importFile(f, fileSize, contentType, correlationId, filename,
           timestamp, layer, tags, properties, fallbackCRSString)
 
       val duration = System.currentTimeMillis() - timestamp
@@ -133,19 +136,20 @@ class ImporterVerticle : CoroutineVerticle() {
    * [tags] and [properties]. If necessary, a [fallbackCRSString] can be given
    * if the imported file does not specify one.
    */
-  private suspend fun importFile(file: ReadStream<Buffer>, contentType: String,
+  private suspend fun importFile(file: ReadStream<Buffer>, fileSize: Long, contentType: String,
       correlationId: String, filename: String, timestamp: Long, layer: String,
       tags: List<String>?, properties: Map<String, Any>?, fallbackCRSString: String?): Long {
     // let the task verticle know that we're now importing
-    var importingTask = ImportingTask(correlationId = correlationId)
+    var importingTask = ImportingTask(correlationId = correlationId, bytesTotal = fileSize)
     TaskRegistry.upsert(importingTask)
 
-    var lastProgress = 0L
-    val progressUpdater = { progress: Long, final: Boolean ->
-      if (progress - lastProgress >= 100 || final) {
-        importingTask = importingTask.copy(importedChunks = progress)
+    var lastChunksAdded = 0L
+    val progressUpdater = { chunksAdded: Long, bytesProcessed: Long, final: Boolean ->
+      if (chunksAdded - lastChunksAdded >= 100 || final) {
+        importingTask = importingTask.copy(importedChunks = chunksAdded,
+          bytesProcessed = bytesProcessed)
         TaskRegistry.upsert(importingTask)
-        lastProgress = progress
+        lastChunksAdded = chunksAdded
       }
     }
 
@@ -190,8 +194,9 @@ class ImporterVerticle : CoroutineVerticle() {
   private suspend fun importXML(f: ReadStream<Buffer>, correlationId: String,
       filename: String, timestamp: Long, layer: String, tags: List<String>?,
       properties: Map<String, Any>?, fallbackCRSString: String?,
-      updateProgress: (Long, Boolean) -> Unit): Long {
+      updateProgress: (Long, Long, Boolean) -> Unit): Long {
     var chunksAdded = 0L
+    var bytesProcessed = 0L
 
     val bomFilter = UTF8BomFilter()
     val window = Window()
@@ -246,7 +251,7 @@ class ImporterVerticle : CoroutineVerticle() {
           }
           indexer.add(result.chunk, result.meta, indexMeta, path)
           chunksAdded++
-          updateProgress(chunksAdded, false)
+          updateProgress(chunksAdded, bytesProcessed, false)
         }
 
         if (nextEvent == AsyncXMLStreamReader.END_DOCUMENT) {
@@ -272,6 +277,8 @@ class ImporterVerticle : CoroutineVerticle() {
           break
         }
       }
+
+      bytesProcessed += buf.length()
     }
 
     // process remaining events
@@ -283,7 +290,7 @@ class ImporterVerticle : CoroutineVerticle() {
     flushQueue()
     indexer.flushAdd()
 
-    updateProgress(chunksAdded, true)
+    updateProgress(chunksAdded, bytesProcessed, true)
 
     return chunksAdded
   }
@@ -301,8 +308,9 @@ class ImporterVerticle : CoroutineVerticle() {
    */
   private suspend fun importJSON(f: ReadStream<Buffer>, correlationId: String,
       filename: String, timestamp: Long, layer: String, tags: List<String>?,
-      properties: Map<String, Any>?, updateProgress: (Long, Boolean) -> Unit): Long {
+      properties: Map<String, Any>?, updateProgress: (Long, Long, Boolean) -> Unit): Long {
     var chunksAdded = 0L
+    var bytesProcessed = 0L
 
     val bomFilter = UTF8BomFilter()
     val window = StringWindow()
@@ -347,7 +355,7 @@ class ImporterVerticle : CoroutineVerticle() {
           }
           indexer.add(result.chunk, result.meta, indexMeta, path)
           chunksAdded++
-          updateProgress(chunksAdded, false)
+          updateProgress(chunksAdded, bytesProcessed, false)
         }
 
         if (nextEvent == JsonEvent.EOF) {
@@ -370,6 +378,8 @@ class ImporterVerticle : CoroutineVerticle() {
           break
         }
       }
+
+      bytesProcessed += buf.length()
     }
 
     // process remaining events
@@ -381,7 +391,7 @@ class ImporterVerticle : CoroutineVerticle() {
     flushQueue()
     indexer.flushAdd()
 
-    updateProgress(chunksAdded, true)
+    updateProgress(chunksAdded, bytesProcessed, true)
 
     return chunksAdded
   }
