@@ -295,12 +295,11 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
 
   /**
    * Try to detect the content type of a file with the given [filepath].
-   * Also consider if the file is [gzip] compressed or not.
    */
-  private suspend fun detectContentType(filepath: String, gzip: Boolean): String {
+  private suspend fun detectContentType(filepath: String): String {
     return vertx.executeBlockingAwait { f ->
       try {
-        var mimeType = MimeTypeUtils.detect(File(filepath), gzip)
+        var mimeType = MimeTypeUtils.detect(File(filepath))
         if (mimeType == null) {
           log.warn("Could not detect file type of $filepath. Falling back to " +
               "application/octet-stream.")
@@ -371,9 +370,6 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
           null
         }
 
-        val contentEncoding = request.getHeader("Content-Encoding")
-        val gzip = "gzip" == contentEncoding
-
         // detect content type of file to import
         val detectedContentType = if (mimeType == null || mimeType.isBlank() ||
             mimeType == "application/octet-stream" ||
@@ -382,7 +378,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
           // a generic one, then try to guess it
           log.debug("Mime type '$mimeType' is invalid or generic. "
               + "Trying to guess the right type.")
-          detectContentType(filepath, gzip).also {
+          detectContentType(filepath).also {
             log.info("Guessed mime type '$it'.")
           }
         } else {
@@ -398,7 +394,6 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
             .put("layer", layer)
             .put("contentType", detectedContentType)
             .put("correlationId", correlationId)
-            .put("contentEncoding", contentEncoding)
 
         if (tags != null) {
           msg.put("tags", JsonArray(tags))

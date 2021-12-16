@@ -22,7 +22,6 @@ import io.georocket.util.StringWindow
 import io.georocket.util.UTF8BomFilter
 import io.georocket.util.Window
 import io.georocket.util.XMLStreamEvent
-import io.georocket.util.io.GzipReadStream
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.eventbus.Message
 import io.vertx.core.json.JsonObject
@@ -83,7 +82,6 @@ class ImporterVerticle : CoroutineVerticle() {
     val contentType = body.getString("contentType")
     val correlationId = body.getString("correlationId")
     val fallbackCRSString = body.getString("fallbackCRSString")
-    val contentEncoding = body.getString("contentEncoding")
 
     // get tags
     val tags = body.getJsonArray("tags")
@@ -104,7 +102,7 @@ class ImporterVerticle : CoroutineVerticle() {
 
     try {
       val chunkCount = importFile(f, contentType, correlationId, filename,
-          timestamp, layer, tags, properties, fallbackCRSString, contentEncoding)
+          timestamp, layer, tags, properties, fallbackCRSString)
 
       val duration = System.currentTimeMillis() - timestamp
       log.info("Finished importing [$correlationId] with $chunkCount" +
@@ -133,23 +131,11 @@ class ImporterVerticle : CoroutineVerticle() {
    * such as the original [filename], the [timestamp] when the import was
    * started, the [layer] where chunks will be stored, as well as optional
    * [tags] and [properties]. If necessary, a [fallbackCRSString] can be given
-   * if the imported file does not specify one. The file will be read as a raw
-   * stream or using the given [contentEncoding] if provided.
+   * if the imported file does not specify one.
    */
   private suspend fun importFile(file: ReadStream<Buffer>, contentType: String,
       correlationId: String, filename: String, timestamp: Long, layer: String,
-      tags: List<String>?, properties: Map<String, Any>?, fallbackCRSString: String?,
-      contentEncoding: String?): Long {
-    val f = if ("gzip" == contentEncoding) {
-      log.debug("Importing file compressed with GZIP")
-      GzipReadStream(file)
-    } else if (contentEncoding != null && contentEncoding.isNotEmpty()) {
-      log.warn("Unknown content encoding: `$contentEncoding'. Trying anyway.")
-      file
-    } else {
-      file
-    }
-
+      tags: List<String>?, properties: Map<String, Any>?, fallbackCRSString: String?): Long {
     // let the task verticle know that we're now importing
     var importingTask = ImportingTask(correlationId = correlationId)
     TaskRegistry.upsert(importingTask)
@@ -166,10 +152,10 @@ class ImporterVerticle : CoroutineVerticle() {
     try {
       val result = if (belongsTo(contentType, "application", "xml") ||
           belongsTo(contentType, "text", "xml")) {
-        importXML(f, correlationId, filename, timestamp, layer, tags,
+        importXML(file, correlationId, filename, timestamp, layer, tags,
             properties, fallbackCRSString, progressUpdater)
       } else if (belongsTo(contentType, "application", "json")) {
-        importJSON(f, correlationId, filename, timestamp, layer, tags,
+        importJSON(file, correlationId, filename, timestamp, layer, tags,
           properties, progressUpdater)
       } else {
         throw IllegalArgumentException("Received an unexpected content " +
