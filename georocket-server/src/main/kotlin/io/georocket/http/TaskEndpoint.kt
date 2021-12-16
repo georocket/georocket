@@ -1,19 +1,17 @@
 package io.georocket.http
 
-import io.georocket.constants.AddressConstants
-import io.georocket.http.Endpoint.Companion.fail
+import io.georocket.tasks.TaskRegistry
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
-import io.vertx.kotlin.core.eventbus.requestAwait
+import io.vertx.kotlin.core.json.jsonObjectOf
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 import kotlin.coroutines.CoroutineContext
 
 /**
  * An HTTP endpoint for accessing the information about tasks maintained by
- * the [io.georocket.tasks.TaskVerticle]
+ * the [io.georocket.tasks.TaskRegistry]
  * @author Michel Kraemer
  */
 class TaskEndpoint(override val coroutineContext: CoroutineContext,
@@ -30,7 +28,12 @@ class TaskEndpoint(override val coroutineContext: CoroutineContext,
    * Return all tasks
    */
   private fun onGetAll(context: RoutingContext) {
-    onGet(context, AddressConstants.TASK_GET_ALL, null)
+    val tasks = TaskRegistry.getAll().groupBy { it.correlationId }
+      .mapValues { e -> e.value.map { JsonObject.mapFrom(it) } }
+    context.response()
+      .setStatusCode(200)
+      .putHeader("Content-Type", "application/json")
+      .end(JsonObject.mapFrom(tasks).encode())
   }
 
   /**
@@ -38,25 +41,11 @@ class TaskEndpoint(override val coroutineContext: CoroutineContext,
    */
   private fun onGetByCorrelationId(context: RoutingContext) {
     val correlationId = context.pathParam("id")
-    onGet(context, AddressConstants.TASK_GET_BY_CORRELATION_ID, correlationId)
-  }
-
-  /**
-   * Helper method to generate a response containing task information
-   */
-  private fun onGet(context: RoutingContext, address: String, correlationId: String?) {
-    launch {
-      val task = try {
-        vertx.eventBus().requestAwait<JsonObject>(address, correlationId)
-      } catch (t: Throwable) {
-        fail(context.response(), t)
-        return@launch
-      }
-      context.response()
-        .setStatusCode(200)
-        .putHeader("Content-Type", "application/json")
-        .end(task.body().encode())
-    }
+    val tasks = TaskRegistry.getAll().filter { it.correlationId == correlationId }
+    context.response()
+      .setStatusCode(200)
+      .putHeader("Content-Type", "application/json")
+      .end(jsonObjectOf(correlationId to tasks.map { JsonObject.mapFrom(it) }).encode())
   }
 
   /**

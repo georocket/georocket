@@ -15,6 +15,7 @@ import io.georocket.storage.Store
 import io.georocket.storage.StoreFactory
 import io.georocket.tasks.ImportingTask
 import io.georocket.tasks.TaskError
+import io.georocket.tasks.TaskRegistry
 import io.georocket.util.JsonStreamEvent
 import io.georocket.util.MimeTypeUtils.belongsTo
 import io.georocket.util.StringWindow
@@ -150,19 +151,14 @@ class ImporterVerticle : CoroutineVerticle() {
     }
 
     // let the task verticle know that we're now importing
-    val startTask = ImportingTask(correlationId)
-    startTask.startTime = Instant.now()
-    vertx.eventBus().publish(AddressConstants.TASK_INC, JsonObject.mapFrom(startTask))
+    var importingTask = ImportingTask(correlationId = correlationId)
+    TaskRegistry.upsert(importingTask)
 
     var lastProgress = 0L
     val progressUpdater = { progress: Long, final: Boolean ->
-      val diff = progress - lastProgress
-      if (diff >= 100 || final) {
-        // let the task verticle know that we imported n chunks
-        val currentTask = ImportingTask(correlationId)
-        currentTask.importedChunks = diff
-        vertx.eventBus().publish(AddressConstants.TASK_INC,
-          JsonObject.mapFrom(currentTask))
+      if (progress - lastProgress >= 100 || final) {
+        importingTask = importingTask.copy(importedChunks = progress)
+        TaskRegistry.upsert(importingTask)
         lastProgress = progress
       }
     }
@@ -180,19 +176,14 @@ class ImporterVerticle : CoroutineVerticle() {
             "type '$contentType' while trying to import file '$filename'")
       }
 
-      // let the task verticle know that the import process has finished
-      val endTask = ImportingTask(correlationId)
-      endTask.endTime = Instant.now()
-      vertx.eventBus().publish(AddressConstants.TASK_INC,
-          JsonObject.mapFrom(endTask))
+      importingTask = importingTask.copy(endTime = Instant.now())
+      TaskRegistry.upsert(importingTask)
 
       return result
     } catch (t: Throwable) {
-      val endTask = ImportingTask(correlationId)
-      endTask.endTime = Instant.now()
-      endTask.addError(TaskError(t))
-      vertx.eventBus().publish(AddressConstants.TASK_INC,
-          JsonObject.mapFrom(endTask))
+      importingTask = importingTask.copy(endTime = Instant.now(),
+        error = TaskError(t))
+      TaskRegistry.upsert(importingTask)
       throw t
     }
   }

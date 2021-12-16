@@ -6,7 +6,6 @@ import io.georocket.http.GeneralEndpoint
 import io.georocket.http.StoreEndpoint
 import io.georocket.http.TaskEndpoint
 import io.georocket.ogcapifeatures.OgcApiFeaturesEndpoint
-import io.georocket.tasks.TaskVerticle
 import io.vertx.core.DeploymentOptions
 import io.vertx.core.Promise
 import io.vertx.core.http.HttpMethod
@@ -187,7 +186,6 @@ class GeoRocket(private val shutdownPromise: Promise<Unit>) : CoroutineVerticle(
     val options = DeploymentOptions().setConfig(config)
 
     // deploy verticles
-    vertx.deployVerticleAwait(TaskVerticle(), options)
     vertx.deployVerticleAwait(ImporterVerticle(), options)
 
     // deploy HTTP server

@@ -9,6 +9,7 @@ import org.jline.terminal.Terminal
 import org.jline.terminal.TerminalBuilder
 import java.io.Closeable
 import java.io.IOException
+import kotlin.math.roundToLong
 
 class ImportProgressRenderer(private val vertx: Vertx) : Closeable {
   companion object {
@@ -160,7 +161,7 @@ class ImportProgressRenderer(private val vertx: Vertx) : Closeable {
     // calculate upload rate
     val currentTotalProgress = totalProgress + current
     rateAvg.addValue((currentTotalProgress - lastTotalProgress).toDouble())
-    val rate = Math.round(rateAvg.sum / (rateAvg.n / (1000.0 / interval)))
+    val rate = (rateAvg.sum / (rateAvg.n / (1000.0 / interval))).roundToLong()
     lastTotalProgress = currentTotalProgress
 
     // create first line consisting of filename and index

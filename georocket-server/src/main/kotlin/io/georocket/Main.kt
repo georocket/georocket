@@ -1,5 +1,6 @@
 package io.georocket
 
+import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import de.undercouch.underline.CommandDesc
 import de.undercouch.underline.CommandDescList
 import de.undercouch.underline.InputReader
@@ -14,11 +15,13 @@ import io.georocket.cli.SearchCommand
 import io.georocket.cli.ServerCommand
 import io.georocket.cli.TagCommand
 import io.georocket.constants.ConfigConstants
+import io.georocket.tasks.TaskRegistry
 import io.georocket.util.JsonUtils
 import io.vertx.core.Vertx
 import io.vertx.core.json.DecodeException
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
+import io.vertx.core.json.jackson.DatabindCodec
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.kotlin.core.deployVerticleAwait
 import io.vertx.kotlin.core.deploymentOptionsOf
@@ -78,6 +81,13 @@ class Main : GeoRocketCommand() {
 
   suspend fun start(args: Array<String>) {
     AnsiConsole.systemInstall()
+
+    // initialize task registry
+    TaskRegistry.init(config)
+
+    // register Jackson Kotlin module
+    DatabindCodec.mapper().registerKotlinModule()
+    DatabindCodec.prettyMapper().registerKotlinModule()
 
     // start CLI
     try {

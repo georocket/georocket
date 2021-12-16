@@ -15,6 +15,7 @@ import io.georocket.storage.Store
 import io.georocket.storage.StoreFactory
 import io.georocket.tasks.ReceivingTask
 import io.georocket.tasks.TaskError
+import io.georocket.tasks.TaskRegistry
 import io.georocket.util.HttpException
 import io.georocket.util.MimeTypeUtils
 import io.vertx.core.Vertx
@@ -340,7 +341,10 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
 
     val correlationId = ObjectId().toString()
     val startTime = System.currentTimeMillis()
-    onReceivingFileStarted(correlationId)
+
+    log.info("Receiving file [$correlationId]")
+    val receivingTask = ReceivingTask(correlationId = correlationId)
+    TaskRegistry.upsert(receivingTask)
 
     launch {
       // create directory for incoming files
@@ -386,7 +390,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
         }
 
         val duration = System.currentTimeMillis() - startTime
-        onReceivingFileFinished(correlationId, duration, null)
+        onReceivingFileFinished(receivingTask, duration, null)
 
         // run importer
         val msg = JsonObject()
@@ -418,7 +422,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
             .end()
       } catch (t: Throwable) {
         val duration = System.currentTimeMillis() - startTime
-        onReceivingFileFinished(correlationId, duration, t)
+        onReceivingFileFinished(receivingTask, duration, t)
         Endpoint.fail(request.response(), t)
         log.error(t)
         fs.deleteAwait(filepath)
@@ -426,28 +430,21 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
     }
   }
 
-  private fun onReceivingFileStarted(correlationId: String) {
-    log.info("Receiving file [$correlationId]")
-    val task = ReceivingTask(correlationId)
-    task.startTime = Instant.now()
-    vertx.eventBus().publish(AddressConstants.TASK_INC, JsonObject.mapFrom(task))
-  }
-
-  private fun onReceivingFileFinished(correlationId: String, duration: Long,
-      error: Throwable?) {
+  private fun onReceivingFileFinished(receivingTask: ReceivingTask,
+      duration: Long, error: Throwable?) {
     if (error == null) {
       log.info(String.format("Finished receiving file [%s] after %d ms",
-          correlationId, duration))
+        receivingTask.correlationId, duration))
     } else {
       log.error(String.format("Failed receiving file [%s] after %d ms",
-          correlationId, duration), error)
+        receivingTask.correlationId, duration), error)
     }
-    val task = ReceivingTask(correlationId)
-    task.endTime = Instant.now()
-    if (error != null) {
-      task.addError(TaskError(error))
+    val updatedTask = if (error != null) {
+      receivingTask.copy(endTime = Instant.now(), error = TaskError(error))
+    } else {
+      receivingTask.copy(endTime = Instant.now())
     }
-    vertx.eventBus().publish(AddressConstants.TASK_INC, JsonObject.mapFrom(task))
+    TaskRegistry.upsert(updatedTask)
   }
 
   /**
