@@ -1,4 +1,4 @@
-package io.georocket.commands.console
+package io.georocket.cli
 
 import io.georocket.util.SizeFormat
 import io.georocket.util.formatDurationShort

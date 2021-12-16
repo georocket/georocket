@@ -1,6 +1,5 @@
 package io.georocket
 
-import de.undercouch.underline.CommandDesc
 import de.undercouch.underline.CommandDescList
 import de.undercouch.underline.InputReader
 import de.undercouch.underline.Option.ArgumentType
@@ -9,7 +8,6 @@ import de.undercouch.underline.OptionParserException
 import de.undercouch.underline.StandardInputReader
 import io.georocket.client.GeoRocketClient
 import io.georocket.commands.AbstractGeoRocketCommand
-import io.georocket.commands.ImportCommand
 import io.georocket.util.JsonUtils
 import io.vertx.core.Vertx
 import io.vertx.core.VertxOptions
@@ -60,9 +58,6 @@ class GeoRocketCli : AbstractGeoRocketCommand() {
   var confFilePath: String? = null
 
   @set:CommandDescList(
-      CommandDesc(longName = "import",
-          description = "import one or more files into GeoRocket",
-          command = ImportCommand::class),
   )
   var command: AbstractGeoRocketCommand? = null
 

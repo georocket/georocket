@@ -24,6 +24,11 @@ object TaskRegistry {
       ConfigConstants.DEFAULT_TASKS_RETAIN_SECONDS)
   }
 
+  @Synchronized
+  fun getById(id: String): Task? {
+    return tasks[id]
+  }
+
   /**
    * Get a copy of all tasks
    */

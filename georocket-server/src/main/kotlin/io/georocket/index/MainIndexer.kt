@@ -23,7 +23,7 @@ import kotlin.coroutines.CoroutineContext
 class MainIndexer private constructor(override val coroutineContext: CoroutineContext,
     private val vertx: Vertx) : CoroutineScope {
   companion object {
-    private val log = LoggerFactory.getLogger(Indexer::class.java)
+    private val log = LoggerFactory.getLogger(MainIndexer::class.java)
 
     suspend fun create(coroutineContext: CoroutineContext, vertx: Vertx): MainIndexer {
       val result = MainIndexer(coroutineContext, vertx)

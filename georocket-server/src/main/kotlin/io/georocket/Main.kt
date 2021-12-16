@@ -10,6 +10,7 @@ import de.undercouch.underline.StandardInputReader
 import io.georocket.cli.DeleteCommand
 import io.georocket.cli.GeoRocketCommand
 import io.georocket.cli.HelpCommand
+import io.georocket.cli.ImportCommand
 import io.georocket.cli.PropertyCommand
 import io.georocket.cli.SearchCommand
 import io.georocket.cli.ServerCommand
@@ -50,6 +51,9 @@ class Main : GeoRocketCommand() {
   var displayVersion: Boolean = false
 
   @set:CommandDescList(
+    CommandDesc(longName = "import",
+      description = "import one or more files into GeoRocket",
+      command = ImportCommand::class),
     CommandDesc(longName = "property",
       description = "update properties of existing chunks in GeoRocket",
       command = PropertyCommand::class),

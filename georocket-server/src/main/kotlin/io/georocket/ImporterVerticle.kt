@@ -5,7 +5,6 @@ import com.fasterxml.aalto.stax.InputFactoryImpl
 import de.undercouch.actson.JsonEvent
 import de.undercouch.actson.JsonParser
 import io.georocket.constants.AddressConstants
-import io.georocket.constants.ConfigConstants
 import io.georocket.index.MainIndexer
 import io.georocket.index.xml.XMLCRSIndexer
 import io.georocket.input.geojson.GeoJsonSplitter
@@ -37,6 +36,7 @@ import io.vertx.kotlin.coroutines.toChannel
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import org.apache.commons.io.FilenameUtils
 import java.time.Instant
 
 /**
@@ -49,15 +49,12 @@ class ImporterVerticle : CoroutineVerticle() {
   }
 
   private lateinit var store: Store
-  private lateinit var incoming: String
   private lateinit var indexer: MainIndexer
 
   override suspend fun start() {
     log.info("Launching importer ...")
 
     store = StoreFactory.createStore(vertx)
-    val storagePath = config.getString(ConfigConstants.STORAGE_FILE_PATH)
-    incoming = "$storagePath/incoming"
     indexer = MainIndexer.create(coroutineContext, vertx)
 
     vertx.eventBus().localConsumer<JsonObject>(AddressConstants.IMPORTER_IMPORT) { msg ->
@@ -77,12 +74,14 @@ class ImporterVerticle : CoroutineVerticle() {
    */
   private suspend fun onImport(msg: Message<JsonObject>) {
     val body = msg.body()
-    val filename = body.getString("filename")
-    val filepath = "$incoming/$filename"
-    val layer = body.getString("layer", "/")
+    val filepath = body.getString("filepath")
+    val layer = body.getString("layer") ?: "/"
     val contentType = body.getString("contentType")
     val correlationId = body.getString("correlationId")
     val fallbackCRSString = body.getString("fallbackCRSString")
+    val deleteOnFinish = body.getBoolean("deleteOnFinish", false)
+
+    val filename = FilenameUtils.getName(filepath)
 
     // get tags
     val tags = body.getJsonArray("tags")
@@ -105,7 +104,7 @@ class ImporterVerticle : CoroutineVerticle() {
 
     try {
       val chunkCount = importFile(f, fileSize, contentType, correlationId, filename,
-          timestamp, layer, tags, properties, fallbackCRSString)
+          timestamp, layer, tags, properties, fallbackCRSString, msg)
 
       val duration = System.currentTimeMillis() - timestamp
       log.info("Finished importing [$correlationId] with $chunkCount" +
@@ -115,13 +114,15 @@ class ImporterVerticle : CoroutineVerticle() {
       log.error("Failed to import [$correlationId] to layer '$layer'" +
           " after $duration ms", t)
     } finally {
-      // delete file from 'incoming' folder
-      log.debug("Deleting $filepath from incoming folder")
       f.closeAwait()
-      try {
-        fs.deleteAwait(filepath)
-      } catch (t: Throwable) {
-        log.error("Could not delete file from 'incoming' folder", t)
+      if (deleteOnFinish) {
+        // delete file from 'incoming' folder
+        log.debug("Deleting $filepath")
+        try {
+          fs.deleteAwait(filepath)
+        } catch (t: Throwable) {
+          log.error("Could not delete file $filepath", t)
+        }
       }
     }
   }
@@ -138,10 +139,15 @@ class ImporterVerticle : CoroutineVerticle() {
    */
   private suspend fun importFile(file: ReadStream<Buffer>, fileSize: Long, contentType: String,
       correlationId: String, filename: String, timestamp: Long, layer: String,
-      tags: List<String>?, properties: Map<String, Any>?, fallbackCRSString: String?): Long {
+      tags: List<String>?, properties: Map<String, Any>?, fallbackCRSString: String?,
+      msg: Message<JsonObject>): Long {
     // let the task verticle know that we're now importing
     var importingTask = ImportingTask(correlationId = correlationId, bytesTotal = fileSize)
     TaskRegistry.upsert(importingTask)
+
+    // let sender know that we are now going to import the file and the progress
+    // can be monitored with the given task ID
+    msg.reply(importingTask.id)
 
     var lastChunksAdded = 0L
     val progressUpdater = { chunksAdded: Long, bytesProcessed: Long, final: Boolean ->

@@ -390,10 +390,11 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
 
         // run importer
         val msg = JsonObject()
-            .put("filename", filename)
+            .put("filepath", filepath)
             .put("layer", layer)
             .put("contentType", detectedContentType)
             .put("correlationId", correlationId)
+            .put("deleteOnFinish", true) // delete file from 'incoming' folder after import
 
         if (tags != null) {
           msg.put("tags", JsonArray(tags))
