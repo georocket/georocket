@@ -7,6 +7,7 @@ import io.georocket.index.Index
 import io.georocket.index.IndexerFactory
 import io.georocket.index.MetaIndexerFactory
 import io.georocket.index.PropertiesParser
+import io.georocket.index.TagsParser
 import io.georocket.index.mongodb.MongoDBIndex
 import io.georocket.output.MultiMerger
 import io.georocket.query.DefaultQueryCompiler
@@ -323,8 +324,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
     val propertiesStr = request.getParam("properties")
     val fallbackCRSString = request.getParam("fallbackCRS")
 
-    val tags = if (StringUtils.isNotEmpty(tagsStr))
-      tagsStr.split(",").map { it.trim() } else null
+    val tags = if (StringUtils.isNotEmpty(tagsStr)) TagsParser.parse(tagsStr) else null
 
     val properties = try {
       parseProperties(propertiesStr)
@@ -483,7 +483,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
    */
   private suspend fun removeProperties(search: String?, path: String,
       properties: String, response: HttpServerResponse) {
-    val list = properties.split(",")
+    val list = TagsParser.parse(properties)
     try {
       val query = compileQuery(search, path)
       index.removeProperties(query, list)
@@ -500,7 +500,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
    */
   private suspend fun removeTags(search: String?, path: String, tags: String,
       response: HttpServerResponse) {
-    val list = tags.split(",")
+    val list = TagsParser.parse(tags)
     try {
       val query = compileQuery(search, path)
       index.removeTags(query, list)
@@ -556,7 +556,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
           }
 
           if (StringUtils.isNotEmpty(tags)) {
-            index.addTags(query, tags.split(","))
+            index.addTags(query, TagsParser.parse(tags))
           }
 
           response
