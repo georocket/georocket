@@ -54,7 +54,8 @@ class TagsParserTest {
    */
   @Test
   fun complex() {
-    val r1 = TagsParser.parse("tag,'my name is:elvis',\"a tag:with,colon,and:comma\"")
+    val r1 =
+      TagsParser.parse("tag,'my name is:elvis',\"a tag:with,colon,and:comma\"")
     assertThat(r1).isEqualTo(listOf("tag", "my name is:elvis",
       "a tag:with,colon,and:comma"))
   }

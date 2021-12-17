@@ -60,7 +60,8 @@ class PropertiesParserTest {
    */
   @Test
   fun complex() {
-    val r1 = PropertiesParser.parse("key:value,'my name is':elvis,\"a key:with,colon,and:comma\":'crazy value,with:comma,and:colon'")
+    val r1 =
+      PropertiesParser.parse("key:value,'my name is':elvis,\"a key:with,colon,and:comma\":'crazy value,with:comma,and:colon'")
     assertThat(r1).isEqualTo(mapOf("key" to "value", "my name is" to "elvis",
       "a key:with,colon,and:comma" to "crazy value,with:comma,and:colon"))
   }

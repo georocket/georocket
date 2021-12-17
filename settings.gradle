@@ -1,3 +1,2 @@
-include 'georocket-common'
 include 'georocket-server'
 include 'docs'
