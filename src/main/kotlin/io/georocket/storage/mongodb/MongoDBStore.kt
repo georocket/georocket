@@ -137,8 +137,10 @@ class MongoDBStore private constructor() : Store {
   }
 
   override suspend fun addMany(chunks: Collection<Pair<Buffer, String>>) {
-    val chunksToAdd = chunks.flatMap { chunkToBson(it.first, it.second) }
-    collChunks.insertManyAwait(chunksToAdd)
+    if (chunks.isNotEmpty()) {
+      val chunksToAdd = chunks.flatMap { chunkToBson(it.first, it.second) }
+      collChunks.insertManyAwait(chunksToAdd)
+    }
   }
 
   override suspend fun delete(paths: Collection<String>) {

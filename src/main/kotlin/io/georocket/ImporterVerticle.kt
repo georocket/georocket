@@ -217,6 +217,9 @@ class ImporterVerticle : CoroutineVerticle() {
     val batchSize = 200 // TODO make configurable
     val queue = mutableListOf<Pair<Buffer, String>>()
     suspend fun flushQueue() {
+      if (queue.isEmpty()) {
+        return
+      }
       val start = System.currentTimeMillis()
       store.addMany(queue)
       log.info("Finished importing $batchSize chunks in ${System.currentTimeMillis() - start} ms")
@@ -327,6 +330,9 @@ class ImporterVerticle : CoroutineVerticle() {
     val batchSize = 200 // TODO make configurable
     val queue = mutableListOf<Pair<Buffer, String>>()
     suspend fun flushQueue() {
+      if (queue.isEmpty()) {
+        return
+      }
       val start = System.currentTimeMillis()
       store.addMany(queue)
       log.info("Finished importing $batchSize chunks in ${System.currentTimeMillis() - start} ms")
