@@ -36,33 +36,33 @@ configurations.all {
 }
 
 dependencies {
-    compile group: 'org.slf4j', name: 'jul-to-slf4j', version: '1.7.25'
-    compile group: 'org.slf4j', name: 'log4j-over-slf4j', version: '1.7.25'
-    compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.25'
+    implementation group: 'org.slf4j', name: 'jul-to-slf4j', version: '1.7.25'
+    implementation group: 'org.slf4j', name: 'log4j-over-slf4j', version: '1.7.25'
+    implementation group: 'org.slf4j', name: 'slf4j-api', version: '1.7.25'
 
-    compile group: 'ch.qos.logback', name: 'logback-classic', version: '1.2.3'
-    compile group: 'ch.qos.logback', name: 'logback-core', version: '1.2.3'
+    implementation group: 'ch.qos.logback', name: 'logback-classic', version: '1.2.3'
+    implementation group: 'ch.qos.logback', name: 'logback-core', version: '1.2.3'
 
-    compile "io.vertx:vertx-core:$vertxVersion"
-    compile "io.vertx:vertx-lang-kotlin:$vertxVersion"
-    compile "io.vertx:vertx-lang-kotlin-coroutines:$vertxVersion"
-    compile "io.vertx:vertx-service-discovery:$vertxVersion"
-    compile "io.vertx:vertx-mongo-client:$vertxVersion"
-    compile "io.vertx:vertx-web:$vertxVersion"
-    compile "io.vertx:vertx-web-client:$vertxVersion"
+    implementation "io.vertx:vertx-core:$vertxVersion"
+    implementation "io.vertx:vertx-lang-kotlin:$vertxVersion"
+    implementation "io.vertx:vertx-lang-kotlin-coroutines:$vertxVersion"
+    implementation "io.vertx:vertx-service-discovery:$vertxVersion"
+    implementation "io.vertx:vertx-mongo-client:$vertxVersion"
+    implementation "io.vertx:vertx-web:$vertxVersion"
+    implementation "io.vertx:vertx-web-client:$vertxVersion"
 
     implementation 'software.amazon.awssdk:s3:2.15.75'
     implementation 'de.undercouch:actson:1.2.0'
     implementation 'de.undercouch:underline:1.0.0'
     implementation 'com.google.guava:guava:23.6-jre'
-    compile 'com.fasterxml:aalto-xml:1.0.0'
-    compile 'com.h2database:h2:1.4.196'
-    compile 'com.vividsolutions:jts:1.13'
-    compile 'commons-io:commons-io:2.6'
+    implementation 'com.fasterxml:aalto-xml:1.0.0'
+    implementation 'com.h2database:h2:1.4.196'
+    implementation 'com.vividsolutions:jts:1.13'
+    implementation 'commons-io:commons-io:2.6'
     implementation "com.fasterxml.jackson.module:jackson-module-kotlin:2.12.0"
     implementation 'io.pebbletemplates:pebble:3.1.5'
-    compile 'javax.servlet:javax.servlet-api:4.0.0'
-    compile 'net.java.dev.jna:jna:4.5.1'
+    implementation 'javax.servlet:javax.servlet-api:4.0.0'
+    implementation 'net.java.dev.jna:jna:4.5.1'
     implementation 'net.time4j:time4j-core:4.33'
     implementation 'org.apache.ant:ant:1.10.1'
     implementation 'org.apache.commons:commons-exec:1.3'
@@ -71,36 +71,36 @@ dependencies {
     implementation 'org.apache.httpcomponents:httpcore:4.4.14'
     implementation 'org.fusesource.jansi:jansi:1.17.1'
     implementation 'org.jline:jline:3.9.0'
-    compile 'org.yaml:snakeyaml:1.19'
+    implementation 'org.yaml:snakeyaml:1.19'
 
-    compile('org.geotools:gt-epsg-extension:19.1') {
+    implementation('org.geotools:gt-epsg-extension:19.1') {
         // exclude invalid dependency
         exclude group: 'javax.media', module: 'jai_core'
     }
-    compile('org.geotools:gt-epsg-hsql:19.1') {
+    implementation('org.geotools:gt-epsg-hsql:19.1') {
         // exclude invalid dependency
         exclude group: 'javax.media', module: 'jai_core'
     }
-    compile('org.geotools:gt-referencing:19.1') {
+    implementation('org.geotools:gt-referencing:19.1') {
         // exclude invalid dependency
         exclude group: 'javax.media', module: 'jai_core'
     }
 
     // mongodb driver + snappy compression
-    compile 'org.mongodb:bson:3.6.1'
-    compile 'org.mongodb:mongodb-driver-async:3.6.1'
-    compile 'org.mongodb:mongodb-driver-reactivestreams:4.1.1'
-    compile 'org.xerial.snappy:snappy-java:1.1.4'
+    implementation 'org.mongodb:bson:3.6.1'
+    implementation 'org.mongodb:mongodb-driver-async:3.6.1'
+    implementation 'org.mongodb:mongodb-driver-reactivestreams:4.1.1'
+    implementation 'org.xerial.snappy:snappy-java:1.1.4'
     implementation 'io.projectreactor:reactor-core:3.4.2'
 
     // embedded mongodb for standalone mode
     implementation 'de.flapdoodle.embed:de.flapdoodle.embed.mongo:3.1.4'
 
     // necessary for ALPN / HTTP/2
-    runtime "io.netty:netty-tcnative-boringssl-static:2.0.36.Final"
+    runtimeOnly "io.netty:netty-tcnative-boringssl-static:2.0.36.Final"
 
-    compile "org.jetbrains.kotlin:kotlin-reflect"
-    compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
+    implementation "org.jetbrains.kotlin:kotlin-reflect"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.4.2'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-reactive:1.4.2'
 
@@ -163,7 +163,7 @@ distributions {
 // see https://issues.gradle.org/browse/GRADLE-2992
 task pathingJar(type: Jar) {
     appendix = 'pathing'
-    manifest { attributes("Class-Path": configurations.runtime.collect { it.getName() }.join(' ') + ' ' + jar.archiveName ) }
+    manifest { attributes("Class-Path": configurations.runtimeClasspath.collect { it.getName() }.join(' ') + ' ' + jar.archiveName ) }
 }
 applicationDistribution.from(pathingJar) { into "lib" }
 startScripts {
