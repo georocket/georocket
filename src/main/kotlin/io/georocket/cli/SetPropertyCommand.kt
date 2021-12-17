@@ -7,10 +7,11 @@ import de.undercouch.underline.UnknownAttributes
 import io.georocket.index.Index
 import io.georocket.index.PropertiesParser
 import io.georocket.storage.Store
+import io.vertx.core.buffer.Buffer
 import io.vertx.core.impl.NoStackTraceThrowable
+import io.vertx.core.streams.WriteStream
 import org.antlr.v4.runtime.misc.ParseCancellationException
 import org.slf4j.LoggerFactory
-import java.io.PrintWriter
 
 /**
  * Set properties to existing chunks in the GeoRocket data store
@@ -62,7 +63,7 @@ class SetPropertyCommand : DataCommand() {
   }
 
   override suspend fun doRun(remainingArgs: Array<String>, reader: InputReader,
-      writer: PrintWriter, store: Store, index: Index): Int {
+      out: WriteStream<Buffer>, store: Store, index: Index): Int {
     return try {
       val query = compileQuery(query, layer)
       val props = PropertiesParser.parse(properties)

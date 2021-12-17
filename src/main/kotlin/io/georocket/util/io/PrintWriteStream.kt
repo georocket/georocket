@@ -6,13 +6,13 @@ import io.vertx.core.Handler
 import io.vertx.core.Promise
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.streams.WriteStream
-import java.io.PrintWriter
+import java.io.OutputStream
 
 /**
  * A [WriteStream] that forwards all [Buffer]s to the given [writer]
  * @author Michel Kraemer
  */
-class PrintWriteStream(private val writer: PrintWriter) : WriteStream<Buffer> {
+class PrintWriteStream(private val out: OutputStream) : WriteStream<Buffer> {
   override fun exceptionHandler(handler: Handler<Throwable>?): WriteStream<Buffer> {
     // exceptions cannot happen
     return this
@@ -25,7 +25,7 @@ class PrintWriteStream(private val writer: PrintWriter) : WriteStream<Buffer> {
   }
 
   override fun write(data: Buffer, handler: Handler<AsyncResult<Void>>?) {
-    writer.write(data.toString())
+    out.write(data.bytes)
     handler?.handle(Future.succeededFuture())
   }
 

@@ -9,8 +9,9 @@ import io.georocket.query.DefaultQueryCompiler
 import io.georocket.storage.Store
 import io.georocket.storage.StoreFactory
 import io.georocket.util.PathUtils
+import io.vertx.core.buffer.Buffer
 import io.vertx.core.json.JsonObject
-import java.io.PrintWriter
+import io.vertx.core.streams.WriteStream
 
 /**
  * A command that deals with the [Store] and the [Index]
@@ -22,12 +23,12 @@ abstract class DataCommand : GeoRocketCommand() {
   }
 
   override suspend fun doRun(remainingArgs: Array<String>, reader: InputReader,
-      writer: PrintWriter): Int {
+      out: WriteStream<Buffer>): Int {
     val store = StoreFactory.createStore(vertx)
     return try {
       val index = MongoDBIndex.create(vertx)
       try {
-        doRun(remainingArgs, reader, writer, store, index)
+        doRun(remainingArgs, reader, out, store, index)
       } finally {
         index.close()
       }
@@ -37,5 +38,5 @@ abstract class DataCommand : GeoRocketCommand() {
   }
 
   abstract suspend fun doRun(remainingArgs: Array<String>, reader: InputReader,
-    writer: PrintWriter, store: Store, index: Index): Int
+    out: WriteStream<Buffer>, store: Store, index: Index): Int
 }

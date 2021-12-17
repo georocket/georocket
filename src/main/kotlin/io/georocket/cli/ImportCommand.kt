@@ -13,8 +13,10 @@ import io.georocket.tasks.TaskRegistry
 import io.georocket.util.MimeTypeUtils
 import io.georocket.util.SizeFormat
 import io.georocket.util.formatUntilNow
+import io.vertx.core.buffer.Buffer
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
+import io.vertx.core.streams.WriteStream
 import io.vertx.kotlin.core.deploymentOptionsOf
 import io.vertx.kotlin.coroutines.await
 import kotlinx.coroutines.delay
@@ -27,7 +29,6 @@ import org.bson.types.ObjectId
 import org.slf4j.LoggerFactory
 import java.io.File
 import java.io.IOException
-import java.io.PrintWriter
 import java.nio.file.Paths
 
 /**
@@ -113,7 +114,7 @@ class ImportCommand : GeoRocketCommand() {
   }
 
   override suspend fun doRun(remainingArgs: Array<String>, reader: InputReader,
-      writer: PrintWriter): Int {
+      out: WriteStream<Buffer>): Int {
     val start = System.currentTimeMillis()
 
     // resolve file patterns

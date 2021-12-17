@@ -20,11 +20,14 @@ import io.georocket.cli.TagCommand
 import io.georocket.constants.ConfigConstants
 import io.georocket.tasks.TaskRegistry
 import io.georocket.util.JsonUtils
+import io.georocket.util.io.PrintWriteStream
 import io.vertx.core.Vertx
+import io.vertx.core.buffer.Buffer
 import io.vertx.core.json.DecodeException
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.core.json.jackson.DatabindCodec
+import io.vertx.core.streams.WriteStream
 import io.vertx.kotlin.core.deploymentOptionsOf
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.await
@@ -34,10 +37,9 @@ import org.apache.commons.text.StringEscapeUtils
 import org.fusesource.jansi.AnsiConsole
 import org.slf4j.LoggerFactory
 import org.yaml.snakeyaml.Yaml
+import java.io.BufferedOutputStream
 import java.io.File
 import java.io.IOException
-import java.io.OutputStreamWriter
-import java.io.PrintWriter
 import java.nio.charset.StandardCharsets
 import kotlin.system.exitProcess
 
@@ -98,9 +100,9 @@ class Main : GeoRocketCommand() {
 
     // start CLI
     try {
-      val out = PrintWriter(OutputStreamWriter(System.out, StandardCharsets.UTF_8))
+      val out = PrintWriteStream(BufferedOutputStream(System.out, 65535))
       val exitCode = coRun(args, StandardInputReader(), out)
-      out.flush()
+      System.out.flush()
       AnsiConsole.systemUninstall()
       exitProcess(exitCode)
     } catch (e: OptionParserException) {
@@ -136,7 +138,8 @@ class Main : GeoRocketCommand() {
     configurator.doConfigure(xml.byteInputStream())
   }
 
-  override suspend fun doRun(remainingArgs: Array<String>, reader: InputReader, writer: PrintWriter): Int {
+  override suspend fun doRun(remainingArgs: Array<String>, reader: InputReader,
+      out: WriteStream<Buffer>): Int {
     if (displayVersion) {
       println("georocket $version")
       return 0
@@ -166,7 +169,7 @@ class Main : GeoRocketCommand() {
       return 0
     }
 
-    return command!!.coRun(remainingArgs, reader, writer)
+    return command!!.coRun(remainingArgs, reader, out)
   }
 }
 

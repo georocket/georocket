@@ -5,9 +5,10 @@ import io.georocket.GeoRocket
 import io.georocket.util.SizeFormat
 import io.vertx.core.DeploymentOptions
 import io.vertx.core.Promise
+import io.vertx.core.buffer.Buffer
+import io.vertx.core.streams.WriteStream
 import io.vertx.kotlin.coroutines.await
 import org.slf4j.LoggerFactory
-import java.io.PrintWriter
 import java.lang.management.ManagementFactory
 
 /**
@@ -22,7 +23,7 @@ class ServerCommand : GeoRocketCommand() {
   override val usageDescription = "Run GeoRocket in server mode"
 
   override suspend fun doRun(remainingArgs: Array<String>, reader: InputReader,
-      writer: PrintWriter): Int {
+      out: WriteStream<Buffer>): Int {
     // print banner
     val banner = GeoRocket::class.java.getResource("georocket_banner.txt")!!.readText()
     println(banner)

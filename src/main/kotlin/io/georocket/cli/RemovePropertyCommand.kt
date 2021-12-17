@@ -7,10 +7,11 @@ import de.undercouch.underline.UnknownAttributes
 import io.georocket.index.Index
 import io.georocket.index.TagsParser
 import io.georocket.storage.Store
+import io.vertx.core.buffer.Buffer
 import io.vertx.core.impl.NoStackTraceThrowable
+import io.vertx.core.streams.WriteStream
 import org.antlr.v4.runtime.misc.ParseCancellationException
 import org.slf4j.LoggerFactory
-import java.io.PrintWriter
 
 /**
  * Remove properties from existing chunks in the GeoRocket data store
@@ -61,7 +62,7 @@ class RemovePropertyCommand : DataCommand() {
   }
 
   override suspend fun doRun(remainingArgs: Array<String>, reader: InputReader,
-      writer: PrintWriter, store: Store, index: Index): Int {
+      out: WriteStream<Buffer>, store: Store, index: Index): Int {
     return try {
       val query = compileQuery(query, layer)
       val propNames = TagsParser.parse(properties)

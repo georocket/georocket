@@ -6,9 +6,10 @@ import de.undercouch.underline.OptionDesc
 import de.undercouch.underline.UnknownAttributes
 import io.georocket.index.Index
 import io.georocket.storage.Store
+import io.vertx.core.buffer.Buffer
 import io.vertx.core.impl.NoStackTraceThrowable
+import io.vertx.core.streams.WriteStream
 import org.slf4j.LoggerFactory
-import java.io.PrintWriter
 
 /**
  * Get all values of a property
@@ -52,12 +53,12 @@ class GetPropertyCommand : DataCommand() {
   }
 
   override suspend fun doRun(remainingArgs: Array<String>, reader: InputReader,
-      writer: PrintWriter, store: Store, index: Index): Int {
+      out: WriteStream<Buffer>, store: Store, index: Index): Int {
     return try {
       val query = compileQuery(query, layer)
       val r = index.getPropertyValues(query, property!!)
       for (buf in r) {
-        writer.appendLine(buf.toString())
+        out.write(Buffer.buffer(buf.toString()))
       }
       0
     } catch (t: Throwable) {

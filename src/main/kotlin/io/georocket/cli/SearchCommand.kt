@@ -7,11 +7,11 @@ import de.undercouch.underline.UnknownAttributes
 import io.georocket.index.Index
 import io.georocket.output.MultiMerger
 import io.georocket.storage.Store
-import io.georocket.util.io.PrintWriteStream
+import io.vertx.core.buffer.Buffer
 import io.vertx.core.impl.NoStackTraceThrowable
+import io.vertx.core.streams.WriteStream
 import org.slf4j.LoggerFactory
 import java.io.FileNotFoundException
-import java.io.PrintWriter
 
 /**
  * Searches the GeoRocket data store and outputs the retrieved files
@@ -63,9 +63,8 @@ class SearchCommand : DataCommand() {
   }
 
   override suspend fun doRun(remainingArgs: Array<String>, reader: InputReader,
-      writer: PrintWriter, store: Store, index: Index): Int {
+      out: WriteStream<Buffer>, store: Store, index: Index): Int {
     return try {
-      val ws = PrintWriteStream(writer)
       val query = compileQuery(query, layer)
       val metas = index.getMeta(query)
 
@@ -81,7 +80,7 @@ class SearchCommand : DataCommand() {
       for (chunkMeta in metas) {
         val chunk = store.getOne(chunkMeta.first)
         try {
-          merger.merge(chunk, chunkMeta.second, ws)
+          merger.merge(chunk, chunkMeta.second, out)
           accepted++
         } catch (e: IllegalStateException) {
           // Chunk cannot be merged. maybe it's a new one that has
@@ -101,7 +100,7 @@ class SearchCommand : DataCommand() {
       }
 
       if (accepted > 0) {
-        merger.finish(ws)
+        merger.finish(out)
       } else {
         throw FileNotFoundException("Not Found")
       }

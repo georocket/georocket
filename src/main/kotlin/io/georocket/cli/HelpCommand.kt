@@ -3,8 +3,8 @@ package io.georocket.cli
 import de.undercouch.underline.InputReader
 import de.undercouch.underline.UnknownAttributes
 import io.georocket.Main
-import java.io.PrintWriter
-import java.util.ArrayList
+import io.vertx.core.buffer.Buffer
+import io.vertx.core.streams.WriteStream
 
 /**
  * Displays a command's help
@@ -20,10 +20,10 @@ class HelpCommand : GeoRocketCommand() {
   var commands: List<String> = ArrayList()
 
   override suspend fun doRun(remainingArgs: Array<String>, reader: InputReader,
-      writer: PrintWriter): Int {
+      out: WriteStream<Buffer>): Int {
     // simply forward commands to GeoRocketCli and append '-h'
     val cmd = Main()
     val args = commands + "-h"
-    return cmd.coRun(args.toTypedArray(), reader, writer)
+    return cmd.coRun(args.toTypedArray(), reader, out)
   }
 }

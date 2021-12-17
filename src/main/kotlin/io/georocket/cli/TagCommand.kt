@@ -3,7 +3,8 @@ package io.georocket.cli
 import de.undercouch.underline.CommandDesc
 import de.undercouch.underline.CommandDescList
 import de.undercouch.underline.InputReader
-import java.io.PrintWriter
+import io.vertx.core.buffer.Buffer
+import io.vertx.core.streams.WriteStream
 
 /**
  * Update tags of existing chunks in the GeoRocket data store
@@ -32,7 +33,7 @@ class TagCommand : GeoRocketCommand() {
       "Modify tags of existing chunks in the GeoRocket data store"
 
   override suspend fun doRun(remainingArgs: Array<String>, reader: InputReader,
-      writer: PrintWriter): Int {
-    return subcommand!!.coRun(remainingArgs, reader, writer)
+      out: WriteStream<Buffer>): Int {
+    return subcommand!!.coRun(remainingArgs, reader, out)
   }
 }

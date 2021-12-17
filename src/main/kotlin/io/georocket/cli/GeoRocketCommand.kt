@@ -8,7 +8,9 @@ import de.undercouch.underline.OptionIntrospector
 import de.undercouch.underline.OptionIntrospector.ID
 import de.undercouch.underline.OptionParser
 import io.vertx.core.Vertx
+import io.vertx.core.buffer.Buffer
 import io.vertx.core.json.JsonObject
+import io.vertx.core.streams.WriteStream
 import java.io.PrintWriter
 
 abstract class GeoRocketCommand : Command {
@@ -38,7 +40,7 @@ abstract class GeoRocketCommand : Command {
     throw RuntimeException("Use suspend version of this method!")
   }
 
-  suspend fun coRun(args: Array<String>, reader: InputReader, writer: PrintWriter): Int {
+  suspend fun coRun(args: Array<String>, reader: InputReader, out: WriteStream<Buffer>): Int {
     val unknownArgs = OptionIntrospector.hasUnknownArguments(javaClass)
     val parsedOptions = OptionParser.parse(args, options,
       if (unknownArgs) OptionIntrospector.DEFAULT_ID else null)
@@ -53,11 +55,11 @@ abstract class GeoRocketCommand : Command {
       return 1
     }
 
-    return doRun(parsedOptions.remainingArgs, reader, writer)
+    return doRun(parsedOptions.remainingArgs, reader, out)
   }
 
   abstract suspend fun doRun(remainingArgs: Array<String>, reader: InputReader,
-    writer: PrintWriter): Int
+    out: WriteStream<Buffer>): Int
 
   /**
    * Outputs an error message
