@@ -168,9 +168,9 @@ class ImportProgressRenderer(private val vertx: Vertx) : Closeable {
     val line1 = StringBuilder()
     line1.append(filename)
 
-    if (index > 0 && totalFiles > 0) {
+    if (totalFiles > 1) {
       line1.append(" (")
-          .append(index)
+          .append(index + 1)
           .append("/")
           .append(totalFiles)
           .append(")")
