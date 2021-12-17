@@ -16,7 +16,8 @@ import io.georocket.storage.StoreFactory
 import io.georocket.tasks.ReceivingTask
 import io.georocket.tasks.TaskError
 import io.georocket.tasks.TaskRegistry
-import io.georocket.util.MimeTypeUtils
+import io.georocket.util.MimeTypeUtils.belongsTo
+import io.georocket.util.MimeTypeUtils.detect
 import io.vertx.core.Vertx
 import io.vertx.core.file.OpenOptions
 import io.vertx.core.http.HttpServerRequest
@@ -296,7 +297,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
   private suspend fun detectContentType(filepath: String): String {
     return vertx.executeBlocking<String> { f ->
       try {
-        var mimeType = MimeTypeUtils.detect(File(filepath))
+        var mimeType = detect(File(filepath))
         if (mimeType == null) {
           log.warn("Could not detect file type of $filepath. Falling back to " +
               "application/octet-stream.")
@@ -343,6 +344,40 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
     TaskRegistry.upsert(receivingTask)
 
     launch {
+      val contentTypeHeader = request.getHeader("Content-Type")
+      val mimeType = try {
+        val contentType = ContentType.parse(contentTypeHeader)
+        contentType.mimeType
+      } catch (ex: ParseException) {
+        null
+      } catch (ex: IllegalArgumentException) {
+        null
+      }
+
+      // detect content type of file to import
+      val detectedContentType = if (mimeType == null || mimeType.isBlank() ||
+        mimeType == "application/octet-stream" ||
+        mimeType == "application/x-www-form-urlencoded") {
+        // fallback: if the client has not sent a Content-Type or if it's
+        // a generic one, then try to guess it
+        log.debug("Mime type '$mimeType' is invalid or generic. "
+            + "Trying to guess the right type.")
+        detectContentType(filepath).also {
+          log.info("Guessed mime type '$it'.")
+        }
+      } else {
+        mimeType
+      }
+
+      if (!belongsTo(detectedContentType, "application", "xml") &&
+          !belongsTo(detectedContentType, "text", "xml") &&
+          !belongsTo(detectedContentType, "application", "json")) {
+        request.response()
+          .setStatusCode(415)
+          .end("Unsupported content type: $mimeType")
+        return@launch
+      }
+
       // create directory for incoming files
       val fs = vertx.fileSystem()
       fs.mkdirs(incoming).await()
@@ -356,31 +391,6 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
           f.write(buf).await()
         }
         f.close()
-
-        val contentTypeHeader = request.getHeader("Content-Type")
-        val mimeType = try {
-          val contentType = ContentType.parse(contentTypeHeader)
-          contentType.mimeType
-        } catch (ex: ParseException) {
-          null
-        } catch (ex: IllegalArgumentException) {
-          null
-        }
-
-        // detect content type of file to import
-        val detectedContentType = if (mimeType == null || mimeType.isBlank() ||
-            mimeType == "application/octet-stream" ||
-            mimeType == "application/x-www-form-urlencoded") {
-          // fallback: if the client has not sent a Content-Type or if it's
-          // a generic one, then try to guess it
-          log.debug("Mime type '$mimeType' is invalid or generic. "
-              + "Trying to guess the right type.")
-          detectContentType(filepath).also {
-            log.info("Guessed mime type '$it'.")
-          }
-        } else {
-          mimeType
-        }
 
         val duration = System.currentTimeMillis() - startTime
         onReceivingFileFinished(receivingTask, duration, null)
