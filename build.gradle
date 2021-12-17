@@ -1,107 +1,220 @@
 plugins {
-  id 'com.github.ben-manes.versions' version '0.17.0'
+    id 'com.github.ben-manes.versions' version '0.17.0'
+    id 'org.jetbrains.kotlin.jvm' version '1.5.31'
 }
 
-subprojects {
-    apply plugin: 'signing'
-    
-    version = '2.0.0-alpha.1'
-    group = 'io.georocket'
+apply plugin: 'java'
+apply plugin: 'application'
+apply plugin: 'antlr'
 
-    plugins.withType(JavaPlugin) {
-        sourceCompatibility = '1.8'
-        targetCompatibility = '1.8'
+version = '2.0.0-alpha.1'
+group = 'io.georocket'
 
-        plugins.withType(MavenPlugin) {
-            // package javadoc into a jar file
-            task packageJavadoc(type: Jar, dependsOn: 'javadoc') {
-                from javadoc.destinationDir
-                classifier = 'javadoc'
+mainClassName = 'io.georocket.MainKt'
+
+ext {
+    vertxVersion = '3.9.5'
+}
+
+repositories {
+    mavenCentral()
+    exclusiveContent {
+        forRepository {
+            maven {
+                url 'https://repo.osgeo.org/repository/release/'
             }
-
-            // package source into a jar file
-            task packageSources(type: Jar) {
-                from sourceSets.main.allSource
-                classifier = 'sources'
-            }
-
-            // define artifacts for upload
-            artifacts {
-                archives jar
-                archives packageJavadoc
-                archives packageSources
-            }
-            
-            // remove test dependencies from configuration-to-scope mapping
-            // this also removes them from the maven pom file
-            conf2ScopeMappings.mappings.remove(configurations.testCompile)
+        }
+        filter {
+            includeGroup "jgridshift"
+            includeGroup "org.geotools"
         }
     }
+}
 
-    plugins.withType(MavenPlugin) {
-        // sign all artifacts
-        signing {
-            required { !version.endsWith('SNAPSHOT') && gradle.taskGraph.hasTask(':uploadArchives') }
-            sign configurations.archives
-        }
+configurations.all {
+    exclude group: 'org.slf4j', module: 'slf4j-log4j12'
+}
 
-        uploadArchives.repositories.mavenDeployer {
-            // sign artifacts before upload
-            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+dependencies {
+    compile group: 'org.slf4j', name: 'jul-to-slf4j', version: '1.7.25'
+    compile group: 'org.slf4j', name: 'log4j-over-slf4j', version: '1.7.25'
+    compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.25'
 
-            // upload to sonatype OSS
-            repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2") {
-                authentication(userName: this.hasProperty('sonatypeUsername') ? sonatypeUsername : '',
-                    password: this.hasProperty('sonatypePassword') ? sonatypePassword : '')
+    compile group: 'ch.qos.logback', name: 'logback-classic', version: '1.2.3'
+    compile group: 'ch.qos.logback', name: 'logback-core', version: '1.2.3'
+
+    compile "io.vertx:vertx-core:$vertxVersion"
+    compile "io.vertx:vertx-lang-kotlin:$vertxVersion"
+    compile "io.vertx:vertx-lang-kotlin-coroutines:$vertxVersion"
+    compile "io.vertx:vertx-service-discovery:$vertxVersion"
+    compile "io.vertx:vertx-mongo-client:$vertxVersion"
+    compile "io.vertx:vertx-web:$vertxVersion"
+    compile "io.vertx:vertx-web-client:$vertxVersion"
+
+    implementation 'software.amazon.awssdk:s3:2.15.75'
+    implementation 'de.undercouch:actson:1.2.0'
+    implementation 'de.undercouch:underline:1.0.0'
+    implementation 'com.google.guava:guava:23.6-jre'
+    compile 'com.fasterxml:aalto-xml:1.0.0'
+    compile 'com.h2database:h2:1.4.196'
+    compile 'com.vividsolutions:jts:1.13'
+    compile 'commons-io:commons-io:2.6'
+    implementation "com.fasterxml.jackson.module:jackson-module-kotlin:2.12.0"
+    implementation 'io.pebbletemplates:pebble:3.1.5'
+    compile 'javax.servlet:javax.servlet-api:4.0.0'
+    compile 'net.java.dev.jna:jna:4.5.1'
+    implementation 'net.time4j:time4j-core:4.33'
+    implementation 'org.apache.ant:ant:1.10.1'
+    implementation 'org.apache.commons:commons-exec:1.3'
+    implementation 'org.apache.commons:commons-math3:3.6.1'
+    implementation 'org.apache.commons:commons-text:1.3'
+    implementation 'org.apache.httpcomponents:httpcore:4.4.14'
+    implementation 'org.fusesource.jansi:jansi:1.17.1'
+    implementation 'org.jline:jline:3.9.0'
+    compile 'org.yaml:snakeyaml:1.19'
+
+    compile('org.geotools:gt-epsg-extension:19.1') {
+        // exclude invalid dependency
+        exclude group: 'javax.media', module: 'jai_core'
+    }
+    compile('org.geotools:gt-epsg-hsql:19.1') {
+        // exclude invalid dependency
+        exclude group: 'javax.media', module: 'jai_core'
+    }
+    compile('org.geotools:gt-referencing:19.1') {
+        // exclude invalid dependency
+        exclude group: 'javax.media', module: 'jai_core'
+    }
+
+    // mongodb driver + snappy compression
+    compile 'org.mongodb:bson:3.6.1'
+    compile 'org.mongodb:mongodb-driver-async:3.6.1'
+    compile 'org.mongodb:mongodb-driver-reactivestreams:4.1.1'
+    compile 'org.xerial.snappy:snappy-java:1.1.4'
+    implementation 'io.projectreactor:reactor-core:3.4.2'
+
+    // embedded mongodb for standalone mode
+    implementation 'de.flapdoodle.embed:de.flapdoodle.embed.mongo:3.1.4'
+
+    // necessary for ALPN / HTTP/2
+    runtime "io.netty:netty-tcnative-boringssl-static:2.0.36.Final"
+
+    compile "org.jetbrains.kotlin:kotlin-reflect"
+    compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.4.2'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-reactive:1.4.2'
+
+    testImplementation 'com.github.tomakehurst:wiremock-jre8:2.25.1'
+    testImplementation 'org.mongodb:mongodb-driver:3.6.1'
+
+    testImplementation "io.vertx:vertx-unit:$vertxVersion"
+    testImplementation 'junit:junit:4.12'
+    testRuntimeOnly 'org.junit.vintage:junit-vintage-engine:5.7.0'
+
+    testImplementation "io.mockk:mockk:1.10.5"
+    testImplementation "io.vertx:vertx-junit5:$vertxVersion"
+    testImplementation "org.assertj:assertj-core:3.18.1"
+    testImplementation "org.junit.jupiter:junit-jupiter-api:5.7.0"
+    testImplementation "org.junit.jupiter:junit-jupiter-params:5.7.0"
+    testImplementation "org.junit.jupiter:junit-jupiter-engine:5.7.0"
+    testImplementation "org.testcontainers:testcontainers:1.15.2"
+    testImplementation "org.testcontainers:junit-jupiter:1.15.2"
+
+    antlr 'org.antlr:antlr4:4.5.3'
+}
+
+// customize start scripts
+startScripts {
+    // customize application name
+    applicationName = 'georocket'
+
+    // set GEOROCKET_HOME environment variable
+    doLast {
+        def windowsScriptFile = file(getWindowsScript())
+        def unixScriptFile = file(getUnixScript())
+        windowsScriptFile.text = windowsScriptFile.text
+            .replaceFirst('set APP_HOME=.*', '$0\r\nset GEOROCKET_HOME=%APP_HOME%')
+        unixScriptFile.text = unixScriptFile.text
+            .replaceFirst('APP_HOME=.*', '$0\nexport GEOROCKET_HOME=\\$APP_HOME')
+    }
+}
+
+distributions {
+    main {
+        contents {
+            // include 'conf' directory in distribution
+            from(projectDir) {
+                include 'conf/**/*'
             }
-            snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots") {
-                authentication(userName: this.hasProperty('sonatypeUsername') ? sonatypeUsername : '',
-                    password: this.hasProperty('sonatypePassword') ? sonatypePassword : '')
-            }
 
-            // ensure correct artifact ID
-            pom.artifactId = project.name
-
-            // pom file details
-            pom.project {
-                name 'georocket'
-                packaging 'jar'
-                description 'GeoRocket is a high-performance data store for geospatial files'
-                url 'http://georocket.io'
-
-                scm {
-                    url 'scm:git:git://github.com/georocket/georocket.git'
-                    connection 'scm:git:git://github.com/georocket/georocket.git'
-                    developerConnection 'scm:git:git://github.com/georocket/georocket.git'
+            // include 'docs' in distribution
+            from(tasks.getByPath(':docs:asciidoctor')) {
+                into "docs"
+                eachFile { f ->
+                    f.path = f.path.replaceFirst(/html5\//, '')
                 }
-
-                licenses {
-                    license {
-                        name 'The Apache Software License, Version 2.0'
-                        url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-                        distribution 'repo'
-                    }
-                }
-
-                developers {
-                    developer {
-                        id 'michel-kraemer'
-                        name 'Michel Kraemer'
-                        email 'michel@undercouch.de'
-                    }
-                }
+                includeEmptyDirs = false
             }
         }
     }
+}
 
-    ext {
-        vertxVersion = '3.9.5'
+// Fix command-length issue in windows startscript
+// see https://issues.gradle.org/browse/GRADLE-2992
+task pathingJar(type: Jar) {
+    appendix = 'pathing'
+    manifest { attributes("Class-Path": configurations.runtime.collect { it.getName() }.join(' ') + ' ' + jar.archiveName ) }
+}
+applicationDistribution.from(pathingJar) { into "lib" }
+startScripts {
+    doLast {
+        def winScriptFile  = file getWindowsScript()
+        def winFileText = winScriptFile.text
+
+        // Remove too-long-classpath and use pathing jar instead
+        winFileText = winFileText.replaceAll('set CLASSPATH=.*', 'rem CLASSPATH declaration removed.')
+        winFileText = winFileText.replaceAll('("%JAVA_EXE%" .* -classpath ")%CLASSPATH%(" .*)', '$1%APP_HOME%\\\\lib\\\\' + pathingJar.archiveName + '$2')
+
+        winScriptFile.text = winFileText
     }
+}
 
-    // print project version to console - used in CI
-    task getVersion {
-        doLast {
-            println version
+compileJava {
+    sourceCompatibility = '1.8'
+    targetCompatibility = '1.8'
+}
+
+compileKotlin {
+    kotlinOptions.jvmTarget = "1.8"
+}
+
+compileTestKotlin {
+    kotlinOptions.jvmTarget = "1.8"
+}
+
+task generateVersionFile {
+    doLast {
+        def dst = new File(project.buildDir, 'generated-src/main/resources/io/georocket')
+        dst.mkdirs()
+        def versionFile = new File(dst, 'version.dat')
+        versionFile.withWriter { w ->
+            w << project.version
         }
     }
+}
+
+task generateSources(dependsOn: [generateVersionFile, generateGrammarSource])
+
+processResources.dependsOn(generateSources)
+
+compileKotlin.dependsOn(processResources)
+
+// include generated sources
+sourceSets.main.java.srcDirs "$buildDir/generated-src/main/java"
+sourceSets.main.resources.srcDirs "$buildDir/generated-src/main/resources"
+
+tasks.withType(Javadoc).all {
+    // TODO there seems to be some issue with the files generated by ANTLR.
+    // javadoc crashes with StringIndexOutOfBoundsException
+    excludes = ["**/io/georocket/index/*Lexer*", "**/io/georocket/index/*Parser*", "**/io/georocket/index/*Listener*"]
 }

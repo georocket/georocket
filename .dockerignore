@@ -1,8 +1,8 @@
 # first exclude everything
 **
 
-# then include GeoRocket server (built with `./gradlew installDist`)
-!georocket-server/build/install/georocket-server
+# then include GeoRocket distribution (built with `./gradlew installDist`)
+!build/install/georocket
 
 # and exclude GeoRocket storage
-georocket-server/build/install/georocket-server/storage
+build/install/georocket/storage

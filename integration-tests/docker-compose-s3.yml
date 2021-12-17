@@ -2,18 +2,24 @@ version: "2"
 services:
   integration-tester:
     build: .
-    command: h2
+    command: s3
     container_name: ci-integration-tester
     links:
-      - georocket_h2
+      - georocket_s3
+      - s3
 
-  georocket_h2:
+  georocket_s3:
     image: georocket/georocket
     command: server
     volumes:
-      - ./conf/georocket_h2:/usr/local/georocket-server/conf
+      - ./conf/georocket_s3:/usr/local/georocket/conf
     links:
+      - s3
       - mongo
+
+  s3:
+    image: minio/minio
+    command: server /data
 
   mongo:
     image: mongo

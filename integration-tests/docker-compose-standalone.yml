@@ -11,4 +11,4 @@ services:
     image: georocket/georocket
     command: server
     volumes:
-      - ./conf/georocket_standalone:/usr/local/georocket-server/conf
+      - ./conf/georocket_standalone:/usr/local/georocket/conf

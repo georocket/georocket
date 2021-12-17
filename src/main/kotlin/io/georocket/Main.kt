@@ -214,11 +214,11 @@ private fun loadGeoRocketConfiguration(): JsonObject {
 
   // load configuration file
   val confDir = File(geoRocketHome, "conf")
-  var confFile = File(confDir, "georocketd.yaml")
+  var confFile = File(confDir, "georocket.yaml")
   if (!confFile.exists()) {
-    confFile = File(confDir, "georocketd.yml")
+    confFile = File(confDir, "georocket.yml")
     if (!confFile.exists()) {
-      confFile = File(confDir, "georocketd.json")
+      confFile = File(confDir, "georocket.json")
     }
   }
 

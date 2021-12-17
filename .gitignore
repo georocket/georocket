@@ -15,5 +15,4 @@ gradle.properties
 # IntelliJ  project structure
 .idea/
 *.iml
-/conf
 /storage

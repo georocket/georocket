@@ -43,9 +43,8 @@ distribution:
 
     ./gradlew installDist
 
-If the command finishes successfully you will find the *client distribution*
-under `georocket-cli/build/install` and the *server distribution* under
-`georocket-server/build/install`.
+If the command finishes successfully, you will find the distribution under
+`build/install`.
 
 ### Building the Docker image
 
@@ -59,13 +58,13 @@ commands:
 
 First, follow the instructions on building the GeoRocket distribution above.
 
-Then start the GeoRocket server with the following command:
+Then start GeoRocket with the following command:
 
-    georocket-server/build/install/georocket-server/bin/georocketd
+    build/install/georocket/bin/georocket
 
-Run the command-line application as follows:
+You may also run it in server mode (recommended for production use):
 
-    georocket-cli/build/install/georocket-cli/bin/georocket
+    build/install/georocket/bin/georocket server
 
 If you don't provide any arguments the command-line application will print
 usage instructions.
@@ -75,7 +74,7 @@ usage instructions.
 The fastest way to run GeoRocket Server is to use the Docker image from
 Docker Hub:
 
-    docker run --name georocket -d -p 63020:63020 georocket/georocket
+    docker run --name georocket -d -p 63020:63020 georocket/georocket server
 
 This launches GeoRocket Server in a Docker container and makes it available at
 <http://localhost:63020>.
