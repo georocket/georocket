@@ -18,6 +18,7 @@ import io.georocket.tasks.TaskError
 import io.georocket.tasks.TaskRegistry
 import io.georocket.util.MimeTypeUtils.belongsTo
 import io.georocket.util.MimeTypeUtils.detect
+import io.vertx.core.Promise
 import io.vertx.core.Vertx
 import io.vertx.core.file.OpenOptions
 import io.vertx.core.http.HttpServerRequest
@@ -388,9 +389,15 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
       try {
         // write request body into temporary file
         for (buf in requestChannel) {
-          f.write(buf).await()
+          if (f.writeQueueFull()) {
+            val p = Promise.promise<Unit>()
+            f.drainHandler { p.complete() }
+            p.future().await()
+            f.drainHandler(null)
+          }
+          f.write(buf)
         }
-        f.close()
+        f.close().await()
 
         val duration = System.currentTimeMillis() - startTime
         onReceivingFileFinished(receivingTask, duration, null)
