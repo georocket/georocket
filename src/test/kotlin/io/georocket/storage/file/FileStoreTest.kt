@@ -7,11 +7,7 @@ import io.georocket.util.PathUtils
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import io.vertx.junit5.VertxTestContext
-import io.vertx.kotlin.core.file.existsAwait
-import io.vertx.kotlin.core.file.mkdirsAwait
-import io.vertx.kotlin.core.file.readDirAwait
-import io.vertx.kotlin.core.file.readFileAwait
-import io.vertx.kotlin.core.file.writeFileAwait
+import io.vertx.kotlin.coroutines.await
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.io.TempDir
@@ -44,8 +40,8 @@ class FileStoreTest : StorageTest() {
       fileDestination else PathUtils.join(fileDestination, path)
     val filePath = PathUtils.join(destinationFolder, ID)
     val fs = vertx.fileSystem()
-    fs.mkdirsAwait(destinationFolder)
-    fs.writeFileAwait(filePath, Buffer.buffer(CHUNK_CONTENT))
+    fs.mkdirs(destinationFolder).await()
+    fs.writeFile(filePath, Buffer.buffer(CHUNK_CONTENT)).await()
     return filePath.toString().replace("$fileDestination/", "")
   }
 
@@ -56,11 +52,11 @@ class FileStoreTest : StorageTest() {
       fileDestination else PathUtils.join(fileDestination, path)
 
     ctx.coVerify {
-      assertThat(fs.existsAwait(destinationFolder)).isTrue
-      val files = fs.readDirAwait(destinationFolder)
+      assertThat(fs.exists(destinationFolder).await()).isTrue
+      val files = fs.readDir(destinationFolder).await()
       assertThat(files).hasSize(1)
       val file = files[0]
-      val contents = fs.readFileAwait(file)
+      val contents = fs.readFile(file).await()
       assertThat(contents.toString()).isEqualTo(CHUNK_CONTENT)
     }
   }
@@ -69,7 +65,7 @@ class FileStoreTest : StorageTest() {
       vertx: Vertx, path: String) {
     val fs = vertx.fileSystem()
     ctx.coVerify {
-      assertThat(fs.existsAwait(path)).isFalse()
+      assertThat(fs.exists(path).await()).isFalse()
     }
   }
 }

@@ -10,7 +10,7 @@ import io.vertx.core.buffer.Buffer
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.coroutines.dispatcher
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -38,7 +38,7 @@ class AllSameStrategyTest {
     val strategy = AllSameStrategy()
     val bws = BufferWriteStream()
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         strategy.init(cm)
         strategy.init(cm)
@@ -61,7 +61,7 @@ class AllSameStrategyTest {
     val strategy: MergeStrategy = AllSameStrategy()
     val bws = BufferWriteStream()
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         strategy.init(cm) // skip second init
         strategy.merge(chunk1, cm, bws)
@@ -84,7 +84,7 @@ class AllSameStrategyTest {
     val cm4 = XMLChunkMeta(listOf(XMLStartElement(null, "root", arrayOf(""), arrayOf("uri"))), 10, 20)
     val strategy = AllSameStrategy()
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         assertThat(strategy.canMerge(cm)).isTrue
         strategy.init(cm)
@@ -106,7 +106,7 @@ class AllSameStrategyTest {
     val strategy = AllSameStrategy()
     val bws = BufferWriteStream()
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         strategy.init(cm)
         assertThatThrownBy {

@@ -2,7 +2,7 @@ package io.georocket.index.generic
 
 import io.georocket.index.Indexer
 import io.georocket.util.StreamEvent
-import io.vertx.core.logging.LoggerFactory
+import org.slf4j.LoggerFactory
 
 /**
  * Base class for all indexers that create Bounding Boxes

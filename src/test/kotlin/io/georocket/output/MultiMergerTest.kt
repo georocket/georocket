@@ -12,7 +12,7 @@ import io.vertx.core.buffer.Buffer
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.coroutines.dispatcher
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -37,7 +37,7 @@ class MultiMergerTest {
       m.init(meta)
     }
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         for ((meta, chunk) in metas.zip(chunks)) {
           m.merge(chunk, meta, bws)
@@ -111,7 +111,7 @@ class MultiMergerTest {
 
     val m = MultiMerger(false)
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         m.init(cm1)
         assertThatThrownBy {
@@ -140,7 +140,7 @@ class MultiMergerTest {
     val m = MultiMerger(false)
     val bws = BufferWriteStream()
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         m.init(cm1)
         m.merge(chunk1, cm1, bws)

@@ -16,24 +16,18 @@ import io.georocket.storage.StoreFactory
 import io.georocket.tasks.ReceivingTask
 import io.georocket.tasks.TaskError
 import io.georocket.tasks.TaskRegistry
-import io.georocket.util.HttpException
 import io.georocket.util.MimeTypeUtils
 import io.vertx.core.Vertx
 import io.vertx.core.file.OpenOptions
 import io.vertx.core.http.HttpServerRequest
 import io.vertx.core.http.HttpServerResponse
-import io.vertx.core.json.Json
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
-import io.vertx.core.logging.LoggerFactory
+import io.vertx.core.json.jackson.DatabindCodec
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
-import io.vertx.kotlin.core.executeBlockingAwait
-import io.vertx.kotlin.core.file.deleteAwait
-import io.vertx.kotlin.core.file.mkdirsAwait
-import io.vertx.kotlin.core.file.openAwait
-import io.vertx.kotlin.core.file.writeAwait
-import io.vertx.kotlin.coroutines.toChannel
+import io.vertx.kotlin.coroutines.await
+import io.vertx.kotlin.coroutines.toReceiveChannel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.antlr.v4.runtime.misc.ParseCancellationException
@@ -42,6 +36,7 @@ import org.apache.commons.lang3.StringUtils
 import org.apache.http.ParseException
 import org.apache.http.entity.ContentType
 import org.bson.types.ObjectId
+import org.slf4j.LoggerFactory
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
@@ -252,10 +247,11 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
           response.write(",")
         }
 
-        response.write(Json.mapper.writeValueAsString(v))
+        response.write(DatabindCodec.mapper().writeValueAsString(v))
       }
 
-      response.write("]").end()
+      response.write("]")
+      response.end()
     } catch (t: Throwable) {
       log.error("Could not fetch attribute values", t)
       Endpoint.fail(response, t)
@@ -283,10 +279,11 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
           response.write(",")
         }
 
-        response.write(Json.mapper.writeValueAsString(v))
+        response.write(DatabindCodec.mapper().writeValueAsString(v))
       }
 
-      response.write("]").end()
+      response.write("]")
+      response.end()
     } catch (t: Throwable) {
       log.error("Could not fetch property values", t)
       Endpoint.fail(response, t)
@@ -297,7 +294,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
    * Try to detect the content type of a file with the given [filepath].
    */
   private suspend fun detectContentType(filepath: String): String {
-    return vertx.executeBlockingAwait { f ->
+    return vertx.executeBlocking<String> { f ->
       try {
         var mimeType = MimeTypeUtils.detect(File(filepath))
         if (mimeType == null) {
@@ -309,7 +306,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
       } catch (e: IOException) {
         f.fail(e)
       }
-    } ?: throw HttpException(215)
+    }.await()
   }
 
   /**
@@ -317,7 +314,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
    */
   private fun onPost(context: RoutingContext) {
     val request = context.request()
-    val requestChannel = request.toChannel(vertx)
+    val requestChannel = request.toReceiveChannel(vertx)
 
     val layer = Endpoint.getEndpointPath(context)
     val tagsStr = request.getParam("tags")
@@ -348,15 +345,15 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
     launch {
       // create directory for incoming files
       val fs = vertx.fileSystem()
-      fs.mkdirsAwait(incoming)
+      fs.mkdirs(incoming).await()
 
       // create temporary file
-      val f = fs.openAwait(filepath, OpenOptions())
+      val f = fs.open(filepath, OpenOptions()).await()
 
       try {
         // write request body into temporary file
         for (buf in requestChannel) {
-          f.writeAwait(buf)
+          f.write(buf).await()
         }
         f.close()
 
@@ -420,8 +417,8 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
         val duration = System.currentTimeMillis() - startTime
         onReceivingFileFinished(receivingTask, duration, t)
         Endpoint.fail(request.response(), t)
-        log.error(t)
-        fs.deleteAwait(filepath)
+        log.error("Could not import file", t)
+        fs.delete(filepath).await()
       }
     }
   }

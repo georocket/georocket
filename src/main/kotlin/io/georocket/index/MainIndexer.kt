@@ -15,9 +15,9 @@ import io.georocket.util.debounce
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.json.JsonObject
-import io.vertx.core.logging.LoggerFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.collect
+import org.slf4j.LoggerFactory
 import kotlin.coroutines.CoroutineContext
 
 class MainIndexer private constructor(override val coroutineContext: CoroutineContext,

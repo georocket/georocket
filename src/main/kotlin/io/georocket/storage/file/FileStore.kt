@@ -8,13 +8,7 @@ import io.georocket.util.UniqueID
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.file.OpenOptions
-import io.vertx.kotlin.core.file.closeAwait
-import io.vertx.kotlin.core.file.deleteAwait
-import io.vertx.kotlin.core.file.existsAwait
-import io.vertx.kotlin.core.file.mkdirsAwait
-import io.vertx.kotlin.core.file.openAwait
-import io.vertx.kotlin.core.file.readFileAwait
-import io.vertx.kotlin.core.file.writeAwait
+import io.vertx.kotlin.coroutines.await
 import java.io.FileNotFoundException
 
 /**
@@ -46,14 +40,14 @@ class FileStore(private val vertx: Vertx, storagePath: String? = null) : Store {
 
     // create storage folder
     val fs = vertx.fileSystem()
-    fs.mkdirsAwait(parent)
+    fs.mkdirs(parent).await()
 
     // open new file
-    val f = fs.openAwait(filepath, OpenOptions())
+    val f = fs.open(filepath, OpenOptions()).await()
 
     // write contents to file
-    f.writeAwait(chunk)
-    f.closeAwait()
+    f.write(chunk).await()
+    f.close().await()
   }
 
   override suspend fun getOne(path: String): Buffer {
@@ -61,19 +55,19 @@ class FileStore(private val vertx: Vertx, storagePath: String? = null) : Store {
 
     // check if chunk exists
     val fs = vertx.fileSystem()
-    if (!fs.existsAwait(absolutePath)) {
+    if (!fs.exists(absolutePath).await()) {
       throw FileNotFoundException("Could not find chunk: $path")
     }
 
-    return fs.readFileAwait(absolutePath)
+    return fs.readFile(absolutePath).await()
   }
 
   override suspend fun delete(paths: Collection<String>) {
     val fs = vertx.fileSystem()
     for (path in paths) {
       val absolutePath = PathUtils.join(root, path)
-      if (fs.existsAwait(absolutePath)) {
-        fs.deleteAwait(absolutePath)
+      if (fs.exists(absolutePath).await()) {
+        fs.delete(absolutePath).await()
       }
     }
   }

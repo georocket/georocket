@@ -16,7 +16,7 @@ public interface Splitter<E extends StreamEvent, M extends ChunkMeta> {
    * a chunk and its metadata.
    * @param <M> the type of the metadata
    */
-  public static class Result<M extends ChunkMeta> {
+  class Result<M extends ChunkMeta> {
     private final Buffer chunk;
     private final M meta;
     

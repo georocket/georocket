@@ -7,7 +7,7 @@ import de.undercouch.underline.UnknownAttributes
 import io.georocket.index.Index
 import io.georocket.storage.Store
 import io.vertx.core.impl.NoStackTraceThrowable
-import io.vertx.core.logging.LoggerFactory
+import org.slf4j.LoggerFactory
 import java.io.PrintWriter
 
 /**

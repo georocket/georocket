@@ -16,7 +16,7 @@ import de.flapdoodle.embed.process.runtime.Network
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.mongo.impl.codec.json.JsonObjectCodec
-import io.vertx.kotlin.core.executeBlockingAwait
+import io.vertx.kotlin.coroutines.await
 import org.bson.codecs.BooleanCodec
 import org.bson.codecs.BsonDocumentCodec
 import org.bson.codecs.DoubleCodec
@@ -65,7 +65,7 @@ class SharedMongoClient(private val key: ConnectionString,
     }
 
     suspend fun createEmbedded(vertx: Vertx, storagePath: String): SharedMongoClient {
-      return vertx.executeBlockingAwait<SharedMongoClient> { p ->
+      return vertx.executeBlocking<SharedMongoClient> { p ->
         synchronized(this) {
           if (mongodExecutable == null) {
             log.info("Launching embedded MongoDB instance ...")
@@ -91,7 +91,7 @@ class SharedMongoClient(private val key: ConnectionString,
           val cs = ConnectionString("mongodb://localhost:$mongodPort/$DEFAULT_EMBEDDED_DATABASE")
           p.complete(create(cs))
         }
-      }!!
+      }.await()
     }
   }
 

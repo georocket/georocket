@@ -4,7 +4,7 @@ import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.coroutines.dispatcher
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.assertj.core.api.Assertions.assertThat
@@ -22,7 +22,7 @@ class DebounceTest {
    */
   @Test
   fun simple(vertx: Vertx, ctx: VertxTestContext) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       var calls = 0
       val f = debounce(vertx, 100) {
         calls++

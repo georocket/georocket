@@ -7,7 +7,7 @@ import io.georocket.util.PathUtils
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.coroutines.dispatcher
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.future.await
 import kotlinx.coroutines.launch
 import org.assertj.core.api.Assertions.assertThat
@@ -59,7 +59,7 @@ class S3StoreTest : StorageTest() {
         .credentialsProvider(StaticCredentialsProvider.create(
             AwsBasicCredentials.create(ACCESS_KEY, SECRET_KEY)))
         .build()
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       s3.createBucket(CreateBucketRequest.builder().bucket(BUCKET).build()).await()
       ctx.completeNow()
     }

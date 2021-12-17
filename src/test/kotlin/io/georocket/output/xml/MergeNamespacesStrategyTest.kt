@@ -10,7 +10,7 @@ import io.vertx.core.buffer.Buffer
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.coroutines.dispatcher
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -61,7 +61,7 @@ class MergeNamespacesStrategyTest {
     val strategy = MergeNamespacesStrategy()
     val bws = BufferWriteStream()
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         strategy.init(META1)
         strategy.init(META2)
@@ -83,7 +83,7 @@ class MergeNamespacesStrategyTest {
     val strategy = MergeNamespacesStrategy()
     val bws = BufferWriteStream()
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         assertThatThrownBy {
           strategy.init(META1) // skip second init

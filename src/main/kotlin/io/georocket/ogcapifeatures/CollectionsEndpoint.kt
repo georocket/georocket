@@ -15,7 +15,6 @@ import io.georocket.util.PathUtils
 import io.vertx.core.Vertx
 import io.vertx.core.http.HttpServerResponse
 import io.vertx.core.json.JsonObject
-import io.vertx.core.logging.LoggerFactory
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
 import io.vertx.ext.web.handler.BodyHandler
@@ -24,6 +23,7 @@ import io.vertx.kotlin.core.json.jsonObjectOf
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.apache.commons.text.StringEscapeUtils.escapeJava
+import org.slf4j.LoggerFactory
 import java.io.FileNotFoundException
 import java.net.URLEncoder
 import kotlin.coroutines.CoroutineContext

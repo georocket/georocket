@@ -31,7 +31,7 @@ interface Endpoint {
      * Get absolute data store path from request
      */
     fun getEndpointPath(context: RoutingContext): String {
-      val path = context.normalisedPath()
+      val path = context.normalizedPath()
       val routePath = context.mountPoint()
       var result: String? = null
       if (routePath.length < path.length) {
@@ -59,7 +59,7 @@ interface Endpoint {
     /**
      * Generate the JSON error response for a failed request
      */
-    fun throwableToJsonResponse(throwable: Throwable): JsonObject {
+    private fun throwableToJsonResponse(throwable: Throwable): JsonObject {
       val msg = ThrowableHelper.throwableToMessage(throwable, "")
       return try {
         JsonObject(msg)

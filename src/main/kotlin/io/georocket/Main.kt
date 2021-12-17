@@ -23,13 +23,13 @@ import io.vertx.core.json.DecodeException
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.core.json.jackson.DatabindCodec
-import io.vertx.core.logging.LoggerFactory
-import io.vertx.kotlin.core.deployVerticleAwait
 import io.vertx.kotlin.core.deploymentOptionsOf
 import io.vertx.kotlin.coroutines.CoroutineVerticle
+import io.vertx.kotlin.coroutines.await
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.IOUtils
 import org.fusesource.jansi.AnsiConsole
+import org.slf4j.LoggerFactory
 import org.yaml.snakeyaml.Yaml
 import java.io.File
 import java.io.IOException
@@ -252,12 +252,12 @@ private fun loadGeoRocketConfiguration(): JsonObject {
 suspend fun main(args: Array<String>) {
   val options = try {
     val conf = loadGeoRocketConfiguration()
-    deploymentOptionsOf(conf)
+    deploymentOptionsOf(config = conf)
   } catch (ex: IOException) {
-    log.fatal("Invalid georocket home", ex)
+    log.error("Invalid georocket home", ex)
     exitProcess(1)
   } catch (ex: DecodeException) {
-    log.fatal("Failed to decode the GeoRocket (JSON) configuration", ex)
+    log.error("Failed to decode the GeoRocket (JSON) configuration", ex)
     exitProcess(1)
   }
 
@@ -270,5 +270,5 @@ suspend fun main(args: Array<String>) {
   }
 
   val vertx = Vertx.vertx()
-  vertx.deployVerticleAwait(MainVerticle(args), options)
+  vertx.deployVerticle(MainVerticle(args), options).await()
 }

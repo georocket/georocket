@@ -6,9 +6,9 @@ import io.georocket.GeoRocket
 import io.georocket.http.Endpoint
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
-import io.vertx.core.logging.LoggerFactory
 import io.vertx.ext.web.Router
 import org.apache.commons.io.IOUtils
+import org.slf4j.LoggerFactory
 import org.yaml.snakeyaml.Yaml
 import java.io.StringWriter
 import java.nio.charset.StandardCharsets

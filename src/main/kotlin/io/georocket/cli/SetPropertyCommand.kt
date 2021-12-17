@@ -8,8 +8,8 @@ import io.georocket.index.Index
 import io.georocket.index.PropertiesParser
 import io.georocket.storage.Store
 import io.vertx.core.impl.NoStackTraceThrowable
-import io.vertx.core.logging.LoggerFactory
 import org.antlr.v4.runtime.misc.ParseCancellationException
+import org.slf4j.LoggerFactory
 import java.io.PrintWriter
 
 /**

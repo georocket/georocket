@@ -7,10 +7,9 @@ import de.undercouch.underline.UnknownAttributes
 import io.georocket.index.Index
 import io.georocket.output.MultiMerger
 import io.georocket.storage.Store
-import io.georocket.util.PathUtils
 import io.georocket.util.io.PrintWriteStream
 import io.vertx.core.impl.NoStackTraceThrowable
-import io.vertx.core.logging.LoggerFactory
+import org.slf4j.LoggerFactory
 import java.io.FileNotFoundException
 import java.io.PrintWriter
 

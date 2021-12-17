@@ -11,15 +11,14 @@ import io.vertx.core.Promise
 import io.vertx.core.http.HttpMethod
 import io.vertx.core.http.HttpServerOptions
 import io.vertx.core.json.JsonArray
-import io.vertx.core.logging.LoggerFactory
 import io.vertx.core.net.PemKeyCertOptions
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.handler.CorsHandler
-import io.vertx.kotlin.core.deployVerticleAwait
 import io.vertx.kotlin.core.http.httpServerOptionsOf
-import io.vertx.kotlin.core.http.listenAwait
 import io.vertx.kotlin.coroutines.CoroutineVerticle
+import io.vertx.kotlin.coroutines.await
 import org.apache.commons.io.IOUtils
+import org.slf4j.LoggerFactory
 import java.nio.charset.StandardCharsets
 
 /**
@@ -51,7 +50,7 @@ class GeoRocket(private val shutdownPromise: Promise<Unit>) : CoroutineVerticle(
     val router = createRouter()
     val serverOptions = createHttpServerOptions()
     val server = vertx.createHttpServer(serverOptions)
-    server.requestHandler(router).listenAwait(port, host)
+    server.requestHandler(router).listen(port, host).await()
   }
 
   /**
@@ -186,7 +185,7 @@ class GeoRocket(private val shutdownPromise: Promise<Unit>) : CoroutineVerticle(
     val options = DeploymentOptions().setConfig(config)
 
     // deploy verticles
-    vertx.deployVerticleAwait(ImporterVerticle(), options)
+    vertx.deployVerticle(ImporterVerticle(), options).await()
 
     // deploy HTTP server
     deployHttpServer()

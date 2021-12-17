@@ -9,7 +9,7 @@ import io.vertx.core.buffer.Buffer
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.coroutines.dispatcher
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -32,7 +32,7 @@ class GeoJsonMergerTest {
       }
     }
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         for ((meta, chunk) in metas.zip(chunks)) {
           m.merge(chunk, meta, bws)
@@ -275,7 +275,7 @@ class GeoJsonMergerTest {
     val m = GeoJsonMerger(false)
     val bws = BufferWriteStream()
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         assertThatThrownBy {
           m.init(cm1)
@@ -307,7 +307,7 @@ class GeoJsonMergerTest {
     val m = GeoJsonMerger(false)
     val bws = BufferWriteStream()
 
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         m.init(cm1)
         m.init(cm2)

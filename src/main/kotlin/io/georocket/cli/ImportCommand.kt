@@ -15,13 +15,8 @@ import io.georocket.util.SizeFormat
 import io.georocket.util.formatUntilNow
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
-import io.vertx.core.logging.LoggerFactory
-import io.vertx.kotlin.core.deployVerticleAwait
 import io.vertx.kotlin.core.deploymentOptionsOf
-import io.vertx.kotlin.core.eventbus.requestAwait
-import io.vertx.kotlin.core.executeBlockingAwait
-import io.vertx.kotlin.core.file.propsAwait
-import io.vertx.kotlin.core.undeployAwait
+import io.vertx.kotlin.coroutines.await
 import kotlinx.coroutines.delay
 import org.antlr.v4.runtime.misc.ParseCancellationException
 import org.apache.commons.io.FilenameUtils
@@ -29,6 +24,7 @@ import org.apache.commons.lang3.SystemUtils
 import org.apache.tools.ant.Project
 import org.apache.tools.ant.types.FileSet
 import org.bson.types.ObjectId
+import org.slf4j.LoggerFactory
 import java.io.File
 import java.io.IOException
 import java.io.PrintWriter
@@ -202,7 +198,7 @@ class ImportCommand : GeoRocketCommand() {
   private suspend fun getFileSizes(files: List<String>): List<Pair<String, Long>> {
     val fs = vertx.fileSystem()
     return files.map { path ->
-      val props = fs.propsAwait(path)
+      val props = fs.props(path).await()
       Pair(path, props.size())
     }
   }
@@ -210,13 +206,12 @@ class ImportCommand : GeoRocketCommand() {
   /**
    * Import files using a HTTP client and finally call a handler
    * @param files the files to import
-   * @param client the GeoRocket client
    * @return an observable that will emit metrics when all files have been imported
    */
   private suspend fun doImport(files: List<String>): Metrics {
     // launch importer verticle
-    val importerVerticleId = vertx.deployVerticleAwait(ImporterVerticle(),
-      deploymentOptionsOf(config))
+    val importerVerticleId = vertx.deployVerticle(ImporterVerticle(),
+      deploymentOptionsOf(config = config)).await()
     try {
       ImportProgressRenderer(vertx).use { progress ->
         progress.totalFiles = files.size
@@ -242,7 +237,7 @@ class ImportCommand : GeoRocketCommand() {
         return Metrics(bytesImported)
       }
     } finally {
-      vertx.undeployAwait(importerVerticleId)
+      vertx.undeploy(importerVerticleId).await()
     }
   }
 
@@ -250,7 +245,7 @@ class ImportCommand : GeoRocketCommand() {
    * Try to detect the content type of a file with the given [filepath].
    */
   private suspend fun detectContentType(filepath: String): String {
-    return vertx.executeBlockingAwait { f ->
+    return vertx.executeBlocking<String> { f ->
       try {
         var mimeType = MimeTypeUtils.detect(File(filepath))
         if (mimeType == null) {
@@ -262,7 +257,7 @@ class ImportCommand : GeoRocketCommand() {
       } catch (e: IOException) {
         f.fail(e)
       }
-    }!!
+    }.await()
   }
 
   /**
@@ -298,7 +293,7 @@ class ImportCommand : GeoRocketCommand() {
     }
 
     // run importer
-    val taskId = vertx.eventBus().requestAwait<String>(AddressConstants.IMPORTER_IMPORT, msg).body()
+    val taskId = vertx.eventBus().request<String>(AddressConstants.IMPORTER_IMPORT, msg).await().body()
 
     while (true) {
       val t = (TaskRegistry.getById(taskId) ?: break) as ImportingTask

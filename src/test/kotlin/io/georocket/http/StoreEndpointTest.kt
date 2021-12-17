@@ -20,13 +20,12 @@ import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.core.deploymentOptionsOf
 import io.vertx.kotlin.core.http.httpServerOptionsOf
-import io.vertx.kotlin.core.http.listenAwait
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.CoroutineVerticle
+import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.dispatcher
-import io.vertx.kotlin.ext.web.client.sendAwait
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
@@ -53,7 +52,7 @@ class StoreEndpointTest {
       val se = StoreEndpoint(coroutineContext, vertx)
       router.mountSubRouter("/store", se.createRouter())
       val server = vertx.createHttpServer(httpServerOptionsOf())
-      server.requestHandler(router).listenAwait(port, "localhost")
+      server.requestHandler(router).listen(port, "localhost").await()
     }
   }
 
@@ -74,8 +73,8 @@ class StoreEndpointTest {
           ConfigConstants.STORAGE_FILE_PATH to tempDir.toString()
       )
     }
-    val options = deploymentOptionsOf(config)
-    vertx.deployVerticle(EndpointVerticle(port), options, ctx.completing())
+    val options = deploymentOptionsOf(config = config)
+    vertx.deployVerticle(EndpointVerticle(port), options, ctx.succeedingThenComplete())
   }
 
   @AfterEach
@@ -98,12 +97,12 @@ class StoreEndpointTest {
     coEvery { store.getOne(chunk1Path) } returns chunk1
 
     val client = WebClient.create(vertx)
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val response = client.get(port, "localhost", "/store")
             .`as`(BodyCodec.string())
             .expect(ResponsePredicate.SC_OK)
-            .sendAwait()
+            .send().await()
         assertThat(response.body()).isEqualTo(strChunk1)
       }
       ctx.completeNow()

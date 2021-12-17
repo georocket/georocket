@@ -5,9 +5,8 @@ import io.georocket.GeoRocket
 import io.georocket.util.SizeFormat
 import io.vertx.core.DeploymentOptions
 import io.vertx.core.Promise
-import io.vertx.core.logging.LoggerFactory
-import io.vertx.kotlin.core.deployVerticleAwait
 import io.vertx.kotlin.coroutines.await
+import org.slf4j.LoggerFactory
 import java.io.PrintWriter
 import java.lang.management.ManagementFactory
 
@@ -39,9 +38,9 @@ class ServerCommand : GeoRocketCommand() {
     val shutdownPromise = Promise.promise<Unit>()
     try {
       val options = DeploymentOptions().setConfig(config)
-      vertx.deployVerticleAwait(GeoRocket(shutdownPromise), options)
+      vertx.deployVerticle(GeoRocket(shutdownPromise), options).await()
     } catch (t: Throwable) {
-      log.fatal("Could not deploy GeoRocket")
+      log.error("Could not deploy GeoRocket")
       t.printStackTrace()
       return 1
     }

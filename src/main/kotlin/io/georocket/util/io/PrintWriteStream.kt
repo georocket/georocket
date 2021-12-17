@@ -3,6 +3,7 @@ package io.georocket.util.io
 import io.vertx.core.AsyncResult
 import io.vertx.core.Future
 import io.vertx.core.Handler
+import io.vertx.core.Promise
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.streams.WriteStream
 import java.io.PrintWriter
@@ -17,14 +18,15 @@ class PrintWriteStream(private val writer: PrintWriter) : WriteStream<Buffer> {
     return this
   }
 
-  override fun write(data: Buffer): WriteStream<Buffer> {
-    return write(data, null)
+  override fun write(data: Buffer): Future<Void> {
+    val promise = Promise.promise<Void>()
+    write(data, promise)
+    return promise.future()
   }
 
-  override fun write(data: Buffer, handler: Handler<AsyncResult<Void>>?): WriteStream<Buffer> {
+  override fun write(data: Buffer, handler: Handler<AsyncResult<Void>>?) {
     writer.write(data.toString())
     handler?.handle(Future.succeededFuture())
-    return this
   }
 
   override fun setWriteQueueMaxSize(maxSize: Int): WriteStream<Buffer> {
@@ -40,8 +42,10 @@ class PrintWriteStream(private val writer: PrintWriter) : WriteStream<Buffer> {
     return this
   }
 
-  override fun end() {
-    end(null as Handler<AsyncResult<Void>>?)
+  override fun end(): Future<Void> {
+    val promise = Promise.promise<Void>()
+    end(promise)
+    return promise.future()
   }
 
   override fun end(handler: Handler<AsyncResult<Void>>?) {

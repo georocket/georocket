@@ -7,7 +7,7 @@ import io.vertx.core.buffer.Buffer
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.coroutines.dispatcher
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -135,7 +135,7 @@ abstract class StorageTest {
    */
   @Test
   fun testGetOneWithoutFolder(ctx: VertxTestContext, vertx: Vertx) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       prepareData(ctx, vertx, null)
 
       val store = createStore(vertx)
@@ -152,7 +152,7 @@ abstract class StorageTest {
    * Add test data and compare the data with the stored one
    */
   private fun testAdd(ctx: VertxTestContext, vertx: Vertx, path: String?) {
-    GlobalScope.launch(vertx.dispatcher()) {
+    CoroutineScope(vertx.dispatcher()).launch {
       val store = createStore(vertx)
       val indexMeta = IndexMeta(IMPORT_ID, ID, TIMESTAMP, TAGS, PROPERTIES, FALLBACK_CRS_STRING)
 

@@ -24,19 +24,16 @@ import io.georocket.util.XMLStreamEvent
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.eventbus.Message
 import io.vertx.core.json.JsonObject
-import io.vertx.core.logging.LoggerFactory
 import io.vertx.core.streams.ReadStream
-import io.vertx.kotlin.core.file.closeAwait
-import io.vertx.kotlin.core.file.deleteAwait
-import io.vertx.kotlin.core.file.openAwait
 import io.vertx.kotlin.core.file.openOptionsOf
-import io.vertx.kotlin.core.file.propsAwait
 import io.vertx.kotlin.coroutines.CoroutineVerticle
-import io.vertx.kotlin.coroutines.toChannel
+import io.vertx.kotlin.coroutines.await
+import io.vertx.kotlin.coroutines.toReceiveChannel
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import org.apache.commons.io.FilenameUtils
+import org.slf4j.LoggerFactory
 import java.time.Instant
 
 /**
@@ -98,9 +95,9 @@ class ImporterVerticle : CoroutineVerticle() {
     log.info("Importing [$correlationId] to layer '$layer'")
 
     val fs = vertx.fileSystem()
-    val props = fs.propsAwait(filepath)
+    val props = fs.props(filepath).await()
     val fileSize = props.size()
-    val f = fs.openAwait(filepath, openOptionsOf(create = false, write = false))
+    val f = fs.open(filepath, openOptionsOf(create = false, write = false)).await()
 
     try {
       val chunkCount = importFile(f, fileSize, contentType, correlationId, filename,
@@ -114,12 +111,12 @@ class ImporterVerticle : CoroutineVerticle() {
       log.error("Failed to import [$correlationId] to layer '$layer'" +
           " after $duration ms", t)
     } finally {
-      f.closeAwait()
+      f.close().await()
       if (deleteOnFinish) {
         // delete file from 'incoming' folder
         log.debug("Deleting $filepath")
         try {
-          fs.deleteAwait(filepath)
+          fs.delete(filepath).await()
         } catch (t: Throwable) {
           log.error("Could not delete file $filepath", t)
         }
@@ -268,7 +265,7 @@ class ImporterVerticle : CoroutineVerticle() {
       true
     }
 
-    val channel = f.toChannel(vertx)
+    val channel = f.toReceiveChannel(vertx)
     for (bytebuf in channel) {
       val buf = bomFilter.filter(bytebuf)
       window.append(buf)
@@ -371,7 +368,7 @@ class ImporterVerticle : CoroutineVerticle() {
       true
     }
 
-    val channel = f.toChannel(vertx)
+    val channel = f.toReceiveChannel(vertx)
     for (bytebuf in channel) {
       val buf = bomFilter.filter(bytebuf)
       window.append(buf)

@@ -26,7 +26,7 @@ public class HttpException extends Exception {
    */
   public HttpException(int statusCode, String statusMessage) {
     super(statusMessage == null ? String.valueOf(statusCode) :
-      String.valueOf(statusCode) + " " + statusMessage);
+            statusCode + " " + statusMessage);
     this.statusCode = statusCode;
     this.statusMessage = statusMessage;
   }
@@ -45,7 +45,7 @@ public class HttpException extends Exception {
   public HttpException(int statusCode, String statusMessage,
       boolean enableSuppression, boolean writableStackTrace) {
     super(statusMessage == null ? String.valueOf(statusCode) :
-      String.valueOf(statusCode) + " " + statusMessage,
+                    statusCode + " " + statusMessage,
       null, enableSuppression, writableStackTrace);
     this.statusCode = statusCode;
     this.statusMessage = statusMessage;
