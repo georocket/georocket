@@ -6,7 +6,6 @@ import com.mongodb.reactivestreams.client.MongoCollection
 import com.mongodb.reactivestreams.client.MongoDatabase
 import io.georocket.constants.ConfigConstants.EMBEDDED_MONGODB_STORAGE_PATH
 import io.georocket.constants.ConfigConstants.INDEX_MONGODB_CONNECTION_STRING
-import io.georocket.constants.ConfigConstants.INDEX_MONGODB_EMBEDDED
 import io.georocket.index.Index
 import io.georocket.storage.ChunkMeta
 import io.georocket.storage.GeoJsonChunkMeta
@@ -51,8 +50,9 @@ class MongoDBIndex private constructor() : Index {
       storagePath: String?) {
     val config = vertx.orCreateContext.config()
 
-    val embedded = config.getBoolean(INDEX_MONGODB_EMBEDDED, false)
-    if (embedded) {
+    val actualConnectionString = connectionString ?:
+      config.getString(INDEX_MONGODB_CONNECTION_STRING)
+    if (actualConnectionString == null) {
       val actualStoragePath = storagePath ?: config.getString(
         EMBEDDED_MONGODB_STORAGE_PATH) ?:
           throw IllegalStateException("Missing configuration item `" +
@@ -60,10 +60,6 @@ class MongoDBIndex private constructor() : Index {
       client = SharedMongoClient.createEmbedded(vertx, actualStoragePath)
       db = client.getDatabase(SharedMongoClient.DEFAULT_EMBEDDED_DATABASE)
     } else {
-      val actualConnectionString = connectionString ?:
-        config.getString(INDEX_MONGODB_CONNECTION_STRING) ?:
-        throw IllegalArgumentException("Missing configuration item `" +
-            INDEX_MONGODB_CONNECTION_STRING + "'")
       val cs = ConnectionString(actualConnectionString)
       client = SharedMongoClient.create(cs)
       db = client.getDatabase(cs.database)

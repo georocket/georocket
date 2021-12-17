@@ -4,5 +4,4 @@ georocket:
     driver: mongodb
   index:
     mongodb:
-      embedded: false
       connectionString: mongodb://mongo:27017/georocket

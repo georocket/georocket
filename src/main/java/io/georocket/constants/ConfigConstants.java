@@ -36,7 +36,6 @@ public final class ConfigConstants {
   public static final String STORAGE_H2_COMPRESS = "georocket.storage.h2.compress";
   public static final String STORAGE_H2_MAP_NAME = "georocket.storage.h2.mapName"; // undocumented
   public static final String STORAGE_FILE_PATH = "georocket.storage.file.path";
-  public static final String STORAGE_MONGODB_EMBEDDED = "georocket.storage.mongodb.embedded";
   public static final String STORAGE_MONGODB_CONNECTION_STRING = "georocket.storage.mongodb.connectionString";
   public static final String STORAGE_S3_ACCESS_KEY = "georocket.storage.s3.accessKey";
   public static final String STORAGE_S3_SECRET_KEY = "georocket.storage.s3.secretKey";
@@ -46,7 +45,6 @@ public final class ConfigConstants {
   public static final String STORAGE_S3_PATH_STYLE_ACCESS = "georocket.storage.s3.pathStyleAccess";
 
   public static final String INDEX_MAX_BULK_SIZE = "georocket.index.maxBulkSize";
-  public static final String INDEX_MONGODB_EMBEDDED = "georocket.index.mongodb.embedded";
   public static final String INDEX_MONGODB_CONNECTION_STRING = "georocket.index.mongodb.connectionString";
 
   public static final String EMBEDDED_MONGODB_STORAGE_PATH = "georocket.embeddedMongoDB.storagePath";
@@ -66,6 +64,7 @@ public final class ConfigConstants {
   public static final int DEFAULT_PORT = 63020;
 
   public static final int DEFAULT_INDEX_MAX_BULK_SIZE = 200;
+  public static final String DEFAULT_INDEX_MONGODB_CONNECTION_STRING = "";
 
   public static final long DEFAULT_TASKS_RETAIN_SECONDS = 60 * 2;
 

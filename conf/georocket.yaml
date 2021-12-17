@@ -50,7 +50,6 @@ georocket:
 
     # Configuration for the MongoDB back-end
     # mongodb:
-    #   embedded: true
     #   connectionString: mongodb://localhost:27017/georocket?compressors=snappy
 
     # Configuration for the S3 back-end
@@ -87,8 +86,7 @@ georocket:
       maxTimeSeconds: 60
 
     mongodb:
-      embedded: true
-      connectionString: mongodb://localhost:27017/georocket?compressors=snappy
+      # connectionString: mongodb://localhost:27017/georocket?compressors=snappy
 
   tasks:
     # the maximum number of seconds information about a task should be kept

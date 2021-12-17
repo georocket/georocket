@@ -6,5 +6,4 @@ georocket:
       path: $GEOROCKET_HOME/storage/georocket
   index:
     mongodb:
-      embedded: false
       connectionString: mongodb://mongo:27017/georocket
