@@ -21,6 +21,16 @@ georocket:
   # Log configuration at startup (useful for debugging)
   logConfig: false
 
+  # Logging
+  logs:
+    enabled: true
+    level: INFO
+    logFile: logs/georocket.log
+    dailyRollover:
+      enabled: true
+      maxDays: 7
+      maxSize: 104857600
+
   # Back-end configuration
   storage:
     # The data store implementation to use

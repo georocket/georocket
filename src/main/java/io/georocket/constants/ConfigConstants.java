@@ -55,12 +55,21 @@ public final class ConfigConstants {
 
   public static final String TASKS_RETAIN_SECONDS = "georocket.tasks.retainSeconds";
 
+  public static final String LOGS_LEVEL = "georocket.logs.level";
+  public static final String LOGS_ENABLED = "georocket.logs.enabled";
+  public static final String LOGS_LOGFILE = "georocket.logs.logFile";
+  public static final String LOGS_DAILYROLLOVER_ENABLED = "georocket.logs.dailyRollover.enabled";
+  public static final String LOGS_DAILYROLLOVER_MAXDAYS = "georocket.logs.dailyRollover.maxDays";
+  public static final String LOGS_DAILYROLLOVER_MAXSIZE = "georocket.logs.dailyRollover.maxSize";
+
   public static final String DEFAULT_HOST = "127.0.0.1";
   public static final int DEFAULT_PORT = 63020;
 
   public static final int DEFAULT_INDEX_MAX_BULK_SIZE = 200;
 
   public static final long DEFAULT_TASKS_RETAIN_SECONDS = 60 * 2;
+
+  public static final String DEFAULT_LOGS_LEVEL = "INFO";
 
   private ConfigConstants() {
     // hidden constructor

@@ -1,5 +1,7 @@
 package io.georocket
 
+import ch.qos.logback.classic.LoggerContext
+import ch.qos.logback.classic.joran.JoranConfigurator
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import de.undercouch.underline.CommandDesc
 import de.undercouch.underline.CommandDescList
@@ -28,6 +30,7 @@ import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.await
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.IOUtils
+import org.apache.commons.text.StringEscapeUtils
 import org.fusesource.jansi.AnsiConsole
 import org.slf4j.LoggerFactory
 import org.yaml.snakeyaml.Yaml
@@ -107,11 +110,55 @@ class Main : GeoRocketCommand() {
     }
   }
 
+  private fun configureConsoleLogger() {
+    val context = LoggerFactory.getILoggerFactory() as LoggerContext
+
+    val level = config.getString(ConfigConstants.LOGS_LEVEL,
+      ConfigConstants.DEFAULT_LOGS_LEVEL)
+
+    val xml = """
+      <configuration>
+        <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+          <encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder">
+            <layout class="ch.qos.logback.classic.PatternLayout">
+                <pattern>%d{HH:mm:ss} %-5level %logger{36} - %msg%n</pattern>
+            </layout>
+          </encoder>
+        </appender>
+        <root level="${StringEscapeUtils.escapeXml11(level)}">
+          <appender-ref ref="STDOUT" />
+        </root>
+      </configuration>
+    """
+
+    val configurator = JoranConfigurator()
+    configurator.context = context
+    configurator.doConfigure(xml.byteInputStream())
+  }
+
   override suspend fun doRun(remainingArgs: Array<String>, reader: InputReader, writer: PrintWriter): Int {
     if (displayVersion) {
       println("georocket $version")
       return 0
     }
+
+    if (command is ServerCommand) {
+      configureConsoleLogger()
+    }
+
+    val logConfig = config.getBoolean(ConfigConstants.LOG_CONFIG, false)
+    if (logConfig) {
+      log.info("""
+      Configuration:
+      ${config.encodePrettily()}
+      """.trimIndent())
+    }
+
+    if (System.getenv("GEOROCKET_HOME") == null) {
+      log.info("Environment variable GEOROCKET_HOME not set. Using current " +
+          "working directory.")
+    }
+    log.info("Using GeoRocket home $geoRocketHome")
 
     // if there are no commands print usage and exit
     if (command == null) {
@@ -199,18 +246,91 @@ private fun replaceConfVariables(obj: JsonObject): JsonObject {
 }
 
 /**
+ * Amend the `logback.xml` file from the classpath with the configuration
+ * properties found in the [conf] object and then configure the log framework
+ */
+fun configureLogging(conf: JsonObject) {
+  val context = LoggerFactory.getILoggerFactory() as LoggerContext
+
+  val level = conf.getString(ConfigConstants.LOGS_LEVEL,
+    ConfigConstants.DEFAULT_LOGS_LEVEL)
+  if (level != "TRACE" && level != "DEBUG" && level != "INFO" &&
+    level != "WARN" && level != "ERROR" && level != "OFF") {
+    throw IllegalArgumentException("Configuration item " +
+        "`${ConfigConstants.LOGS_LEVEL}` must be one of `TRACE', `DEBUG', " +
+        "`INFO', `WARN', `ERROR', `OFF'.")
+  }
+
+  val xml = StringBuilder("<configuration>")
+
+  val mainEnabled = conf.getBoolean(ConfigConstants.LOGS_ENABLED, true)
+  if (mainEnabled) {
+    val mainLogFile = conf.getString(ConfigConstants.LOGS_LOGFILE, "logs/georocket.log")
+    val dot = mainLogFile.lastIndexOf('.')
+
+    val encoder = """
+      <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+        <pattern>%d{yyyy-MM-dd HH:mm:ss} %-5level %logger{36} - %msg%n</pattern>
+      </encoder>
+    """
+
+    val rolloverEnabled = conf.getBoolean(ConfigConstants.LOGS_DAILYROLLOVER_ENABLED, true)
+    if (rolloverEnabled) {
+      val rolloverFilePattern = if (dot > 0) {
+        mainLogFile.substring(0, dot) + ".%d{yyyy-MM-dd}" + mainLogFile.substring(dot)
+      } else {
+        "$mainLogFile.%d{yyyy-MM-dd}"
+      }
+      val rolloverMaxDays = conf.getInteger(ConfigConstants.LOGS_DAILYROLLOVER_MAXDAYS, 7)
+      val rolloverMaxSize = conf.getLong(ConfigConstants.LOGS_DAILYROLLOVER_MAXSIZE, 104857600)
+
+      xml.append("""
+        <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            $encoder
+            <file>${StringEscapeUtils.escapeXml11(mainLogFile)}</file>
+            <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+                <!-- daily rollover -->
+                <fileNamePattern>${StringEscapeUtils.escapeXml11(rolloverFilePattern)}</fileNamePattern>
+                <!-- keep n days' worth of history capped at a total size -->
+                <maxHistory>$rolloverMaxDays</maxHistory>
+                <totalSizeCap>$rolloverMaxSize</totalSizeCap>
+            </rollingPolicy>
+        </appender>
+      """)
+    } else {
+      xml.append("""
+        <appender name="FILE" class="ch.qos.logback.core.FileAppender">
+            $encoder
+            <file>${StringEscapeUtils.escapeXml11(mainLogFile)}</file>
+        </appender>
+      """)
+    }
+  }
+
+  xml.append("""<root level="${StringEscapeUtils.escapeXml11(level)}">""")
+  if (mainEnabled) {
+    xml.append("""<appender-ref ref="FILE" />""")
+  }
+  xml.append("""
+      </root>
+    </configuration>
+  """)
+
+  val configurator = JoranConfigurator()
+  configurator.context = context
+  configurator.doConfigure(xml.toString().byteInputStream())
+}
+
+/**
  * Load the GeoRocket configuration
  */
 private fun loadGeoRocketConfiguration(): JsonObject {
   var geoRocketHomeStr = System.getenv("GEOROCKET_HOME")
   if (geoRocketHomeStr == null) {
-    log.info("Environment variable GEOROCKET_HOME not set. Using current " +
-        "working directory.")
     geoRocketHomeStr = File(".").absolutePath
   }
 
   geoRocketHome = File(geoRocketHomeStr).canonicalFile
-  log.info("Using GeoRocket home $geoRocketHome")
 
   // load configuration file
   val confDir = File(geoRocketHome, "conf")
@@ -242,6 +362,8 @@ private fun loadGeoRocketConfiguration(): JsonObject {
   conf = replaceConfVariables(conf)
   overwriteWithEnvironmentVariables(conf)
 
+  configureLogging(conf)
+
   return conf
 }
 
@@ -254,19 +376,13 @@ suspend fun main(args: Array<String>) {
     val conf = loadGeoRocketConfiguration()
     deploymentOptionsOf(config = conf)
   } catch (ex: IOException) {
-    log.error("Invalid georocket home", ex)
+    System.err.println("Invalid georocket home")
+    ex.printStackTrace()
     exitProcess(1)
   } catch (ex: DecodeException) {
-    log.error("Failed to decode the GeoRocket (JSON) configuration", ex)
+    System.err.println("Failed to decode the GeoRocket (JSON) configuration")
+    ex.printStackTrace()
     exitProcess(1)
-  }
-
-  val logConfig = options.config.getBoolean(ConfigConstants.LOG_CONFIG, false)
-  if (logConfig) {
-    log.info("""
-      Configuration:
-      ${options.config.encodePrettily()}
-      """.trimIndent())
   }
 
   val vertx = Vertx.vertx()
