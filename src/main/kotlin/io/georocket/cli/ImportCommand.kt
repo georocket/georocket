@@ -26,6 +26,7 @@ import org.apache.commons.lang3.SystemUtils
 import org.apache.tools.ant.Project
 import org.apache.tools.ant.types.FileSet
 import org.bson.types.ObjectId
+import org.fusesource.jansi.AnsiConsole
 import org.slf4j.LoggerFactory
 import java.io.File
 import java.io.IOException
@@ -210,6 +211,8 @@ class ImportCommand : GeoRocketCommand() {
    * @return an observable that will emit metrics when all files have been imported
    */
   private suspend fun doImport(files: List<String>): Metrics {
+    AnsiConsole.systemInstall()
+
     // launch importer verticle
     val importerVerticleId = vertx.deployVerticle(ImporterVerticle(),
       deploymentOptionsOf(config = config)).await()
@@ -239,6 +242,7 @@ class ImportCommand : GeoRocketCommand() {
       }
     } finally {
       vertx.undeploy(importerVerticleId).await()
+      AnsiConsole.systemUninstall()
     }
   }
 

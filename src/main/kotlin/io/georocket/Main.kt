@@ -34,7 +34,6 @@ import io.vertx.kotlin.coroutines.await
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.IOUtils
 import org.apache.commons.text.StringEscapeUtils
-import org.fusesource.jansi.AnsiConsole
 import org.slf4j.LoggerFactory
 import org.yaml.snakeyaml.Yaml
 import java.io.BufferedOutputStream
@@ -89,8 +88,6 @@ class Main : GeoRocketCommand() {
   }
 
   suspend fun start(args: Array<String>) {
-    AnsiConsole.systemInstall()
-
     // initialize task registry
     TaskRegistry.init(config)
 
@@ -103,11 +100,9 @@ class Main : GeoRocketCommand() {
       val out = PrintWriteStream(BufferedOutputStream(System.out, 65535))
       val exitCode = coRun(args, StandardInputReader(), out)
       System.out.flush()
-      AnsiConsole.systemUninstall()
       exitProcess(exitCode)
     } catch (e: OptionParserException) {
       error(e.message)
-      AnsiConsole.systemUninstall()
       exitProcess(1)
     }
   }
