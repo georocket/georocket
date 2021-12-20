@@ -2,7 +2,7 @@
 # - Build GeoRocket with `./gradlew installDist`
 # - Run `docker build -t georocket .`
 
-FROM ubuntu:21.10
+FROM ubuntu:22.04
 MAINTAINER Michel Kraemer <michel.kraemer@igd.fraunhofer.de>
 
 RUN apt-get update \
