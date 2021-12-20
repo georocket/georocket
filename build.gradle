@@ -62,7 +62,7 @@ dependencies {
     implementation "com.fasterxml.jackson.module:jackson-module-kotlin:2.12.0"
     implementation 'io.pebbletemplates:pebble:3.1.5'
     implementation 'javax.servlet:javax.servlet-api:4.0.0'
-    implementation 'net.java.dev.jna:jna:4.5.1'
+    implementation 'net.java.dev.jna:jna:5.10.0'
     implementation 'net.time4j:time4j-core:4.33'
     implementation 'org.apache.ant:ant:1.10.1'
     implementation 'org.apache.commons:commons-exec:1.3'
