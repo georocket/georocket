@@ -90,7 +90,7 @@ dependencies {
     implementation 'org.mongodb:bson:3.6.1'
     implementation 'org.mongodb:mongodb-driver-async:3.6.1'
     implementation 'org.mongodb:mongodb-driver-reactivestreams:4.1.1'
-    implementation 'org.xerial.snappy:snappy-java:1.1.4'
+    implementation 'org.xerial.snappy:snappy-java:1.1.8.4'
     implementation 'io.projectreactor:reactor-core:3.4.2'
 
     // embedded mongodb for standalone mode
