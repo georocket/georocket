@@ -33,6 +33,27 @@ public abstract class XMLSplitter implements Splitter<XMLStreamEvent, XMLChunkMe
    * A stack keeping all encountered start elements
    */
   private final Deque<XMLStartElement> startElements = new ArrayDeque<>();
+
+  /**
+   * {@code true} if {@link #startElements} has changed since the last time
+   * {@link #makeResult(int)} has been called.
+   */
+  private boolean startElementsChanged = true;
+
+  /**
+   * The [ChunkMeta] object created by the last call to {@link #makeResult(int)}
+   */
+  private XMLChunkMeta lastChunkMeta;
+
+  /**
+   * The prefix created by the last call to {@link #makeResult(int)}
+   */
+  private Buffer lastPrefix;
+
+  /**
+   * The suffix created by the last call to {@link #makeResult(int)}
+   */
+  private Buffer lastSuffix;
   
   /**
    * Create splitter
@@ -48,8 +69,10 @@ public abstract class XMLSplitter implements Splitter<XMLStreamEvent, XMLChunkMe
     if (!isMarked()) {
       if (event.getEvent() == XMLEvent.START_ELEMENT) {
         startElements.push(makeXMLStartElement(event.getXMLReader()));
+        startElementsChanged = true;
       } else if (event.getEvent() == XMLEvent.END_ELEMENT) {
         startElements.pop();
+        startElementsChanged = true;
       }
     }
     return chunk;
@@ -122,32 +145,34 @@ public abstract class XMLSplitter implements Splitter<XMLStreamEvent, XMLChunkMe
   protected Result<XMLChunkMeta> makeResult(int pos) {
     StringBuilder sbPrefix = new StringBuilder();
     sbPrefix.append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n");
-    
-    // get the full stack of start elements (backwards)
-    List<XMLStartElement> chunkParents = new ArrayList<>();
-    startElements.descendingIterator().forEachRemaining(e -> {
-      chunkParents.add(e);
-      sbPrefix.append(e);
-      sbPrefix.append("\n");
-    });
-    
-    // get chunk start in bytes
-    Buffer prefix = Buffer.buffer(sbPrefix.toString());
 
-    // append current element
+    if (startElementsChanged) {
+      startElementsChanged = false;
+
+      // get the full stack of start elements (backwards)
+      List<XMLStartElement> chunkParents = new ArrayList<>();
+      startElements.descendingIterator().forEachRemaining(e -> {
+        chunkParents.add(e);
+        sbPrefix.append(e);
+        sbPrefix.append("\n");
+      });
+      lastPrefix = Buffer.buffer(sbPrefix.toString());
+
+      // get the full stack of end elements
+      StringBuilder sbSuffix = new StringBuilder();
+      startElements.iterator().forEachRemaining(e ->
+        sbSuffix.append("\n</").append(e.getName()).append(">"));
+      lastSuffix = Buffer.buffer(sbSuffix.toString());
+
+      lastChunkMeta = new XMLChunkMeta(chunkParents);
+    }
+
     byte[] bytes = window.getBytes(mark, pos);
     Buffer buf = Buffer.buffer(bytes);
     window.advanceTo(pos);
     mark = -1;
-    
-    // get the full stack of end elements
-    StringBuilder sbSuffix = new StringBuilder();
-    startElements.iterator().forEachRemaining(e ->
-      sbSuffix.append("\n</").append(e.getName()).append(">"));
-    Buffer suffix = Buffer.buffer(sbSuffix.toString());
-    
-    XMLChunkMeta meta = new XMLChunkMeta(chunkParents);
-    return new Result<>(buf, prefix, suffix, meta);
+
+    return new Result<>(buf, lastPrefix, lastSuffix, lastChunkMeta);
   }
   
   /**
