@@ -201,25 +201,19 @@ class CollectionsEndpoint(override val coroutineContext: CoroutineContext,
 
   private fun processQuery(search: String, name: String, response: HttpServerResponse) {
     launch {
-      // TODO this is not necessarily true anymore!
-      // Our responses must always be chunked because we cannot calculate
-      // the exact content-length beforehand. We perform two searches, one to
-      // initialize the merger and one to do the actual merge. The problem is
-      // that the result set may change between these two searches and so we
-      // cannot calculate the content-length just from looking at the result
-      // from the first search.
       response.isChunked = true
 
       try {
         val query = compileQuery(search, "/$name")
-        val metas = index.getMeta(query)
 
-        // use optimistic strategy by default - objects in a OGC API
-        // Features collection are supposed to be homogeneous
-        val merger = MultiMerger(true)
+        // initialize merger
+        val merger = MultiMerger(false)
+        val distinctMetas = index.getDistinctMeta(query)
+        distinctMetas.forEach { merger.init(it) }
 
         var accepted = 0L
         var notaccepted = 0L
+        val metas = index.getMeta(query)
         for (chunkMeta in metas) {
           val chunk = store.getOne(chunkMeta.first)
           try {

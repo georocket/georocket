@@ -10,6 +10,8 @@ interface Index {
 
   suspend fun addMany(docs: Collection<Pair<String, JsonObject>>)
 
+  suspend fun getDistinctMeta(query: JsonObject): List<ChunkMeta>
+
   suspend fun getMeta(query: JsonObject): List<Pair<String, ChunkMeta>>
 
   suspend fun getPaths(query: JsonObject): List<String>

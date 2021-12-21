@@ -155,13 +155,6 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
     val path = Endpoint.getEndpointPath(context)
     val search = request.getParam("search")
 
-    // TODO this is not necessarily true anymore!
-    // Our responses must always be chunked because we cannot calculate
-    // the exact content-length beforehand. We perform two searches, one to
-    // initialize the merger and one to do the actual merge. The problem is
-    // that the result set may change between these two searches and so we
-    // cannot calculate the content-length just from looking at the result
-    // from the first search.
     response.isChunked = true
 
     val optimisticMerging = isOptimisticMerging(request)
@@ -173,20 +166,19 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
 
     try {
       val query = compileQuery(search, path)
-      val metas = index.getMeta(query)
 
       val merger = MultiMerger(optimisticMerging)
 
       // skip initialization if optimistic merging is enabled
-      // TODO is this really necessary anymore?
       if (!optimisticMerging) {
-        metas.forEach { merger.init(it.second) }
+        val distinctMetas = index.getDistinctMeta(query)
+        distinctMetas.forEach { merger.init(it) }
       }
 
       // merge chunks
       var accepted = 0L
       var notaccepted = 0L
-
+      val metas = index.getMeta(query)
       for (chunkMeta in metas) {
         val chunk = store.getOne(chunkMeta.first)
         try {

@@ -1,6 +1,9 @@
 package io.georocket.index.mongodb
 
 import com.mongodb.ConnectionString
+import com.mongodb.client.model.IndexModel
+import com.mongodb.client.model.IndexOptions
+import com.mongodb.client.model.Indexes
 import com.mongodb.reactivestreams.client.MongoClient
 import com.mongodb.reactivestreams.client.MongoCollection
 import com.mongodb.reactivestreams.client.MongoDatabase
@@ -15,6 +18,7 @@ import io.georocket.util.MimeTypeUtils
 import io.georocket.util.aggregateAwait
 import io.georocket.util.countDocumentsAwait
 import io.georocket.util.deleteManyAwait
+import io.georocket.util.distinctAwait
 import io.georocket.util.findAwait
 import io.georocket.util.insertManyAwait
 import io.georocket.util.insertOneAwait
@@ -24,6 +28,7 @@ import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.core.json.obj
+import kotlinx.coroutines.reactive.awaitSingleOrNull
 
 class MongoDBIndex private constructor() : Index {
   companion object {
@@ -67,6 +72,10 @@ class MongoDBIndex private constructor() : Index {
 
     collDocuments = db.getCollection(COLL_DOCUMENTS, JsonObject::class.java)
     collCollections = db.getCollection(COLL_COLLECTIONS, JsonObject::class.java)
+
+    collDocuments.createIndexes(listOf(IndexModel(Indexes.ascending(CHUNK_META),
+      IndexOptions().background(true)),
+    )).awaitSingleOrNull()
   }
 
   override suspend fun close() {
@@ -91,11 +100,10 @@ class MongoDBIndex private constructor() : Index {
   /**
    * Extract a path string and a [ChunkMeta] object from a given [hit] object
    */
-  private fun createChunkMeta(hit: JsonObject): Pair<String, ChunkMeta> {
-    val path = hit.getString(INTERNAL_ID)
+  private fun createChunkMeta(hit: JsonObject): ChunkMeta {
     val cm = hit.getJsonObject(CHUNK_META)
     val mimeType = cm.getString("mimeType", XMLChunkMeta.MIME_TYPE)
-    return path to if (MimeTypeUtils.belongsTo(mimeType, "application", "xml") ||
+    return if (MimeTypeUtils.belongsTo(mimeType, "application", "xml") ||
       MimeTypeUtils.belongsTo(mimeType, "text", "xml")) {
       XMLChunkMeta(cm)
     } else if (MimeTypeUtils.belongsTo(mimeType, "application", "geo+json")) {
@@ -107,13 +115,21 @@ class MongoDBIndex private constructor() : Index {
     }
   }
 
+  override suspend fun getDistinctMeta(query: JsonObject): List<ChunkMeta> {
+    return collDocuments.distinctAwait(CHUNK_META, query, JsonObject::class.java)
+      .map { createChunkMeta(it) }
+  }
+
   override suspend fun getMeta(query: JsonObject): List<Pair<String, ChunkMeta>> {
     val results = collDocuments.findAwait(query, projection = json {
       obj(
         CHUNK_META to 1
       )
     })
-    return results.map { createChunkMeta(it) }
+    return results.map { hit ->
+      val path = hit.getString(INTERNAL_ID)
+      path to createChunkMeta(hit)
+    }
   }
 
   override suspend fun getPaths(query: JsonObject): List<String> {

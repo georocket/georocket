@@ -66,17 +66,18 @@ class SearchCommand : DataCommand() {
       out: WriteStream<Buffer>, store: Store, index: Index): Int {
     return try {
       val query = compileQuery(query, layer)
-      val metas = index.getMeta(query)
 
       val merger = MultiMerger(optimisticMerging)
 
       // skip initialization if optimistic merging is enabled
       if (!optimisticMerging) {
-        metas.forEach { merger.init(it.second) }
+        val distinctMetas = index.getDistinctMeta(query)
+        distinctMetas.forEach { merger.init(it) }
       }
 
       var accepted = 0L
       var notaccepted = 0L
+      val metas = index.getMeta(query)
       for (chunkMeta in metas) {
         val chunk = store.getOne(chunkMeta.first)
         try {
