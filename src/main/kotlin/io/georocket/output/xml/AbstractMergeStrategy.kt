@@ -55,7 +55,7 @@ abstract class AbstractMergeStrategy : MergeStrategy {
       writeHeader(outputStream)
       isHeaderWritten = true
     }
-    outputStream.write(chunk.slice(chunkMetadata.start, chunkMetadata.end))
+    outputStream.write(chunk)
   }
 
   override fun finish(outputStream: WriteStream<Buffer>) {

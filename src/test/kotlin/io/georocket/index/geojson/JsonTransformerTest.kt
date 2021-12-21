@@ -69,7 +69,7 @@ class JsonTransformerTest {
   fun parseSimple(ctx: VertxTestContext, vertx: Vertx) {
     CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
-        JsonTransformer().transform(Buffer.buffer(JSON)).collect { e ->
+        JsonTransformer().transform(body = Buffer.buffer(JSON)).collect { e ->
           onEvent(e)
         }
         onEnd()

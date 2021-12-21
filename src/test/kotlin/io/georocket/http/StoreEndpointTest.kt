@@ -91,7 +91,7 @@ class StoreEndpointTest {
     val chunk1 = Buffer.buffer(strChunk1)
     val chunk1Path = "/foobar"
 
-    val cm = GeoJsonChunkMeta("Polygon", "geometries", 0, chunk1.length())
+    val cm = GeoJsonChunkMeta("Polygon", "geometries")
 
     coEvery { index.getMeta(any()) } returns listOf(chunk1Path to cm)
     coEvery { store.getOne(chunk1Path) } returns chunk1

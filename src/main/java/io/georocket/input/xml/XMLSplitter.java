@@ -120,38 +120,34 @@ public abstract class XMLSplitter implements Splitter<XMLStreamEvent, XMLChunkMe
    * @return the {@link io.georocket.input.Splitter.Result} object
    */
   protected Result<XMLChunkMeta> makeResult(int pos) {
-    StringBuilder sbStart = new StringBuilder();
-    sbStart.append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n");
+    StringBuilder sbPrefix = new StringBuilder();
+    sbPrefix.append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n");
     
-    // append the full stack of start elements (backwards)
+    // get the full stack of start elements (backwards)
     List<XMLStartElement> chunkParents = new ArrayList<>();
     startElements.descendingIterator().forEachRemaining(e -> {
       chunkParents.add(e);
-      sbStart.append(e);
-      sbStart.append("\n");
+      sbPrefix.append(e);
+      sbPrefix.append("\n");
     });
     
     // get chunk start in bytes
-    Buffer buf = Buffer.buffer(sbStart.toString());
-    int chunkStart = buf.length();
-    
+    Buffer prefix = Buffer.buffer(sbPrefix.toString());
+
     // append current element
     byte[] bytes = window.getBytes(mark, pos);
-    buf.appendBytes(bytes);
+    Buffer buf = Buffer.buffer(bytes);
     window.advanceTo(pos);
     mark = -1;
     
-    // get chunk end in bytes
-    int chunkEnd = chunkStart + bytes.length;
-    
-    // append the full stack of end elements
-    StringBuilder sbEnd = new StringBuilder();
+    // get the full stack of end elements
+    StringBuilder sbSuffix = new StringBuilder();
     startElements.iterator().forEachRemaining(e ->
-      sbEnd.append("\n</").append(e.getName()).append(">"));
-    buf.appendString(sbEnd.toString());
+      sbSuffix.append("\n</").append(e.getName()).append(">"));
+    Buffer suffix = Buffer.buffer(sbSuffix.toString());
     
-    XMLChunkMeta meta = new XMLChunkMeta(chunkParents, chunkStart, chunkEnd);
-    return new Result<>(buf, meta);
+    XMLChunkMeta meta = new XMLChunkMeta(chunkParents);
+    return new Result<>(buf, prefix, suffix, meta);
   }
   
   /**

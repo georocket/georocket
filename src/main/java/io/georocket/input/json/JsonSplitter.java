@@ -148,7 +148,7 @@ public class JsonSplitter implements Splitter<JsonStreamEvent, JsonChunkMeta> {
     String str = window.getChars(mark, pos);
     window.advanceTo(pos);
     Buffer buf = Buffer.buffer(str);
-    JsonChunkMeta meta = new JsonChunkMeta(lastFieldName, 0, buf.length());
-    return new Result<>(buf, meta);
+    JsonChunkMeta meta = new JsonChunkMeta(lastFieldName);
+    return new Result<>(buf, null, null, meta);
   }
 }

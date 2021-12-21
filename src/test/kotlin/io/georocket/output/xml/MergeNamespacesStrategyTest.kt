@@ -40,17 +40,12 @@ class MergeNamespacesStrategyTest {
         arrayOf("uri0 location0 uri1 location1 uri2 location2", "value1", "value2"))
 
     private const val CONTENTS1 = "<elem><ns1:child1></ns1:child1></elem>"
-
-    private val CHUNK1 = Buffer.buffer("""$XMLHEADER$ROOT1$CONTENTS1</${ROOT1.name}>""")
+    private val CHUNK1 = Buffer.buffer(CONTENTS1)
     private const val CONTENTS2 = "<elem><ns2:child2></ns2:child2></elem>"
-    private val CHUNK2 = Buffer.buffer("""$XMLHEADER$ROOT2$CONTENTS2</${ROOT2.name}>""")
+    private val CHUNK2 = Buffer.buffer(CONTENTS2)
 
-    private val META1 = XMLChunkMeta(listOf(ROOT1),
-        XMLHEADER.length + ROOT1.toString().length,
-        CHUNK1.length() - ROOT1.name.length - 3)
-    private val META2 = XMLChunkMeta(listOf(ROOT2),
-        XMLHEADER.length + ROOT2.toString().length,
-        CHUNK2.length() - ROOT2.name.length - 3)
+    private val META1 = XMLChunkMeta(listOf(ROOT1))
+    private val META2 = XMLChunkMeta(listOf(ROOT2))
   }
 
   /**

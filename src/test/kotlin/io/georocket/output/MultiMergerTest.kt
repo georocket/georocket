@@ -56,7 +56,7 @@ class MultiMergerTest {
   fun geoJsonOneGeometry(vertx: Vertx, ctx: VertxTestContext) {
     val strChunk1 = """{"type":"Polygon"}"""
     val chunk1 = Buffer.buffer(strChunk1)
-    val cm1 = GeoJsonChunkMeta("Polygon", "geometries", 0, chunk1.length())
+    val cm1 = GeoJsonChunkMeta("Polygon", "geometries")
 
     doMerge(vertx, ctx, listOf(chunk1), listOf(cm1), strChunk1)
   }
@@ -72,10 +72,9 @@ class MultiMergerTest {
     val chunk1 = Buffer.buffer(strChunk1)
     val chunk2 = Buffer.buffer(strChunk2)
 
-    val cm1 = GeoJsonChunkMeta("Feature", "features", 0, chunk1.length())
-    val cm2 = GeoJsonChunkMeta("Feature", "features", 0, chunk2.length())
+    val cm1 = GeoJsonChunkMeta("Feature", "features")
 
-    doMerge(vertx, ctx, listOf(chunk1, chunk2), listOf(cm1, cm2),
+    doMerge(vertx, ctx, listOf(chunk1, chunk2), listOf(cm1, cm1),
         """{"type":"FeatureCollection","features":[$strChunk1,$strChunk2]}""")
   }
 
@@ -84,11 +83,10 @@ class MultiMergerTest {
    */
   @Test
   fun xmlSimple(vertx: Vertx, ctx: VertxTestContext) {
-    val chunk1 = Buffer.buffer("""$XMLHEADER<root><test chunk="1"></test></root>""")
-    val chunk2 = Buffer.buffer("""$XMLHEADER<root><test chunk="2"></test></root>""")
+    val chunk1 = Buffer.buffer("""<test chunk="1"></test>""")
+    val chunk2 = Buffer.buffer("""<test chunk="2"></test>""")
 
-    val cm = XMLChunkMeta(listOf(XMLStartElement("root")),
-        XMLHEADER.length + 6, chunk1.length() - 7)
+    val cm = XMLChunkMeta(listOf(XMLStartElement("root")))
 
     doMerge(vertx, ctx, listOf(chunk1, chunk2), listOf(cm, cm),
         """$XMLHEADER<root><test chunk="1"></test><test chunk="2"></test></root>""")
@@ -99,15 +97,8 @@ class MultiMergerTest {
    */
   @Test
   fun mixedInit(vertx: Vertx, ctx: VertxTestContext) {
-    val strChunk1 = """{"type":"Feature"}"""
-    val strChunk2 = """$XMLHEADER<root><test chunk="2"></test></root>"""
-
-    val chunk1 = Buffer.buffer(strChunk1)
-    val chunk2 = Buffer.buffer(strChunk2)
-
-    val cm1 = GeoJsonChunkMeta("Feature", "features", 0, chunk1.length())
-    val cm2 = XMLChunkMeta(listOf(XMLStartElement("root")),
-        XMLHEADER.length + 6, chunk2.length() - 7)
+    val cm1 = GeoJsonChunkMeta("Feature", "features")
+    val cm2 = XMLChunkMeta(listOf(XMLStartElement("root")))
 
     val m = MultiMerger(false)
 
@@ -128,14 +119,13 @@ class MultiMergerTest {
   @Test
   fun mixedMerge(vertx: Vertx, ctx: VertxTestContext) {
     val strChunk1 = """{"type":"Feature"}"""
-    val strChunk2 = """$XMLHEADER<root><test chunk="2"></test></root>"""
+    val strChunk2 = """<test chunk="2"></test>"""
 
     val chunk1 = Buffer.buffer(strChunk1)
     val chunk2 = Buffer.buffer(strChunk2)
 
-    val cm1 = GeoJsonChunkMeta("Feature", "features", 0, chunk1.length())
-    val cm2 = XMLChunkMeta(listOf(XMLStartElement("root")),
-        XMLHEADER.length + 6, chunk2.length() - 7)
+    val cm1 = GeoJsonChunkMeta("Feature", "features")
+    val cm2 = XMLChunkMeta(listOf(XMLStartElement("root")))
 
     val m = MultiMerger(false)
     val bws = BufferWriteStream()

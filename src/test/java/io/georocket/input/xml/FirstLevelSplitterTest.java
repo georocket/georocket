@@ -1,25 +1,22 @@
 package io.georocket.input.xml;
 
-import static org.junit.Assert.assertEquals;
-
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
-import org.junit.Test;
-
 import com.fasterxml.aalto.AsyncByteArrayFeeder;
 import com.fasterxml.aalto.AsyncXMLInputFactory;
 import com.fasterxml.aalto.AsyncXMLStreamReader;
 import com.fasterxml.aalto.stax.InputFactoryImpl;
-
 import io.georocket.input.Splitter.Result;
 import io.georocket.storage.XMLChunkMeta;
 import io.georocket.util.Window;
 import io.georocket.util.XMLStartElement;
 import io.georocket.util.XMLStreamEvent;
 import io.vertx.core.buffer.Buffer;
+import org.junit.Test;
+
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
 
 /**
  * Test the {@link FirstLevelSplitter}
@@ -27,6 +24,8 @@ import io.vertx.core.buffer.Buffer;
  */
 public class FirstLevelSplitterTest {
   private static final String XMLHEADER = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n";
+  private static final String PREFIX = "<root>\n";
+  private static final String SUFFIX = "\n</root>";
   
   /**
    * Use the {@link FirstLevelSplitter} and split an XML string
@@ -66,14 +65,16 @@ public class FirstLevelSplitterTest {
    */
   @Test
   public void oneChunk() throws Exception {
-    String xml = XMLHEADER + "<root>\n<object><child></child></object>\n</root>";
+    String contents = "<object><child></child></object>";
+    String xml = XMLHEADER + PREFIX + contents + SUFFIX;
     List<Result<XMLChunkMeta>> chunks = split(xml);
     assertEquals(1, chunks.size());
     Result<XMLChunkMeta> chunk = chunks.get(0);
-    XMLChunkMeta meta = new XMLChunkMeta(Arrays.asList(new XMLStartElement("root")),
-        XMLHEADER.length() + 7, xml.length() - 8);
+    XMLChunkMeta meta = new XMLChunkMeta(List.of(new XMLStartElement("root")));
     assertEquals(meta, chunk.getMeta());
-    assertEquals(xml, chunk.getChunk().toString());
+    assertEquals(XMLHEADER + PREFIX, chunk.getPrefix().toString());
+    assertEquals(SUFFIX, chunk.getSuffix().toString());
+    assertEquals(contents, chunk.getChunk().toString());
   }
   
   /**
@@ -82,23 +83,23 @@ public class FirstLevelSplitterTest {
    */
   @Test
   public void twoChunks() throws Exception {
-    String xml = XMLHEADER + "<root><object><child></child></object>"
-        + "<object><child2></child2></object></root>";
+    String contents1 = "<object><child></child></object>";
+    String contents2 = "<object><child2></child2></object>";
+    String xml = XMLHEADER + PREFIX + contents1 + contents2 + SUFFIX;
     List<Result<XMLChunkMeta>> chunks = split(xml);
     assertEquals(2, chunks.size());
     Result<XMLChunkMeta> chunk1 = chunks.get(0);
     Result<XMLChunkMeta> chunk2 = chunks.get(1);
-    List<XMLStartElement> parents = Arrays.asList(new XMLStartElement("root"));
-    XMLChunkMeta meta1 = new XMLChunkMeta(parents,
-        XMLHEADER.length() + 7, XMLHEADER.length() + 7 + 32);
-    XMLChunkMeta meta2 = new XMLChunkMeta(parents,
-        XMLHEADER.length() + 7, XMLHEADER.length() + 7 + 34);
-    assertEquals(meta1, chunk1.getMeta());
-    assertEquals(meta2, chunk2.getMeta());
-    assertEquals(XMLHEADER + "<root>\n<object><child></child></object>\n</root>",
-            chunk1.getChunk().toString());
-    assertEquals(XMLHEADER + "<root>\n<object><child2></child2></object>\n</root>",
-            chunk2.getChunk().toString());
+    List<XMLStartElement> parents = List.of(new XMLStartElement("root"));
+    XMLChunkMeta meta = new XMLChunkMeta(parents);
+    assertEquals(meta, chunk1.getMeta());
+    assertEquals(XMLHEADER + PREFIX, chunk1.getPrefix().toString());
+    assertEquals(SUFFIX, chunk1.getSuffix().toString());
+    assertEquals(meta, chunk2.getMeta());
+    assertEquals(XMLHEADER + PREFIX, chunk2.getPrefix().toString());
+    assertEquals(SUFFIX, chunk2.getSuffix().toString());
+    assertEquals(contents1, chunk1.getChunk().toString());
+    assertEquals(contents2, chunk2.getChunk().toString());
   }
   
   /**
@@ -107,25 +108,25 @@ public class FirstLevelSplitterTest {
    */
   @Test
   public void namespace() throws Exception {
+    String contents1 = "<p:object><p:child></p:child></p:object>";
+    String contents2 = "<p:object><child2></child2></p:object>";
     String root = "<root xmlns=\"http://example.com\" xmlns:p=\"http://example.com\">";
-    String xml = XMLHEADER + root + "<p:object><p:child></p:child></p:object>"
-        + "<p:object><child2></child2></p:object></root>";
+    String xml = XMLHEADER + root + contents1 + contents2 + "</root>";
     List<Result<XMLChunkMeta>> chunks = split(xml);
     assertEquals(2, chunks.size());
     Result<XMLChunkMeta> chunk1 = chunks.get(0);
     Result<XMLChunkMeta> chunk2 = chunks.get(1);
-    List<XMLStartElement> parents = Arrays.asList(new XMLStartElement(null, "root",
-        new String[] { "", "p" }, new String[] { "http://example.com", "http://example.com" }));
-    XMLChunkMeta meta1 = new XMLChunkMeta(parents,
-        XMLHEADER.length() + root.length() + 1, XMLHEADER.length() + root.length() + 1 + 40);
-    XMLChunkMeta meta2 = new XMLChunkMeta(parents,
-        XMLHEADER.length() + root.length() + 1, XMLHEADER.length() + root.length() + 1 + 38);
-    assertEquals(meta1, chunk1.getMeta());
-    assertEquals(meta2, chunk2.getMeta());
-    assertEquals(XMLHEADER + root + "\n<p:object><p:child></p:child></p:object>\n</root>",
-            chunk1.getChunk().toString());
-    assertEquals(XMLHEADER + root + "\n<p:object><child2></child2></p:object>\n</root>",
-            chunk2.getChunk().toString());
+    List<XMLStartElement> parents = List.of(new XMLStartElement(null, "root",
+            new String[]{"", "p"}, new String[]{"http://example.com", "http://example.com"}));
+    XMLChunkMeta meta = new XMLChunkMeta(parents);
+    assertEquals(meta, chunk1.getMeta());
+    assertEquals(XMLHEADER + root + "\n", chunk1.getPrefix().toString());
+    assertEquals(SUFFIX, chunk1.getSuffix().toString());
+    assertEquals(meta, chunk2.getMeta());
+    assertEquals(XMLHEADER + root + "\n", chunk2.getPrefix().toString());
+    assertEquals(SUFFIX, chunk2.getSuffix().toString());
+    assertEquals(contents1, chunk1.getChunk().toString());
+    assertEquals(contents2, chunk2.getChunk().toString());
   }
   
   /**
@@ -134,25 +135,25 @@ public class FirstLevelSplitterTest {
    */
   @Test
   public void attributes() throws Exception {
+    String contents1 = "<object ok=\"ov\"><child></child></object>";
+    String contents2 = "<object><child2></child2></object>";
     String root = "<root key=\"value\" key2=\"value2\">";
-    String xml = XMLHEADER + root + "<object ok=\"ov\"><child></child></object>"
-        + "<object><child2></child2></object></root>";
+    String xml = XMLHEADER + root + contents1 + contents2 + "</root>";
     List<Result<XMLChunkMeta>> chunks = split(xml);
     assertEquals(2, chunks.size());
     Result<XMLChunkMeta> chunk1 = chunks.get(0);
     Result<XMLChunkMeta> chunk2 = chunks.get(1);
-    List<XMLStartElement> parents = Arrays.asList(new XMLStartElement(null, "root",
-        new String[] { "", "" }, new String[] { "key", "key2" }, new String[] { "value", "value2" }));
-    XMLChunkMeta meta1 = new XMLChunkMeta(parents,
-        XMLHEADER.length() + root.length() + 1, XMLHEADER.length() + root.length() + 1 + 40);
-    XMLChunkMeta meta2 = new XMLChunkMeta(parents,
-        XMLHEADER.length() + root.length() + 1, XMLHEADER.length() + root.length() + 1 + 34);
-    assertEquals(meta1, chunk1.getMeta());
-    assertEquals(meta2, chunk2.getMeta());
-    assertEquals(XMLHEADER + root + "\n<object ok=\"ov\"><child></child></object>\n</root>",
-            chunk1.getChunk().toString());
-    assertEquals(XMLHEADER + root + "\n<object><child2></child2></object>\n</root>",
-            chunk2.getChunk().toString());
+    List<XMLStartElement> parents = List.of(new XMLStartElement(null, "root",
+            new String[]{"", ""}, new String[]{"key", "key2"}, new String[]{"value", "value2"}));
+    XMLChunkMeta meta = new XMLChunkMeta(parents);
+    assertEquals(meta, chunk1.getMeta());
+    assertEquals(XMLHEADER + root + "\n", chunk1.getPrefix().toString());
+    assertEquals(SUFFIX, chunk1.getSuffix().toString());
+    assertEquals(meta, chunk2.getMeta());
+    assertEquals(XMLHEADER + root + "\n", chunk2.getPrefix().toString());
+    assertEquals(SUFFIX, chunk2.getSuffix().toString());
+    assertEquals(contents1, chunk1.getChunk().toString());
+    assertEquals(contents2, chunk2.getChunk().toString());
   }
   
   /**
@@ -161,26 +162,26 @@ public class FirstLevelSplitterTest {
    */
   @Test
   public void full() throws Exception {
+    String contents1 = "<p:object ok=\"ov\"><p:child></p:child></p:object>";
+    String contents2 = "<p:object><child2></child2></p:object>";
     String root = "<root xmlns=\"http://example.com\" xmlns:p=\"http://example.com\" key=\"value\" key2=\"value2\">";
-    String xml = XMLHEADER + root + "<p:object ok=\"ov\"><p:child></p:child></p:object>"
-        + "<p:object><child2></child2></p:object></root>";
+    String xml = XMLHEADER + root + contents1 + contents2 + "</root>";
     List<Result<XMLChunkMeta>> chunks = split(xml);
     assertEquals(2, chunks.size());
     Result<XMLChunkMeta> chunk1 = chunks.get(0);
     Result<XMLChunkMeta> chunk2 = chunks.get(1);
-    List<XMLStartElement> parents = Arrays.asList(new XMLStartElement(null, "root",
-        new String[] { "", "p" }, new String[] { "http://example.com", "http://example.com" },
-        new String[] { "", "" }, new String[] { "key", "key2" }, new String[] { "value", "value2" }));
-    XMLChunkMeta meta1 = new XMLChunkMeta(parents,
-        XMLHEADER.length() + root.length() + 1, XMLHEADER.length() + root.length() + 1 + 48);
-    XMLChunkMeta meta2 = new XMLChunkMeta(parents,
-        XMLHEADER.length() + root.length() + 1, XMLHEADER.length() + root.length() + 1 + 38);
-    assertEquals(meta1, chunk1.getMeta());
-    assertEquals(meta2, chunk2.getMeta());
-    assertEquals(XMLHEADER + root + "\n<p:object ok=\"ov\"><p:child></p:child></p:object>\n</root>",
-            chunk1.getChunk().toString());
-    assertEquals(XMLHEADER + root + "\n<p:object><child2></child2></p:object>\n</root>",
-            chunk2.getChunk().toString());
+    List<XMLStartElement> parents = List.of(new XMLStartElement(null, "root",
+            new String[]{"", "p"}, new String[]{"http://example.com", "http://example.com"},
+            new String[]{"", ""}, new String[]{"key", "key2"}, new String[]{"value", "value2"}));
+    XMLChunkMeta meta = new XMLChunkMeta(parents);
+    assertEquals(meta, chunk1.getMeta());
+    assertEquals(XMLHEADER + root + "\n", chunk1.getPrefix().toString());
+    assertEquals(SUFFIX, chunk1.getSuffix().toString());
+    assertEquals(meta, chunk2.getMeta());
+    assertEquals(XMLHEADER + root + "\n", chunk2.getPrefix().toString());
+    assertEquals(SUFFIX, chunk2.getSuffix().toString());
+    assertEquals(contents1, chunk1.getChunk().toString());
+    assertEquals(contents2, chunk2.getChunk().toString());
   }
   
   /**
@@ -189,13 +190,15 @@ public class FirstLevelSplitterTest {
    */
   @Test
   public void utf8() throws Exception {
-    String xml = XMLHEADER + "<root>\n<object><child name=\"\u2248\"></child></object>\n</root>";
+    String contents = "<object><child name=\"\u2248\"></child></object>";
+    String xml = XMLHEADER + PREFIX + contents + SUFFIX;
     List<Result<XMLChunkMeta>> chunks = split(xml);
     assertEquals(1, chunks.size());
     Result<XMLChunkMeta> chunk = chunks.get(0);
-    XMLChunkMeta meta = new XMLChunkMeta(Arrays.asList(new XMLStartElement("root")),
-        XMLHEADER.length() + 7, xml.getBytes(StandardCharsets.UTF_8).length - 8);
+    XMLChunkMeta meta = new XMLChunkMeta(List.of(new XMLStartElement("root")));
     assertEquals(meta, chunk.getMeta());
-    assertEquals(xml, chunk.getChunk().toString());
+    assertEquals(XMLHEADER + PREFIX, chunk.getPrefix().toString());
+    assertEquals(SUFFIX, chunk.getSuffix().toString());
+    assertEquals(contents, chunk.getChunk().toString());
   }
 }

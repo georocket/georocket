@@ -12,12 +12,19 @@ import kotlinx.coroutines.flow.flow
  */
 interface Transformer<E : StreamEvent> {
   /**
-   * Parse the given [buffer] to a flow of stream events. This method is a
-   * combination of [transformChunk] and [finish]. It automatically closes the
-   * parser and returns the remaining stream events.
+   * Parse the given [prefix] (optional), [body] (required), and [suffix]
+   * (optional) to a flow of stream events. This method is a combination of
+   * [transformChunk] and [finish]. It automatically closes the parser and
+   * returns the remaining stream events.
    */
-  suspend fun transform(buffer: Buffer) = flow {
-    emitAll(transformChunk(buffer))
+  suspend fun transform(prefix: Buffer? = null, body: Buffer, suffix: Buffer? = null) = flow {
+    if (prefix != null) {
+      emitAll(transformChunk(prefix))
+    }
+    emitAll(transformChunk(body))
+    if (suffix != null) {
+      emitAll(transformChunk(suffix))
+    }
     emitAll(finish())
   }
 

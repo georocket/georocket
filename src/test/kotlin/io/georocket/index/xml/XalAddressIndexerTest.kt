@@ -24,12 +24,12 @@ class XalAddressIndexerTest {
    * expected properties map
    */
   private suspend fun assertIndexed(expected: Map<String, Any>, xmlFile: String) {
-    val json = javaClass.getResource(xmlFile)!!.readText()
+    val xml = javaClass.getResource(xmlFile)!!.readText()
 
     val indexer = XalAddressIndexer()
     val expectedMap = mapOf("address" to expected)
 
-    XMLTransformer().transform(Buffer.buffer(json)).collect { e ->
+    XMLTransformer().transform(body = Buffer.buffer(xml)).collect { e ->
       indexer.onEvent(e)
     }
 

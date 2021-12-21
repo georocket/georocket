@@ -61,7 +61,8 @@ class XMLTransformerTest {
   fun parseSimple(ctx: VertxTestContext, vertx: Vertx) {
     CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
-        XMLTransformer().transform(Buffer.buffer(XML)).collect { e ->
+        XMLTransformer().transform(Buffer.buffer(XMLHEADER),
+          Buffer.buffer(XML_CHUNK1), Buffer.buffer(XML_CHUNK2)).collect { e ->
           onEvent(e)
         }
         onEnd()

@@ -12,7 +12,6 @@ import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
-import org.apache.commons.io.IOUtils
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -23,10 +22,6 @@ import org.junit.jupiter.api.extension.ExtendWith
  */
 @ExtendWith(VertxExtension::class)
 class GeoJsonSplitterTest {
-  private fun getFileSize(file: String): Long {
-    return javaClass.getResourceAsStream(file).use { IOUtils.skip(it, Long.MAX_VALUE) }
-  }
-
   private suspend fun split(file: String): List<Pair<GeoJsonChunkMeta, JsonObject>> {
     val json = javaClass.getResource(file)!!.readBytes()
 
@@ -37,10 +32,12 @@ class GeoJsonSplitterTest {
     val chunks = mutableListOf<Pair<GeoJsonChunkMeta, JsonObject>>()
     val splitter = GeoJsonSplitter(window)
 
-    JsonTransformer().transform(buf).collect { e ->
+    JsonTransformer().transform(body = buf).collect { e ->
       val r = splitter.onEvent(e)
       if (r != null) {
         val o = JsonObject(r.chunk)
+        assertThat(r.prefix).isNull()
+        assertThat(r.suffix).isNull()
         chunks.add(r.meta as GeoJsonChunkMeta to o)
       }
     }
@@ -55,7 +52,6 @@ class GeoJsonSplitterTest {
   fun feature(ctx: VertxTestContext, vertx: Vertx) {
     CoroutineScope(vertx.dispatcher()).launch {
       val filename = "feature.json"
-      val size = getFileSize(filename)
       val chunks = split(filename)
 
       ctx.verify {
@@ -64,8 +60,6 @@ class GeoJsonSplitterTest {
         val t1 = chunks[0]
         val m1 = t1.first
         assertThat(m1.parentFieldName).isNull()
-        assertThat(m1.start.toLong()).isEqualTo(0)
-        assertThat(m1.end.toLong()).isEqualTo(size)
         assertThat(m1.type).isEqualTo("Feature")
 
         val o1 = t1.second
@@ -84,7 +78,6 @@ class GeoJsonSplitterTest {
   fun greek(ctx: VertxTestContext, vertx: Vertx) {
     CoroutineScope(vertx.dispatcher()).launch {
       val filename = "greek.json"
-      val size = getFileSize(filename)
       val chunks = split(filename)
 
       ctx.verify {
@@ -93,8 +86,6 @@ class GeoJsonSplitterTest {
         val t1 = chunks[0]
         val m1 = t1.first
         assertThat(m1.parentFieldName).isNull()
-        assertThat(m1.start.toLong()).isEqualTo(0)
-        assertThat(m1.end.toLong()).isEqualTo(size)
         assertThat(m1.type).isEqualTo("Feature")
 
         val o1 = t1.second
@@ -124,8 +115,6 @@ class GeoJsonSplitterTest {
         val t1 = chunks[0]
         val m1 = t1.first
         assertThat(m1.parentFieldName).isEqualTo("features")
-        assertThat(m1.start.toLong()).isEqualTo(0)
-        assertThat(m1.end.toLong()).isEqualTo(307)
         assertThat(m1.type).isEqualTo("Feature")
 
         val o1 = t1.second
@@ -135,8 +124,6 @@ class GeoJsonSplitterTest {
         val t2 = chunks[1]
         val m2 = t2.first
         assertThat(m2.parentFieldName).isEqualTo("features")
-        assertThat(m2.start.toLong()).isEqualTo(0)
-        assertThat(m2.end.toLong()).isEqualTo(305)
         assertThat(m2.type).isEqualTo("Feature")
 
         val o2 = t2.second
@@ -163,8 +150,6 @@ class GeoJsonSplitterTest {
         val t1 = chunks[0]
         val m1 = t1.first
         assertThat(m1.parentFieldName).isEqualTo("geometries")
-        assertThat(m1.start.toLong()).isEqualTo(0)
-        assertThat(m1.end.toLong()).isEqualTo(132)
         assertThat(m1.type).isEqualTo("Point")
 
         val o1 = t1.second
@@ -174,8 +159,6 @@ class GeoJsonSplitterTest {
         val t2 = chunks[1]
         val m2 = t2.first
         assertThat(m2.parentFieldName).isEqualTo("geometries")
-        assertThat(m2.start.toLong()).isEqualTo(0)
-        assertThat(m2.end.toLong()).isEqualTo(132)
         assertThat(m2.type).isEqualTo("Point")
 
         val o2 = t2.second
@@ -194,7 +177,6 @@ class GeoJsonSplitterTest {
   fun lineString(ctx: VertxTestContext, vertx: Vertx) {
     CoroutineScope(vertx.dispatcher()).launch {
       val filename = "linestring.json"
-      val size = getFileSize(filename)
       val chunks = split(filename)
 
       ctx.verify {
@@ -203,8 +185,6 @@ class GeoJsonSplitterTest {
         val t1 = chunks[0]
         val m1 = t1.first
         assertThat(m1.parentFieldName).isNull()
-        assertThat(m1.start.toLong()).isEqualTo(0)
-        assertThat(m1.end.toLong()).isEqualTo(size)
         assertThat(m1.type).isEqualTo("LineString")
 
         val o1 = t1.second
@@ -223,7 +203,6 @@ class GeoJsonSplitterTest {
   fun muliLineString(ctx: VertxTestContext, vertx: Vertx) {
     CoroutineScope(vertx.dispatcher()).launch {
       val filename = "multilinestring.json"
-      val size = getFileSize(filename)
       val chunks = split(filename)
 
       ctx.verify {
@@ -232,8 +211,6 @@ class GeoJsonSplitterTest {
         val t1 = chunks[0]
         val m1 = t1.first
         assertThat(m1.parentFieldName).isNull()
-        assertThat(m1.start.toLong()).isEqualTo(0)
-        assertThat(m1.end.toLong()).isEqualTo(size)
         assertThat(m1.type).isEqualTo("MultiLineString")
 
         val o1 = t1.second
@@ -252,7 +229,6 @@ class GeoJsonSplitterTest {
   fun multiPoint(ctx: VertxTestContext, vertx: Vertx) {
     CoroutineScope(vertx.dispatcher()).launch {
       val filename = "multipoint.json"
-      val size = getFileSize(filename)
       val chunks = split(filename)
 
       ctx.verify {
@@ -261,8 +237,6 @@ class GeoJsonSplitterTest {
         val t1 = chunks[0]
         val m1 = t1.first
         assertThat(m1.parentFieldName).isNull()
-        assertThat(m1.start.toLong()).isEqualTo(0)
-        assertThat(m1.end.toLong()).isEqualTo(size)
         assertThat(m1.type).isEqualTo("MultiPoint")
 
         val o1 = t1.second
@@ -281,7 +255,6 @@ class GeoJsonSplitterTest {
   fun multiPolygon(ctx: VertxTestContext, vertx: Vertx) {
     CoroutineScope(vertx.dispatcher()).launch {
       val filename = "multipolygon.json"
-      val size = getFileSize(filename)
       val chunks = split(filename)
 
       ctx.verify {
@@ -290,8 +263,6 @@ class GeoJsonSplitterTest {
         val t1 = chunks[0]
         val m1 = t1.first
         assertThat(m1.parentFieldName).isNull()
-        assertThat(m1.start.toLong()).isEqualTo(0)
-        assertThat(m1.end.toLong()).isEqualTo(size)
         assertThat(m1.type).isEqualTo("MultiPolygon")
 
         val o1 = t1.second
@@ -312,7 +283,6 @@ class GeoJsonSplitterTest {
   fun point(ctx: VertxTestContext, vertx: Vertx) {
     CoroutineScope(vertx.dispatcher()).launch {
       val filename = "point.json"
-      val size = getFileSize(filename)
       val chunks = split(filename)
 
       ctx.verify {
@@ -321,8 +291,6 @@ class GeoJsonSplitterTest {
         val t1 = chunks[0]
         val m1 = t1.first
         assertThat(m1.parentFieldName).isNull()
-        assertThat(m1.start.toLong()).isEqualTo(0)
-        assertThat(m1.end.toLong()).isEqualTo(size)
         assertThat(m1.type).isEqualTo("Point")
 
         val o1 = t1.second
@@ -341,7 +309,6 @@ class GeoJsonSplitterTest {
   fun polygon(ctx: VertxTestContext, vertx: Vertx) {
     CoroutineScope(vertx.dispatcher()).launch {
       val filename = "polygon.json"
-      val size = getFileSize(filename)
       val chunks = split(filename)
 
       ctx.verify {
@@ -351,8 +318,6 @@ class GeoJsonSplitterTest {
         val m1 = t1.first
 
         assertThat(m1.parentFieldName).isNull()
-        assertThat(m1.start.toLong()).isEqualTo(0)
-        assertThat(m1.end.toLong()).isEqualTo(size)
         assertThat(m1.type).isEqualTo("Polygon")
 
         val o1 = t1.second
@@ -380,8 +345,6 @@ class GeoJsonSplitterTest {
         val t1 = chunks[0]
         val m1 = t1.first
         assertThat(m1.parentFieldName).isEqualTo("features")
-        assertThat(m1.start.toLong()).isEqualTo(0)
-        assertThat(m1.end.toLong()).isEqualTo(307)
         assertThat(m1.type).isEqualTo("Feature")
 
         val o1 = t1.second
@@ -391,8 +354,6 @@ class GeoJsonSplitterTest {
         val t2 = chunks[1]
         val m2 = t2.first
         assertThat(m2.parentFieldName).isEqualTo("features")
-        assertThat(m2.start.toLong()).isEqualTo(0)
-        assertThat(m2.end.toLong()).isEqualTo(305)
         assertThat(m2.type).isEqualTo("Feature")
 
         val o2 = t2.second

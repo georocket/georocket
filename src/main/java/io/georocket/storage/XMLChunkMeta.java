@@ -24,13 +24,9 @@ public class XMLChunkMeta extends ChunkMeta {
    * Create a new metadata object
    * @param parents the chunk's parents (i.e. the XML start elements the
    * chunk is wrapped in)
-   * @param start the position in the stored blob where the chunk starts
-   * (typically right after all its parent XML elements)
-   * @param end the position in the stored blob where the chunk ends (typically
-   * right before all its parent XML elements are closed)
    */
-  public XMLChunkMeta(List<XMLStartElement> parents, int start, int end) {
-    super(start, end, MIME_TYPE);
+  public XMLChunkMeta(List<XMLStartElement> parents) {
+    super(MIME_TYPE);
     this.parents = parents;
   }
   

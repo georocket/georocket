@@ -94,7 +94,7 @@ class GeoJsonMerger(optimistic: Boolean) : Merger<GeoJsonChunkMeta> {
       outputStream.write(Buffer.buffer("{\"type\":\"Feature\",\"geometry\":"))
     }
 
-    outputStream.write(chunk.slice(chunkMetadata.start, chunkMetadata.end))
+    outputStream.write(chunk)
 
     if (wrap) {
       outputStream.write(Buffer.buffer("}"))

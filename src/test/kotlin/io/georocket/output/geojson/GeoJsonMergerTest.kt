@@ -51,7 +51,7 @@ class GeoJsonMergerTest {
   fun oneGeometry(vertx: Vertx, ctx: VertxTestContext) {
     val strChunk1 = """{"type":"Polygon"}"""
     val chunk1 = Buffer.buffer(strChunk1)
-    val cm1 = GeoJsonChunkMeta("Polygon", "geometries", 0, chunk1.length())
+    val cm1 = GeoJsonChunkMeta("Polygon", "geometries")
     doMerge(vertx, ctx, listOf(chunk1), listOf(cm1), strChunk1)
   }
 
@@ -64,7 +64,7 @@ class GeoJsonMergerTest {
     val expected = """{"type":"FeatureCollection","features":[""" +
       """{"type":"Feature","geometry":$strChunk1}]}"""
     val chunk1 = Buffer.buffer(strChunk1)
-    val cm1 = GeoJsonChunkMeta("Polygon", "geometries", 0, chunk1.length())
+    val cm1 = GeoJsonChunkMeta("Polygon", "geometries")
     doMerge(vertx, ctx, listOf(chunk1), listOf(cm1), expected, true)
   }
 
@@ -75,7 +75,7 @@ class GeoJsonMergerTest {
   fun oneFeature(vertx: Vertx, ctx: VertxTestContext) {
     val strChunk1 = """{"type":"Feature"}"""
     val chunk1 = Buffer.buffer(strChunk1)
-    val cm1 = GeoJsonChunkMeta("Feature", "features", 0, chunk1.length())
+    val cm1 = GeoJsonChunkMeta("Feature", "features")
     doMerge(vertx, ctx, listOf(chunk1), listOf(cm1), strChunk1)
   }
 
@@ -87,7 +87,7 @@ class GeoJsonMergerTest {
     val strChunk1 = """{"type":"Feature"}"""
     val expected = """{"type":"FeatureCollection","features":[$strChunk1]}"""
     val chunk1 = Buffer.buffer(strChunk1)
-    val cm1 = GeoJsonChunkMeta("Feature", "features", 0, chunk1.length())
+    val cm1 = GeoJsonChunkMeta("Feature", "features")
     doMerge(vertx, ctx, listOf(chunk1), listOf(cm1), expected, true)
   }
 
@@ -100,8 +100,8 @@ class GeoJsonMergerTest {
     val strChunk2 = """{"type":"Point"}"""
     val chunk1 = Buffer.buffer(strChunk1)
     val chunk2 = Buffer.buffer(strChunk2)
-    val cm1 = GeoJsonChunkMeta("Polygon", "geometries", 0, chunk1.length())
-    val cm2 = GeoJsonChunkMeta("Point", "geometries", 0, chunk2.length())
+    val cm1 = GeoJsonChunkMeta("Polygon", "geometries")
+    val cm2 = GeoJsonChunkMeta("Point", "geometries")
     doMerge(vertx, ctx, listOf(chunk1, chunk2), listOf(cm1, cm2),
         "{\"type\":\"GeometryCollection\",\"geometries\":[$strChunk1,$strChunk2]}")
   }
@@ -118,8 +118,8 @@ class GeoJsonMergerTest {
         """{"type":"Feature","geometry":$strChunk2}]}"""
     val chunk1 = Buffer.buffer(strChunk1)
     val chunk2 = Buffer.buffer(strChunk2)
-    val cm1 = GeoJsonChunkMeta("Polygon", "geometries", 0, chunk1.length())
-    val cm2 = GeoJsonChunkMeta("Point", "geometries", 0, chunk2.length())
+    val cm1 = GeoJsonChunkMeta("Polygon", "geometries")
+    val cm2 = GeoJsonChunkMeta("Point", "geometries")
     doMerge(vertx, ctx, listOf(chunk1, chunk2), listOf(cm1, cm2), expected, true)
   }
 
@@ -134,9 +134,9 @@ class GeoJsonMergerTest {
     val chunk1 = Buffer.buffer(strChunk1)
     val chunk2 = Buffer.buffer(strChunk2)
     val chunk3 = Buffer.buffer(strChunk3)
-    val cm1 = GeoJsonChunkMeta("Polygon", "geometries", 0, chunk1.length())
-    val cm2 = GeoJsonChunkMeta("Point", "geometries", 0, chunk2.length())
-    val cm3 = GeoJsonChunkMeta("MultiPoint", "geometries", 0, chunk3.length())
+    val cm1 = GeoJsonChunkMeta("Polygon", "geometries")
+    val cm2 = GeoJsonChunkMeta("Point", "geometries")
+    val cm3 = GeoJsonChunkMeta("MultiPoint", "geometries")
     doMerge(vertx, ctx, listOf(chunk1, chunk2, chunk3), listOf(cm1, cm2, cm3),
         """{"type":"GeometryCollection","geometries":[$strChunk1,$strChunk2,$strChunk3]}""")
   }
@@ -150,9 +150,8 @@ class GeoJsonMergerTest {
     val strChunk2 = """{"type":"Feature","properties":{}}"""
     val chunk1 = Buffer.buffer(strChunk1)
     val chunk2 = Buffer.buffer(strChunk2)
-    val cm1 = GeoJsonChunkMeta("Feature", "features", 0, chunk1.length())
-    val cm2 = GeoJsonChunkMeta("Feature", "features", 0, chunk2.length())
-    doMerge(vertx, ctx, listOf(chunk1, chunk2), listOf(cm1, cm2),
+    val cm1 = GeoJsonChunkMeta("Feature", "features")
+    doMerge(vertx, ctx, listOf(chunk1, chunk2), listOf(cm1, cm1),
         """{"type":"FeatureCollection","features":[$strChunk1,$strChunk2]}""")
   }
 
@@ -165,9 +164,8 @@ class GeoJsonMergerTest {
     val strChunk2 = """{"type":"Feature","properties":{}}"""
     val chunk1 = Buffer.buffer(strChunk1)
     val chunk2 = Buffer.buffer(strChunk2)
-    val cm1 = GeoJsonChunkMeta("Feature", "features", 0, chunk1.length())
-    val cm2 = GeoJsonChunkMeta("Feature", "features", 0, chunk2.length())
-    doMerge(vertx, ctx, listOf(chunk1, chunk2), listOf(cm1, cm2),
+    val cm1 = GeoJsonChunkMeta("Feature", "features")
+    doMerge(vertx, ctx, listOf(chunk1, chunk2), listOf(cm1, cm1),
         """{"type":"FeatureCollection","features":[$strChunk1,$strChunk2]}""", true)
   }
 
@@ -182,10 +180,8 @@ class GeoJsonMergerTest {
     val chunk1 = Buffer.buffer(strChunk1)
     val chunk2 = Buffer.buffer(strChunk2)
     val chunk3 = Buffer.buffer(strChunk3)
-    val cm1 = GeoJsonChunkMeta("Feature", "features", 0, chunk1.length())
-    val cm2 = GeoJsonChunkMeta("Feature", "features", 0, chunk2.length())
-    val cm3 = GeoJsonChunkMeta("Feature", "features", 0, chunk3.length())
-    doMerge(vertx, ctx, listOf(chunk1, chunk2, chunk3), listOf(cm1, cm2, cm3),
+    val cm1 = GeoJsonChunkMeta("Feature", "features")
+    doMerge(vertx, ctx, listOf(chunk1, chunk2, chunk3), listOf(cm1, cm1, cm1),
         """{"type":"FeatureCollection","features":[$strChunk1,$strChunk2,$strChunk3]}""")
   }
 
@@ -198,8 +194,8 @@ class GeoJsonMergerTest {
     val strChunk2 = """{"type":"Feature"}"""
     val chunk1 = Buffer.buffer(strChunk1)
     val chunk2 = Buffer.buffer(strChunk2)
-    val cm1 = GeoJsonChunkMeta("Polygon", "geometries", 0, chunk1.length())
-    val cm2 = GeoJsonChunkMeta("Feature", "features", 0, chunk2.length())
+    val cm1 = GeoJsonChunkMeta("Polygon", "geometries")
+    val cm2 = GeoJsonChunkMeta("Feature", "features")
     doMerge(vertx, ctx, listOf(chunk1, chunk2), listOf(cm1, cm2),
         """{"type":"FeatureCollection","features":[""" +
             """{"type":"Feature","geometry":$strChunk1},$strChunk2]}""")
@@ -214,8 +210,8 @@ class GeoJsonMergerTest {
     val strChunk2 = """{"type":"Polygon"}"""
     val chunk1 = Buffer.buffer(strChunk1)
     val chunk2 = Buffer.buffer(strChunk2)
-    val cm1 = GeoJsonChunkMeta("Feature", "features", 0, chunk1.length())
-    val cm2 = GeoJsonChunkMeta("Polygon", "geometries", 0, chunk2.length())
+    val cm1 = GeoJsonChunkMeta("Feature", "features")
+    val cm2 = GeoJsonChunkMeta("Polygon", "geometries")
     doMerge(vertx, ctx, listOf(chunk1, chunk2), listOf(cm1, cm2),
         """{"type":"FeatureCollection","features":[$strChunk1,""" +
             """{"type":"Feature","geometry":$strChunk2}]}""")
@@ -232,9 +228,9 @@ class GeoJsonMergerTest {
     val chunk1 = Buffer.buffer(strChunk1)
     val chunk2 = Buffer.buffer(strChunk2)
     val chunk3 = Buffer.buffer(strChunk3)
-    val cm1 = GeoJsonChunkMeta("Polygon", "geometries", 0, chunk1.length())
-    val cm2 = GeoJsonChunkMeta("Point", "geometries", 0, chunk2.length())
-    val cm3 = GeoJsonChunkMeta("Feature", "features", 0, chunk3.length())
+    val cm1 = GeoJsonChunkMeta("Polygon", "geometries")
+    val cm2 = GeoJsonChunkMeta("Point", "geometries")
+    val cm3 = GeoJsonChunkMeta("Feature", "features")
     doMerge(vertx, ctx, listOf(chunk1, chunk2, chunk3), listOf(cm1, cm2, cm3),
         """{"type":"FeatureCollection","features":[""" +
             """{"type":"Feature","geometry":$strChunk1},""" +
@@ -252,10 +248,9 @@ class GeoJsonMergerTest {
     val chunk1 = Buffer.buffer(strChunk1)
     val chunk2 = Buffer.buffer(strChunk2)
     val chunk3 = Buffer.buffer(strChunk3)
-    val cm1 = GeoJsonChunkMeta("Feature", "features", 0, chunk1.length())
-    val cm2 = GeoJsonChunkMeta("Feature", "features", 0, chunk2.length())
-    val cm3 = GeoJsonChunkMeta("Point", "geometries", 0, chunk3.length())
-    doMerge(vertx, ctx, listOf(chunk1, chunk2, chunk3), listOf(cm1, cm2, cm3),
+    val cm1 = GeoJsonChunkMeta("Feature", "features")
+    val cm2 = GeoJsonChunkMeta("Point", "geometries")
+    doMerge(vertx, ctx, listOf(chunk1, chunk2, chunk3), listOf(cm1, cm1, cm2),
         """{"type":"FeatureCollection","features":[$strChunk1,$strChunk2,""" +
             """{"type":"Feature","geometry":$strChunk3}]}""")
   }
@@ -270,8 +265,7 @@ class GeoJsonMergerTest {
     val strChunk2 = """{"type":"Feature","properties":{}}"""
     val chunk1 = Buffer.buffer(strChunk1)
     val chunk2 = Buffer.buffer(strChunk2)
-    val cm1 = GeoJsonChunkMeta("Feature", "features", 0, chunk1.length())
-    val cm2 = GeoJsonChunkMeta("Feature", "features", 0, chunk2.length())
+    val cm1 = GeoJsonChunkMeta("Feature", "features")
     val m = GeoJsonMerger(false)
     val bws = BufferWriteStream()
 
@@ -280,7 +274,7 @@ class GeoJsonMergerTest {
         assertThatThrownBy {
           m.init(cm1)
           m.merge(chunk1, cm1, bws)
-          m.merge(chunk2, cm2, bws)
+          m.merge(chunk2, cm1, bws)
         }.isInstanceOf(IllegalStateException::class.java)
       }
       ctx.completeNow()
@@ -299,9 +293,8 @@ class GeoJsonMergerTest {
     val chunk1 = Buffer.buffer(strChunk1)
     val chunk2 = Buffer.buffer(strChunk2)
     val chunk3 = Buffer.buffer(strChunk3)
-    val cm1 = GeoJsonChunkMeta("Feature", "features", 0, chunk1.length())
-    val cm2 = GeoJsonChunkMeta("Feature", "features", 0, chunk2.length())
-    val cm3 = GeoJsonChunkMeta("Polygon", "geometries", 0, chunk2.length())
+    val cm1 = GeoJsonChunkMeta("Feature", "features")
+    val cm2 = GeoJsonChunkMeta("Polygon", "geometries")
     val jsonContents = """{"type":"FeatureCollection","features":""" +
         """[$strChunk1,$strChunk2,{"type":"Feature","geometry":$strChunk3}]}"""
     val m = GeoJsonMerger(false)
@@ -310,10 +303,10 @@ class GeoJsonMergerTest {
     CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         m.init(cm1)
-        m.init(cm2)
+        m.init(cm1)
         m.merge(chunk1, cm1, bws)
-        m.merge(chunk2, cm2, bws)
-        m.merge(chunk3, cm3, bws)
+        m.merge(chunk2, cm1, bws)
+        m.merge(chunk3, cm2, bws)
         m.finish(bws)
 
         assertThat(jsonContents).isEqualTo(bws.buffer.toString("utf-8"))

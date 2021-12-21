@@ -34,7 +34,7 @@ class GeoJsonBoundingBoxIndexerTest {
       )
     )
 
-    JsonTransformer().transform(Buffer.buffer(json)).collect { e ->
+    JsonTransformer().transform(null, Buffer.buffer(json), null).collect { e ->
       indexer.onEvent(e)
     }
 

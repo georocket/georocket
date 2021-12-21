@@ -8,20 +8,14 @@ import io.vertx.core.json.JsonObject;
  * @author Michel Kraemer
  */
 public class ChunkMeta {
-  protected final int start;
-  protected final int end;
   protected final String mimeType;
 
   /**
    * Create a new metadata object
-   * @param start the position in the stored blob where the chunk starts
-   * @param end the position in the stored blob where the chunk ends
    * @param mimeType the chunk's mime type (typically "application/xml" or
    * "application/json")
    */
-  public ChunkMeta(int start, int end, String mimeType) {
-    this.start = start;
-    this.end = end;
+  public ChunkMeta(String mimeType) {
     this.mimeType = mimeType;
   }
   
@@ -30,22 +24,7 @@ public class ChunkMeta {
    * @param json the JsonObject
    */
   public ChunkMeta(JsonObject json) {
-    this(json.getInteger("start"), json.getInteger("end"),
-        json.getString("mimeType", "application/xml"));
-  }
-
-  /**
-   * @return the position in the stored blob where the chunk starts
-   */
-  public int getStart() {
-    return start;
-  }
-
-  /**
-   * @return the position in the stored blob where the chunk ends
-   */
-  public int getEnd() {
-    return end;
+    this(json.getString("mimeType", "application/xml"));
   }
 
   /**
@@ -60,8 +39,6 @@ public class ChunkMeta {
   public int hashCode() {
     final int prime = 31;
     int result = 1;
-    result = prime * result + end;
-    result = prime * result + start;
     result = prime * result + ((mimeType == null) ? 0 : mimeType.hashCode());
     return result;
   }
@@ -78,12 +55,6 @@ public class ChunkMeta {
       return false;
     }
     ChunkMeta other = (ChunkMeta)obj;
-    if (end != other.end) {
-      return false;
-    }
-    if (start != other.start) {
-      return false;
-    }
     if (mimeType == null) {
       if (other.mimeType != null) {
         return false;
@@ -99,8 +70,6 @@ public class ChunkMeta {
    */
   public JsonObject toJsonObject() {
     return new JsonObject()
-        .put("start", start)
-        .put("end", end)
         .put("mimeType", mimeType);
   }
 }

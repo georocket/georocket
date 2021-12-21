@@ -24,11 +24,9 @@ public class GeoJsonChunkMeta extends JsonChunkMeta {
    * @param parentFieldName the name of the field whose value is equal to this
    * chunk or, if the field is an array, whose value contains this chunk (may
    * be <code>null</code> if the chunk does not have a parent)
-   * @param start the position in the stored blob where the chunk starts
-   * @param end the position in the stored blob where the chunk ends
    */
-  public GeoJsonChunkMeta(String type, String parentFieldName, int start, int end) {
-    super(parentFieldName, start, end, MIME_TYPE);
+  public GeoJsonChunkMeta(String type, String parentFieldName) {
+    super(parentFieldName, MIME_TYPE);
     this.type = type;
   }
 
@@ -48,8 +46,7 @@ public class GeoJsonChunkMeta extends JsonChunkMeta {
    * @param chunkMeta the chunk metadata object to copy
    */
   public GeoJsonChunkMeta(String type, JsonChunkMeta chunkMeta) {
-    super(chunkMeta.getParentFieldName(), chunkMeta.getStart(),
-      chunkMeta.getEnd(), MIME_TYPE);
+    super(chunkMeta.getParentFieldName(), MIME_TYPE);
     this.type = type;
   }
   

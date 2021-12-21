@@ -255,7 +255,8 @@ class ImporterVerticle : CoroutineVerticle() {
               flushQueue()
             }
           }
-          indexer.add(result.chunk, result.meta, indexMeta, path)
+          indexer.add(result.prefix, result.chunk, result.suffix, result.meta,
+            indexMeta, path)
           chunksAdded++
           updateProgress(chunksAdded, bytesProcessed, false)
         }
@@ -362,7 +363,8 @@ class ImporterVerticle : CoroutineVerticle() {
               flushQueue()
             }
           }
-          indexer.add(result.chunk, result.meta, indexMeta, path)
+          indexer.add(result.prefix, result.chunk, result.suffix, result.meta,
+            indexMeta, path)
           chunksAdded++
           updateProgress(chunksAdded, bytesProcessed, false)
         }

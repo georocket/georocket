@@ -30,7 +30,7 @@ class GeoJsonGenericAttributeIndexerTest {
     val expectedMap = mapOf("genAttrs" to expected)
 
     CoroutineScope(vertx.dispatcher()).launch {
-      JsonTransformer().transform(Buffer.buffer(json)).collect { e ->
+      JsonTransformer().transform(body = Buffer.buffer(json)).collect { e ->
         indexer.onEvent(e)
       }
 

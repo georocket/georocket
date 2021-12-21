@@ -24,10 +24,9 @@ import org.junit.jupiter.api.extension.ExtendWith
 class AllSameStrategyTest {
   companion object {
     private const val XMLHEADER = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>${"\n"}"""
-    private val chunk1 = Buffer.buffer("""$XMLHEADER<root><test chunk="1"></test></root>""")
-    private val chunk2 = Buffer.buffer("""$XMLHEADER<root><test chunk="2"></test></root>""")
-    private val cm = XMLChunkMeta(listOf(XMLStartElement("root")),
-        XMLHEADER.length + 6, chunk1.length() - 7)
+    private val chunk1 = Buffer.buffer("""<test chunk="1"></test>""")
+    private val chunk2 = Buffer.buffer("""<test chunk="2"></test>""")
+    private val cm = XMLChunkMeta(listOf(XMLStartElement("root")))
   }
 
   /**
@@ -79,9 +78,9 @@ class AllSameStrategyTest {
    */
   @Test
   fun canMerge(vertx: Vertx, ctx: VertxTestContext) {
-    val cm2 = XMLChunkMeta(listOf(XMLStartElement("other")), 10, 20)
-    val cm3 = XMLChunkMeta(listOf(XMLStartElement("pre", "root")), 10, 20)
-    val cm4 = XMLChunkMeta(listOf(XMLStartElement(null, "root", arrayOf(""), arrayOf("uri"))), 10, 20)
+    val cm2 = XMLChunkMeta(listOf(XMLStartElement("other")))
+    val cm3 = XMLChunkMeta(listOf(XMLStartElement("pre", "root")))
+    val cm4 = XMLChunkMeta(listOf(XMLStartElement(null, "root", arrayOf(""), arrayOf("uri"))))
     val strategy = AllSameStrategy()
 
     CoroutineScope(vertx.dispatcher()).launch {
@@ -102,7 +101,7 @@ class AllSameStrategyTest {
    */
   @Test
   fun mergeFail(vertx: Vertx, ctx: VertxTestContext) {
-    val cm2 = XMLChunkMeta(listOf(XMLStartElement("other")), 10, 20)
+    val cm2 = XMLChunkMeta(listOf(XMLStartElement("other")))
     val strategy = AllSameStrategy()
     val bws = BufferWriteStream()
 

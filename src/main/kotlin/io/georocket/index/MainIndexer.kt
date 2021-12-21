@@ -52,8 +52,9 @@ class MainIndexer private constructor(override val coroutineContext: CoroutineCo
     index.close()
   }
 
-  suspend fun add(chunk: Buffer, chunkMeta: ChunkMeta, indexMeta: IndexMeta, path: String) {
-    queue.add(Queued(chunk, chunkMeta, indexMeta, path))
+  suspend fun add(prefix: Buffer?, chunk: Buffer, suffix: Buffer?,
+      chunkMeta: ChunkMeta, indexMeta: IndexMeta, path: String) {
+    queue.add(Queued(prefix, chunk, suffix, chunkMeta, indexMeta, path))
     if (queue.size >= maxBulkSize) {
       doAddQueue()
     } else {
@@ -102,12 +103,14 @@ class MainIndexer private constructor(override val coroutineContext: CoroutineCo
     val doc = if (MimeTypeUtils.belongsTo(mimeType, "application", "xml") ||
       MimeTypeUtils.belongsTo(mimeType, "text", "xml")
     ) {
-      chunkToDocument(queued.chunk, queued.indexMeta.fallbackCRSString,
-        XMLStreamEvent::class.java, XMLTransformer()
+      chunkToDocument(queued.prefix, queued.chunk, queued.suffix,
+        queued.indexMeta.fallbackCRSString, XMLStreamEvent::class.java,
+        XMLTransformer()
       )
     } else if (MimeTypeUtils.belongsTo(mimeType, "application", "json")) {
-      chunkToDocument(queued.chunk, queued.indexMeta.fallbackCRSString,
-        JsonStreamEvent::class.java, JsonTransformer()
+      chunkToDocument(queued.prefix, queued.chunk, queued.suffix,
+        queued.indexMeta.fallbackCRSString, JsonStreamEvent::class.java,
+        JsonTransformer()
       )
     } else {
       throw IllegalArgumentException("Unexpected mime type '${mimeType}' " +
@@ -118,8 +121,9 @@ class MainIndexer private constructor(override val coroutineContext: CoroutineCo
     return doc + metaResults
   }
 
-  private suspend fun <T : StreamEvent> chunkToDocument(chunk: Buffer,
-    fallbackCRSString: String?, type: Class<T>, transformer: Transformer<T>): Map<String, Any> {
+  private suspend fun <T : StreamEvent> chunkToDocument(prefix: Buffer?,
+    chunk: Buffer, suffix: Buffer?, fallbackCRSString: String?, type: Class<T>,
+    transformer: Transformer<T>): Map<String, Any> {
     // initialize indexers
     val indexers = IndexerFactory.ALL.mapNotNull { factory ->
       factory.createIndexer(type)?.also { i ->
@@ -130,7 +134,7 @@ class MainIndexer private constructor(override val coroutineContext: CoroutineCo
     }
 
     // perform indexing
-    transformer.transform(chunk).collect { e ->
+    transformer.transform(prefix, chunk, suffix).collect { e ->
       indexers.forEach { it.onEvent(e) }
     }
 
@@ -140,6 +144,7 @@ class MainIndexer private constructor(override val coroutineContext: CoroutineCo
     return doc
   }
 
-  private data class Queued(val chunk: Buffer, val chunkMeta: ChunkMeta,
-    val indexMeta: IndexMeta, val path: String)
+  private data class Queued(val prefix: Buffer?, val chunk: Buffer,
+    val suffix: Buffer?, val chunkMeta: ChunkMeta, val indexMeta: IndexMeta,
+    val path: String)
 }

@@ -74,11 +74,10 @@ class XMLMergerTest {
    */
   @Test
   fun simple(vertx: Vertx, ctx: VertxTestContext) {
-    val chunk1 = Buffer.buffer("""$XMLHEADER<root><test chunk="1"></test></root>""")
-    val chunk2 = Buffer.buffer("""$XMLHEADER<root><test chunk="2"></test></root>""")
+    val chunk1 = Buffer.buffer("""<test chunk="1"></test>""")
+    val chunk2 = Buffer.buffer("""<test chunk="2"></test>""")
 
-    val cm = XMLChunkMeta(listOf(XMLStartElement("root")),
-        XMLHEADER.length + 6, chunk1.length() - 7)
+    val cm = XMLChunkMeta(listOf(XMLStartElement("root")))
 
     doMerge(vertx, ctx, listOf(chunk1, chunk2), listOf(cm, cm),
         """<root><test chunk="1"></test><test chunk="2"></test></root>""", false)
@@ -94,14 +93,12 @@ class XMLMergerTest {
         arrayOf(XSI), arrayOf(SCHEMA_LOCATION), arrayOf(NS_CITYGML_1_0_BUILDING_SCHEMA_LOCATION))
 
     val contents1 = "<cityObjectMember><gen:GenericCityObject></gen:GenericCityObject></cityObjectMember>"
-    val chunk1 = Buffer.buffer("""$XMLHEADER$root1$contents1</${root1.name}>""")
+    val chunk1 = Buffer.buffer(contents1)
     val contents2 = "<cityObjectMember><bldg:Building></bldg:Building></cityObjectMember>"
-    val chunk2 = Buffer.buffer("""$XMLHEADER$root2$contents2</${root2.name}>""")
+    val chunk2 = Buffer.buffer(contents2)
 
-    val cm1 = XMLChunkMeta(listOf(root1), XMLHEADER.length + root1.toString().length,
-        chunk1.length() - root1.name.length - 3)
-    val cm2 = XMLChunkMeta(listOf(root2), XMLHEADER.length + root2.toString().length,
-        chunk2.length() - root2.name.length - 3)
+    val cm1 = XMLChunkMeta(listOf(root1))
+    val cm2 = XMLChunkMeta(listOf(root2))
 
     val expectedRoot = XMLStartElement(null, "CityModel", arrayOf("", "gml", "gen", XSI, "bldg"),
         arrayOf(NS_CITYGML_1_0, NS_GML, NS_CITYGML_1_0_GENERICS, NS_SCHEMA_INSTANCE, NS_CITYGML_1_0_BUILDING),
@@ -140,16 +137,12 @@ class XMLMergerTest {
         arrayOf(NS_CITYGML_1_0_GENERICS_SCHEMA_LOCATION))
 
     val contents1 = "<cityObjectMember><gen:GenericCityObject></gen:GenericCityObject></cityObjectMember>"
-    val chunk1 = Buffer.buffer("""$XMLHEADER$root1$contents1</${root1.name}>""")
+    val chunk1 = Buffer.buffer(contents1)
     val contents2 = "<cityObjectMember><gen:Building></gen:Building></cityObjectMember>"
-    val chunk2 = Buffer.buffer("""$XMLHEADER$root1$contents2</${root1.name}>""")
+    val chunk2 = Buffer.buffer(contents2)
 
-    val cm1 = XMLChunkMeta(listOf(root1),
-        XMLHEADER.length + root1.toString().length,
-        chunk1.length() - root1.name.length - 3)
-    val cm2 = XMLChunkMeta(listOf(root1),
-        XMLHEADER.length + root1.toString().length,
-        chunk2.length() - root1.name.length - 3)
+    val cm1 = XMLChunkMeta(listOf(root1))
+    val cm2 = XMLChunkMeta(listOf(root1))
 
     doMerge(vertx, ctx, listOf(chunk1, chunk2), listOf(cm1, cm2),
         """$root1$contents1$contents2</${root1.name}>""", true)

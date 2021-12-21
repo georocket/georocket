@@ -18,6 +18,8 @@ public interface Splitter<E extends StreamEvent, M extends ChunkMeta> {
    */
   class Result<M extends ChunkMeta> {
     private final Buffer chunk;
+    private final Buffer prefix;
+    private final Buffer suffix;
     private final M meta;
     
     /**
@@ -25,9 +27,11 @@ public interface Splitter<E extends StreamEvent, M extends ChunkMeta> {
      * @param chunk the chunk
      * @param meta the chunk's metadata
      */
-    public Result(Buffer chunk, M meta) {
+    public Result(Buffer chunk, Buffer prefix, Buffer suffix, M meta) {
       this.chunk = chunk;
       this.meta = meta;
+      this.prefix = prefix;
+      this.suffix = suffix;
     }
     
     /**
@@ -36,7 +40,15 @@ public interface Splitter<E extends StreamEvent, M extends ChunkMeta> {
     public Buffer getChunk() {
       return chunk;
     }
-    
+
+    public Buffer getPrefix() {
+      return prefix;
+    }
+
+    public Buffer getSuffix() {
+      return suffix;
+    }
+
     /**
      * @return the chunk's metadata
      */
