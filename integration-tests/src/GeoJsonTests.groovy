@@ -104,11 +104,13 @@ class GeoJsonTests extends StoreTests {
         def exportedFeature = new JsonSlurper().parseText(exportedContents)
 
         // check if we have only exported one feature
-        assertEquals("Feature", exportedFeature.type,
-            "Expected a feature. Got ${exportedFeature.type}.")
+        assertEquals("FeatureCollection", exportedFeature.type,
+            "Expected a feature collection. Got ${exportedFeature.type}.")
+        assertEquals(1, exportedFeature.features.size(),
+            "Expected 1 feature. Got ${exportedFeature.features.size()}.")
 
         // check if we found the right feature
-        def name = exportedFeature.properties.name
+        def name = exportedFeature.features[0].properties.name
         assertEquals(name, expectedName, "Expected name ${expectedName}. Got ${name}.")
     }
 

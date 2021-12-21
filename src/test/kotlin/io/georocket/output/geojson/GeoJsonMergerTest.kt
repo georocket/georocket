@@ -1,6 +1,5 @@
 package io.georocket.output.geojson
 
-import io.georocket.assertThatThrownBy
 import io.georocket.coVerify
 import io.georocket.storage.GeoJsonChunkMeta
 import io.georocket.util.io.BufferWriteStream
@@ -50,9 +49,10 @@ class GeoJsonMergerTest {
   @Test
   fun oneGeometry(vertx: Vertx, ctx: VertxTestContext) {
     val strChunk1 = """{"type":"Polygon"}"""
+    val expected = "{\"type\":\"GeometryCollection\",\"geometries\":[$strChunk1]}"
     val chunk1 = Buffer.buffer(strChunk1)
     val cm1 = GeoJsonChunkMeta("Polygon", "geometries")
-    doMerge(vertx, ctx, listOf(chunk1), listOf(cm1), strChunk1)
+    doMerge(vertx, ctx, listOf(chunk1), listOf(cm1), expected)
   }
 
   /**
@@ -74,20 +74,10 @@ class GeoJsonMergerTest {
   @Test
   fun oneFeature(vertx: Vertx, ctx: VertxTestContext) {
     val strChunk1 = """{"type":"Feature"}"""
-    val chunk1 = Buffer.buffer(strChunk1)
-    val cm1 = GeoJsonChunkMeta("Feature", "features")
-    doMerge(vertx, ctx, listOf(chunk1), listOf(cm1), strChunk1)
-  }
-
-  /**
-   * Test if one feature can be merged in optimistic mode
-   */
-  @Test
-  fun oneFeatureOptimistic(vertx: Vertx, ctx: VertxTestContext) {
-    val strChunk1 = """{"type":"Feature"}"""
     val expected = """{"type":"FeatureCollection","features":[$strChunk1]}"""
     val chunk1 = Buffer.buffer(strChunk1)
     val cm1 = GeoJsonChunkMeta("Feature", "features")
+    doMerge(vertx, ctx, listOf(chunk1), listOf(cm1), expected)
     doMerge(vertx, ctx, listOf(chunk1), listOf(cm1), expected, true)
   }
 
@@ -253,32 +243,6 @@ class GeoJsonMergerTest {
     doMerge(vertx, ctx, listOf(chunk1, chunk2, chunk3), listOf(cm1, cm1, cm2),
         """{"type":"FeatureCollection","features":[$strChunk1,$strChunk2,""" +
             """{"type":"Feature","geometry":$strChunk3}]}""")
-  }
-
-  /**
-   * Test if the merger fails if [GeoJsonMerger.init] has
-   * not been called often enough
-   */
-  @Test
-  fun notEnoughInits(vertx: Vertx, ctx: VertxTestContext) {
-    val strChunk1 = """{"type":"Feature"}"""
-    val strChunk2 = """{"type":"Feature","properties":{}}"""
-    val chunk1 = Buffer.buffer(strChunk1)
-    val chunk2 = Buffer.buffer(strChunk2)
-    val cm1 = GeoJsonChunkMeta("Feature", "features")
-    val m = GeoJsonMerger(false)
-    val bws = BufferWriteStream()
-
-    CoroutineScope(vertx.dispatcher()).launch {
-      ctx.coVerify {
-        assertThatThrownBy {
-          m.init(cm1)
-          m.merge(chunk1, cm1, bws)
-          m.merge(chunk2, cm1, bws)
-        }.isInstanceOf(IllegalStateException::class.java)
-      }
-      ctx.completeNow()
-    }
   }
 
   /**

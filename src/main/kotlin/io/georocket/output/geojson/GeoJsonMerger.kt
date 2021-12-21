@@ -15,15 +15,11 @@ import io.vertx.core.streams.WriteStream
 class GeoJsonMerger(optimistic: Boolean) : Merger<GeoJsonChunkMeta> {
   companion object {
     private const val NOT_SPECIFIED = 0
-    private const val GEOMETRY = 1
-    private const val GEOMETRY_COLLECTION = 2
-    private const val FEATURE = 3
-    private const val FEATURE_COLLECTION = 4
+    private const val GEOMETRY_COLLECTION = 1
+    private const val FEATURE_COLLECTION = 2
     private val TRANSITIONS = listOf(
-        listOf(FEATURE, GEOMETRY),
         listOf(FEATURE_COLLECTION, GEOMETRY_COLLECTION),
         listOf(FEATURE_COLLECTION, GEOMETRY_COLLECTION),
-        listOf(FEATURE_COLLECTION, FEATURE_COLLECTION),
         listOf(FEATURE_COLLECTION, FEATURE_COLLECTION)
     )
   }
