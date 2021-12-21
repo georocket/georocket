@@ -26,6 +26,7 @@ import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.launch
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
@@ -93,7 +94,7 @@ class StoreEndpointTest {
 
     val cm = GeoJsonChunkMeta("Polygon", "geometries")
 
-    coEvery { index.getMeta(any()) } returns listOf(chunk1Path to cm)
+    coEvery { index.getMeta(any()) } returns listOf(chunk1Path to cm).asFlow()
     coEvery { store.getOne(chunk1Path) } returns chunk1
 
     val client = WebClient.create(vertx)

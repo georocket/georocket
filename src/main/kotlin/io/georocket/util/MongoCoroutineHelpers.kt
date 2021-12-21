@@ -7,6 +7,8 @@ import com.mongodb.reactivestreams.client.MongoCollection
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.mongo.impl.JsonObjectBsonAdapter
 import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.reactive.asFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import org.reactivestreams.Publisher
 import org.reactivestreams.Subscriber
@@ -93,32 +95,28 @@ suspend fun <T> MongoCollection<T>.countDocumentsAwait(filter: JsonObject,
   } ?: 0
 }
 
-suspend fun <T> MongoCollection<T>.findAwait(filter: JsonObject, limit: Int = -1,
-  skip: Int = 0, sort: JsonObject? = null, projection: JsonObject? = null): List<T> {
-  return suspendCancellableCoroutine { cont: CancellableContinuation<List<T>> ->
-    var f = find(JsonObjectBsonAdapter(filter))
-    if (limit >= 0) {
-      f = f.limit(limit)
-    }
-    if (skip > 0) {
-      f = f.skip(skip)
-    }
-    if (sort != null) {
-      f = f.sort(JsonObjectBsonAdapter(sort))
-    }
-    if (projection != null) {
-      f = f.projection(JsonObjectBsonAdapter(projection))
-    }
-    f.subscribe(CollectionSubscriber(cont))
+fun <T: Any> MongoCollection<T>.coFind(filter: JsonObject, limit: Int = -1,
+  skip: Int = 0, sort: JsonObject? = null, projection: JsonObject? = null): Flow<T> {
+  var f = find(JsonObjectBsonAdapter(filter))
+  if (limit >= 0) {
+    f = f.limit(limit)
   }
+  if (skip > 0) {
+    f = f.skip(skip)
+  }
+  if (sort != null) {
+    f = f.sort(JsonObjectBsonAdapter(sort))
+  }
+  if (projection != null) {
+    f = f.projection(JsonObjectBsonAdapter(projection))
+  }
+  return f.asFlow()
 }
 
-suspend fun <T, R> MongoCollection<T>.distinctAwait(fieldName: String,
-  filter: JsonObject, resultClass: Class<R>): List<R> {
-  return suspendCancellableCoroutine { cont: CancellableContinuation<List<R>> ->
-    val d = distinct(fieldName, JsonObjectBsonAdapter(filter), resultClass)
-    d.subscribe(CollectionSubscriber(cont))
-  }
+fun <T, R : Any> MongoCollection<T>.coDistinct(fieldName: String,
+  filter: JsonObject, resultClass: Class<R>): Flow<R> {
+  val d = distinct(fieldName, JsonObjectBsonAdapter(filter), resultClass)
+  return d.asFlow()
 }
 
 suspend fun <T> MongoCollection<T>.aggregateAwait(pipeline: List<JsonObject>): List<T> {

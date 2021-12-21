@@ -7,6 +7,8 @@ import io.georocket.util.PathUtils
 import io.georocket.util.UniqueID
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.future.await
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
@@ -96,19 +98,33 @@ class S3Store(vertx: Vertx, accessKey: String? = null, secretKey: String? = null
     return Buffer.buffer(response.asByteArrayUnsafe())
   }
 
-  override suspend fun delete(paths: Collection<String>) {
-    // only delete 1000 chunks in one request (this is the maximum number
-    // specified by the S3 API)
-    val windows = paths.windowed(1000, 1000, true)
-    for (window in windows) {
-      val identifiers = window.map { ObjectIdentifier.builder().key(it).build() }
+  override suspend fun delete(paths: Flow<String>) {
+    val chunk = mutableListOf<String>()
+
+    val doDelete = suspend {
+      val identifiers = chunk.map { ObjectIdentifier.builder().key(it).build() }
       val deleteObjectsRequest = DeleteObjectsRequest.builder()
-          .bucket(bucket)
-          .delete(Delete.builder()
-              .objects(identifiers)
-              .build())
-          .build()
+        .bucket(bucket)
+        .delete(Delete.builder()
+          .objects(identifiers)
+          .build())
+        .build()
       s3.deleteObjects(deleteObjectsRequest).await()
+    }
+
+    paths.collect { p ->
+      chunk.add(p)
+
+      // only delete 1000 chunks in one request (this is the maximum number
+      // specified by the S3 API)
+      if (chunk.size == 1000) {
+        doDelete()
+        chunk.clear()
+      }
+    }
+
+    if (chunk.isNotEmpty()) {
+      doDelete()
     }
   }
 }

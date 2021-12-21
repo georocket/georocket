@@ -21,6 +21,9 @@ import io.vertx.ext.web.handler.BodyHandler
 import io.vertx.kotlin.core.json.jsonArrayOf
 import io.vertx.kotlin.core.json.jsonObjectOf
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import org.apache.commons.text.StringEscapeUtils.escapeJava
 import org.slf4j.LoggerFactory
@@ -105,7 +108,7 @@ class CollectionsEndpoint(override val coroutineContext: CoroutineContext,
             )
           ),
           "collections" to index.getCollections().map {
-            itemToJson(it, PathUtils.join(request.path(), it)) }
+            itemToJson(it, PathUtils.join(request.path(), it)) }.toList()
         )
 
         response.end(r.encode())
@@ -184,8 +187,8 @@ class CollectionsEndpoint(override val coroutineContext: CoroutineContext,
         // delete chunks in the given layer in index and store
         val query = compileQuery(null, "/$name")
         val paths = index.getPaths(query)
-        index.delete(query)
         store.delete(paths)
+        index.delete(query)
 
         // delete collection
         index.deleteCollection(name)
@@ -209,12 +212,12 @@ class CollectionsEndpoint(override val coroutineContext: CoroutineContext,
         // initialize merger
         val merger = MultiMerger(false)
         val distinctMetas = index.getDistinctMeta(query)
-        distinctMetas.forEach { merger.init(it) }
+        distinctMetas.collect { merger.init(it) }
 
         var accepted = 0L
         var notaccepted = 0L
         val metas = index.getMeta(query)
-        for (chunkMeta in metas) {
+        metas.collect { chunkMeta ->
           val chunk = store.getOne(chunkMeta.first)
           try {
             merger.merge(chunk, chunkMeta.second, response)

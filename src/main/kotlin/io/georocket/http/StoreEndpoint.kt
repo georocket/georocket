@@ -31,6 +31,7 @@ import io.vertx.ext.web.RoutingContext
 import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.toReceiveChannel
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import org.antlr.v4.runtime.misc.ParseCancellationException
 import org.apache.commons.lang3.BooleanUtils
@@ -172,14 +173,14 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
       // skip initialization if optimistic merging is enabled
       if (!optimisticMerging) {
         val distinctMetas = index.getDistinctMeta(query)
-        distinctMetas.forEach { merger.init(it) }
+        distinctMetas.collect { merger.init(it) }
       }
 
       // merge chunks
       var accepted = 0L
       var notaccepted = 0L
       val metas = index.getMeta(query)
-      for (chunkMeta in metas) {
+      metas.collect { chunkMeta ->
         val chunk = store.getOne(chunkMeta.first)
         try {
           merger.merge(chunk, chunkMeta.second, response)
@@ -519,8 +520,8 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
     try {
       val query = compileQuery(search, path)
       val paths = index.getPaths(query)
-      index.delete(query)
       store.delete(paths)
+      index.delete(query)
       response
           .setStatusCode(204) // No Content
           .end()

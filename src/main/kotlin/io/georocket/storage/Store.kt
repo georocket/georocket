@@ -1,6 +1,7 @@
 package io.georocket.storage
 
 import io.vertx.core.buffer.Buffer
+import kotlinx.coroutines.flow.Flow
 
 /**
  * A store for chunks
@@ -36,5 +37,5 @@ interface Store {
   /**
    * Delete all chunks from the store that match a given [paths]
    */
-  suspend fun delete(paths: Collection<String>)
+  suspend fun delete(paths: Flow<String>)
 }

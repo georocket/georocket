@@ -10,6 +10,7 @@ import io.georocket.storage.Store
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.impl.NoStackTraceThrowable
 import io.vertx.core.streams.WriteStream
+import kotlinx.coroutines.flow.collect
 import org.slf4j.LoggerFactory
 import java.io.FileNotFoundException
 
@@ -72,13 +73,13 @@ class SearchCommand : DataCommand() {
       // skip initialization if optimistic merging is enabled
       if (!optimisticMerging) {
         val distinctMetas = index.getDistinctMeta(query)
-        distinctMetas.forEach { merger.init(it) }
+        distinctMetas.collect { merger.init(it) }
       }
 
       var accepted = 0L
       var notaccepted = 0L
       val metas = index.getMeta(query)
-      for (chunkMeta in metas) {
+      metas.collect { chunkMeta ->
         val chunk = store.getOne(chunkMeta.first)
         try {
           merger.merge(chunk, chunkMeta.second, out)

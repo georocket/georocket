@@ -16,10 +16,10 @@ import io.georocket.storage.JsonChunkMeta
 import io.georocket.storage.XMLChunkMeta
 import io.georocket.util.MimeTypeUtils
 import io.georocket.util.aggregateAwait
+import io.georocket.util.coDistinct
+import io.georocket.util.coFind
 import io.georocket.util.countDocumentsAwait
 import io.georocket.util.deleteManyAwait
-import io.georocket.util.distinctAwait
-import io.georocket.util.findAwait
 import io.georocket.util.insertManyAwait
 import io.georocket.util.insertOneAwait
 import io.georocket.util.updateManyAwait
@@ -28,6 +28,8 @@ import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.core.json.obj
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.reactive.awaitSingleOrNull
 
 class MongoDBIndex private constructor() : Index {
@@ -98,10 +100,9 @@ class MongoDBIndex private constructor() : Index {
   }
 
   /**
-   * Extract a path string and a [ChunkMeta] object from a given [hit] object
+   * Extract a path string and a [ChunkMeta] object from a given [cm] object
    */
-  private fun createChunkMeta(hit: JsonObject): ChunkMeta {
-    val cm = hit.getJsonObject(CHUNK_META)
+  private fun createChunkMeta(cm: JsonObject): ChunkMeta {
     val mimeType = cm.getString("mimeType", XMLChunkMeta.MIME_TYPE)
     return if (MimeTypeUtils.belongsTo(mimeType, "application", "xml") ||
       MimeTypeUtils.belongsTo(mimeType, "text", "xml")) {
@@ -115,25 +116,26 @@ class MongoDBIndex private constructor() : Index {
     }
   }
 
-  override suspend fun getDistinctMeta(query: JsonObject): List<ChunkMeta> {
-    return collDocuments.distinctAwait(CHUNK_META, query, JsonObject::class.java)
+  override suspend fun getDistinctMeta(query: JsonObject): Flow<ChunkMeta> {
+    return collDocuments.coDistinct(CHUNK_META, query, JsonObject::class.java)
       .map { createChunkMeta(it) }
   }
 
-  override suspend fun getMeta(query: JsonObject): List<Pair<String, ChunkMeta>> {
-    val results = collDocuments.findAwait(query, projection = json {
+  override suspend fun getMeta(query: JsonObject): Flow<Pair<String, ChunkMeta>> {
+    val results = collDocuments.coFind(query, projection = json {
       obj(
         CHUNK_META to 1
       )
     })
     return results.map { hit ->
       val path = hit.getString(INTERNAL_ID)
-      path to createChunkMeta(hit)
+      val cm = hit.getJsonObject(CHUNK_META)
+      path to createChunkMeta(cm)
     }
   }
 
-  override suspend fun getPaths(query: JsonObject): List<String> {
-    val results = collDocuments.findAwait(query, projection = json {
+  override suspend fun getPaths(query: JsonObject): Flow<String> {
+    val results = collDocuments.coFind(query, projection = json {
       obj(
         INTERNAL_ID to 1
       )
@@ -235,8 +237,8 @@ class MongoDBIndex private constructor() : Index {
   /**
    * Get a list of all collections
    */
-  override suspend fun getCollections(): List<String> {
-    return collCollections.findAwait(jsonObjectOf()).map { it.getString("name") }
+  override suspend fun getCollections(): Flow<String> {
+    return collCollections.coFind(jsonObjectOf()).map { it.getString("name") }
   }
 
   /**

@@ -15,12 +15,14 @@ import io.georocket.storage.IndexMeta
 import io.georocket.storage.Store
 import io.georocket.util.PathUtils
 import io.georocket.util.UniqueID
+import io.georocket.util.coFind
 import io.georocket.util.deleteManyAwait
-import io.georocket.util.findAwait
 import io.georocket.util.insertManyAwait
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import io.vertx.kotlin.core.json.jsonObjectOf
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.reactive.awaitSingleOrNull
 import org.bson.BsonBinary
 import org.bson.BsonDocument
@@ -83,16 +85,17 @@ class MongoDBStore private constructor() : Store {
   }
 
   override suspend fun getOne(path: String): Buffer {
-    val chunks = collChunks.findAwait(jsonObjectOf("filename" to path),
+    val chunks = collChunks.coFind(jsonObjectOf("filename" to path),
       sort = jsonObjectOf("n" to 1))
-    if (chunks.isEmpty()) {
-      throw NoSuchElementException("Could not find chunk with path `$path'")
-    }
-
+    var found = false
     val result = Buffer.buffer()
-    chunks.forEach { c ->
+    chunks.collect { c ->
+      found = true
       val data = c.getBinary("data")
       result.appendBuffer(Buffer.buffer(data.data))
+    }
+    if (!found) {
+      throw NoSuchElementException("Could not find chunk with path `$path'")
     }
     return result
   }
@@ -136,11 +139,33 @@ class MongoDBStore private constructor() : Store {
     }
   }
 
-  override suspend fun delete(paths: Collection<String>) {
-    collChunks.deleteManyAwait(jsonObjectOf(
-      "filename" to jsonObjectOf(
-        "\$in" to paths
-      )
-    ))
+  override suspend fun delete(paths: Flow<String>) {
+    var len = 0
+    val chunk = mutableListOf<String>()
+
+    val doDelete = suspend {
+      collChunks.deleteManyAwait(jsonObjectOf(
+        "filename" to jsonObjectOf(
+          "\$in" to chunk
+        )
+      ))
+    }
+
+    paths.collect { p ->
+      chunk.add(p)
+
+      // keep size of 'chunk' at around 5 MB (16 MB is MongoDB's default
+      // maximum document size)
+      len += p.length
+      if (len >= 1024 * 1024 * 5) {
+        doDelete()
+        chunk.clear()
+        len = 0
+      }
+    }
+
+    if (chunk.isNotEmpty()) {
+      doDelete()
+    }
   }
 }

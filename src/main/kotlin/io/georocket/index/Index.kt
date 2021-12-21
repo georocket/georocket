@@ -2,6 +2,7 @@ package io.georocket.index
 
 import io.georocket.storage.ChunkMeta
 import io.vertx.core.json.JsonObject
+import kotlinx.coroutines.flow.Flow
 
 interface Index {
   suspend fun close()
@@ -10,11 +11,11 @@ interface Index {
 
   suspend fun addMany(docs: Collection<Pair<String, JsonObject>>)
 
-  suspend fun getDistinctMeta(query: JsonObject): List<ChunkMeta>
+  suspend fun getDistinctMeta(query: JsonObject): Flow<ChunkMeta>
 
-  suspend fun getMeta(query: JsonObject): List<Pair<String, ChunkMeta>>
+  suspend fun getMeta(query: JsonObject): Flow<Pair<String, ChunkMeta>>
 
-  suspend fun getPaths(query: JsonObject): List<String>
+  suspend fun getPaths(query: JsonObject): Flow<String>
 
   suspend fun addTags(query: JsonObject, tags: Collection<String>)
 
@@ -30,7 +31,7 @@ interface Index {
 
   suspend fun delete(query: JsonObject)
 
-  suspend fun getCollections(): List<String>
+  suspend fun getCollections(): Flow<String>
 
   suspend fun addCollection(name: String)
 

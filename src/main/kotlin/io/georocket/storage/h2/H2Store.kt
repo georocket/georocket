@@ -7,6 +7,8 @@ import io.georocket.util.PathUtils
 import io.georocket.util.UniqueID
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collect
 import java.io.FileNotFoundException
 
 /**
@@ -48,7 +50,7 @@ class H2Store(vertx: Vertx, path: String? = null) : Store {
     map[path] = chunk
   }
 
-  override suspend fun delete(paths: Collection<String>) {
-    paths.forEach { map.remove(it) }
+  override suspend fun delete(paths: Flow<String>) {
+    paths.collect { map.remove(it) }
   }
 }
