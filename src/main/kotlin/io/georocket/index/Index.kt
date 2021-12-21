@@ -5,11 +5,11 @@ import io.vertx.core.json.JsonObject
 import kotlinx.coroutines.flow.Flow
 
 interface Index {
+  data class AddManyParam(val path: String, val doc: JsonObject, val meta: ChunkMeta)
+
   suspend fun close()
 
-  suspend fun add(id: String, doc: JsonObject)
-
-  suspend fun addMany(docs: Collection<Pair<String, JsonObject>>)
+  suspend fun addMany(docs: Collection<AddManyParam>)
 
   suspend fun getDistinctMeta(query: JsonObject): Flow<ChunkMeta>
 

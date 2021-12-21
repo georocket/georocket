@@ -1,7 +1,6 @@
 package io.georocket.index.generic
 
 import io.georocket.index.MetaIndexer
-import io.georocket.storage.ChunkMeta
 import io.georocket.storage.IndexMeta
 
 /**
@@ -10,11 +9,10 @@ import io.georocket.storage.IndexMeta
  * @author Michel Kraemer
  */
 class DefaultMetaIndexer : MetaIndexer {
-  override fun onChunk(path: String, chunkMeta: ChunkMeta, indexMeta: IndexMeta): Map<String, Any> {
+  override fun onChunk(path: String, indexMeta: IndexMeta): Map<String, Any> {
     val result = mutableMapOf<String, Any>()
 
     result["path"] = path
-    result["chunkMeta"] = chunkMeta.toJsonObject()
 
     if (indexMeta.tags != null) {
       result["tags"] = indexMeta.tags

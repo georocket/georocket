@@ -1,9 +1,11 @@
 package io.georocket.index.mongodb
 
+import com.github.benmanes.caffeine.cache.Caffeine
 import com.mongodb.ConnectionString
 import com.mongodb.client.model.IndexModel
 import com.mongodb.client.model.IndexOptions
 import com.mongodb.client.model.Indexes
+import com.mongodb.client.model.ReturnDocument
 import com.mongodb.reactivestreams.client.MongoClient
 import com.mongodb.reactivestreams.client.MongoCollection
 import com.mongodb.reactivestreams.client.MongoDatabase
@@ -15,11 +17,15 @@ import io.georocket.storage.GeoJsonChunkMeta
 import io.georocket.storage.JsonChunkMeta
 import io.georocket.storage.XMLChunkMeta
 import io.georocket.util.MimeTypeUtils
+import io.georocket.util.UniqueID
 import io.georocket.util.aggregateAwait
 import io.georocket.util.coDistinct
 import io.georocket.util.coFind
 import io.georocket.util.countDocumentsAwait
 import io.georocket.util.deleteManyAwait
+import io.georocket.util.findOneAndUpdateAwait
+import io.georocket.util.findOneAwait
+import io.georocket.util.getAwait
 import io.georocket.util.insertManyAwait
 import io.georocket.util.insertOneAwait
 import io.georocket.util.updateManyAwait
@@ -31,12 +37,14 @@ import io.vertx.kotlin.core.json.obj
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.reactive.awaitSingleOrNull
+import java.time.Duration
 
 class MongoDBIndex private constructor() : Index {
   companion object {
     private const val INTERNAL_ID = "_id"
     private const val CHUNK_META = "chunkMeta"
     private const val COLL_DOCUMENTS = "documents"
+    private const val COLL_CHUNKMETA = "chunkMeta"
     private const val COLL_COLLECTIONS = "ogcapifeatures.collections"
 
     suspend fun create(vertx: Vertx, connectionString: String? = null,
@@ -45,12 +53,30 @@ class MongoDBIndex private constructor() : Index {
       r.start(vertx, connectionString, storagePath)
       return r
     }
+
+    /**
+     * A cache used when importing chunk metadata, so that the same objects are
+     * not inserted over and over again
+     */
+    private val addedChunkMetaCache = Caffeine.newBuilder()
+      .maximumSize(1000)
+      .expireAfterAccess(Duration.ofDays(1))
+      .buildAsync<ChunkMeta, String>()
+
+    /**
+     * A cache used when loading chunk metadata by ID
+     */
+    private val loadedChunkMetaCache = Caffeine.newBuilder()
+      .maximumSize(1000)
+      .expireAfterAccess(Duration.ofDays(1))
+      .buildAsync<String, ChunkMeta>()
   }
 
   private lateinit var client: MongoClient
   private lateinit var db: MongoDatabase
 
   private lateinit var collDocuments: MongoCollection<JsonObject>
+  private lateinit var collChunkMeta: MongoCollection<JsonObject>
   private lateinit var collCollections: MongoCollection<JsonObject>
 
   private suspend fun start(vertx: Vertx, connectionString: String?,
@@ -73,10 +99,14 @@ class MongoDBIndex private constructor() : Index {
     }
 
     collDocuments = db.getCollection(COLL_DOCUMENTS, JsonObject::class.java)
+    collChunkMeta = db.getCollection(COLL_CHUNKMETA, JsonObject::class.java)
     collCollections = db.getCollection(COLL_COLLECTIONS, JsonObject::class.java)
 
     collDocuments.createIndexes(listOf(IndexModel(Indexes.ascending(CHUNK_META),
       IndexOptions().background(true)),
+    )).awaitSingleOrNull()
+    collChunkMeta.createIndexes(listOf(IndexModel(Indexes.ascending(CHUNK_META),
+      IndexOptions().unique(true).background(true)),
     )).awaitSingleOrNull()
   }
 
@@ -84,16 +114,34 @@ class MongoDBIndex private constructor() : Index {
     client.close()
   }
 
-  override suspend fun add(id: String, doc: JsonObject) {
-    val copy = doc.copy()
-    copy.put(INTERNAL_ID, id)
-    collDocuments.insertOneAwait(copy)
+  private suspend fun addOrGetChunkMeta(meta: ChunkMeta): String {
+    return addedChunkMetaCache.getAwait(meta) {
+      val metaJson = meta.toJsonObject()
+      val result = collChunkMeta.findOneAndUpdateAwait(jsonObjectOf(
+        CHUNK_META to metaJson
+      ), jsonObjectOf(
+        "\$setOnInsert" to jsonObjectOf(
+          INTERNAL_ID to UniqueID.next()
+        )
+      ), true, ReturnDocument.AFTER, jsonObjectOf(INTERNAL_ID to 1))
+      result!!.getString(INTERNAL_ID)
+    }
   }
 
-  override suspend fun addMany(docs: Collection<Pair<String, JsonObject>>) {
+  private suspend fun findChunkMeta(id: String): ChunkMeta {
+    return loadedChunkMetaCache.getAwait(id) {
+      val o = collChunkMeta.findOneAwait(jsonObjectOf(INTERNAL_ID to id))
+        ?: throw NoSuchElementException("Could not find chunk metadata with ID `$id' in index")
+      createChunkMeta(o.getJsonObject(CHUNK_META))
+    }
+  }
+
+  override suspend fun addMany(docs: Collection<Index.AddManyParam>) {
     val copies = docs.map { d ->
-      val copy = d.second.copy()
-      copy.put(INTERNAL_ID, d.first)
+      val chunkMetaId = addOrGetChunkMeta(d.meta)
+      val copy = d.doc.copy()
+      copy.put(INTERNAL_ID, d.path)
+      copy.put(CHUNK_META, chunkMetaId)
       copy
     }
     collDocuments.insertManyAwait(copies)
@@ -117,8 +165,8 @@ class MongoDBIndex private constructor() : Index {
   }
 
   override suspend fun getDistinctMeta(query: JsonObject): Flow<ChunkMeta> {
-    return collDocuments.coDistinct(CHUNK_META, query, JsonObject::class.java)
-      .map { createChunkMeta(it) }
+    return collDocuments.coDistinct(CHUNK_META, query, String::class.java)
+      .map { findChunkMeta(it) }
   }
 
   override suspend fun getMeta(query: JsonObject): Flow<Pair<String, ChunkMeta>> {
@@ -129,8 +177,8 @@ class MongoDBIndex private constructor() : Index {
     })
     return results.map { hit ->
       val path = hit.getString(INTERNAL_ID)
-      val cm = hit.getJsonObject(CHUNK_META)
-      path to createChunkMeta(cm)
+      val cmId = hit.getString(CHUNK_META)
+      path to findChunkMeta(cmId)
     }
   }
 

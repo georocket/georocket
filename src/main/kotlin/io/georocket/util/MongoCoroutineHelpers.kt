@@ -1,6 +1,8 @@
 package io.georocket.util
 
 import com.mongodb.client.model.CountOptions
+import com.mongodb.client.model.FindOneAndUpdateOptions
+import com.mongodb.client.model.ReturnDocument
 import com.mongodb.client.result.DeleteResult
 import com.mongodb.client.result.UpdateResult
 import com.mongodb.reactivestreams.client.MongoCollection
@@ -111,6 +113,35 @@ fun <T: Any> MongoCollection<T>.coFind(filter: JsonObject, limit: Int = -1,
     f = f.projection(JsonObjectBsonAdapter(projection))
   }
   return f.asFlow()
+}
+
+suspend fun <T> MongoCollection<T>.findOneAwait(filter: JsonObject,
+  projection: JsonObject? = null): T? {
+  return wrapCoroutine {
+    var f = find(JsonObjectBsonAdapter(filter))
+    if (projection != null) {
+      f = f.projection(JsonObjectBsonAdapter(projection))
+    }
+    f.first()
+  }
+}
+
+suspend fun <T> MongoCollection<T>.findOneAndUpdateAwait(filter: JsonObject,
+    update: JsonObject, upsert: Boolean?, returnDocument: ReturnDocument?,
+    projection: JsonObject?): T? {
+  return wrapCoroutine {
+    val options = FindOneAndUpdateOptions()
+    if (upsert != null) {
+      options.upsert(upsert)
+    }
+    if (returnDocument != null) {
+      options.returnDocument(returnDocument)
+    }
+    if (projection != null) {
+      options.projection(JsonObjectBsonAdapter(projection))
+    }
+    findOneAndUpdate(JsonObjectBsonAdapter(filter), JsonObjectBsonAdapter(update), options)
+  }
 }
 
 fun <T, R : Any> MongoCollection<T>.coDistinct(fieldName: String,

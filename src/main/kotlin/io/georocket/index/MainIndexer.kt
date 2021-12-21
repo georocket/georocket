@@ -74,7 +74,7 @@ class MainIndexer private constructor(override val coroutineContext: CoroutineCo
 
     val documents = toAdd.map { queued ->
       val doc = queuedChunkToDocument(queued)
-      queued.path to JsonObject(doc)
+      Index.AddManyParam(queued.path, JsonObject(doc), queued.chunkMeta)
     }
 
     if (documents.isNotEmpty()) {
@@ -94,7 +94,7 @@ class MainIndexer private constructor(override val coroutineContext: CoroutineCo
     val metaResults = mutableMapOf<String, Any>()
     for (metaIndexerFactory in MetaIndexerFactory.ALL) {
       val metaIndexer = metaIndexerFactory.createIndexer()
-      val metaResult = metaIndexer.onChunk(queued.path, queued.chunkMeta, queued.indexMeta)
+      val metaResult = metaIndexer.onChunk(queued.path, queued.indexMeta)
       metaResults.putAll(metaResult)
     }
 
