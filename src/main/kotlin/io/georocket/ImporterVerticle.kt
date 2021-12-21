@@ -35,6 +35,7 @@ import kotlinx.coroutines.launch
 import org.apache.commons.io.FilenameUtils
 import org.slf4j.LoggerFactory
 import java.time.Instant
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * Imports file in the background
@@ -215,15 +216,15 @@ class ImporterVerticle : CoroutineVerticle() {
 
     var flushQueueJob: Deferred<Unit>? = null
     val batchSize = 200 // TODO make configurable
-    val queue = mutableListOf<Pair<Buffer, String>>()
+    val queue = AtomicReference(mutableListOf<Pair<Buffer, String>>())
     suspend fun flushQueue() {
-      if (queue.isEmpty()) {
+      val copy = queue.getAndSet(mutableListOf())
+      if (copy.isEmpty()) {
         return
       }
       val start = System.currentTimeMillis()
-      store.addMany(queue)
-      log.info("Finished importing $batchSize chunks in ${System.currentTimeMillis() - start} ms")
-      queue.clear()
+      store.addMany(copy)
+      log.info("Finished importing ${copy.size} chunks in ${System.currentTimeMillis() - start} ms")
     }
 
     val processEvents: suspend () -> Boolean = pe@{
@@ -248,8 +249,8 @@ class ImporterVerticle : CoroutineVerticle() {
         val result = splitter.onEvent(streamEvent)
         if (result != null) {
           val path = store.makePath(indexMeta, layer)
-          queue.add(result.chunk to path)
-          if (queue.size >= batchSize) {
+          queue.get().add(result.chunk to path)
+          if (queue.get().size >= batchSize) {
             flushQueueJob?.await()
             flushQueueJob = async {
               flushQueue()
@@ -329,15 +330,15 @@ class ImporterVerticle : CoroutineVerticle() {
 
     var flushQueueJob: Deferred<Unit>? = null
     val batchSize = 200 // TODO make configurable
-    val queue = mutableListOf<Pair<Buffer, String>>()
+    val queue = AtomicReference(mutableListOf<Pair<Buffer, String>>())
     suspend fun flushQueue() {
-      if (queue.isEmpty()) {
+      val copy = queue.getAndSet(mutableListOf())
+      if (copy.isEmpty()) {
         return
       }
       val start = System.currentTimeMillis()
-      store.addMany(queue)
-      log.info("Finished importing $batchSize chunks in ${System.currentTimeMillis() - start} ms")
-      queue.clear()
+      store.addMany(copy)
+      log.info("Finished importing ${copy.size} chunks in ${System.currentTimeMillis() - start} ms")
     }
 
     val processEvents: suspend () -> Boolean = pe@{
@@ -356,8 +357,8 @@ class ImporterVerticle : CoroutineVerticle() {
         val result = splitter.onEvent(streamEvent)
         if (result != null) {
           val path = store.makePath(indexMeta, layer)
-          queue.add(result.chunk to path)
-          if (queue.size >= batchSize) {
+          queue.get().add(result.chunk to path)
+          if (queue.get().size >= batchSize) {
             flushQueueJob?.await()
             flushQueueJob = async {
               flushQueue()
