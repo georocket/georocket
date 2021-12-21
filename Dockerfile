@@ -7,6 +7,8 @@ MAINTAINER Michel Kraemer <michel.kraemer@igd.fraunhofer.de>
 
 RUN apt-get update \
   && apt-get install -y openjdk-11-jdk \
+    # libcurl4 is required for embedded MongoDB
+    libcurl4 \
   && rm -rf /var/lib/apt/lists/*
 
 # add GeoRocket user
