@@ -1,6 +1,7 @@
 package io.georocket
 
 import com.fasterxml.aalto.AsyncXMLStreamReader
+import com.fasterxml.aalto.`in`.ByteBasedScanner
 import com.fasterxml.aalto.stax.InputFactoryImpl
 import de.undercouch.actson.JsonEvent
 import de.undercouch.actson.JsonParser
@@ -234,9 +235,13 @@ class ImporterVerticle : CoroutineVerticle() {
           break
         }
 
+        // Get current byte position but don't use `parser.location.characterOffset`
+        // because it only returns an int. We need long to support files > 2GB.
+        // val pos = parser.location.characterOffset
+        val rawPos = (parser.inputFeeder as ByteBasedScanner).startingByteOffset
+
         // create stream event
-        val pos = parser.location.characterOffset
-        val streamEvent = XMLStreamEvent(nextEvent, pos, parser)
+        val streamEvent = XMLStreamEvent(nextEvent, rawPos, parser)
 
         // save the first CRS found in the file
         if (crsIndexer.crs == null) {

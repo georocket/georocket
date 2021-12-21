@@ -20,9 +20,9 @@ import java.util.List;
  */
 public abstract class XMLSplitter implements Splitter<XMLStreamEvent, XMLChunkMeta> {
   /**
-   * A marked position. See {@link #mark(int)}
+   * A marked position. See {@link #mark(long)}
    */
-  private int mark = -1;
+  private long mark = -1;
   
   /**
    * A buffer for incoming data
@@ -36,22 +36,22 @@ public abstract class XMLSplitter implements Splitter<XMLStreamEvent, XMLChunkMe
 
   /**
    * {@code true} if {@link #startElements} has changed since the last time
-   * {@link #makeResult(int)} has been called.
+   * {@link #makeResult(long)} has been called.
    */
   private boolean startElementsChanged = true;
 
   /**
-   * The [ChunkMeta] object created by the last call to {@link #makeResult(int)}
+   * The [ChunkMeta] object created by the last call to {@link #makeResult(long)}
    */
   private XMLChunkMeta lastChunkMeta;
 
   /**
-   * The prefix created by the last call to {@link #makeResult(int)}
+   * The prefix created by the last call to {@link #makeResult(long)}
    */
   private Buffer lastPrefix;
 
   /**
-   * The suffix created by the last call to {@link #makeResult(int)}
+   * The suffix created by the last call to {@link #makeResult(long)}
    */
   private Buffer lastSuffix;
   
@@ -123,7 +123,7 @@ public abstract class XMLSplitter implements Splitter<XMLStreamEvent, XMLChunkMe
    * Mark a position
    * @param pos the position to mark
    */
-  protected void mark(int pos) {
+  protected void mark(long pos) {
     mark = pos;
   }
   
@@ -142,7 +142,7 @@ public abstract class XMLSplitter implements Splitter<XMLStreamEvent, XMLChunkMe
    * @param pos the end position
    * @return the {@link io.georocket.input.Splitter.Result} object
    */
-  protected Result<XMLChunkMeta> makeResult(int pos) {
+  protected Result<XMLChunkMeta> makeResult(long pos) {
     StringBuilder sbPrefix = new StringBuilder();
     sbPrefix.append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n");
 

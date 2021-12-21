@@ -17,7 +17,7 @@ public class XMLStreamEvent extends StreamEvent {
    * @param pos the position in the XML stream where the event has occurred
    * @param xmlReader the XML reader that produced the event
    */
-  public XMLStreamEvent(int event, int pos, XMLStreamReader xmlReader) {
+  public XMLStreamEvent(int event, long pos, XMLStreamReader xmlReader) {
     super(pos);
     this.event = event;
     this.xmlReader = xmlReader;

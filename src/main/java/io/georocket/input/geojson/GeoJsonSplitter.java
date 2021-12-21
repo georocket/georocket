@@ -92,7 +92,7 @@ public class GeoJsonSplitter extends JsonSplitter {
   }
   
   @Override
-  protected Result<JsonChunkMeta> makeResult(int pos) {
+  protected Result<JsonChunkMeta> makeResult(long pos) {
     if (lastFieldName == null && ("FeatureCollection".equals(highestType) ||
         "GeometryCollection".equals(highestType))) {
       // ignore empty collections

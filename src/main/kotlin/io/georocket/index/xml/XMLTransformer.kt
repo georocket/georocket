@@ -1,6 +1,7 @@
 package io.georocket.index.xml
 
 import com.fasterxml.aalto.AsyncXMLStreamReader
+import com.fasterxml.aalto.`in`.ByteBasedScanner
 import com.fasterxml.aalto.stax.InputFactoryImpl
 import io.georocket.index.Transformer
 import io.georocket.util.XMLStreamEvent
@@ -22,7 +23,10 @@ class XMLTransformer : Transformer<XMLStreamEvent> {
         break
       }
 
-      val pos = parser.location.characterOffset
+      // `parser.location.characterOffset` only returns an int
+      // val pos = parser.location.characterOffset
+      val pos = (parser.inputFeeder as ByteBasedScanner).startingByteOffset
+
       val streamEvent = XMLStreamEvent(nextEvent, pos, parser)
       emit(streamEvent)
 

@@ -36,7 +36,7 @@ public class JsonSplitter implements Splitter<JsonStreamEvent, JsonChunkMeta> {
   /**
    * A marked position in the input stream
    */
-  protected int mark = -1;
+  protected long mark = -1L;
   
   /**
    * The size of {@link #inArray} when the {@link #mark} was set. This is
@@ -143,7 +143,7 @@ public class JsonSplitter implements Splitter<JsonStreamEvent, JsonChunkMeta> {
    * @param pos the position of the end of the chunk to create
    * @return the chunk and meta data
    */
-  protected Result<JsonChunkMeta> makeResult(int pos) {
+  protected Result<JsonChunkMeta> makeResult(long pos) {
     resultsCreated = true;
     String str = window.getChars(mark, pos);
     window.advanceTo(pos);

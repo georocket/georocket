@@ -44,7 +44,7 @@ public class StringWindow {
   /**
    * The current position in the window (i.e. in the decoded string)
    */
-  private int pos = 0;
+  private long pos = 0;
 
   /**
    * Ensure the character buffer is large enough to hold a given number of
@@ -107,8 +107,8 @@ public class StringWindow {
    * the window is being moved over.
    * @return the chunk
    */
-  public String getChars(int startCharacter, int endCharacter) {
-    return decodedBuf.substring(startCharacter - pos, endCharacter - pos);
+  public String getChars(long startCharacter, long endCharacter) {
+    return decodedBuf.substring((int)(startCharacter - pos), (int)(endCharacter - pos));
   }
   
   /**
@@ -116,8 +116,8 @@ public class StringWindow {
    * @param pos the number of characters to remove (or in other words: the number
    * of characters to advance the window forward without changing its end)
    */
-  public void advanceTo(int pos) {
-    decodedBuf.delete(0, pos - this.pos);
+  public void advanceTo(long pos) {
+    decodedBuf.delete(0, (int)(pos - this.pos));
     this.pos = pos;
   }
 }

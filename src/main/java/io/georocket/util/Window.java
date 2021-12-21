@@ -9,7 +9,7 @@ import io.vertx.core.buffer.Buffer;
  */
 public class Window {
   private Buffer buf = Buffer.buffer();
-  private int pos = 0;
+  private long pos = 0;
   
   /**
    * Append data to the window (i.e. make it larger)
@@ -27,8 +27,8 @@ public class Window {
    * the position in the larger input stream the window is being moved over.
    * @return the chunk
    */
-  public byte[] getBytes(int start, int end) {
-    return buf.getBytes(start - pos, end - pos);
+  public byte[] getBytes(long start, long end) {
+    return buf.getBytes((int)(start - pos), (int)(end - pos));
   }
   
   /**
@@ -36,8 +36,8 @@ public class Window {
    * @param pos the number of bytes to remove (or in other words: the number
    * of bytes to advance the window forward without changing its end)
    */
-  public void advanceTo(int pos) {
-    buf = buf.getBuffer(pos - this.pos, buf.length());
+  public void advanceTo(long pos) {
+    buf = buf.getBuffer((int)(pos - this.pos), buf.length());
     this.pos = pos;
   }
 }
