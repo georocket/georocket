@@ -22,12 +22,19 @@ class Utils {
      * as a string, false if the output should be forwarded to stdout
      * @return the command's output or an empty string
      */
-    static String run(String command, File workingDirectory = null,
+    static String run(command, File workingDirectory = null,
             boolean captureOutput = false, int retries = 0) {
         while (true) {
-            logExec(command)
+            logExec(command.toString())
 
-            CommandLine cmdLine = CommandLine.parse(command)
+            CommandLine cmdLine
+            if (command instanceof String || command instanceof GString) {
+                cmdLine = CommandLine.parse(command)
+            } else {
+                String[] carr = (String[])command
+                cmdLine = new CommandLine(carr[0])
+                cmdLine.addArguments(Arrays.copyOfRange(carr, 1, carr.length), false)
+            }
             Executor executor = new DefaultExecutor()
 
             if (workingDirectory != null) {
@@ -54,6 +61,7 @@ class Utils {
                     continue
                 } else {
                     logFail("Command '${command}' failed with exit code $exitValue")
+                    System.err.println(baos.toString())
                     System.exit(exitValue)
                 }
             }

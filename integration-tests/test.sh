@@ -5,4 +5,5 @@ set -e
 ./test-one.sh standalone
 ./test-one.sh h2
 ./test-one.sh mongo
+./test-one.sh postgresql
 ./test-one.sh s3

@@ -1,0 +1,29 @@
+version: "2"
+services:
+  integration-tester:
+    build: .
+    command: postgresql
+    container_name: ci-integration-tester
+    environment:
+      PGPASSWORD: mysecretpassword
+    links:
+      - georocket_postgresql
+      - postgresql
+
+  georocket_postgresql:
+    image: georocket/georocket
+    command: server
+    volumes:
+      - ./conf/georocket_postgresql:/usr/local/georocket/conf
+    links:
+      - postgresql
+      - mongo
+
+  postgresql:
+    image: postgres
+    environment:
+      POSTGRES_DB: georocket
+      POSTGRES_PASSWORD: mysecretpassword
+
+  mongo:
+    image: mongo

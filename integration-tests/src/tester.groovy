@@ -69,6 +69,13 @@ def assertMongoDBChunkCount(expected) {
         "Expected ${expected} chunks in MongoDB. Got ${chunkCountInMongo}.")
 }
 
+def assertPostgreSQLChunkCount(expected) {
+    def chunkCountInPostgreSQL = run(['psql', '-h', 'postgresql', '-U', 'postgres',
+        'georocket', '-P', 'tuples_only', '-c', 'SELECT COUNT(*) FROM chunks'], null, true).trim()
+    assertEquals(chunkCountInPostgreSQL, String.valueOf(expected),
+            "Expected ${expected} chunks in PostgreSQL. Got ${chunkCountInPostgreSQL}.")
+}
+
 def assertS3ObjectCount(expected) {
     def objects = run("mc ls minio/georocket/", null, true)
     if (expected == 0) {
@@ -109,6 +116,21 @@ if (mode == "standalone" || mode == "h2") {
     assertMongoDBChunkCount(EXPECTED_FEATURE_COLL.features.size())
     finishGeoJsonTests(host)
     assertMongoDBChunkCount(0)
+
+    logSuccess()
+} else if (mode == "postgresql") {
+    logTest("GeoRocket with PostgreSQL back-end ...")
+    def host = "georocket_postgresql"
+
+    runXMLTests(host)
+    assertPostgreSQLChunkCount(EXPECTED_NODE.children().size())
+    finishXMLTests(host)
+    assertPostgreSQLChunkCount(0)
+
+    runGeoJsonTests(host)
+    assertPostgreSQLChunkCount(EXPECTED_FEATURE_COLL.features.size())
+    finishGeoJsonTests(host)
+    assertPostgreSQLChunkCount(0)
 
     logSuccess()
 } else if (mode == "s3") {

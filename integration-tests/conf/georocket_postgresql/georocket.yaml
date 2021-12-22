@@ -1,0 +1,11 @@
+georocket:
+  host: 0.0.0.0
+  storage:
+    driver: postgresql
+    postgresql:
+      url: jdbc:postgresql://postgresql:5432/georocket
+      username: postgres
+      password: mysecretpassword
+  index:
+    mongodb:
+      connectionString: mongodb://mongo:27017/georocket
