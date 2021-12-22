@@ -13,7 +13,7 @@ group = 'io.georocket'
 mainClassName = 'io.georocket.MainKt'
 
 ext {
-    vertxVersion = '4.2.2'
+    vertxVersion = '4.2.3'
 }
 
 repositories {
