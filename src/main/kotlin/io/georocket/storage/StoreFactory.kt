@@ -4,6 +4,7 @@ import io.georocket.constants.ConfigConstants
 import io.georocket.storage.file.FileStore
 import io.georocket.storage.h2.H2Store
 import io.georocket.storage.mongodb.MongoDBStore
+import io.georocket.storage.postgresql.PostgreSQLStore
 import io.georocket.storage.s3.S3Store
 import io.vertx.core.Vertx
 import org.slf4j.LoggerFactory
@@ -18,6 +19,7 @@ object StoreFactory {
   private const val DRIVER_FILE = "file"
   private const val DRIVER_H2 = "h2"
   private const val DRIVER_MONGODB = "mongodb"
+  private const val DRIVER_POSTGRESQL = "postgresql"
   private const val DRIVER_S3 = "s3"
 
   /**
@@ -32,6 +34,7 @@ object StoreFactory {
       DRIVER_FILE -> FileStore(vertx)
       DRIVER_H2 -> H2Store(vertx)
       DRIVER_MONGODB -> MongoDBStore.create(vertx)
+      DRIVER_POSTGRESQL -> PostgreSQLStore.create(vertx)
       DRIVER_S3 -> S3Store(vertx)
       else -> throw IllegalStateException("Unknown database driver `$driver'")
     }

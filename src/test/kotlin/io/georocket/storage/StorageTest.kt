@@ -136,9 +136,10 @@ abstract class StorageTest {
   @Test
   fun testGetOneWithoutFolder(ctx: VertxTestContext, vertx: Vertx) {
     CoroutineScope(vertx.dispatcher()).launch {
+      val store = createStore(vertx)
+
       prepareData(ctx, vertx, null)
 
-      val store = createStore(vertx)
       val chunk = store.getOne(ID).toString()
       ctx.verify {
         assertThat(chunk).isEqualTo(CHUNK_CONTENT)

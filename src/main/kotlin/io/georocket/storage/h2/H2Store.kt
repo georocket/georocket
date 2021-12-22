@@ -1,10 +1,8 @@
 package io.georocket.storage.h2
 
 import io.georocket.constants.ConfigConstants
-import io.georocket.storage.IndexMeta
 import io.georocket.storage.Store
 import io.georocket.util.PathUtils
-import io.georocket.util.UniqueID
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import kotlinx.coroutines.flow.Flow
@@ -39,11 +37,6 @@ class H2Store(vertx: Vertx, path: String? = null) : Store {
     val finalPath = PathUtils.normalize(path)
     return map[finalPath]
         ?: throw FileNotFoundException("Could not find chunk: $finalPath")
-  }
-
-  override fun makePath(indexMetadata: IndexMeta, layer: String): String {
-    val path = layer.ifEmpty { "/" }
-    return PathUtils.join(path, indexMetadata.correlationId + UniqueID.next())
   }
 
   override suspend fun add(chunk: Buffer, path: String) {

@@ -1,10 +1,8 @@
 package io.georocket.storage.s3
 
 import io.georocket.constants.ConfigConstants
-import io.georocket.storage.IndexMeta
 import io.georocket.storage.Store
 import io.georocket.util.PathUtils
-import io.georocket.util.UniqueID
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import kotlinx.coroutines.flow.Flow
@@ -69,12 +67,6 @@ class S3Store(vertx: Vertx, accessKey: String? = null, secretKey: String? = null
     }
 
     s3 = s3Builder.build()
-  }
-
-  override fun makePath(indexMetadata: IndexMeta, layer: String): String {
-    val path = layer.ifEmpty { "/" }
-    val id = indexMetadata.correlationId + UniqueID.next()
-    return PathUtils.join(path, id)
   }
 
   override suspend fun add(chunk: Buffer, path: String) {

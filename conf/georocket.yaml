@@ -37,6 +37,7 @@ georocket:
     # driver: file
     # driver: h2
     driver: mongodb
+    # driver: postgresql
     # driver: s3
 
     # Configuration for the file back-end
@@ -51,6 +52,11 @@ georocket:
     # Configuration for the MongoDB back-end
     # mongodb:
     #   connectionString: mongodb://localhost:27017/georocket?compressors=snappy
+
+    postgresql:
+      url: jdbc:postgresql://localhost:5432/georocket?currentSchema=georocket
+      username: georocket
+      password: georocket
 
     # Configuration for the S3 back-end
     s3:

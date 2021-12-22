@@ -1,10 +1,8 @@
 package io.georocket.storage.file
 
 import io.georocket.constants.ConfigConstants
-import io.georocket.storage.IndexMeta
 import io.georocket.storage.Store
 import io.georocket.util.PathUtils
-import io.georocket.util.UniqueID
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.file.OpenOptions
@@ -28,12 +26,6 @@ class FileStore(private val vertx: Vertx, storagePath: String? = null) : Store {
         ConfigConstants.STORAGE_FILE_PATH) ?: throw IllegalArgumentException(
         """Missing configuration item "${ConfigConstants.STORAGE_FILE_PATH}"""")
     root = PathUtils.join(actualStoragePath, "file")
-  }
-
-  override fun makePath(indexMetadata: IndexMeta, layer: String): String {
-    val path = layer.ifEmpty { "/" }
-    val filename = indexMetadata.correlationId + UniqueID.next()
-    return PathUtils.join(path, filename)
   }
 
   override suspend fun add(chunk: Buffer, path: String) {

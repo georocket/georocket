@@ -37,6 +37,9 @@ public final class ConfigConstants {
   public static final String STORAGE_H2_MAP_NAME = "georocket.storage.h2.mapName"; // undocumented
   public static final String STORAGE_FILE_PATH = "georocket.storage.file.path";
   public static final String STORAGE_MONGODB_CONNECTION_STRING = "georocket.storage.mongodb.connectionString";
+  public static final String STORAGE_POSTGRESQL_URL = "georocket.storage.postgresql.url";
+  public static final String STORAGE_POSTGRESQL_USERNAME = "georocket.storage.postgresql.username";
+  public static final String STORAGE_POSTGRESQL_PASSWORD = "georocket.storage.postgresql.password";
   public static final String STORAGE_S3_ACCESS_KEY = "georocket.storage.s3.accessKey";
   public static final String STORAGE_S3_SECRET_KEY = "georocket.storage.s3.secretKey";
   public static final String STORAGE_S3_ENDPOINT = "georocket.storage.s3.endpoint";
@@ -46,6 +49,9 @@ public final class ConfigConstants {
 
   public static final String INDEX_MAX_BULK_SIZE = "georocket.index.maxBulkSize";
   public static final String INDEX_MONGODB_CONNECTION_STRING = "georocket.index.mongodb.connectionString";
+  public static final String INDEX_POSTGRESQL_URL = "georocket.index.postgresql.url";
+  public static final String INDEX_POSTGRESQL_USERNAME = "georocket.index.postgresql.username";
+  public static final String INDEX_POSTGRESQL_PASSWORD = "georocket.index.postgresql.password";
 
   public static final String EMBEDDED_MONGODB_STORAGE_PATH = "georocket.embeddedMongoDB.storagePath";
 

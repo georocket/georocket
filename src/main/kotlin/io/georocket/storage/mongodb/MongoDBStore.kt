@@ -11,10 +11,7 @@ import io.georocket.constants.ConfigConstants.EMBEDDED_MONGODB_STORAGE_PATH
 import io.georocket.constants.ConfigConstants.INDEX_MONGODB_CONNECTION_STRING
 import io.georocket.constants.ConfigConstants.STORAGE_MONGODB_CONNECTION_STRING
 import io.georocket.index.mongodb.SharedMongoClient
-import io.georocket.storage.IndexMeta
 import io.georocket.storage.Store
-import io.georocket.util.PathUtils
-import io.georocket.util.UniqueID
 import io.georocket.util.coFind
 import io.georocket.util.deleteManyAwait
 import io.georocket.util.insertManyAwait
@@ -98,11 +95,6 @@ class MongoDBStore private constructor() : Store {
       throw NoSuchElementException("Could not find chunk with path `$path'")
     }
     return result
-  }
-
-  override fun makePath(indexMetadata: IndexMeta, layer: String): String {
-    val path = layer.ifEmpty { "/" }
-    return PathUtils.join(path, indexMetadata.correlationId + UniqueID.next())
   }
 
   private fun chunkToBson(chunk: Buffer, path: String): List<BsonDocument> {

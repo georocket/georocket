@@ -1,5 +1,7 @@
 package io.georocket.storage
 
+import io.georocket.util.PathUtils
+import io.georocket.util.UniqueID
 import io.vertx.core.buffer.Buffer
 import kotlinx.coroutines.flow.Flow
 
@@ -15,7 +17,10 @@ interface Store {
     // nothing to do by default
   }
 
-  fun makePath(indexMetadata: IndexMeta, layer: String): String
+  fun makePath(indexMetadata: IndexMeta, layer: String): String {
+    val path = layer.ifEmpty { "/" }
+    return PathUtils.join(path, indexMetadata.correlationId + UniqueID.next())
+  }
 
   /**
    * Add a [chunk] with given [path] to the store

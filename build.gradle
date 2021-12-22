@@ -48,6 +48,7 @@ dependencies {
     implementation "io.vertx:vertx-lang-kotlin-coroutines:$vertxVersion"
     implementation "io.vertx:vertx-service-discovery:$vertxVersion"
     implementation "io.vertx:vertx-mongo-client:$vertxVersion"
+    implementation "io.vertx:vertx-pg-client:$vertxVersion"
     implementation "io.vertx:vertx-web:$vertxVersion"
     implementation "io.vertx:vertx-web-client:$vertxVersion"
 
@@ -97,6 +98,11 @@ dependencies {
     // embedded mongodb for standalone mode
     implementation 'de.flapdoodle.embed:de.flapdoodle.embed.mongo:3.2.4'
 
+    // PostgreSQL
+    implementation "org.postgresql:postgresql:42.2.18"
+    implementation "org.flywaydb:flyway-core:8.2.2"
+    implementation "com.ongres.scram:client:2.1" // for authentication
+
     // necessary for ALPN / HTTP/2
     runtimeOnly "io.netty:netty-tcnative-boringssl-static:2.0.36.Final"
 
@@ -120,6 +126,7 @@ dependencies {
     testImplementation "org.junit.jupiter:junit-jupiter-engine:5.8.2"
     testImplementation "org.testcontainers:testcontainers:1.15.2"
     testImplementation "org.testcontainers:junit-jupiter:1.15.2"
+    testImplementation "org.testcontainers:postgresql:1.15.3"
 
     antlr 'org.antlr:antlr4:4.5.3'
 }
