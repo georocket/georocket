@@ -56,13 +56,16 @@ class FileStore(private val vertx: Vertx, storagePath: String? = null) : Store {
     return fs.readFile(absolutePath).await()
   }
 
-  override suspend fun delete(paths: Flow<String>) {
+  override suspend fun delete(paths: Flow<String>): Long {
+    var result = 0L
     val fs = vertx.fileSystem()
     paths.collect { path ->
       val absolutePath = PathUtils.join(root, path)
       if (fs.exists(absolutePath).await()) {
         fs.delete(absolutePath).await()
+        result++
       }
     }
+    return result
   }
 }

@@ -43,7 +43,14 @@ class H2Store(vertx: Vertx, path: String? = null) : Store {
     map[path] = chunk
   }
 
-  override suspend fun delete(paths: Flow<String>) {
-    paths.collect { map.remove(it) }
+  override suspend fun delete(paths: Flow<String>): Long {
+    var result = 0L
+    paths.collect {
+      val old = map.remove(it)
+      if (old != null) {
+        result++
+      }
+    }
+    return result
   }
 }

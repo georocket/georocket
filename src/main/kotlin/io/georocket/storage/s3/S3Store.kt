@@ -90,7 +90,8 @@ class S3Store(vertx: Vertx, accessKey: String? = null, secretKey: String? = null
     return Buffer.buffer(response.asByteArrayUnsafe())
   }
 
-  override suspend fun delete(paths: Flow<String>) {
+  override suspend fun delete(paths: Flow<String>): Long {
+    var result = 0L
     val chunk = mutableListOf<String>()
 
     val doDelete = suspend {
@@ -101,7 +102,8 @@ class S3Store(vertx: Vertx, accessKey: String? = null, secretKey: String? = null
           .objects(identifiers)
           .build())
         .build()
-      s3.deleteObjects(deleteObjectsRequest).await()
+      val dr = s3.deleteObjects(deleteObjectsRequest).await()
+      result += dr.deleted().size
     }
 
     paths.collect { p ->
@@ -118,5 +120,7 @@ class S3Store(vertx: Vertx, accessKey: String? = null, secretKey: String? = null
     if (chunk.isNotEmpty()) {
       doDelete()
     }
+
+    return result
   }
 }

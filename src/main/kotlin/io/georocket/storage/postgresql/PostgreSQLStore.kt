@@ -67,13 +67,16 @@ class PostgreSQLStore private constructor(vertx: Vertx, url: String,
       throw NoSuchElementException("Could not find chunk with path `$path'")
   }
 
-  override suspend fun delete(paths: Flow<String>) {
+  override suspend fun delete(paths: Flow<String>): Long {
+    var result = 0L
     val chunk = mutableListOf<String>()
 
     val doDelete = suspend {
       val deleteParams = Tuple.of(chunk.toTypedArray())
-      val statement3 = "DELETE FROM $CHUNKS WHERE $ID=ANY($1)"
-      client.preparedQuery(statement3).execute(deleteParams).await()
+      val statement3 = "WITH deleted AS (DELETE FROM $CHUNKS WHERE $ID=ANY($1) RETURNING $ID) " +
+          "SELECT COUNT(*) FROM deleted"
+      val dr = client.preparedQuery(statement3).execute(deleteParams).await()
+      result += dr.first().getLong(0)
     }
 
     paths.collect { p ->
@@ -87,5 +90,7 @@ class PostgreSQLStore private constructor(vertx: Vertx, url: String,
     if (chunk.isNotEmpty()) {
       doDelete()
     }
+
+    return result
   }
 }

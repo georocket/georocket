@@ -40,7 +40,8 @@ interface Store {
   suspend fun getOne(path: String): Buffer
 
   /**
-   * Delete all chunks from the store that match a given [paths]
+   * Delete all chunks from the store that match a given [paths]. Return
+   * the number of chunks deleted.
    */
-  suspend fun delete(paths: Flow<String>)
+  suspend fun delete(paths: Flow<String>): Long
 }

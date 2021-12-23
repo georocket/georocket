@@ -9,6 +9,7 @@ import io.georocket.storage.Store
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.impl.NoStackTraceThrowable
 import io.vertx.core.streams.WriteStream
+import io.vertx.kotlin.coroutines.await
 import org.slf4j.LoggerFactory
 
 /**
@@ -58,7 +59,7 @@ class GetPropertyCommand : DataCommand() {
       val query = compileQuery(query, layer)
       val r = index.getPropertyValues(query, property!!)
       for (buf in r) {
-        out.write(Buffer.buffer(buf.toString()))
+        out.write(Buffer.buffer(buf.toString())).await()
       }
       0
     } catch (t: Throwable) {

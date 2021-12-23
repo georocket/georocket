@@ -97,9 +97,10 @@ class Main : GeoRocketCommand() {
 
     // start CLI
     try {
-      val out = PrintWriteStream(BufferedOutputStream(System.out, 65535))
+      val bos = BufferedOutputStream(System.out, 65535)
+      val out = PrintWriteStream(bos)
       val exitCode = coRun(args, StandardInputReader(), out)
-      System.out.flush()
+      bos.flush()
       exitProcess(exitCode)
     } catch (e: OptionParserException) {
       error(e.message)

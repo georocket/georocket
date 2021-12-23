@@ -131,16 +131,18 @@ class MongoDBStore private constructor() : Store {
     }
   }
 
-  override suspend fun delete(paths: Flow<String>) {
+  override suspend fun delete(paths: Flow<String>): Long {
+    var result = 0L
     var len = 0
     val chunk = mutableListOf<String>()
 
     val doDelete = suspend {
-      collChunks.deleteManyAwait(jsonObjectOf(
+      val dr = collChunks.deleteManyAwait(jsonObjectOf(
         "filename" to jsonObjectOf(
           "\$in" to chunk
         )
       ))
+      result += dr.deletedCount
     }
 
     paths.collect { p ->
@@ -159,5 +161,7 @@ class MongoDBStore private constructor() : Store {
     if (chunk.isNotEmpty()) {
       doDelete()
     }
+
+    return result
   }
 }

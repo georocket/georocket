@@ -31,6 +31,8 @@ import io.vertx.ext.web.RoutingContext
 import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.toReceiveChannel
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import org.antlr.v4.runtime.misc.ParseCancellationException
@@ -45,6 +47,7 @@ import java.io.FileNotFoundException
 import java.io.IOException
 import java.time.Instant
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.CoroutineContext
 
 /**
@@ -461,6 +464,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
     val search = request.getParam("search")
     val properties = request.getParam("properties")
     val tags = request.getParam("tags")
+    val await = BooleanUtils.toBoolean(request.getParam("await"))
 
     launch {
       if (StringUtils.isNotEmpty(properties) && StringUtils.isNotEmpty(tags)) {
@@ -472,7 +476,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
       } else if (StringUtils.isNotEmpty(tags)) {
         removeTags(search, path, tags, response)
       } else {
-        deleteChunks(search, path, response)
+        deleteChunks(search, path, response, await)
       }
     }
   }
@@ -516,18 +520,41 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
    * Delete all chunks matching the given [search] query and [path].
    */
   private suspend fun deleteChunks(search: String?, path: String,
-      response: HttpServerResponse) {
-    try {
-      val query = compileQuery(search, path)
-      val paths = index.getPaths(query)
-      store.delete(paths)
-      index.delete(query)
-      response
-          .setStatusCode(204) // No Content
-          .end()
-    } catch (t: Throwable) {
-      log.error("Could not delete chunks", t)
-      Endpoint.fail(response, t)
+      response: HttpServerResponse, await: Boolean) {
+    val answerSent = AtomicBoolean(false)
+    coroutineScope {
+      launch {
+        try {
+          val query = compileQuery(search, path)
+          val paths = index.getPaths(query)
+          val deleted = store.delete(paths)
+          index.delete(query)
+          if (!answerSent.getAndSet(true)) {
+            // All chunks have been deleted within the given timeframe
+            response
+              .setStatusCode(204) // No Content
+              .end()
+          }
+          log.info("Successfully deleted $deleted chunks.")
+        } catch (t: Throwable) {
+          log.error("Could not delete chunks", t)
+          if (!answerSent.getAndSet(true)) {
+            Endpoint.fail(response, t)
+          }
+        }
+      }
+
+      if (!await) {
+        launch {
+          delay(1000)
+          if (!answerSent.getAndSet(true)) {
+            // Deletion took too long. Continue in the background ...
+            response
+              .setStatusCode(202) // Accepted
+              .end()
+          }
+        }
+      }
     }
   }
 
