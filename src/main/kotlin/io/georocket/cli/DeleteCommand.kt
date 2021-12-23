@@ -9,6 +9,8 @@ import io.georocket.storage.Store
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.impl.NoStackTraceThrowable
 import io.vertx.core.streams.WriteStream
+import io.vertx.kotlin.coroutines.await
+import org.fusesource.jansi.AnsiConsole
 import org.slf4j.LoggerFactory
 
 /**
@@ -49,11 +51,16 @@ class DeleteCommand : DataCommand() {
 
   override suspend fun doRun(remainingArgs: Array<String>, reader: InputReader,
       out: WriteStream<Buffer>, store: Store, index: Index): Int {
+    AnsiConsole.systemInstall()
     return try {
-      val query = compileQuery(query, layer)
-      val paths = index.getPaths(query)
-      store.delete(paths)
-      index.delete(query)
+      val deleted = SpinnerRenderer(vertx, "Deleting").use {
+        val query = compileQuery(query, layer)
+        val paths = index.getPaths(query)
+        val d = store.delete(paths)
+        index.delete(query)
+        d
+      }
+      out.write(Buffer.buffer("Successfully deleted $deleted chunks.\n")).await()
       0
     } catch (t: Throwable) {
       error(t.message)
@@ -61,6 +68,8 @@ class DeleteCommand : DataCommand() {
         log.error("Could not delete from store", t)
       }
       1
+    } finally {
+      AnsiConsole.systemUninstall()
     }
   }
 }
