@@ -115,7 +115,7 @@ dependencies {
 
     testImplementation "io.vertx:vertx-unit:$vertxVersion"
     testImplementation 'junit:junit:4.13.2'
-    testRuntimeOnly 'org.junit.vintage:junit-vintage-engine:5.7.0'
+    testRuntimeOnly 'org.junit.vintage:junit-vintage-engine:5.8.2'
 
     testImplementation "io.mockk:mockk:1.12.1"
     testImplementation "io.vertx:vertx-junit5:$vertxVersion"
