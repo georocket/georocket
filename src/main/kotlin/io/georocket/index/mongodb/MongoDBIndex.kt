@@ -36,7 +36,7 @@ import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.core.json.obj
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.reactive.awaitSingleOrNull
+import kotlinx.coroutines.reactive.awaitFirstOrNull
 import java.time.Duration
 
 class MongoDBIndex private constructor() : Index {
@@ -104,10 +104,10 @@ class MongoDBIndex private constructor() : Index {
 
     collDocuments.createIndexes(listOf(IndexModel(Indexes.ascending(CHUNK_META),
       IndexOptions().background(true)),
-    )).awaitSingleOrNull()
+    )).awaitFirstOrNull()
     collChunkMeta.createIndexes(listOf(IndexModel(Indexes.ascending(CHUNK_META),
       IndexOptions().unique(true).background(true)),
-    )).awaitSingleOrNull()
+    )).awaitFirstOrNull()
   }
 
   override suspend fun close() {
