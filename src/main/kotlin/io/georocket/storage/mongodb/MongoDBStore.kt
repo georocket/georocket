@@ -19,8 +19,7 @@ import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import io.vertx.kotlin.core.json.jsonObjectOf
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.reactive.awaitSingleOrNull
+import kotlinx.coroutines.reactive.awaitFirstOrNull
 import org.bson.BsonBinary
 import org.bson.BsonDocument
 import org.bson.BsonInt32
@@ -74,7 +73,7 @@ class MongoDBStore private constructor() : Store {
         Indexes.ascending("filename"),
         Indexes.ascending("n")
       ), IndexOptions().background(true).unique(true)),
-    )).awaitSingleOrNull()
+    )).awaitFirstOrNull()
   }
 
   override fun close() {
