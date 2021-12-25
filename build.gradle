@@ -99,7 +99,7 @@ dependencies {
 
     // PostgreSQL
     implementation "org.postgresql:postgresql:42.2.18"
-    implementation "org.flywaydb:flyway-core:8.2.3"
+    implementation "org.flywaydb:flyway-core:8.3.0"
     implementation "com.ongres.scram:client:2.1" // for authentication
 
     // necessary for ALPN / HTTP/2
@@ -107,7 +107,7 @@ dependencies {
 
     implementation "org.jetbrains.kotlin:kotlin-reflect"
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.4.2'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.6.0'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-reactive:1.4.2'
 
     testImplementation 'com.github.tomakehurst:wiremock-jre8:2.25.1'
@@ -123,7 +123,7 @@ dependencies {
     testImplementation "org.junit.jupiter:junit-jupiter-api:5.8.2"
     testImplementation "org.junit.jupiter:junit-jupiter-params:5.8.2"
     testImplementation "org.junit.jupiter:junit-jupiter-engine:5.8.2"
-    testImplementation "org.testcontainers:testcontainers:1.15.2"
+    testImplementation "org.testcontainers:testcontainers:1.16.2"
     testImplementation "org.testcontainers:junit-jupiter:1.16.2"
     testImplementation "org.testcontainers:postgresql:1.15.3"
 
