@@ -99,7 +99,7 @@ dependencies {
 
     // PostgreSQL
     implementation "org.postgresql:postgresql:42.2.18"
-    implementation "org.flywaydb:flyway-core:8.2.3"
+    implementation "org.flywaydb:flyway-core:8.3.0"
     implementation "com.ongres.scram:client:2.1" // for authentication
 
     // necessary for ALPN / HTTP/2
