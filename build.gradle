@@ -13,6 +13,7 @@ mainClassName = 'io.georocket.MainKt'
 
 ext {
     vertxVersion = '4.2.3'
+    geotoolsVersion = '26.1'
 }
 
 repositories {
@@ -24,7 +25,6 @@ repositories {
             }
         }
         filter {
-            includeGroup "jgridshift"
             includeGroup "it.geosolutions.jgridshift"
             includeGroup "org.geotools"
             includeGroup "org.geotools.ogc"
@@ -76,15 +76,15 @@ dependencies {
     implementation 'org.jline:jline:3.21.0'
     implementation 'org.yaml:snakeyaml:1.30'
 
-    implementation('org.geotools:gt-epsg-extension:26.1') {
+    implementation("org.geotools:gt-epsg-extension:$geotoolsVersion") {
         // exclude invalid dependency
         exclude group: 'javax.media', module: 'jai_core'
     }
-    implementation('org.geotools:gt-epsg-hsql:19.1') {
+    implementation("org.geotools:gt-epsg-hsql:$geotoolsVersion") {
         // exclude invalid dependency
         exclude group: 'javax.media', module: 'jai_core'
     }
-    implementation('org.geotools:gt-referencing:19.1') {
+    implementation("org.geotools:gt-referencing:$geotoolsVersion") {
         // exclude invalid dependency
         exclude group: 'javax.media', module: 'jai_core'
     }
