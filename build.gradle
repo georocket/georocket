@@ -84,7 +84,7 @@ dependencies {
         // exclude invalid dependency
         exclude group: 'javax.media', module: 'jai_core'
     }
-    implementation('org.geotools:gt-referencing:19.1') {
+    implementation('org.geotools:gt-referencing:26.1') {
         // exclude invalid dependency
         exclude group: 'javax.media', module: 'jai_core'
     }
