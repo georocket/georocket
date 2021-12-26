@@ -25,6 +25,7 @@ repositories {
         }
         filter {
             includeGroup "jgridshift"
+            includeGroup "it.geosolutions.jgridshift"
             includeGroup "org.geotools"
         }
     }
