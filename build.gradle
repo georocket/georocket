@@ -27,6 +27,7 @@ repositories {
             includeGroup "jgridshift"
             includeGroup "it.geosolutions.jgridshift"
             includeGroup "org.geotools"
+            includeGroup "org.geotools.ogc"
         }
     }
 }
