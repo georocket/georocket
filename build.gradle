@@ -80,7 +80,7 @@ dependencies {
         // exclude invalid dependency
         exclude group: 'javax.media', module: 'jai_core'
     }
-    implementation('org.geotools:gt-epsg-hsql:19.1') {
+    implementation('org.geotools:gt-epsg-hsql:26.1') {
         // exclude invalid dependency
         exclude group: 'javax.media', module: 'jai_core'
     }
