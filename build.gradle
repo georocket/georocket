@@ -76,7 +76,7 @@ dependencies {
     implementation 'org.jline:jline:3.21.0'
     implementation 'org.yaml:snakeyaml:1.30'
 
-    implementation('org.geotools:gt-epsg-extension:19.1') {
+    implementation('org.geotools:gt-epsg-extension:26.1') {
         // exclude invalid dependency
         exclude group: 'javax.media', module: 'jai_core'
     }
