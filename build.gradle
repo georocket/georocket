@@ -112,7 +112,7 @@ dependencies {
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.6.0'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-reactive:1.6.0'
 
-    testImplementation 'com.github.tomakehurst:wiremock-jre8:2.25.1'
+    testImplementation 'com.github.tomakehurst:wiremock-jre8:2.32.0'
     testImplementation 'org.mongodb:mongodb-driver:3.12.10'
 
     testImplementation "io.vertx:vertx-unit:$vertxVersion"
