@@ -3,29 +3,20 @@ package io.georocket.storage.h2
 import io.vertx.core.buffer.Buffer
 import org.h2.mvstore.DataUtils
 import org.h2.mvstore.WriteBuffer
-import org.h2.mvstore.type.DataType
+import org.h2.mvstore.type.BasicDataType
 import java.nio.ByteBuffer
 
-class BufferDataType : DataType {
-  override fun compare(a: Any, b: Any): Int {
-    val ab = a as Buffer
-    val bb = b as Buffer
-    return ab.byteBuf.compareTo(bb.byteBuf)
+class BufferDataType : BasicDataType<Buffer>() {
+  override fun compare(a: Buffer, b: Buffer): Int {
+    return a.byteBuf.compareTo(b.byteBuf)
   }
 
-  override fun getMemory(obj: Any): Int {
-    return 24 + (obj as Buffer).length()
+  override fun getMemory(obj: Buffer): Int {
+    return 24 + obj.length()
   }
 
-  override fun write(buff: WriteBuffer, obj: Any) {
-    val b = obj as Buffer
-    buff.putVarInt(b.length()).put(b.bytes)
-  }
-
-  override fun write(buff: WriteBuffer, obj: Array<Any>, len: Int, key: Boolean) {
-    for (i in 0 until len) {
-      write(buff, obj[i])
-    }
+  override fun write(buff: WriteBuffer, obj: Buffer) {
+    buff.putVarInt(obj.length()).put(obj.bytes)
   }
 
   override fun read(buff: ByteBuffer): Buffer {
@@ -35,9 +26,7 @@ class BufferDataType : DataType {
     return Buffer.buffer(b)
   }
 
-  override fun read(buff: ByteBuffer, obj: Array<Any>, len: Int, key: Boolean) {
-    for (i in 0 until len) {
-      obj[i] = read(buff)
-    }
+  override fun createStorage(size: Int): Array<Buffer?> {
+    return arrayOfNulls(size)
   }
 }
