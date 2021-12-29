@@ -97,7 +97,7 @@ dependencies {
     implementation 'io.projectreactor:reactor-core:3.4.13'
 
     // embedded mongodb for standalone mode
-    implementation 'de.flapdoodle.embed:de.flapdoodle.embed.mongo:3.2.4'
+    implementation 'de.flapdoodle.embed:de.flapdoodle.embed.mongo:3.2.5'
 
     // PostgreSQL
     implementation "org.postgresql:postgresql:42.3.1"
