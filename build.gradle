@@ -105,7 +105,7 @@ dependencies {
     implementation "com.ongres.scram:client:2.1" // for authentication
 
     // necessary for ALPN / HTTP/2
-    runtimeOnly "io.netty:netty-tcnative-boringssl-static:2.0.36.Final"
+    runtimeOnly "io.netty:netty-tcnative-boringssl-static:2.0.46.Final"
 
     implementation "org.jetbrains.kotlin:kotlin-reflect"
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
