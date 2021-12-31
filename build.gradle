@@ -119,7 +119,7 @@ dependencies {
     testImplementation 'junit:junit:4.13.2'
     testRuntimeOnly 'org.junit.vintage:junit-vintage-engine:5.8.2'
 
-    testImplementation "io.mockk:mockk:1.12.1"
+    testImplementation "io.mockk:mockk:1.12.2"
     testImplementation "io.vertx:vertx-junit5:$vertxVersion"
     testImplementation "org.assertj:assertj-core:3.21.0"
     testImplementation "org.junit.jupiter:junit-jupiter-api:5.8.2"
