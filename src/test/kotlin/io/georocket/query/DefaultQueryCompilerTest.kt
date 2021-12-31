@@ -23,7 +23,7 @@ class DefaultQueryCompilerTest {
     queryCompilersArr.add(DefaultMetaIndexerFactory::class.java.name)
 
     val queryCompilers = queryCompilersArr.map {
-      Class.forName(it.toString()).newInstance() as QueryCompiler }
+      Class.forName(it.toString()).getDeclaredConstructor().newInstance() as QueryCompiler }
 
     val compiler = DefaultQueryCompiler(queryCompilers)
     val compiledQuery = compiler.compileQuery(query, path)

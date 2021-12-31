@@ -20,7 +20,7 @@ import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.array
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.obj
-import org.antlr.v4.runtime.ANTLRInputStream
+import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import org.antlr.v4.runtime.tree.ParseTreeWalker
 
@@ -65,7 +65,7 @@ class DefaultQueryCompiler(private val queryCompilers: Collection<QueryCompiler>
     }
 
     // parse query
-    val lexer = QueryLexer(ANTLRInputStream(search.trim()))
+    val lexer = QueryLexer(CharStreams.fromString(search.trim()))
     val tokens = CommonTokenStream(lexer)
     val parser = QueryParser(tokens)
     val ctx = parser.query()

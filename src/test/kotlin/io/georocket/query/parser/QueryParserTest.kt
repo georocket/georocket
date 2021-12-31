@@ -13,7 +13,7 @@ import io.georocket.query.parser.QueryParser.OrContext
 import io.georocket.query.parser.QueryParser.StringContext
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
-import org.antlr.v4.runtime.ANTLRInputStream
+import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import org.antlr.v4.runtime.tree.ErrorNode
 import org.antlr.v4.runtime.tree.ParseTreeWalker
@@ -176,7 +176,7 @@ class QueryParserTest {
     val expected = fixtureObj.getJsonObject("expected")
 
     // parse query
-    val lexer = QueryLexer(ANTLRInputStream(query.trim()))
+    val lexer = QueryLexer(CharStreams.fromString(query.trim()))
     val tokens = CommonTokenStream(lexer)
     val parser = QueryParser(tokens)
     val ctx = parser.query()
