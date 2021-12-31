@@ -171,8 +171,8 @@ distributions {
 // Fix command-length issue in windows startscript
 // see https://issues.gradle.org/browse/GRADLE-2992
 task pathingJar(type: Jar) {
-    appendix = 'pathing'
-    manifest { attributes("Class-Path": configurations.runtimeClasspath.collect { it.getName() }.join(' ') + ' ' + jar.archiveName ) }
+    archiveAppendix = 'pathing'
+    manifest { attributes("Class-Path": configurations.runtimeClasspath.collect { it.getName() }.join(' ') + ' ' + jar.archiveFileName ) }
 }
 applicationDistribution.from(pathingJar) { into "lib" }
 startScripts {
@@ -182,7 +182,7 @@ startScripts {
 
         // Remove too-long-classpath and use pathing jar instead
         winFileText = winFileText.replaceAll('set CLASSPATH=.*', 'rem CLASSPATH declaration removed.')
-        winFileText = winFileText.replaceAll('("%JAVA_EXE%" .* -classpath ")%CLASSPATH%(" .*)', '$1%APP_HOME%\\\\lib\\\\' + pathingJar.archiveName + '$2')
+        winFileText = winFileText.replaceAll('("%JAVA_EXE%" .* -classpath ")%CLASSPATH%(" .*)', '$1%APP_HOME%\\\\lib\\\\' + pathingJar.archiveFileName + '$2')
 
         winScriptFile.text = winFileText
     }
