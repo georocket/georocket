@@ -1,9 +1,6 @@
 plugins {
     id 'org.asciidoctor.jvm.convert' version '3.3.2'
-    id 'org.kordamp.gradle.livereload' version '0.4.0'
 }
-
-apply plugin: 'org.kordamp.gradle.livereload'
 
 repositories {
     mavenCentral()
@@ -15,10 +12,6 @@ asciidoctor {
 
 asciidoctorj {
     version = '2.5.2'
-}
-
-liveReload {
-    docRoot asciidoctor.outputDir.canonicalPath
 }
 
 // package compiled files into a jar file
