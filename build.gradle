@@ -129,7 +129,7 @@ dependencies {
     testImplementation "org.testcontainers:junit-jupiter:1.16.2"
     testImplementation "org.testcontainers:postgresql:1.16.2"
 
-    antlr 'org.antlr:antlr4:4.5.3'
+    antlr 'org.antlr:antlr4:4.9.3'
 }
 
 // customize start scripts
