@@ -53,4 +53,4 @@ QUOTED_STRING
     setText(s);
   }
   ;
-STRING : ~[ ,:\n\r\"\']+ ;
+STRING : ~[ ,:\n\r"']+ ;
