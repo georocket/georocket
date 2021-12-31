@@ -141,10 +141,10 @@ startScripts {
     doLast {
         def windowsScriptFile = file(getWindowsScript())
         def unixScriptFile = file(getUnixScript())
-        windowsScriptFile.text = windowsScriptFile.text
-            .replaceFirst('set APP_HOME=.*', '$0\r\nset GEOROCKET_HOME=%APP_HOME%')
-        unixScriptFile.text = unixScriptFile.text
-            .replaceFirst('APP_HOME=.*', '$0\nexport GEOROCKET_HOME=\\$APP_HOME')
+        windowsScriptFile.text = java.util.regex.Pattern.compile('^set APP_HOME=.*', java.util.regex.Pattern.MULTILINE)
+            .matcher(windowsScriptFile.text).replaceFirst('$0\r\nset GEOROCKET_HOME=%APP_HOME%')
+        unixScriptFile.text = java.util.regex.Pattern.compile('^APP_HOME=.*', java.util.regex.Pattern.MULTILINE)
+            .matcher(unixScriptFile.text).replaceFirst('$0\nexport GEOROCKET_HOME=\\$APP_HOME')
     }
 }
 
