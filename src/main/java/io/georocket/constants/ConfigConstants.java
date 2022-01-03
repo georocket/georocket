@@ -47,6 +47,7 @@ public final class ConfigConstants {
   public static final String STORAGE_S3_BUCKET = "georocket.storage.s3.bucket";
   public static final String STORAGE_S3_PATH_STYLE_ACCESS = "georocket.storage.s3.pathStyleAccess";
 
+  public static final String INDEX_DRIVER = "georocket.index.driver";
   public static final String INDEX_MAX_BULK_SIZE = "georocket.index.maxBulkSize";
   public static final String INDEX_MONGODB_CONNECTION_STRING = "georocket.index.mongodb.connectionString";
   public static final String INDEX_POSTGRESQL_URL = "georocket.index.postgresql.url";

@@ -75,7 +75,7 @@ class MongoDBStore private constructor() : Store {
     )).awaitFirstOrNull()
   }
 
-  override fun close() {
+  override suspend fun close() {
     client.close()
   }
 

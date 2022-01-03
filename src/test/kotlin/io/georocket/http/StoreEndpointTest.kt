@@ -2,7 +2,8 @@ package io.georocket.http
 
 import io.georocket.coVerify
 import io.georocket.constants.ConfigConstants
-import io.georocket.index.mongodb.MongoDBIndex
+import io.georocket.index.Index
+import io.georocket.index.IndexFactory
 import io.georocket.storage.GeoJsonChunkMeta
 import io.georocket.storage.Store
 import io.georocket.storage.StoreFactory
@@ -45,7 +46,7 @@ import java.nio.file.Path
 class StoreEndpointTest {
   private var port: Int = 0
   private lateinit var store: Store
-  private lateinit var index: MongoDBIndex
+  private lateinit var index: Index
 
   private class EndpointVerticle(private val port: Int) : CoroutineVerticle() {
     override suspend fun start() {
@@ -66,8 +67,8 @@ class StoreEndpointTest {
     coEvery { StoreFactory.createStore(any()) } returns store
 
     index = mockk()
-    mockkObject(MongoDBIndex)
-    coEvery { MongoDBIndex.create(any()) } returns index
+    mockkObject(IndexFactory)
+    coEvery { IndexFactory.createIndex(any()) } returns index
 
     val config = json {
       obj(

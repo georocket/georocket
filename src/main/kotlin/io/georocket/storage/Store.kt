@@ -12,7 +12,7 @@ interface Store {
   /**
    * Release all resources and close this store
    */
-  fun close() {
+  suspend fun close() {
     // nothing to do by default
   }
 

@@ -2,9 +2,9 @@ package io.georocket.cli
 
 import de.undercouch.underline.InputReader
 import io.georocket.index.Index
+import io.georocket.index.IndexFactory
 import io.georocket.index.IndexerFactory
 import io.georocket.index.MetaIndexerFactory
-import io.georocket.index.mongodb.MongoDBIndex
 import io.georocket.query.DefaultQueryCompiler
 import io.georocket.storage.Store
 import io.georocket.storage.StoreFactory
@@ -26,7 +26,7 @@ abstract class DataCommand : GeoRocketCommand() {
       out: WriteStream<Buffer>): Int {
     val store = StoreFactory.createStore(vertx)
     return try {
-      val index = MongoDBIndex.create(vertx)
+      val index = IndexFactory.createIndex(vertx)
       try {
         doRun(remainingArgs, reader, out, store, index)
       } finally {

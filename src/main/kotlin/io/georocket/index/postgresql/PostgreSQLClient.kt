@@ -46,7 +46,7 @@ open class PostgreSQLClient(vertx: Vertx, url: String, username: String, passwor
     }
   }
 
-  protected val client: PgPool
+  val client: PgPool
 
   init {
     migrate(url, username, password)
@@ -68,11 +68,11 @@ open class PostgreSQLClient(vertx: Vertx, url: String, username: String, passwor
     client = PgPool.pool(vertx, connectOptions, poolOptions)
   }
 
-  open fun close() {
+  open suspend fun close() {
     client.close()
   }
 
-  protected suspend fun <T> withConnection(block: suspend (SqlConnection) -> T): T {
+  suspend fun <T> withConnection(block: suspend (SqlConnection) -> T): T {
     val connection = client.connection.await()
     try {
       return block(connection)

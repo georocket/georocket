@@ -27,7 +27,7 @@ class H2Store(vertx: Vertx, path: String? = null) : Store {
     map = SharedMVMap.create(actualPath, mapName, compress)
   }
 
-  override fun close() {
+  override suspend fun close() {
     map.close()
   }
 

@@ -47,7 +47,7 @@ class PostgreSQLStore private constructor(vertx: Vertx, url: String,
     }
   }
 
-  override fun close() {
+  override suspend fun close() {
     super<PostgreSQLClient>.close()
   }
 

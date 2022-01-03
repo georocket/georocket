@@ -1,6 +1,5 @@
 package io.georocket.index.mongodb
 
-import com.github.benmanes.caffeine.cache.Caffeine
 import com.mongodb.ConnectionString
 import com.mongodb.client.model.IndexModel
 import com.mongodb.client.model.IndexOptions
@@ -11,12 +10,9 @@ import com.mongodb.reactivestreams.client.MongoCollection
 import com.mongodb.reactivestreams.client.MongoDatabase
 import io.georocket.constants.ConfigConstants.EMBEDDED_MONGODB_STORAGE_PATH
 import io.georocket.constants.ConfigConstants.INDEX_MONGODB_CONNECTION_STRING
+import io.georocket.index.AbstractIndex
 import io.georocket.index.Index
 import io.georocket.storage.ChunkMeta
-import io.georocket.storage.GeoJsonChunkMeta
-import io.georocket.storage.JsonChunkMeta
-import io.georocket.storage.XMLChunkMeta
-import io.georocket.util.MimeTypeUtils
 import io.georocket.util.UniqueID
 import io.georocket.util.aggregateAwait
 import io.georocket.util.coDistinct
@@ -37,9 +33,8 @@ import io.vertx.kotlin.core.json.obj
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.reactive.awaitFirstOrNull
-import java.time.Duration
 
-class MongoDBIndex private constructor() : Index {
+class MongoDBIndex private constructor() : Index, AbstractIndex() {
   companion object {
     private const val INTERNAL_ID = "_id"
     private const val CHUNK_META = "chunkMeta"
@@ -53,23 +48,6 @@ class MongoDBIndex private constructor() : Index {
       r.start(vertx, connectionString, storagePath)
       return r
     }
-
-    /**
-     * A cache used when importing chunk metadata, so that the same objects are
-     * not inserted over and over again
-     */
-    private val addedChunkMetaCache = Caffeine.newBuilder()
-      .maximumSize(1000)
-      .expireAfterAccess(Duration.ofDays(1))
-      .buildAsync<ChunkMeta, String>()
-
-    /**
-     * A cache used when loading chunk metadata by ID
-     */
-    private val loadedChunkMetaCache = Caffeine.newBuilder()
-      .maximumSize(1000)
-      .expireAfterAccess(Duration.ofDays(1))
-      .buildAsync<String, ChunkMeta>()
   }
 
   private lateinit var client: MongoClient
@@ -145,23 +123,6 @@ class MongoDBIndex private constructor() : Index {
       copy
     }
     collDocuments.insertManyAwait(copies)
-  }
-
-  /**
-   * Extract a path string and a [ChunkMeta] object from a given [cm] object
-   */
-  private fun createChunkMeta(cm: JsonObject): ChunkMeta {
-    val mimeType = cm.getString("mimeType", XMLChunkMeta.MIME_TYPE)
-    return if (MimeTypeUtils.belongsTo(mimeType, "application", "xml") ||
-      MimeTypeUtils.belongsTo(mimeType, "text", "xml")) {
-      XMLChunkMeta(cm)
-    } else if (MimeTypeUtils.belongsTo(mimeType, "application", "geo+json")) {
-      GeoJsonChunkMeta(cm)
-    } else if (MimeTypeUtils.belongsTo(mimeType, "application", "json")) {
-      JsonChunkMeta(cm)
-    } else {
-      ChunkMeta(cm)
-    }
   }
 
   override suspend fun getDistinctMeta(query: JsonObject): Flow<ChunkMeta> {

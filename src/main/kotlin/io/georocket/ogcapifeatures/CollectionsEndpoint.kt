@@ -3,9 +3,9 @@ package io.georocket.ogcapifeatures
 import io.georocket.constants.ConfigConstants
 import io.georocket.http.Endpoint
 import io.georocket.index.Index
+import io.georocket.index.IndexFactory
 import io.georocket.index.IndexerFactory
 import io.georocket.index.MetaIndexerFactory
-import io.georocket.index.mongodb.MongoDBIndex
 import io.georocket.output.MultiMerger
 import io.georocket.query.DefaultQueryCompiler
 import io.georocket.storage.Store
@@ -53,7 +53,7 @@ class CollectionsEndpoint(override val coroutineContext: CoroutineContext,
   override suspend fun createRouter(): Router {
     config = vertx.orCreateContext.config()
     store = StoreFactory.createStore(vertx)
-    index = MongoDBIndex.create(vertx)
+    index = IndexFactory.createIndex(vertx)
 
     val router = Router.router(vertx)
     router.get("/").handler(::onGetAll)

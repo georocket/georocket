@@ -53,10 +53,10 @@ georocket:
     # mongodb:
     #   connectionString: mongodb://localhost:27017/georocket?compressors=snappy
 
-    postgresql:
-      url: jdbc:postgresql://localhost:5432/georocket?currentSchema=georocket
-      username: georocket
-      password: georocket
+    # postgresql:
+    #   url: jdbc:postgresql://localhost:5432/georocket?currentSchema=georocket
+    #   username: georocket
+    #   password: georocket
 
     # Configuration for the S3 back-end
     s3:
@@ -71,7 +71,10 @@ georocket:
 
   # Index configuration
   index:
-    # The maximum number of chunks in insert in one bulk
+    driver: mongodb
+    # driver: postgresql
+
+    # The maximum number of chunks to insert in one bulk
     maxBulkSize: 200
 
     # The maximum number of bulk processes to run in parallel. Also affects the
@@ -92,7 +95,12 @@ georocket:
       maxTimeSeconds: 60
 
     mongodb:
-      # connectionString: mongodb://localhost:27017/georocket?compressors=snappy
+      connectionString: mongodb://localhost:27017/georocket?compressors=snappy
+
+    postgresql:
+      url: jdbc:postgresql://localhost:5432/georocket?currentSchema=georocket
+      username: georocket
+      password: georocket
 
   tasks:
     # the maximum number of seconds information about a task should be kept

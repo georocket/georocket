@@ -3,7 +3,6 @@ package io.georocket.index
 import io.georocket.constants.ConfigConstants.DEFAULT_INDEX_MAX_BULK_SIZE
 import io.georocket.constants.ConfigConstants.INDEX_MAX_BULK_SIZE
 import io.georocket.index.geojson.JsonTransformer
-import io.georocket.index.mongodb.MongoDBIndex
 import io.georocket.index.xml.XMLTransformer
 import io.georocket.storage.ChunkMeta
 import io.georocket.storage.IndexMeta
@@ -16,7 +15,6 @@ import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.json.JsonObject
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.collect
 import org.slf4j.LoggerFactory
 import kotlin.coroutines.CoroutineContext
 
@@ -42,7 +40,7 @@ class MainIndexer private constructor(override val coroutineContext: CoroutineCo
   private var maxBulkSize = 0
 
   private suspend fun init() {
-    index = MongoDBIndex.create(vertx)
+    index = IndexFactory.createIndex(vertx)
 
     val config = vertx.orCreateContext.config()
     maxBulkSize = config.getInteger(INDEX_MAX_BULK_SIZE, DEFAULT_INDEX_MAX_BULK_SIZE)

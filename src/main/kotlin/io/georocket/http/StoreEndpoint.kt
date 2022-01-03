@@ -4,11 +4,11 @@ import io.georocket.ServerAPIException
 import io.georocket.constants.AddressConstants
 import io.georocket.constants.ConfigConstants
 import io.georocket.index.Index
+import io.georocket.index.IndexFactory
 import io.georocket.index.IndexerFactory
 import io.georocket.index.MetaIndexerFactory
 import io.georocket.index.PropertiesParser
 import io.georocket.index.TagsParser
-import io.georocket.index.mongodb.MongoDBIndex
 import io.georocket.output.MultiMerger
 import io.georocket.query.DefaultQueryCompiler
 import io.georocket.storage.Store
@@ -87,7 +87,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
     storagePath = vertx.orCreateContext.config()
         .getString(ConfigConstants.STORAGE_FILE_PATH)
 
-    index = MongoDBIndex.create(vertx)
+    index = IndexFactory.createIndex(vertx)
 
     val router = Router.router(vertx)
     router.get("/*").handler(this::onGet)
