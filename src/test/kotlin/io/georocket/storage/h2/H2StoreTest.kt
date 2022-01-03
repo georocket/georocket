@@ -5,6 +5,9 @@ import io.georocket.util.PathUtils
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import io.vertx.junit5.VertxTestContext
+import io.vertx.kotlin.coroutines.dispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -33,8 +36,11 @@ class H2StoreTest : StorageTest() {
    * Release test resources
    */
   @AfterEach
-  fun tearDown() {
-    store.close()
+  fun tearDown(ctx: VertxTestContext, vertx: Vertx) {
+    CoroutineScope(vertx.dispatcher()).launch {
+      store.close()
+      ctx.completeNow()
+    }
   }
 
   override suspend fun createStore(vertx: Vertx): H2Store {

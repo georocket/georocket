@@ -1,8 +1,9 @@
 package io.georocket.index.generic
 
+import io.georocket.query.GeoIntersects
+import io.georocket.query.IndexQuery
 import io.georocket.query.QueryCompiler.MatchPriority
 import io.georocket.query.StringQueryPart
-import io.vertx.core.json.JsonObject
 import org.assertj.core.api.Assertions.assertThat
 import org.geotools.referencing.CRS
 import org.junit.jupiter.api.Test
@@ -112,16 +113,15 @@ class BoundingBoxIndexerFactoryTest {
   }
 
   /**
-   * Test if [jsonQuery] contains correct [coordinates]
+   * Test if [query] contains correct [coordinates]
    */
-  private fun testQuery(jsonQuery: JsonObject?, coordinates: List<Double>) {
-    assertThat(jsonQuery).isNotNull
-    assert(jsonQuery != null)
+  private fun testQuery(query: IndexQuery?, coordinates: List<Double>) {
+    assertThat(query).isNotNull
+    assertThat(query).isInstanceOf(GeoIntersects::class.java)
 
-    val jsonCoords = jsonQuery!!
-      .getJsonObject("bbox")
-      .getJsonObject("\$geoIntersects")
-      .getJsonObject("\$geometry")
+    val giq = query as GeoIntersects
+
+    val jsonCoords = giq.geometry
       .getJsonArray("coordinates")
       .getJsonArray(0)
 

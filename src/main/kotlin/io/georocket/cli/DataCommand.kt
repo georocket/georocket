@@ -6,18 +6,18 @@ import io.georocket.index.IndexFactory
 import io.georocket.index.IndexerFactory
 import io.georocket.index.MetaIndexerFactory
 import io.georocket.query.DefaultQueryCompiler
+import io.georocket.query.IndexQuery
 import io.georocket.storage.Store
 import io.georocket.storage.StoreFactory
 import io.georocket.util.PathUtils
 import io.vertx.core.buffer.Buffer
-import io.vertx.core.json.JsonObject
 import io.vertx.core.streams.WriteStream
 
 /**
  * A command that deals with the [Store] and the [Index]
  */
 abstract class DataCommand : GeoRocketCommand() {
-  protected fun compileQuery(search: String?, layer: String?): JsonObject {
+  protected fun compileQuery(search: String?, layer: String?): IndexQuery {
     return DefaultQueryCompiler(MetaIndexerFactory.ALL + IndexerFactory.ALL)
       .compileQuery(search ?: "", PathUtils.addLeadingSlash(layer ?: ""))
   }

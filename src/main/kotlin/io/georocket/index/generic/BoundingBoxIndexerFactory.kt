@@ -5,6 +5,8 @@ import io.georocket.index.Indexer
 import io.georocket.index.IndexerFactory
 import io.georocket.index.geojson.GeoJsonBoundingBoxIndexer
 import io.georocket.index.xml.XMLBoundingBoxIndexer
+import io.georocket.query.GeoIntersects
+import io.georocket.query.IndexQuery
 import io.georocket.query.QueryCompiler.MatchPriority
 import io.georocket.query.QueryPart
 import io.georocket.query.StringQueryPart
@@ -13,7 +15,6 @@ import io.georocket.util.JsonStreamEvent
 import io.georocket.util.StreamEvent
 import io.georocket.util.XMLStreamEvent
 import io.vertx.core.Vertx
-import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.jsonArrayOf
 import io.vertx.kotlin.core.json.jsonObjectOf
 import org.geotools.referencing.CRS
@@ -68,7 +69,7 @@ class BoundingBoxIndexerFactory : IndexerFactory {
     }
   }
 
-  override fun compileQuery(queryPart: QueryPart): JsonObject? {
+  override fun compileQuery(queryPart: QueryPart): IndexQuery? {
     if (queryPart !is StringQueryPart) {
       return null
     }
@@ -99,19 +100,15 @@ class BoundingBoxIndexerFactory : IndexerFactory {
     val maxX = points[2]
     val maxY = points[3]
 
-    return jsonObjectOf("bbox" to jsonObjectOf(
-      "\$geoIntersects" to jsonObjectOf(
-        "\$geometry" to jsonObjectOf(
-          "type" to "Polygon",
-          "coordinates" to jsonArrayOf(
-            jsonArrayOf(
-              jsonArrayOf(minX, minY),
-              jsonArrayOf(maxX, minY),
-              jsonArrayOf(maxX, maxY),
-              jsonArrayOf(minX, maxY),
-              jsonArrayOf(minX, minY)
-            )
-          )
+    return GeoIntersects("bbox", jsonObjectOf(
+      "type" to "Polygon",
+      "coordinates" to jsonArrayOf(
+        jsonArrayOf(
+          jsonArrayOf(minX, minY),
+          jsonArrayOf(maxX, minY),
+          jsonArrayOf(maxX, maxY),
+          jsonArrayOf(minX, maxY),
+          jsonArrayOf(minX, minY)
         )
       )
     ))

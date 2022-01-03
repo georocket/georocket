@@ -8,6 +8,7 @@ import io.georocket.index.IndexerFactory
 import io.georocket.index.MetaIndexerFactory
 import io.georocket.output.MultiMerger
 import io.georocket.query.DefaultQueryCompiler
+import io.georocket.query.IndexQuery
 import io.georocket.storage.Store
 import io.georocket.storage.StoreFactory
 import io.georocket.util.HttpException
@@ -73,7 +74,7 @@ class CollectionsEndpoint(override val coroutineContext: CoroutineContext,
     index.close()
   }
 
-  private fun compileQuery(search: String?, path: String): JsonObject {
+  private fun compileQuery(search: String?, path: String): IndexQuery {
     return DefaultQueryCompiler(MetaIndexerFactory.ALL + IndexerFactory.ALL)
       .compileQuery(search ?: "", path)
   }

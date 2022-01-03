@@ -12,6 +12,8 @@ import io.georocket.constants.ConfigConstants.EMBEDDED_MONGODB_STORAGE_PATH
 import io.georocket.constants.ConfigConstants.INDEX_MONGODB_CONNECTION_STRING
 import io.georocket.index.AbstractIndex
 import io.georocket.index.Index
+import io.georocket.index.mongodb.MongoDBQueryTranslator.translate
+import io.georocket.query.IndexQuery
 import io.georocket.storage.ChunkMeta
 import io.georocket.util.UniqueID
 import io.georocket.util.aggregateAwait
@@ -125,13 +127,14 @@ class MongoDBIndex private constructor() : Index, AbstractIndex() {
     collDocuments.insertManyAwait(copies)
   }
 
-  override suspend fun getDistinctMeta(query: JsonObject): Flow<ChunkMeta> {
-    return collDocuments.coDistinct(CHUNK_META, query, String::class.java)
+  override suspend fun getDistinctMeta(query: IndexQuery): Flow<ChunkMeta> {
+    return collDocuments.coDistinct(CHUNK_META, translate(query), String::class.java)
       .map { findChunkMeta(it) }
   }
 
-  override suspend fun getMeta(query: JsonObject): Flow<Pair<String, ChunkMeta>> {
-    val results = collDocuments.coFind(query, projection = json {
+  override suspend fun getMeta(query: IndexQuery): Flow<Pair<String, ChunkMeta>> {
+    println(translate(query).encodePrettily())
+    val results = collDocuments.coFind(translate(query), projection = json {
       obj(
         CHUNK_META to 1
       )
@@ -143,8 +146,8 @@ class MongoDBIndex private constructor() : Index, AbstractIndex() {
     }
   }
 
-  override suspend fun getPaths(query: JsonObject): Flow<String> {
-    val results = collDocuments.coFind(query, projection = json {
+  override suspend fun getPaths(query: IndexQuery): Flow<String> {
+    val results = collDocuments.coFind(translate(query), projection = json {
       obj(
         INTERNAL_ID to 1
       )
@@ -152,8 +155,8 @@ class MongoDBIndex private constructor() : Index, AbstractIndex() {
     return results.map { it.getString(INTERNAL_ID) }
   }
 
-  override suspend fun addTags(query: JsonObject, tags: Collection<String>) {
-    collDocuments.updateManyAwait(query, jsonObjectOf(
+  override suspend fun addTags(query: IndexQuery, tags: Collection<String>) {
+    collDocuments.updateManyAwait(translate(query), jsonObjectOf(
       "\$addToSet" to jsonObjectOf(
         "tags" to jsonObjectOf(
           "\$each" to tags
@@ -162,8 +165,8 @@ class MongoDBIndex private constructor() : Index, AbstractIndex() {
     ))
   }
 
-  override suspend fun removeTags(query: JsonObject, tags: Collection<String>) {
-    collDocuments.updateManyAwait(query, jsonObjectOf(
+  override suspend fun removeTags(query: IndexQuery, tags: Collection<String>) {
+    collDocuments.updateManyAwait(translate(query), jsonObjectOf(
       "\$pull" to jsonObjectOf(
         "tags" to jsonObjectOf(
           "\$in" to tags
@@ -172,7 +175,7 @@ class MongoDBIndex private constructor() : Index, AbstractIndex() {
     ))
   }
 
-  override suspend fun setProperties(query: JsonObject, properties: Map<String, Any>) {
+  override suspend fun setProperties(query: IndexQuery, properties: Map<String, Any>) {
     // convert to key-value pairs
     val props = properties.entries.map { e ->
       mapOf("key" to e.key, "value" to e.value)
@@ -182,7 +185,7 @@ class MongoDBIndex private constructor() : Index, AbstractIndex() {
     removeProperties(query, properties.keys)
 
     // now insert them (again or for the first time)
-    collDocuments.updateManyAwait(query, jsonObjectOf(
+    collDocuments.updateManyAwait(translate(query), jsonObjectOf(
       "\$push" to jsonObjectOf(
         "props" to jsonObjectOf(
           "\$each" to props
@@ -191,8 +194,8 @@ class MongoDBIndex private constructor() : Index, AbstractIndex() {
     ))
   }
 
-  override suspend fun removeProperties(query: JsonObject, properties: Collection<String>) {
-    collDocuments.updateManyAwait(query, jsonObjectOf(
+  override suspend fun removeProperties(query: IndexQuery, properties: Collection<String>) {
+    collDocuments.updateManyAwait(translate(query), jsonObjectOf(
       "\$pull" to jsonObjectOf(
         "props" to jsonObjectOf(
           "key" to jsonObjectOf(
@@ -203,9 +206,9 @@ class MongoDBIndex private constructor() : Index, AbstractIndex() {
     ))
   }
 
-  override suspend fun getPropertyValues(query: JsonObject, propertyName: String): Flow<Any?> {
+  override suspend fun getPropertyValues(query: IndexQuery, propertyName: String): Flow<Any?> {
     val result = collDocuments.aggregateAwait(listOf(
-      jsonObjectOf("\$match" to query),
+      jsonObjectOf("\$match" to translate(query)),
       jsonObjectOf("\$unwind" to jsonObjectOf(
         "path" to "\$props"
       )),
@@ -223,9 +226,9 @@ class MongoDBIndex private constructor() : Index, AbstractIndex() {
     return result.map { it.getValue("values") }
   }
 
-  override suspend fun getAttributeValues(query: JsonObject, attributeName: String): Flow<Any?> {
+  override suspend fun getAttributeValues(query: IndexQuery, attributeName: String): Flow<Any?> {
     val result = collDocuments.aggregateAwait(listOf(
-      jsonObjectOf("\$match" to query),
+      jsonObjectOf("\$match" to translate(query)),
       jsonObjectOf("\$unwind" to jsonObjectOf(
         "path" to "\$genAttrs"
       )),
@@ -243,8 +246,8 @@ class MongoDBIndex private constructor() : Index, AbstractIndex() {
     return result.map { it.getValue("values") }
   }
 
-  override suspend fun delete(query: JsonObject) {
-    collDocuments.deleteManyAwait(query)
+  override suspend fun delete(query: IndexQuery) {
+    collDocuments.deleteManyAwait(translate(query))
   }
 
   override suspend fun delete(paths: Collection<String>) {

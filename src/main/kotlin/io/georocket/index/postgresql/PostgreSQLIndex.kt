@@ -3,11 +3,11 @@ package io.georocket.index.postgresql
 import io.georocket.constants.ConfigConstants
 import io.georocket.index.AbstractIndex
 import io.georocket.index.Index
+import io.georocket.query.IndexQuery
 import io.georocket.storage.ChunkMeta
 import io.georocket.util.UniqueID
 import io.georocket.util.getAwait
 import io.vertx.core.Vertx
-import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.coroutines.await
 import io.vertx.sqlclient.Tuple
 import kotlinx.coroutines.flow.Flow
@@ -96,7 +96,7 @@ class PostgreSQLIndex private constructor(vertx: Vertx, url: String,
     client.preparedQuery(statement).executeBatch(params).await()
   }
 
-  override suspend fun getDistinctMeta(query: JsonObject): Flow<ChunkMeta> = flow {
+  override suspend fun getDistinctMeta(query: IndexQuery): Flow<ChunkMeta> = flow {
     // TODO add WHERE!!!!
     val statement = "SELECT DISTINCT $DATA->>'$CHUNK_META' FROM $DOCUMENTS"
     pgClient.withConnection { conn ->
@@ -118,7 +118,7 @@ class PostgreSQLIndex private constructor(vertx: Vertx, url: String,
     }
   }
 
-  override suspend fun getMeta(query: JsonObject): Flow<Pair<String, ChunkMeta>> = flow {
+  override suspend fun getMeta(query: IndexQuery): Flow<Pair<String, ChunkMeta>> = flow {
     // TODO add WHERE!!!!
     val statement = "SELECT $ID, $DATA->>'$CHUNK_META' FROM $DOCUMENTS"
     pgClient.withConnection { conn ->
@@ -140,47 +140,47 @@ class PostgreSQLIndex private constructor(vertx: Vertx, url: String,
     }
   }
 
-  override suspend fun getPaths(query: JsonObject): Flow<String> {
+  override suspend fun getPaths(query: IndexQuery): Flow<String> {
     TODO("Not yet implemented")
   }
 
-  override suspend fun addTags(query: JsonObject, tags: Collection<String>) {
+  override suspend fun addTags(query: IndexQuery, tags: Collection<String>) {
     TODO("Not yet implemented")
   }
 
-  override suspend fun removeTags(query: JsonObject, tags: Collection<String>) {
+  override suspend fun removeTags(query: IndexQuery, tags: Collection<String>) {
     TODO("Not yet implemented")
   }
 
   override suspend fun setProperties(
-    query: JsonObject,
+    query: IndexQuery,
     properties: Map<String, Any>
   ) {
     TODO("Not yet implemented")
   }
 
   override suspend fun removeProperties(
-    query: JsonObject,
+    query: IndexQuery,
     properties: Collection<String>
   ) {
     TODO("Not yet implemented")
   }
 
   override suspend fun getPropertyValues(
-    query: JsonObject,
+    query: IndexQuery,
     propertyName: String
   ): Flow<Any?> {
     TODO("Not yet implemented")
   }
 
   override suspend fun getAttributeValues(
-    query: JsonObject,
+    query: IndexQuery,
     attributeName: String
   ): Flow<Any?> {
     TODO("Not yet implemented")
   }
 
-  override suspend fun delete(query: JsonObject) {
+  override suspend fun delete(query: IndexQuery) {
     TODO("Not yet implemented")
   }
 

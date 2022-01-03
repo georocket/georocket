@@ -11,6 +11,7 @@ import io.georocket.index.PropertiesParser
 import io.georocket.index.TagsParser
 import io.georocket.output.MultiMerger
 import io.georocket.query.DefaultQueryCompiler
+import io.georocket.query.IndexQuery
 import io.georocket.storage.Store
 import io.georocket.storage.StoreFactory
 import io.georocket.tasks.ReceivingTask
@@ -145,7 +146,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
     return te != null && te.lowercase(Locale.getDefault()).contains("trailers")
   }
 
-  private fun compileQuery(search: String?, path: String): JsonObject {
+  private fun compileQuery(search: String?, path: String): IndexQuery {
     return DefaultQueryCompiler(MetaIndexerFactory.ALL + IndexerFactory.ALL)
       .compileQuery(search ?: "", path)
   }

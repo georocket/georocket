@@ -16,10 +16,6 @@ import io.georocket.query.parser.QueryParser.NotContext
 import io.georocket.query.parser.QueryParser.NumberContext
 import io.georocket.query.parser.QueryParser.OrContext
 import io.georocket.query.parser.QueryParser.StringContext
-import io.vertx.core.json.JsonObject
-import io.vertx.kotlin.core.json.array
-import io.vertx.kotlin.core.json.json
-import io.vertx.kotlin.core.json.obj
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import org.antlr.v4.runtime.tree.ParseTreeWalker
@@ -32,36 +28,25 @@ class DefaultQueryCompiler(private val queryCompilers: Collection<QueryCompiler>
   /**
    * Compile a [search] string with an optional chunk [path]
    */
-  fun compileQuery(search: String, path: String?): JsonObject {
+  fun compileQuery(search: String, path: String?): IndexQuery {
     var qb = compileQuery(search)
     if (path != null && path != "/") {
-      qb = json {
-        obj(
-          "\$and" to array(
-            qb,
-            obj(
-              "path" to obj(
-                "\$regex" to "^${path.escapeRegex()}"
-              )
-            )
-          )
-        )
-      }
+      qb = And(qb, StartsWith("path", path))
     }
     return qb
   }
 
-  override fun compileQuery(queryPart: QueryPart): JsonObject? {
+  override fun compileQuery(queryPart: QueryPart): IndexQuery? {
     if (queryPart is StringQueryPart) {
       return compileQuery(queryPart.value)
     }
     return null
   }
 
-  private fun compileQuery(search: String): JsonObject {
+  private fun compileQuery(search: String): IndexQuery {
     if (search.isEmpty()) {
       // match everything by default
-      return JsonObject()
+      return All
     }
 
     // parse query
@@ -74,16 +59,12 @@ class DefaultQueryCompiler(private val queryCompilers: Collection<QueryCompiler>
     val listener = QueryCompilerListener()
     ParseTreeWalker.DEFAULT.walk(listener, ctx)
 
-    val operands = listener.result.firstOrNull() ?: listOf(JsonObject())
+    val operands = listener.result.firstOrNull() ?: listOf(All)
 
     return if (operands.size == 1) {
       operands.first()
     } else {
-      json {
-        obj(
-          "\$or" to operands
-        )
-      }
+      Or(operands)
     }
   }
 
@@ -95,8 +76,8 @@ class DefaultQueryCompiler(private val queryCompilers: Collection<QueryCompiler>
    * Handle a [queryPart]. Pass it to all query compilers and return a
    * MongoDB query.
    */
-  private fun makeQuery(queryPart: QueryPart): JsonObject? {
-    val operands = mutableListOf<JsonObject>()
+  private fun makeQuery(queryPart: QueryPart): IndexQuery? {
+    val operands = mutableListOf<IndexQuery>()
     for (f in queryCompilers) {
       when (f.getQueryPriority(queryPart)) {
         MatchPriority.ONLY -> return f.compileQuery(queryPart)
@@ -106,11 +87,7 @@ class DefaultQueryCompiler(private val queryCompilers: Collection<QueryCompiler>
     }
 
     return if (operands.size > 1) {
-      json {
-        obj(
-          "\$or" to array(operands)
-        )
-      }
+      Or(operands)
     } else {
       operands.first()
     }
@@ -138,7 +115,7 @@ class DefaultQueryCompiler(private val queryCompilers: Collection<QueryCompiler>
     /**
      * A stack holding the result QueryBuilder
      */
-    val result = ArrayDeque<MutableList<JsonObject>>()
+    val result = ArrayDeque<MutableList<IndexQuery>>()
 
     /**
      * An object holding the current key-value pair and its comparator
@@ -165,30 +142,15 @@ class DefaultQueryCompiler(private val queryCompilers: Collection<QueryCompiler>
      * Exit a logical expression
      */
     private fun exitLogical() {
-      val l = currentLogical.removeFirst()
-
-      val (operator, operands) = when (l) {
-        Logical.OR -> "\$or" to result.removeFirst()
-        Logical.AND -> "\$and" to result.removeFirst()
+      val r = when (currentLogical.removeFirst()) {
+        Logical.OR -> Or(result.removeFirst())
+        Logical.AND -> And(result.removeFirst())
         Logical.NOT -> {
           val co = result.removeFirst()
-          "\$not" to if (co.size == 1) {
-            co.first()
-          } else {
-            json {
-              obj(
-                "\$or" to co
-              )
-            }
-          }
+          Not(if (co.size == 1) co.first() else Or(co))
         }
       }
-
-      result.first().add(json {
-        obj(
-          operator to operands
-        )
-      })
+      result.first().add(r)
     }
 
     override fun enterOr(ctx: OrContext) {

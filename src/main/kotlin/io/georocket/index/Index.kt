@@ -1,5 +1,6 @@
 package io.georocket.index
 
+import io.georocket.query.IndexQuery
 import io.georocket.storage.ChunkMeta
 import io.vertx.core.json.JsonObject
 import kotlinx.coroutines.flow.Flow
@@ -11,25 +12,25 @@ interface Index {
 
   suspend fun addMany(docs: Collection<AddManyParam>)
 
-  suspend fun getDistinctMeta(query: JsonObject): Flow<ChunkMeta>
+  suspend fun getDistinctMeta(query: IndexQuery): Flow<ChunkMeta>
 
-  suspend fun getMeta(query: JsonObject): Flow<Pair<String, ChunkMeta>>
+  suspend fun getMeta(query: IndexQuery): Flow<Pair<String, ChunkMeta>>
 
-  suspend fun getPaths(query: JsonObject): Flow<String>
+  suspend fun getPaths(query: IndexQuery): Flow<String>
 
-  suspend fun addTags(query: JsonObject, tags: Collection<String>)
+  suspend fun addTags(query: IndexQuery, tags: Collection<String>)
 
-  suspend fun removeTags(query: JsonObject, tags: Collection<String>)
+  suspend fun removeTags(query: IndexQuery, tags: Collection<String>)
 
-  suspend fun setProperties(query: JsonObject, properties: Map<String, Any>)
+  suspend fun setProperties(query: IndexQuery, properties: Map<String, Any>)
 
-  suspend fun removeProperties(query: JsonObject, properties: Collection<String>)
+  suspend fun removeProperties(query: IndexQuery, properties: Collection<String>)
 
-  suspend fun getPropertyValues(query: JsonObject, propertyName: String): Flow<Any?>
+  suspend fun getPropertyValues(query: IndexQuery, propertyName: String): Flow<Any?>
 
-  suspend fun getAttributeValues(query: JsonObject, attributeName: String): Flow<Any?>
+  suspend fun getAttributeValues(query: IndexQuery, attributeName: String): Flow<Any?>
 
-  suspend fun delete(query: JsonObject)
+  suspend fun delete(query: IndexQuery)
 
   suspend fun delete(paths: Collection<String>)
 

@@ -1,6 +1,7 @@
 package io.georocket.query
 
 import io.georocket.index.generic.DefaultMetaIndexerFactory
+import io.georocket.index.mongodb.MongoDBQueryTranslator
 import io.vertx.core.json.Json
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
@@ -26,7 +27,7 @@ class DefaultQueryCompilerTest {
       Class.forName(it.toString()).getDeclaredConstructor().newInstance() as QueryCompiler }
 
     val compiler = DefaultQueryCompiler(queryCompilers)
-    val compiledQuery = compiler.compileQuery(query, path)
+    val compiledQuery = MongoDBQueryTranslator.translate(compiler.compileQuery(query, path))
 
     if (expected != compiledQuery) {
       println(Json.encodePrettily(compiledQuery))

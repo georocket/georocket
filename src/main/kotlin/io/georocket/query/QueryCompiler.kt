@@ -1,7 +1,5 @@
 package io.georocket.query
 
-import io.vertx.core.json.JsonObject
-
 /**
  * Compiles search strings to MongoDB queries
  * @since 1.0.0
@@ -36,8 +34,8 @@ interface QueryCompiler {
   fun getQueryPriority(queryPart: QueryPart): MatchPriority
 
   /**
-   * Create a MongoDB query for the given GeoRocket query part (may return
+   * Create an index query for the given GeoRocket query part (may return
    * `null` if the given query part is unsupported)
    */
-  fun compileQuery(queryPart: QueryPart): JsonObject?
+  fun compileQuery(queryPart: QueryPart): IndexQuery?
 }

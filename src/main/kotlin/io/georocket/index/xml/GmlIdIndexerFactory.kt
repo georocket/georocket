@@ -2,14 +2,14 @@ package io.georocket.index.xml
 
 import io.georocket.index.Indexer
 import io.georocket.index.IndexerFactory
+import io.georocket.query.Contains
+import io.georocket.query.IndexQuery
 import io.georocket.query.QueryCompiler.MatchPriority
 import io.georocket.query.QueryPart
 import io.georocket.query.QueryPart.ComparisonOperator
 import io.georocket.query.StringQueryPart
 import io.georocket.util.StreamEvent
 import io.georocket.util.XMLStreamEvent
-import io.vertx.core.json.JsonObject
-import io.vertx.kotlin.core.json.jsonObjectOf
 
 /**
  * Create instances of [GmlIdIndexer]
@@ -46,10 +46,10 @@ class GmlIdIndexerFactory : IndexerFactory {
     }
   }
 
-  override fun compileQuery(queryPart: QueryPart): JsonObject? {
+  override fun compileQuery(queryPart: QueryPart): IndexQuery? {
     return if (queryPart is StringQueryPart) {
       if (queryPart.key == null || isGmlIdEQ(queryPart)) {
-        jsonObjectOf("gmlIds" to queryPart.value)
+        Contains("gmlIds", queryPart.value)
       } else {
         null
       }
