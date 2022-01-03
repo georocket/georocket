@@ -242,7 +242,7 @@ class MongoDBIndex private constructor() : Index {
     ))
   }
 
-  override suspend fun getPropertyValues(query: JsonObject, propertyName: String): List<Any?> {
+  override suspend fun getPropertyValues(query: JsonObject, propertyName: String): Flow<Any?> {
     val result = collDocuments.aggregateAwait(listOf(
       jsonObjectOf("\$unwind" to jsonObjectOf(
         "path" to "\$props"
@@ -255,12 +255,13 @@ class MongoDBIndex private constructor() : Index {
         "values" to jsonObjectOf(
           "\$addToSet" to "\$props.value"
         )
-      ))
+      )),
+      jsonObjectOf("\$unwind" to "\$values")
     ))
-    return result.firstOrNull()?.getJsonArray("values")?.list ?: emptyList()
+    return result.map { it.getValue("values") }
   }
 
-  override suspend fun getAttributeValues(query: JsonObject, attributeName: String): List<Any?> {
+  override suspend fun getAttributeValues(query: JsonObject, attributeName: String): Flow<Any?> {
     val result = collDocuments.aggregateAwait(listOf(
       jsonObjectOf("\$unwind" to jsonObjectOf(
         "path" to "\$genAttrs"
@@ -273,9 +274,10 @@ class MongoDBIndex private constructor() : Index {
         "values" to jsonObjectOf(
           "\$addToSet" to "\$genAttrs.value"
         )
-      ))
+      )),
+      jsonObjectOf("\$unwind" to "\$values")
     ))
-    return result[0].getJsonArray("values").list
+    return result.map { it.getValue("values") }
   }
 
   override suspend fun delete(query: JsonObject) {

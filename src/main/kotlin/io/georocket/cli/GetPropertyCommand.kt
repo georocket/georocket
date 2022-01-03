@@ -58,8 +58,8 @@ class GetPropertyCommand : DataCommand() {
     return try {
       val query = compileQuery(query, layer)
       val r = index.getPropertyValues(query, property!!)
-      for (buf in r) {
-        out.write(Buffer.buffer(buf.toString())).await()
+      r.collect { value ->
+        out.write(Buffer.buffer(value.toString())).await()
       }
       0
     } catch (t: Throwable) {

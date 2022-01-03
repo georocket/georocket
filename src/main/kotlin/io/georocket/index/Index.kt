@@ -25,9 +25,9 @@ interface Index {
 
   suspend fun removeProperties(query: JsonObject, properties: Collection<String>)
 
-  suspend fun getPropertyValues(query: JsonObject, propertyName: String): List<Any?>
+  suspend fun getPropertyValues(query: JsonObject, propertyName: String): Flow<Any?>
 
-  suspend fun getAttributeValues(query: JsonObject, attributeName: String): List<Any?>
+  suspend fun getAttributeValues(query: JsonObject, attributeName: String): Flow<Any?>
 
   suspend fun delete(query: JsonObject)
 

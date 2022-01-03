@@ -239,7 +239,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
     val values = index.getAttributeValues(query, attribute)
 
     try {
-      for (v in values) {
+      values.collect { v ->
         if (first) {
           first = false
         } else {
@@ -271,7 +271,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
       val query = compileQuery(search, path)
       val values = index.getPropertyValues(query, property)
 
-      for (v in values) {
+      values.collect { v ->
         if (first) {
           first = false
         } else {

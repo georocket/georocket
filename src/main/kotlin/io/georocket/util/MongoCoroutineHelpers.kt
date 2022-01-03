@@ -53,31 +53,6 @@ private class OneSubscriber<T>(private val cont: CancellableContinuation<T?>) : 
 }
 
 /**
- * A subscriber that requests as many objects as possible and collects them
- * in a list
- * @author Michel Kraemer
- */
-private class CollectionSubscriber<T>(private val cont: CancellableContinuation<List<T>>) : Subscriber<T> {
-  private val result = mutableListOf<T>()
-
-  override fun onComplete() {
-    cont.resume(result)
-  }
-
-  override fun onSubscribe(s: Subscription) {
-    s.request(Long.MAX_VALUE)
-  }
-
-  override fun onNext(t: T) {
-    result.add(t)
-  }
-
-  override fun onError(t: Throwable) {
-    cont.resumeWithException(t)
-  }
-}
-
-/**
  * Converts a function [f] returning a [Publisher] to a coroutine
  */
 private suspend fun <T> wrapCoroutine(f: () -> Publisher<T>): T? {
@@ -150,11 +125,9 @@ fun <T, R : Any> MongoCollection<T>.coDistinct(fieldName: String,
   return d.asFlow()
 }
 
-suspend fun <T> MongoCollection<T>.aggregateAwait(pipeline: List<JsonObject>): List<T> {
-  return suspendCancellableCoroutine { cont: CancellableContinuation<List<T>> ->
-    val f = aggregate(pipeline.map { JsonObjectBsonAdapter(it) }, documentClass)
-    f.subscribe(CollectionSubscriber(cont))
-  }
+fun <T> MongoCollection<T>.aggregateAwait(pipeline: List<JsonObject>): Flow<T> {
+  val f = aggregate(pipeline.map { JsonObjectBsonAdapter(it) }, documentClass)
+  return f.asFlow()
 }
 
 suspend fun <T> MongoCollection<T>.insertOneAwait(document: T) {
