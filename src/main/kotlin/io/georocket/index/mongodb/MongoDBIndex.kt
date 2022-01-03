@@ -244,6 +244,7 @@ class MongoDBIndex private constructor() : Index {
 
   override suspend fun getPropertyValues(query: JsonObject, propertyName: String): Flow<Any?> {
     val result = collDocuments.aggregateAwait(listOf(
+      jsonObjectOf("\$match" to query),
       jsonObjectOf("\$unwind" to jsonObjectOf(
         "path" to "\$props"
       )),
@@ -263,6 +264,7 @@ class MongoDBIndex private constructor() : Index {
 
   override suspend fun getAttributeValues(query: JsonObject, attributeName: String): Flow<Any?> {
     val result = collDocuments.aggregateAwait(listOf(
+      jsonObjectOf("\$match" to query),
       jsonObjectOf("\$unwind" to jsonObjectOf(
         "path" to "\$genAttrs"
       )),
