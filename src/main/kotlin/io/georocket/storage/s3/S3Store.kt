@@ -5,8 +5,6 @@ import io.georocket.storage.Store
 import io.georocket.util.PathUtils
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.future.await
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
@@ -90,7 +88,7 @@ class S3Store(vertx: Vertx, accessKey: String? = null, secretKey: String? = null
     return Buffer.buffer(response.asByteArrayUnsafe())
   }
 
-  override suspend fun delete(paths: Flow<String>): Long {
+  override suspend fun delete(paths: Collection<String>): Long {
     var result = 0L
     val chunk = mutableListOf<String>()
 
@@ -106,7 +104,7 @@ class S3Store(vertx: Vertx, accessKey: String? = null, secretKey: String? = null
       result += dr.deleted().size
     }
 
-    paths.collect { p ->
+    for (p in paths) {
       chunk.add(p)
 
       // only delete 1000 chunks in one request (this is the maximum number

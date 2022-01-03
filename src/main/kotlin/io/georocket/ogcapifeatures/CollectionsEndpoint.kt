@@ -12,6 +12,7 @@ import io.georocket.storage.Store
 import io.georocket.storage.StoreFactory
 import io.georocket.util.HttpException
 import io.georocket.util.PathUtils
+import io.georocket.util.collectChunked
 import io.vertx.core.Vertx
 import io.vertx.core.http.HttpServerResponse
 import io.vertx.core.json.JsonObject
@@ -21,7 +22,7 @@ import io.vertx.ext.web.handler.BodyHandler
 import io.vertx.kotlin.core.json.jsonArrayOf
 import io.vertx.kotlin.core.json.jsonObjectOf
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
@@ -187,8 +188,10 @@ class CollectionsEndpoint(override val coroutineContext: CoroutineContext,
         // delete chunks in the given layer in index and store
         val query = compileQuery(null, "/$name")
         val paths = index.getPaths(query)
-        store.delete(paths)
-        index.delete(query)
+        paths.buffer().collectChunked(10000) { chunk ->
+          index.delete(chunk)
+          store.delete(chunk)
+        }
 
         // delete collection
         index.deleteCollection(name)

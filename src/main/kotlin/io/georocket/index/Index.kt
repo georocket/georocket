@@ -31,6 +31,8 @@ interface Index {
 
   suspend fun delete(query: JsonObject)
 
+  suspend fun delete(paths: Collection<String>)
+
   suspend fun getCollections(): Flow<String>
 
   suspend fun addCollection(name: String)

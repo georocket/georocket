@@ -6,10 +6,12 @@ import de.undercouch.underline.OptionDesc
 import de.undercouch.underline.UnknownAttributes
 import io.georocket.index.Index
 import io.georocket.storage.Store
+import io.georocket.util.collectChunked
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.impl.NoStackTraceThrowable
 import io.vertx.core.streams.WriteStream
 import io.vertx.kotlin.coroutines.await
+import kotlinx.coroutines.flow.buffer
 import org.fusesource.jansi.AnsiConsole
 import org.slf4j.LoggerFactory
 
@@ -56,8 +58,11 @@ class DeleteCommand : DataCommand() {
       val deleted = SpinnerRenderer(vertx, "Deleting").use {
         val query = compileQuery(query, layer)
         val paths = index.getPaths(query)
-        val d = store.delete(paths)
-        index.delete(query)
+        var d = 0L
+        paths.buffer().collectChunked(10000) { chunk ->
+          index.delete(chunk)
+          d += store.delete(chunk)
+        }
         d
       }
       out.write(Buffer.buffer("Successfully deleted $deleted chunks.\n")).await()

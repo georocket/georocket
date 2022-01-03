@@ -18,7 +18,6 @@ import io.georocket.util.insertManyAwait
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import io.vertx.kotlin.core.json.jsonObjectOf
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.reactive.awaitFirstOrNull
 import org.bson.BsonBinary
 import org.bson.BsonDocument
@@ -130,7 +129,7 @@ class MongoDBStore private constructor() : Store {
     }
   }
 
-  override suspend fun delete(paths: Flow<String>): Long {
+  override suspend fun delete(paths: Collection<String>): Long {
     var result = 0L
     var len = 0
     val chunk = mutableListOf<String>()
@@ -144,7 +143,7 @@ class MongoDBStore private constructor() : Store {
       result += dr.deletedCount
     }
 
-    paths.collect { p ->
+    for (p in paths) {
       chunk.add(p)
 
       // keep size of 'chunk' at around 5 MB (16 MB is MongoDB's default

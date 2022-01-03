@@ -7,8 +7,6 @@ import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import io.vertx.kotlin.coroutines.await
 import io.vertx.sqlclient.Tuple
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.collect
 
 class PostgreSQLStore private constructor(vertx: Vertx, url: String,
     username: String, password: String) : Store, PostgreSQLClient(vertx, url, username, password) {
@@ -67,7 +65,7 @@ class PostgreSQLStore private constructor(vertx: Vertx, url: String,
       throw NoSuchElementException("Could not find chunk with path `$path'")
   }
 
-  override suspend fun delete(paths: Flow<String>): Long {
+  override suspend fun delete(paths: Collection<String>): Long {
     var result = 0L
     val chunk = mutableListOf<String>()
 
@@ -79,7 +77,7 @@ class PostgreSQLStore private constructor(vertx: Vertx, url: String,
       result += dr.first().getLong(0)
     }
 
-    paths.collect { p ->
+    for (p in paths) {
       chunk.add(p)
       if (chunk.size == 1000) {
         doDelete()

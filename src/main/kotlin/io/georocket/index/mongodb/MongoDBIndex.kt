@@ -282,6 +282,36 @@ class MongoDBIndex private constructor() : Index {
     collDocuments.deleteManyAwait(query)
   }
 
+  override suspend fun delete(paths: Collection<String>) {
+    var len = 0
+    val chunk = mutableListOf<String>()
+
+    val doDelete = suspend {
+      collDocuments.deleteManyAwait(jsonObjectOf(
+        INTERNAL_ID to jsonObjectOf(
+          "\$in" to chunk
+        )
+      ))
+    }
+
+    for (p in paths) {
+      chunk.add(p)
+
+      // keep size of 'chunk' at around 5 MB (16 MB is MongoDB's default
+      // maximum document size)
+      len += p.length
+      if (len >= 1024 * 1024 * 5) {
+        doDelete()
+        chunk.clear()
+        len = 0
+      }
+    }
+
+    if (chunk.isNotEmpty()) {
+      doDelete()
+    }
+  }
+
   /**
    * Get a list of all collections
    */

@@ -7,8 +7,6 @@ import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.file.OpenOptions
 import io.vertx.kotlin.coroutines.await
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.collect
 import java.io.FileNotFoundException
 
 /**
@@ -56,10 +54,10 @@ class FileStore(private val vertx: Vertx, storagePath: String? = null) : Store {
     return fs.readFile(absolutePath).await()
   }
 
-  override suspend fun delete(paths: Flow<String>): Long {
+  override suspend fun delete(paths: Collection<String>): Long {
     var result = 0L
     val fs = vertx.fileSystem()
-    paths.collect { path ->
+    for (path in paths) {
       val absolutePath = PathUtils.join(root, path)
       if (fs.exists(absolutePath).await()) {
         fs.delete(absolutePath).await()

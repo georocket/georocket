@@ -18,6 +18,7 @@ import io.georocket.tasks.TaskError
 import io.georocket.tasks.TaskRegistry
 import io.georocket.util.MimeTypeUtils.belongsTo
 import io.georocket.util.MimeTypeUtils.detect
+import io.georocket.util.collectChunked
 import io.vertx.core.Promise
 import io.vertx.core.Vertx
 import io.vertx.core.file.OpenOptions
@@ -33,7 +34,7 @@ import io.vertx.kotlin.coroutines.toReceiveChannel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.launch
 import org.antlr.v4.runtime.misc.ParseCancellationException
 import org.apache.commons.lang3.BooleanUtils
@@ -527,8 +528,11 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
         try {
           val query = compileQuery(search, path)
           val paths = index.getPaths(query)
-          val deleted = store.delete(paths)
-          index.delete(query)
+          var deleted = 0L
+          paths.buffer().collectChunked(10000) { chunk ->
+            index.delete(chunk)
+            deleted += store.delete(chunk)
+          }
           if (!answerSent.getAndSet(true)) {
             // All chunks have been deleted within the given timeframe
             response
