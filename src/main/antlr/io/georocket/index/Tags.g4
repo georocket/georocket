@@ -3,18 +3,10 @@ grammar Tags;
 @header {
 package io.georocket.index;
 import org.apache.commons.text.StringEscapeUtils;
+import io.georocket.query.ThrowingErrorListener;
 }
 
 @members {
-  private static class ThrowingErrorListener extends BaseErrorListener {
-    @Override
-    public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol,
-        int line, int charPositionInLine, String msg, RecognitionException e)
-        throws ParseCancellationException {
-      throw new ParseCancellationException("line " + line + ":" + charPositionInLine + " " + msg);
-    }
-  }
-
   public static java.util.List<String> parse(String tags) {
     TagsLexer lexer = new TagsLexer(CharStreams.fromString(tags.trim()));
     lexer.removeErrorListeners();

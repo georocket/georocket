@@ -6,7 +6,8 @@ import io.georocket.index.postgresql.PostgreSQLQueryTranslator
 import io.vertx.core.json.Json
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
-import io.vertx.kotlin.core.json.get
+import org.antlr.v4.runtime.misc.ParseCancellationException
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.Assert
 import org.junit.Test
 
@@ -202,5 +203,13 @@ class DefaultQueryCompilerTest {
   @Test
   fun complex() {
     expectFixture("complex")
+  }
+
+  @Test
+  fun syntaxError() {
+    val compiler = DefaultQueryCompiler(emptyList())
+    assertThatThrownBy {
+      compiler.compileQuery("EQ(name Fraunhofer IGD)", null)
+    }.isInstanceOf(ParseCancellationException::class.java)
   }
 }

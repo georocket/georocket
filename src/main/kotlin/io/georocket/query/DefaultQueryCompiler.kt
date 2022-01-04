@@ -51,8 +51,13 @@ class DefaultQueryCompiler(private val queryCompilers: Collection<QueryCompiler>
 
     // parse query
     val lexer = QueryLexer(CharStreams.fromString(search.trim()))
+    lexer.removeErrorListeners()
+    lexer.addErrorListener(ThrowingErrorListener())
     val tokens = CommonTokenStream(lexer)
     val parser = QueryParser(tokens)
+    parser.removeErrorListeners()
+    parser.addErrorListener(ThrowingErrorListener())
+
     val ctx = parser.query()
 
     // compile query to QueryBuilder
