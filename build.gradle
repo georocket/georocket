@@ -53,7 +53,7 @@ dependencies {
     implementation "io.vertx:vertx-web:$vertxVersion"
     implementation "io.vertx:vertx-web-client:$vertxVersion"
 
-    implementation 'software.amazon.awssdk:s3:2.17.102'
+    implementation 'software.amazon.awssdk:s3:2.17.103'
     implementation 'de.undercouch:actson:1.2.0'
     implementation 'de.undercouch:underline:1.0.0'
     implementation 'com.github.ben-manes.caffeine:caffeine:3.0.5'
