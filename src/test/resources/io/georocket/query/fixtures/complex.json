@@ -52,5 +52,9 @@
         }]
       }
     }]
+  },
+  "expectedPg": {
+    "where": "(((data->'tags' ? $1 OR data->'props' @> $2) AND (data->'tags' ? $3 OR data->'props' @> $4) AND ((data->'tags' ? $5 OR data->'props' @> $6) OR (data->'tags' ? $7 OR data->'props' @> $8))) OR (data->'tags' ? $9 OR data->'props' @> $10) OR NOT ((data->'tags' ? $11 OR data->'props' @> $12) OR (data->'tags' ? $13 OR data->'props' @> $14)))",
+    "params": ["foo", [{"value": "foo"}], "bar", [{"value": "bar"}], "test1", [{"value": "test1"}], "test2", [{"value": "test2"}], "hello", [{"value": "hello"}], "world", [{"value": "world"}], "you", [{"value": "you"}]]
   }
 }

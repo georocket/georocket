@@ -8,5 +8,9 @@
         "props.value": "foo"
       }]
     }
+  },
+  "expectedPg": {
+    "where": "NOT (data->'tags' ? $1 OR data->'props' @> $2)",
+    "params": ["foo", [{"value": "foo"}]]
   }
 }

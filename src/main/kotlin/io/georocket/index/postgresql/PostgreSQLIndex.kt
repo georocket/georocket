@@ -9,6 +9,7 @@ import io.georocket.util.UniqueID
 import io.georocket.util.getAwait
 import io.vertx.core.Vertx
 import io.vertx.kotlin.coroutines.await
+import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.Tuple
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
@@ -96,18 +97,17 @@ class PostgreSQLIndex private constructor(vertx: Vertx, url: String,
     client.preparedQuery(statement).executeBatch(params).await()
   }
 
-  override suspend fun getDistinctMeta(query: IndexQuery): Flow<ChunkMeta> = flow {
-    // TODO add WHERE!!!!
-    val statement = "SELECT DISTINCT $DATA->>'$CHUNK_META' FROM $DOCUMENTS"
+  private suspend fun <T> streamQuery(statement: String, params: List<Any>,
+      readSize: Int = 50, rowToItem: suspend (Row) -> T): Flow<T> = flow {
     pgClient.withConnection { conn ->
       val preparedStatement = conn.prepare(statement).await()
       val transaction = conn.begin().await()
       try {
-        val cursor = preparedStatement.cursor()
+        val cursor = preparedStatement.cursor(Tuple.wrap(params))
         try {
           do {
-            val rows = cursor.read(50).await()
-            emitAll(rows.map { findChunkMeta(it.getString(0)) }.asFlow())
+            val rows = cursor.read(readSize).await()
+            emitAll(rows.map { rowToItem(it) }.asFlow())
           } while (cursor.hasMore())
         } finally {
           cursor.close()
@@ -118,30 +118,26 @@ class PostgreSQLIndex private constructor(vertx: Vertx, url: String,
     }
   }
 
-  override suspend fun getMeta(query: IndexQuery): Flow<Pair<String, ChunkMeta>> = flow {
-    // TODO add WHERE!!!!
-    val statement = "SELECT $ID, $DATA->>'$CHUNK_META' FROM $DOCUMENTS"
-    pgClient.withConnection { conn ->
-      val preparedStatement = conn.prepare(statement).await()
-      val transaction = conn.begin().await()
-      try {
-        val cursor = preparedStatement.cursor()
-        try {
-          do {
-            val rows = cursor.read(50).await()
-            emitAll(rows.map { it.getString(0) to findChunkMeta(it.getString(1)) }.asFlow())
-          } while (cursor.hasMore())
-        } finally {
-          cursor.close()
-        }
-      } finally {
-        transaction.commit()
-      }
-    }
+  override suspend fun getDistinctMeta(query: IndexQuery): Flow<ChunkMeta> {
+    val (where, params) = PostgreSQLQueryTranslator.translate(query)
+    val statement = "SELECT DISTINCT $DATA->>'$CHUNK_META' FROM $DOCUMENTS WHERE $where"
+    println(statement)
+    println(params)
+    return streamQuery(statement, params) { findChunkMeta(it.getString(0)) }
+  }
+
+  override suspend fun getMeta(query: IndexQuery): Flow<Pair<String, ChunkMeta>> {
+    val (where, params) = PostgreSQLQueryTranslator.translate(query)
+    val statement = "SELECT $ID, $DATA->>'$CHUNK_META' FROM $DOCUMENTS WHERE $where"
+    println(statement)
+    println(params)
+    return streamQuery(statement, params) { it.getString(0) to findChunkMeta(it.getString(1)) }
   }
 
   override suspend fun getPaths(query: IndexQuery): Flow<String> {
-    TODO("Not yet implemented")
+    val (where, params) = PostgreSQLQueryTranslator.translate(query)
+    val statement = "SELECT $ID FROM $DOCUMENTS WHERE $where"
+    return streamQuery(statement, params) { it.getString(0) }
   }
 
   override suspend fun addTags(query: IndexQuery, tags: Collection<String>) {
@@ -181,11 +177,18 @@ class PostgreSQLIndex private constructor(vertx: Vertx, url: String,
   }
 
   override suspend fun delete(query: IndexQuery) {
-    TODO("Not yet implemented")
+    val (where, params) = PostgreSQLQueryTranslator.translate(query)
+    val statement = "DELETE FROM $DOCUMENTS WHERE $where"
+    client.preparedQuery(statement).execute(Tuple.from(params)).await()
   }
 
   override suspend fun delete(paths: Collection<String>) {
-    TODO("Not yet implemented")
+    val statement = "DELETE FROM $DOCUMENTS WHERE $ID=ANY($1)"
+    val preparedStatement = client.preparedQuery(statement)
+    for (chunk in paths.chunked(1000)) {
+      val deleteParams = Tuple.of(chunk.toTypedArray())
+      preparedStatement.execute(deleteParams).await()
+    }
   }
 
   override suspend fun getCollections(): Flow<String> {

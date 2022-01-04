@@ -14,5 +14,9 @@
         "props.value": "bar"
       }]
     }]
+  },
+  "expectedPg": {
+    "where": "((data->'tags' ? $1 OR data->'props' @> $2) AND (data->'tags' ? $3 OR data->'props' @> $4))",
+    "params": ["foo", [{"value": "foo"}], "bar", [{"value": "bar"}]]
   }
 }

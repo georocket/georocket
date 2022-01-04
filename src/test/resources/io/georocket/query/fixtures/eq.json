@@ -17,5 +17,9 @@
         }
       }
     }]
+  },
+  "expectedPg": {
+    "where": "(data->'genAttrs' @> $1 OR data->'props' @> $2)",
+    "params": [[{"key": "foo", "value": "bar"}], [{"key": "foo", "value": "bar"}]]
   }
 }

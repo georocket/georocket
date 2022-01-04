@@ -24,5 +24,18 @@
         "props.value": "foobar"
       }]
     }]
+  },
+  "expectedPg": {
+    "where": "(ST_Intersects(ST_GeomFromGeoJSON(data->'bbox'), ST_GeomFromGeoJSON($1::jsonb)) OR (data->'tags' ? $2 OR data->'props' @> $3))",
+    "params": [{
+      "type": "Polygon",
+      "coordinates": [[
+        [1.0, 2.0],
+        [3.0, 2.0],
+        [3.0, 4.0],
+        [1.0, 4.0],
+        [1.0, 2.0]
+      ]]
+    }, "foobar", [{"value": "foobar"}]]
   }
 }

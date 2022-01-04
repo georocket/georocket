@@ -21,5 +21,9 @@
         }
       }
     }]
+  },
+  "expectedPg": {
+    "where": "(EXISTS (SELECT FROM jsonb_array_elements(data->'genAttrs') a WHERE a->'key' = $1 AND a->'value' > $2) OR EXISTS (SELECT FROM jsonb_array_elements(data->'props') a WHERE a->'key' = $3 AND a->'value' > $4))",
+    "params": ["foo", "12", "foo", "12"]
   }
 }

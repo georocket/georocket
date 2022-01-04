@@ -2,9 +2,11 @@ package io.georocket.query
 
 import io.georocket.index.generic.DefaultMetaIndexerFactory
 import io.georocket.index.mongodb.MongoDBQueryTranslator
+import io.georocket.index.postgresql.PostgreSQLQueryTranslator
 import io.vertx.core.json.Json
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
+import io.vertx.kotlin.core.json.get
 import org.junit.Assert
 import org.junit.Test
 
@@ -20,6 +22,7 @@ class DefaultQueryCompilerTest {
     val query = fixtureObj.getString("query")
     val path = fixtureObj.getString("path")
     val expected = fixtureObj.getJsonObject("expected")
+    val expectedPg = fixtureObj.getJsonObject("expectedPg")
     val queryCompilersArr = fixtureObj.getJsonArray("queryCompilers", JsonArray())
     queryCompilersArr.add(DefaultMetaIndexerFactory::class.java.name)
 
@@ -27,13 +30,26 @@ class DefaultQueryCompilerTest {
       Class.forName(it.toString()).getDeclaredConstructor().newInstance() as QueryCompiler }
 
     val compiler = DefaultQueryCompiler(queryCompilers)
-    val compiledQuery = MongoDBQueryTranslator.translate(compiler.compileQuery(query, path))
+    val compiledQuery = compiler.compileQuery(query, path)
+    val compiledQueryMongo = MongoDBQueryTranslator.translate(compiledQuery)
 
-    if (expected != compiledQuery) {
-      println(Json.encodePrettily(compiledQuery))
+    if (expected != compiledQueryMongo) {
+      println(Json.encodePrettily(compiledQueryMongo))
     }
+    Assert.assertEquals(expected, compiledQueryMongo)
 
-    Assert.assertEquals(expected, compiledQuery)
+    val (compiledQueryPgWhere, compiledQueryPgParams) =
+      PostgreSQLQueryTranslator.translate(compiledQuery)
+
+    if (expectedPg.getString("where") != compiledQueryPgWhere) {
+      println(compiledQueryPgWhere)
+    }
+    Assert.assertEquals(expectedPg.getString("where"), compiledQueryPgWhere)
+
+    if (expectedPg.getJsonArray("params") != JsonArray(compiledQueryPgParams)) {
+      println(compiledQueryPgParams)
+    }
+    Assert.assertEquals(expectedPg.getJsonArray("params"), JsonArray(compiledQueryPgParams))
   }
 
   /**

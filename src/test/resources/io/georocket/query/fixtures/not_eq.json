@@ -9,5 +9,9 @@
         }
       }
     }
+  },
+  "expectedPg": {
+    "where": "NOT data->'props' @> $1",
+    "params": [[{"key": "foo", "value": "bar"}]]
   }
 }

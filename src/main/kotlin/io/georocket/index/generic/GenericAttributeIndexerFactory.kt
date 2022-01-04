@@ -11,7 +11,6 @@ import io.georocket.query.IndexQuery
 import io.georocket.query.LongQueryPart
 import io.georocket.query.QueryCompiler.MatchPriority
 import io.georocket.query.QueryPart
-import io.georocket.query.QueryPart.ComparisonOperator
 import io.georocket.query.QueryPart.ComparisonOperator.EQ
 import io.georocket.query.StringQueryPart
 import io.georocket.util.JsonStreamEvent
