@@ -16,7 +16,7 @@ import org.apache.commons.text.StringEscapeUtils;
   }
 
   public static java.util.List<String> parse(String tags) {
-    TagsLexer lexer = new TagsLexer(new ANTLRInputStream(tags.trim()));
+    TagsLexer lexer = new TagsLexer(CharStreams.fromString(tags.trim()));
     lexer.removeErrorListeners();
     lexer.addErrorListener(new ThrowingErrorListener());
     CommonTokenStream tokens = new CommonTokenStream(lexer);

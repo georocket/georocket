@@ -90,9 +90,10 @@ class S3Store(vertx: Vertx, accessKey: String? = null, secretKey: String? = null
 
   override suspend fun delete(paths: Collection<String>): Long {
     var result = 0L
-    val chunk = mutableListOf<String>()
 
-    val doDelete = suspend {
+    // only delete 1000 chunks in one request (this is the maximum number
+    // specified by the S3 API)
+    for (chunk in paths.chunked(1000)) {
       val identifiers = chunk.map { ObjectIdentifier.builder().key(it).build() }
       val deleteObjectsRequest = DeleteObjectsRequest.builder()
         .bucket(bucket)
@@ -102,21 +103,6 @@ class S3Store(vertx: Vertx, accessKey: String? = null, secretKey: String? = null
         .build()
       val dr = s3.deleteObjects(deleteObjectsRequest).await()
       result += dr.deleted().size
-    }
-
-    for (p in paths) {
-      chunk.add(p)
-
-      // only delete 1000 chunks in one request (this is the maximum number
-      // specified by the S3 API)
-      if (chunk.size == 1000) {
-        doDelete()
-        chunk.clear()
-      }
-    }
-
-    if (chunk.isNotEmpty()) {
-      doDelete()
     }
 
     return result

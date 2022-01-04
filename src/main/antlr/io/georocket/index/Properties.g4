@@ -16,7 +16,7 @@ import org.apache.commons.text.StringEscapeUtils;
   }
 
   public static java.util.Map<String, Object> parse(String properties) {
-    PropertiesLexer lexer = new PropertiesLexer(new ANTLRInputStream(properties.trim()));
+    PropertiesLexer lexer = new PropertiesLexer(CharStreams.fromString(properties.trim()));
     lexer.removeErrorListeners();
     lexer.addErrorListener(new ThrowingErrorListener());
     CommonTokenStream tokens = new CommonTokenStream(lexer);
