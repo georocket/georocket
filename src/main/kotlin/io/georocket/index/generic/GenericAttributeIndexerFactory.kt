@@ -50,7 +50,7 @@ class GenericAttributeIndexerFactory : IndexerFactory {
             Compare("value", queryPart.value, queryPart.comparisonOperator ?: EQ)
           )
         } else {
-          ElemMatch("props",
+          ElemMatch("genAttrs",
             Compare("value", queryPart.value, EQ)
           )
         }
