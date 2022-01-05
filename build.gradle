@@ -59,7 +59,7 @@ dependencies {
     implementation 'com.github.ben-manes.caffeine:caffeine:3.0.5'
     implementation 'com.google.guava:guava:31.0.1-jre'
     implementation 'com.fasterxml:aalto-xml:1.3.0'
-    implementation 'com.h2database:h2:2.0.204'
+    implementation 'com.h2database:h2:2.0.206'
     implementation 'com.vividsolutions:jts:1.13'
     implementation 'commons-io:commons-io:2.11.0'
     implementation "com.fasterxml.jackson.module:jackson-module-kotlin:2.13.1"
