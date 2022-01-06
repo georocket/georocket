@@ -133,7 +133,6 @@ class MongoDBIndex private constructor() : Index, AbstractIndex() {
   }
 
   override suspend fun getMeta(query: IndexQuery): Flow<Pair<String, ChunkMeta>> {
-    println(translate(query).encodePrettily())
     val results = collDocuments.coFind(translate(query), projection = json {
       obj(
         CHUNK_META to 1

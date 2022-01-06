@@ -8,6 +8,9 @@ import io.georocket.storage.ChunkMeta
 import io.georocket.util.UniqueID
 import io.georocket.util.getAwait
 import io.vertx.core.Vertx
+import io.vertx.core.json.JsonArray
+import io.vertx.kotlin.core.json.jsonArrayOf
+import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.coroutines.await
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.Tuple
@@ -26,6 +29,8 @@ class PostgreSQLIndex private constructor(vertx: Vertx, url: String,
     private const val DOCUMENTS = "documents"
     private const val ID = "id"
     private const val DATA = "data"
+    private const val TAGS = "tags"
+    private const val PROPS = "props"
 
     suspend fun create(vertx: Vertx, url: String? = null, username: String? = null,
         password: String? = null): PostgreSQLIndex {
@@ -121,16 +126,12 @@ class PostgreSQLIndex private constructor(vertx: Vertx, url: String,
   override suspend fun getDistinctMeta(query: IndexQuery): Flow<ChunkMeta> {
     val (where, params) = PostgreSQLQueryTranslator.translate(query)
     val statement = "SELECT DISTINCT $DATA->>'$CHUNK_META' FROM $DOCUMENTS WHERE $where"
-    println(statement)
-    println(params)
     return streamQuery(statement, params) { findChunkMeta(it.getString(0)) }
   }
 
   override suspend fun getMeta(query: IndexQuery): Flow<Pair<String, ChunkMeta>> {
     val (where, params) = PostgreSQLQueryTranslator.translate(query)
     val statement = "SELECT $ID, $DATA->>'$CHUNK_META' FROM $DOCUMENTS WHERE $where"
-    println(statement)
-    println(params)
     return streamQuery(statement, params) { it.getString(0) to findChunkMeta(it.getString(1)) }
   }
 
@@ -141,25 +142,67 @@ class PostgreSQLIndex private constructor(vertx: Vertx, url: String,
   }
 
   override suspend fun addTags(query: IndexQuery, tags: Collection<String>) {
-    TODO("Not yet implemented")
+    val (where, params) = PostgreSQLQueryTranslator.translate(query)
+    val n = params.size
+    val statement = "UPDATE $DOCUMENTS SET " +
+        "$DATA = jsonb_set(" +
+          "$DATA, '{$TAGS}', to_jsonb(" +
+            "ARRAY(" +
+              "SELECT DISTINCT jsonb_array_elements(" +
+                "COALESCE($DATA->'$TAGS', '[]'::jsonb) || $${n + 1}" +
+              ")" +
+            ")" +
+          ")" +
+        ") WHERE $where"
+    val paramsList = params.toMutableList()
+    paramsList.add(JsonArray(tags.toList()))
+    client.preparedQuery(statement).execute(Tuple.wrap(paramsList)).await()
   }
 
   override suspend fun removeTags(query: IndexQuery, tags: Collection<String>) {
-    TODO("Not yet implemented")
+    val (where, params) = PostgreSQLQueryTranslator.translate(query)
+    val n = params.size
+    val statement = "UPDATE $DOCUMENTS SET $DATA = jsonb_set($DATA, '{$TAGS}', " +
+        "($DATA->'$TAGS')::jsonb - $${n + 1}::text[]) WHERE $where"
+    val paramsList = params.toMutableList()
+    paramsList.add(tags.toTypedArray())
+    client.preparedQuery(statement).execute(Tuple.wrap(paramsList)).await()
   }
 
-  override suspend fun setProperties(
-    query: IndexQuery,
-    properties: Map<String, Any>
-  ) {
-    TODO("Not yet implemented")
+  override suspend fun setProperties(query: IndexQuery, properties: Map<String, Any>) {
+    // convert to JSON array
+    val props = jsonArrayOf()
+    properties.entries.forEach { e ->
+      props.add(jsonObjectOf("key" to e.key, "value" to e.value)) }
+
+    // remove properties with these keys (if they exist)
+    removeProperties(query, properties.keys)
+
+    val (where, params) = PostgreSQLQueryTranslator.translate(query)
+    val n = params.size
+    val statement = "UPDATE $DOCUMENTS SET $DATA = jsonb_set(" +
+          "$DATA, '{$PROPS}', $DATA->'$PROPS' || $${n + 1}" +
+        ") WHERE $where"
+    val paramsList = params.toMutableList()
+    paramsList.add(props)
+    client.preparedQuery(statement).execute(Tuple.wrap(paramsList)).await()
   }
 
-  override suspend fun removeProperties(
-    query: IndexQuery,
-    properties: Collection<String>
-  ) {
-    TODO("Not yet implemented")
+  override suspend fun removeProperties(query: IndexQuery, properties: Collection<String>) {
+    val (where, params) = PostgreSQLQueryTranslator.translate(query)
+    val n = params.size
+    val statement = "UPDATE $DOCUMENTS SET " +
+        "$DATA = jsonb_set(" +
+          "$DATA, '{$PROPS}', to_jsonb(" +
+            "ARRAY(" +
+              "WITH a AS (SELECT jsonb_array_elements($DATA->'$PROPS') as c) " +
+              "SELECT * FROM a WHERE c->>'key' != ANY($${n + 1})" +
+            ")" +
+          ")" +
+        ") WHERE $where"
+    val paramsList = params.toMutableList()
+    paramsList.add(properties.toTypedArray())
+    client.preparedQuery(statement).execute(Tuple.wrap(paramsList)).await()
   }
 
   override suspend fun getPropertyValues(
@@ -169,11 +212,8 @@ class PostgreSQLIndex private constructor(vertx: Vertx, url: String,
     TODO("Not yet implemented")
   }
 
-  override suspend fun getAttributeValues(
-    query: IndexQuery,
-    attributeName: String
-  ): Flow<Any?> {
-    TODO("Not yet implemented")
+  override suspend fun getAttributeValues(query: IndexQuery, attributeName: String): Flow<Any?> {
+    TODO()
   }
 
   override suspend fun delete(query: IndexQuery) {
