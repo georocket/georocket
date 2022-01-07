@@ -27,10 +27,15 @@ class PostgreSQLIndex private constructor(vertx: Vertx, url: String,
      */
     private const val CHUNK_META = "chunkMeta"
     private const val DOCUMENTS = "documents"
+    private const val COLLECTIONS = "ogcapifeatures_collections"
     private const val ID = "id"
     private const val DATA = "data"
     private const val TAGS = "tags"
     private const val PROPS = "props"
+    private const val GENATTRS = "genAttrs"
+    private const val KEY = "key"
+    private const val VALUE = "value"
+    private const val NAME = "name"
 
     suspend fun create(vertx: Vertx, url: String? = null, username: String? = null,
         password: String? = null): PostgreSQLIndex {
@@ -173,7 +178,7 @@ class PostgreSQLIndex private constructor(vertx: Vertx, url: String,
     // convert to JSON array
     val props = jsonArrayOf()
     properties.entries.forEach { e ->
-      props.add(jsonObjectOf("key" to e.key, "value" to e.value)) }
+      props.add(jsonObjectOf(KEY to e.key, VALUE to e.value)) }
 
     // remove properties with these keys (if they exist)
     removeProperties(query, properties.keys)
@@ -195,8 +200,8 @@ class PostgreSQLIndex private constructor(vertx: Vertx, url: String,
         "$DATA = jsonb_set(" +
           "$DATA, '{$PROPS}', to_jsonb(" +
             "ARRAY(" +
-              "WITH a AS (SELECT jsonb_array_elements($DATA->'$PROPS') as c) " +
-              "SELECT * FROM a WHERE c->>'key' != ANY($${n + 1})" +
+              "WITH a AS (SELECT jsonb_array_elements($DATA->'$PROPS') AS c) " +
+              "SELECT * FROM a WHERE c->>'$KEY' != ANY($${n + 1})" +
             ")" +
           ")" +
         ") WHERE $where"
@@ -205,15 +210,26 @@ class PostgreSQLIndex private constructor(vertx: Vertx, url: String,
     client.preparedQuery(statement).execute(Tuple.wrap(paramsList)).await()
   }
 
-  override suspend fun getPropertyValues(
-    query: IndexQuery,
-    propertyName: String
-  ): Flow<Any?> {
-    TODO("Not yet implemented")
+  override suspend fun getPropertyValues(query: IndexQuery, propertyName: String): Flow<Any?> {
+    val (where, params) = PostgreSQLQueryTranslator.translate(query)
+    val n = params.size
+    val statement = "WITH p AS (SELECT jsonb_array_elements($DATA->'$PROPS') " +
+        "AS a FROM $DOCUMENTS WHERE $where) " +
+        "SELECT DISTINCT a->'$VALUE' FROM p WHERE a->'$KEY'=$${n + 1}"
+    val paramsList = params.toMutableList()
+    paramsList.add(propertyName)
+    return streamQuery(statement, paramsList) { it.getValue(0) }
   }
 
   override suspend fun getAttributeValues(query: IndexQuery, attributeName: String): Flow<Any?> {
-    TODO()
+    val (where, params) = PostgreSQLQueryTranslator.translate(query)
+    val n = params.size
+    val statement = "WITH p AS (SELECT jsonb_array_elements($DATA->'$GENATTRS') " +
+        "AS a FROM $DOCUMENTS WHERE $where) " +
+        "SELECT DISTINCT a->'$VALUE' FROM p WHERE a->'$KEY'=$${n + 1}"
+    val paramsList = params.toMutableList()
+    paramsList.add(attributeName)
+    return streamQuery(statement, paramsList) { it.getValue(0) }
   }
 
   override suspend fun delete(query: IndexQuery) {
@@ -232,18 +248,23 @@ class PostgreSQLIndex private constructor(vertx: Vertx, url: String,
   }
 
   override suspend fun getCollections(): Flow<String> {
-    TODO("Not yet implemented")
+    val statement = "SELECT $NAME FROM $COLLECTIONS"
+    return streamQuery(statement, emptyList()) { it.getString(0) }
   }
 
   override suspend fun addCollection(name: String) {
-    TODO("Not yet implemented")
+    val statement = "INSERT INTO $COLLECTIONS ($NAME) VALUES ($1)"
+    client.preparedQuery(statement).execute(Tuple.of(name)).await()
   }
 
   override suspend fun existsCollection(name: String): Boolean {
-    TODO("Not yet implemented")
+    val statement = "SELECT TRUE FROM $COLLECTIONS WHERE $NAME=$1"
+    val r = client.preparedQuery(statement).execute(Tuple.of(name)).await()
+    return r.size() > 0
   }
 
   override suspend fun deleteCollection(name: String) {
-    TODO("Not yet implemented")
+    val statement = "DELETE FROM $COLLECTIONS WHERE $NAME=$1"
+    client.preparedQuery(statement).execute(Tuple.of(name)).await()
   }
 }
