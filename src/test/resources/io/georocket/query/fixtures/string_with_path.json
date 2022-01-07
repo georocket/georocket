@@ -15,7 +15,7 @@
     }]
   },
   "expectedPg": {
-    "where": "((data->'tags' ? $1 OR data->'props' @> $2) AND data->'path' LIKE $3)",
+    "where": "((data->'tags' ? $1 OR data->'props' @> $2) AND (data->'path')::text LIKE $3)",
     "params": ["bla", [{"value": "bla"}], "/mypath%"]
   }
 }
