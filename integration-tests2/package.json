@@ -7,7 +7,10 @@
   "scripts": {
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test-h2": "npm run test -- tests/h2.test.js",
-    "test-mongo": "npm run test -- tests/mongo.test.js"
+    "test-mongo": "npm run test -- tests/mongo.test.js",
+    "test-postgresql": "npm run test -- tests/postgresql.test.js",
+    "test-s3": "npm run test -- tests/s3.test.js",
+    "test-standalone": "npm run test -- tests/standalone.test.js"
   },
   "author": "Michel Kraemer",
   "license": "Apache-2.0",
@@ -16,6 +19,7 @@
     "fast-xml-parser": "^4.0.0",
     "fs-extra": "^10.0.0",
     "jest": "^27.4.7",
+    "minio": "^7.0.25",
     "testcontainers": "^8.1.2"
   }
 }

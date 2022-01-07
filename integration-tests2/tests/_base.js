@@ -4,20 +4,19 @@ import json from "./_json.js"
 import xml from "./_xml.js"
 
 function setup(mode) {
-  let environment
   let ctx = {}
 
   beforeAll(async () => {
-    environment = await new DockerComposeEnvironment(".", `docker-compose-${mode}.yml`).up()
-    
-    let georocket = environment.getContainer("georocket_1")
+    ctx.environment = await new DockerComposeEnvironment(".", `docker-compose-${mode}.yml`).up()
+
+    let georocket = ctx.environment.getContainer("georocket_1")
     ctx.request = axios.create({
       baseURL: `http://${georocket.getHost()}:${georocket.getMappedPort(63020)}`
     })
   })
 
   afterAll(async () => {
-    await environment?.down()
+    await ctx.environment?.down()
   })
 
   it("returns version info", async () => {
@@ -37,6 +36,8 @@ function setup(mode) {
 
   json(ctx)
   xml(ctx)
+
+  return ctx
 }
 
 export default setup
