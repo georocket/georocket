@@ -14,6 +14,7 @@ import io.georocket.query.DefaultQueryCompiler
 import io.georocket.query.IndexQuery
 import io.georocket.storage.Store
 import io.georocket.storage.StoreFactory
+import io.georocket.tasks.ImportingTask
 import io.georocket.tasks.ReceivingTask
 import io.georocket.tasks.TaskError
 import io.georocket.tasks.TaskRegistry
@@ -320,6 +321,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
     val tagsStr = request.getParam("tags")
     val propertiesStr = request.getParam("properties")
     val fallbackCRSString = request.getParam("fallbackCRS")
+    val await = BooleanUtils.toBoolean(request.getParam("await"))
 
     val tags = if (StringUtils.isNotEmpty(tagsStr)) TagsParser.parse(tagsStr) else null
 
@@ -421,13 +423,27 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
         }
 
         // run importer
-        vertx.eventBus().send(AddressConstants.IMPORTER_IMPORT, msg)
+        val taskId = vertx.eventBus().request<String>(AddressConstants.IMPORTER_IMPORT, msg).await().body()
 
-        request.response()
-            .setStatusCode(202) // Accepted
+        if (await) {
+          while (true) {
+            val t = (TaskRegistry.getById(taskId) ?: break) as ImportingTask
+            if (t.bytesProcessed >= t.bytesTotal) {
+              break
+            }
+            delay(100)
+          }
+          request.response()
+            .setStatusCode(204) // No Content
             .putHeader("X-Correlation-Id", correlationId)
-            .setStatusMessage("Accepted file - importing in progress")
             .end()
+        } else {
+          request.response()
+              .setStatusCode(202) // Accepted
+              .putHeader("X-Correlation-Id", correlationId)
+              .setStatusMessage("Accepted file - importing in progress")
+              .end()
+        }
       } catch (t: Throwable) {
         val duration = System.currentTimeMillis() - startTime
         onReceivingFileFinished(receivingTask, duration, t)
