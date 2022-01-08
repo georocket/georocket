@@ -8,7 +8,6 @@ import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -27,9 +26,9 @@ class XMLTransformerTest {
      */
     private const val XMLHEADER =
       "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n"
-    private const val XML_CHUNK1 = "$XMLHEADER<test>"
+    private const val XML_CHUNK1 = "<test>"
     private const val XML_CHUNK2 = "</test>"
-    private const val XML = XML_CHUNK1 + XML_CHUNK2
+    private const val XML = XMLHEADER + XML_CHUNK1 + XML_CHUNK2
 
     /**
      * The expected events
@@ -80,7 +79,7 @@ class XMLTransformerTest {
     CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
         val t = XMLTransformer()
-        for (c in listOf(XML_CHUNK1, XML_CHUNK2)) {
+        for (c in listOf(XMLHEADER, XML_CHUNK1, XML_CHUNK2)) {
           t.transformChunk(Buffer.buffer(c)).collect { onEvent(it) }
         }
         t.finish().collect { onEvent(it) }

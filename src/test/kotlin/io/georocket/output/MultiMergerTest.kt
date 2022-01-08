@@ -43,19 +43,20 @@ class MultiMergerTest {
           m.merge(chunk, meta, bws)
         }
         m.finish(bws)
-        assertThat(contents).isEqualTo(bws.buffer.toString("utf-8"))
+        assertThat(bws.buffer.toString("utf-8")).isEqualTo(contents)
       }
       ctx.completeNow()
     }
   }
 
   /**
-   * Test if one GeoJSON geometry is rendered directly
+   * Test if one GeoJSON geometry is rendered into a geometry collection
    */
   @Test
   fun geoJsonOneGeometry(vertx: Vertx, ctx: VertxTestContext) {
-    val strChunk1 = """{"type":"Polygon"}"""
-    val chunk1 = Buffer.buffer(strChunk1)
+    val geometry = """{"type":"Polygon"}"""
+    val strChunk1 = """{"type":"GeometryCollection","geometries":[$geometry]}"""
+    val chunk1 = Buffer.buffer(geometry)
     val cm1 = GeoJsonChunkMeta("Polygon", "geometries")
 
     doMerge(vertx, ctx, listOf(chunk1), listOf(cm1), strChunk1)

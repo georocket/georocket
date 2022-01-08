@@ -1,20 +1,27 @@
 package io.georocket.storage.mongodb
 
 import com.mongodb.reactivestreams.client.MongoClients
-import com.mongodb.reactivestreams.client.gridfs.GridFSBuckets
 import io.georocket.storage.StorageTest
 import io.georocket.storage.Store
 import io.georocket.util.PathUtils
+import io.georocket.util.insertOneAwait
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxTestContext
-import kotlinx.coroutines.reactive.awaitFirst
+import io.vertx.kotlin.coroutines.dispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.reactive.asFlow
+import kotlinx.coroutines.reactive.awaitFirstOrNull
 import kotlinx.coroutines.reactive.awaitSingle
 import org.assertj.core.api.Assertions.assertThat
+import org.bson.BsonBinary
+import org.bson.BsonDocument
+import org.bson.BsonInt32
+import org.bson.BsonString
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeAll
-import reactor.core.publisher.Mono
-import java.nio.ByteBuffer
 
 /**
  * Test [MongoDBStore]
@@ -47,10 +54,13 @@ class MongoDBStoreTest : StorageTest() {
    * Uninitialize tests
    */
   @AfterEach
-  fun tearDown() {
-    return MongoClients.create(mongoConnector.connectionString).use { client ->
-      val db = client.getDatabase(mongoConnector.connectionString.database)
-      db.drop()
+  fun tearDown(ctx: VertxTestContext, vertx: Vertx) {
+    CoroutineScope(vertx.dispatcher()).launch {
+      MongoClients.create(mongoConnector.connectionString).use { client ->
+        val db = client.getDatabase(mongoConnector.connectionString.database)
+        db.drop().awaitFirstOrNull()
+        ctx.completeNow()
+      }
     }
   }
 
@@ -63,9 +73,12 @@ class MongoDBStoreTest : StorageTest() {
     val filename = PathUtils.join(path, ID)
     return MongoClients.create(mongoConnector.connectionString).use { client ->
       val db = client.getDatabase(mongoConnector.connectionString.database)
-      val gridFS = GridFSBuckets.create(db)
-      val contents = ByteBuffer.wrap(CHUNK_CONTENT.toByteArray())
-      gridFS.uploadFromPublisher(filename, Mono.just(contents)).awaitSingle()
+      val chunks = db.getCollection("chunks", BsonDocument::class.java)
+      val doc = BsonDocument()
+      doc["filename"] = BsonString(filename)
+      doc["n"] = BsonInt32(0)
+      doc["data"] = BsonBinary(CHUNK_CONTENT.toByteArray())
+      chunks.insertOneAwait(doc)
       filename
     }
   }
@@ -74,12 +87,11 @@ class MongoDBStoreTest : StorageTest() {
       path: String?) {
     MongoClients.create(mongoConnector.connectionString).use { client ->
       val db = client.getDatabase(mongoConnector.connectionString.database)
-      val gridFS = GridFSBuckets.create(db)
-      val files = gridFS.find()
-      val file = files.awaitFirst()
-      val publisher = gridFS.downloadToPublisher(file.filename)
-      val bytebuf = publisher.awaitSingle()
-      val contents = String(bytebuf.array())
+      val chunks = db.getCollection("chunks", BsonDocument::class.java)
+      val files = chunks.find().asFlow().toList()
+      assertThat(files).hasSize(1)
+      val file = files.first()
+      val contents = String(file.getBinary("data").data)
       assertThat(contents).isEqualTo(CHUNK_CONTENT)
     }
   }
@@ -88,8 +100,8 @@ class MongoDBStoreTest : StorageTest() {
       vertx: Vertx, path: String) {
     MongoClients.create(mongoConnector.connectionString).use { client ->
       val db = client.getDatabase(mongoConnector.connectionString.database)
-      val filesCollection = db.getCollection("fs.files")
-      val count = filesCollection.countDocuments().awaitSingle()
+      val chunks = db.getCollection("chunks")
+      val count = chunks.countDocuments().awaitSingle()
       assertThat(count).isEqualTo(0)
     }
   }

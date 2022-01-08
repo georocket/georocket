@@ -90,11 +90,13 @@ class StoreEndpointTest {
   @Test
   fun getSingleChunk(vertx: Vertx, ctx: VertxTestContext) {
     val strChunk1 = """{"type":"Polygon"}"""
+    val expected = """{"type":"GeometryCollection","geometries":[$strChunk1]}"""
     val chunk1 = Buffer.buffer(strChunk1)
     val chunk1Path = "/foobar"
 
     val cm = GeoJsonChunkMeta("Polygon", "geometries")
 
+    coEvery { index.getDistinctMeta(any()) } returns listOf(cm).asFlow()
     coEvery { index.getMeta(any()) } returns listOf(chunk1Path to cm).asFlow()
     coEvery { store.getOne(chunk1Path) } returns chunk1
 
@@ -105,7 +107,7 @@ class StoreEndpointTest {
             .`as`(BodyCodec.string())
             .expect(ResponsePredicate.SC_OK)
             .send().await()
-        assertThat(response.body()).isEqualTo(strChunk1)
+        assertThat(response.body()).isEqualTo(expected)
       }
       ctx.completeNow()
     }

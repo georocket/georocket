@@ -115,21 +115,23 @@ dependencies {
     testImplementation 'com.github.tomakehurst:wiremock-jre8:2.32.0'
     testImplementation 'org.mongodb:mongodb-driver:3.12.10'
 
-    testImplementation "io.vertx:vertx-unit:$vertxVersion"
-    testImplementation 'junit:junit:4.13.2'
-    testRuntimeOnly 'org.junit.vintage:junit-vintage-engine:5.8.2'
-
     testImplementation "io.mockk:mockk:1.12.2"
     testImplementation "io.vertx:vertx-junit5:$vertxVersion"
     testImplementation "org.assertj:assertj-core:3.22.0"
     testImplementation "org.junit.jupiter:junit-jupiter-api:5.8.2"
     testImplementation "org.junit.jupiter:junit-jupiter-params:5.8.2"
     testImplementation "org.junit.jupiter:junit-jupiter-engine:5.8.2"
+    testImplementation 'org.junit.vintage:junit-vintage-engine:5.8.2'
     testImplementation "org.testcontainers:testcontainers:1.16.2"
     testImplementation "org.testcontainers:junit-jupiter:1.16.2"
     testImplementation "org.testcontainers:postgresql:1.16.2"
 
     antlr 'org.antlr:antlr4:4.9.3'
+}
+
+test {
+    // use junit5 for tests
+    useJUnitPlatform()
 }
 
 // customize start scripts

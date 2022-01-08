@@ -6,7 +6,6 @@ import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -22,7 +21,7 @@ class GeoJsonGenericAttributeIndexerTest {
    * Indexes the given JSON file and checks if the result matches the
    * expected properties map
    */
-  private fun assertIndexed(expected: Map<String, Any>, jsonFile: String,
+  private fun assertIndexed(expected: List<Map<String, Any>>, jsonFile: String,
       ctx: VertxTestContext, vertx: Vertx) {
     val json = javaClass.getResource(jsonFile)!!.readText()
 
@@ -47,12 +46,12 @@ class GeoJsonGenericAttributeIndexerTest {
    */
   @Test
   fun feature(ctx: VertxTestContext, vertx: Vertx) {
-    val expected = mapOf(
-      "name" to "My Feature",
-      "location" to "Moon",
-      "owner" to "Elvis",
-      "year" to "2016",
-      "solid" to "true"
+    val expected = listOf(
+      mapOf("key" to "name", "value" to "My Feature"),
+      mapOf("key" to "location", "value" to "Moon"),
+      mapOf("key" to "owner", "value" to "Elvis"),
+      mapOf("key" to "year", "value" to 2016L),
+      mapOf("key" to "solid", "value" to "true")
     )
     assertIndexed(expected, "feature.json", ctx, vertx)
   }
