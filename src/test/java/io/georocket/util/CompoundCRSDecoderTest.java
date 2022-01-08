@@ -1,10 +1,10 @@
 package io.georocket.util;
 
-import static org.junit.Assert.assertEquals;
-
 import org.geotools.referencing.CRS;
 import org.junit.Test;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
+
+import static org.junit.Assert.assertEquals;
 
 /**
  * Test the {@link CompoundCRSDecoder}

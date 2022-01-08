@@ -1,10 +1,9 @@
 package io.georocket.util;
 
-import static org.junit.Assert.assertEquals;
-
+import io.vertx.core.json.JsonObject;
 import org.junit.Test;
 
-import io.vertx.core.json.JsonObject;
+import static org.junit.Assert.assertEquals;
 
 /**
  * Tests for {@link JsonUtils}

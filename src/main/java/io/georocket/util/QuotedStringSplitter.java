@@ -1,11 +1,11 @@
 package io.georocket.util;
 
+import org.apache.commons.text.StringEscapeUtils;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import org.apache.commons.text.StringEscapeUtils;
 
 /**
  * Splits strings around whitespace characters. Takes care of double-quotes

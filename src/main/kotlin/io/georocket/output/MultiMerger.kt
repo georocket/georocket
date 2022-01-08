@@ -1,11 +1,10 @@
 package io.georocket.output
 
-import io.georocket.storage.ChunkMeta
-import io.georocket.output.xml.XMLMerger
 import io.georocket.output.geojson.GeoJsonMerger
-import io.georocket.storage.XMLChunkMeta
-import java.lang.IllegalStateException
+import io.georocket.output.xml.XMLMerger
+import io.georocket.storage.ChunkMeta
 import io.georocket.storage.GeoJsonChunkMeta
+import io.georocket.storage.XMLChunkMeta
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.streams.WriteStream
 

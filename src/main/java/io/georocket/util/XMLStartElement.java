@@ -1,9 +1,9 @@
 package io.georocket.util;
 
-import java.util.Arrays;
-
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+
+import java.util.Arrays;
 
 /**
  * A simple class describing an XML start element with optional prefix,

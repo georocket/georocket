@@ -1,13 +1,13 @@
 package io.georocket.util;
 
+import org.apache.commons.io.input.BOMInputStream;
+
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.zip.GZIPInputStream;
-
-import org.apache.commons.io.input.BOMInputStream;
 
 /**
  * Utility methods for mime types

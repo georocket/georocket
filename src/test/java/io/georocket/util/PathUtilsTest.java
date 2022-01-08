@@ -1,5 +1,7 @@
 package io.georocket.util;
 
+import org.junit.Test;
+
 import static io.georocket.util.PathUtils.addLeadingSlash;
 import static io.georocket.util.PathUtils.addTrailingSlash;
 import static io.georocket.util.PathUtils.isAbsolute;
@@ -9,8 +11,6 @@ import static io.georocket.util.PathUtils.removeLeadingSlash;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-
-import org.junit.Test;
 
 /**
  * Test {@link PathUtils}

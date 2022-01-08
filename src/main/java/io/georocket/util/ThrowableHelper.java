@@ -1,9 +1,9 @@
 package io.georocket.util;
 
-import java.io.FileNotFoundException;
-
 import io.georocket.ServerAPIException;
 import io.vertx.core.eventbus.ReplyException;
+
+import java.io.FileNotFoundException;
 
 /**
  * Helper class for {@link Throwable}s

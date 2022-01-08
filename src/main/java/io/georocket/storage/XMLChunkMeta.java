@@ -1,11 +1,11 @@
 package io.georocket.storage;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
 import io.georocket.util.XMLStartElement;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Metadata for an XML chunk

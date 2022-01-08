@@ -10,7 +10,6 @@ import io.georocket.storage.Store
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.impl.NoStackTraceThrowable
 import io.vertx.core.streams.WriteStream
-import kotlinx.coroutines.flow.collect
 import org.slf4j.LoggerFactory
 import java.io.FileNotFoundException
 

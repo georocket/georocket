@@ -1,14 +1,13 @@
 package io.georocket.http
 
-import io.vertx.ext.web.RoutingContext
-import io.vertx.core.http.HttpServerResponse
-import io.georocket.util.ThrowableHelper
-import io.vertx.core.json.JsonObject
-import io.vertx.core.eventbus.ReplyException
 import io.georocket.ServerAPIException
 import io.georocket.util.HttpException
+import io.georocket.util.ThrowableHelper
+import io.vertx.core.eventbus.ReplyException
+import io.vertx.core.http.HttpServerResponse
+import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.Router
-import java.lang.Exception
+import io.vertx.ext.web.RoutingContext
 
 /**
  * Base interface for HTTP endpoints

@@ -13,7 +13,6 @@ import de.undercouch.actson.JsonEvent.VALUE_STRING
 import de.undercouch.actson.JsonEvent.VALUE_TRUE
 import io.georocket.index.generic.GenericAttributeIndexer
 import io.georocket.util.JsonStreamEvent
-import java.lang.IllegalArgumentException
 
 /**
  * Indexer for properties in GeoJSON features

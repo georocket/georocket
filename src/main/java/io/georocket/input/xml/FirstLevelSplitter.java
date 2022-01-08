@@ -1,10 +1,10 @@
 package io.georocket.input.xml;
 
-import javax.xml.stream.events.XMLEvent;
-
 import io.georocket.storage.XMLChunkMeta;
 import io.georocket.util.Window;
 import io.georocket.util.XMLStreamEvent;
+
+import javax.xml.stream.events.XMLEvent;
 
 /**
  * Splits incoming XML tokens whenever a token in the first level (i.e. a

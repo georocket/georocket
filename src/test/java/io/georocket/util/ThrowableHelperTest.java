@@ -1,13 +1,12 @@
 package io.georocket.util;
 
-import static org.junit.Assert.assertEquals;
+import io.vertx.core.eventbus.ReplyException;
+import io.vertx.core.eventbus.ReplyFailure;
+import org.junit.Test;
 
 import java.io.FileNotFoundException;
 
-import org.junit.Test;
-
-import io.vertx.core.eventbus.ReplyException;
-import io.vertx.core.eventbus.ReplyFailure;
+import static org.junit.Assert.assertEquals;
 
 /**
  * Test {@link ThrowableHelper}

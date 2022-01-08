@@ -311,59 +311,5 @@ class ImportCommand : GeoRocketCommand() {
 
     progress.current = fileSize
     return Metrics(fileSize)
-
-    // // open file
-    // val fs = vertx.fileSystem()
-    // val openOptions = OpenOptions().setCreate(false).setWrite(false)
-    // val file = fs.openAwait(path, openOptions)
-    // try {
-    //   // start import
-    //   val options = ImportParams()
-    //   options.layer = layer
-    //   options.tags = tags
-    //   options.properties = properties
-    //   options.fallbackCRS = fallbackCRS
-    //   options.compression = Compression.GZIP
-    //
-    //   val alreadyCompressed = path.endsWith(".gz", true)
-    //   val resultPromise = Promise.promise<ImportResult>()
-    //   val out = client.store.startImport(options, resultPromise).toChannel(vertx)
-    //
-    //   val baos = ByteArrayOutputStream()
-    //   val os = if (alreadyCompressed) {
-    //     options.size = fileSize
-    //     baos
-    //   } else {
-    //     awaitBlockingConcurrent { GZIPOutputStream(baos) }
-    //   }
-    //
-    //   var bytesWritten = 0L
-    //   var compressedBytesWritten = 0L
-    //   val fileChannel = (file as ReadStream<Buffer>).toChannel(vertx)
-    //   for (buf in fileChannel) {
-    //     awaitBlocking { os.write(buf.bytes) }
-    //     if (baos.size() > 0) {
-    //       out.send(Buffer.buffer(baos.toByteArray()))
-    //       compressedBytesWritten += baos.size()
-    //       baos.reset()
-    //     }
-    //     progress.current = bytesWritten
-    //     bytesWritten += buf.length().toLong()
-    //   }
-    //
-    //   awaitBlocking { os.close() }
-    //   if (baos.size() > 0) {
-    //     out.send(Buffer.buffer(baos.toByteArray()))
-    //     compressedBytesWritten += baos.size()
-    //   }
-    //
-    //   out.close()
-    //   progress.current = bytesWritten
-    //
-    //   resultPromise.future().await()
-    //   return Metrics(fileSize, compressedBytesWritten)
-    // } finally {
-    //   file.close()
-    // }
   }
 }

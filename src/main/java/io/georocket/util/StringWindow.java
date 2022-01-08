@@ -1,5 +1,7 @@
 package io.georocket.util;
 
+import io.vertx.core.buffer.Buffer;
+
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.CharsetDecoder;
@@ -7,8 +9,6 @@ import java.nio.charset.CoderResult;
 import java.nio.charset.MalformedInputException;
 import java.nio.charset.StandardCharsets;
 import java.nio.charset.UnmappableCharacterException;
-
-import io.vertx.core.buffer.Buffer;
 
 /**
  * A dynamically resizable buffer that acts like a window being moved over

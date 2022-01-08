@@ -1,5 +1,14 @@
 package io.georocket.util;
 
+import org.apache.commons.io.FileUtils;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+
 import static io.georocket.util.MimeTypeUtils.JSON;
 import static io.georocket.util.MimeTypeUtils.XML;
 import static io.georocket.util.MimeTypeUtils.belongsTo;
@@ -8,15 +17,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-
-import org.apache.commons.io.FileUtils;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
 
 /**
  * Test cases for {@link MimeTypeUtils}
