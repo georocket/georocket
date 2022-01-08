@@ -428,7 +428,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
         if (await) {
           while (true) {
             val t = (TaskRegistry.getById(taskId) ?: break) as ImportingTask
-            if (t.bytesProcessed >= t.bytesTotal) {
+            if (t.endTime != null) {
               break
             }
             delay(100)
