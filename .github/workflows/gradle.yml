@@ -48,3 +48,10 @@ jobs:
         run: |
           echo $DOCKER_HUB_ACCESS_TOKEN | docker login --username $DOCKER_HUB_USERNAME --password-stdin
           docker push georocket/georocket:unstable
+
+      # upload junit test reports on failure
+      - uses: actions/upload-artifact@v2
+        if: failure()
+        with:
+          name: test-results
+          path: build/reports/tests/test
