@@ -70,6 +70,16 @@ function json(ctx) {
       let res = await ctx.request.get("/store/?search=EQ(name Fraunhofer IGD)", { validateStatus: undefined })
       expect(res.status).toBe(400)
     })
+
+    // TODO test tags (see XMLTests.groovy)
+
+    // TODO test properties (see XMLTests.groovy)
+
+    // TODO test tags+properties (see XMLTests.groovy)
+
+    // TODO test get properties list (see XMLTests.groovy)
+
+    // TODO test get list of generic attributes (see XMLTests.groovy)
   })
 }
 

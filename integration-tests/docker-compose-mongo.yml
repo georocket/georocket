@@ -1,20 +1,14 @@
-version: "2"
+version: "3"
 services:
-  integration-tester:
-    build: .
-    command: mongo
-    container_name: ci-integration-tester
-    links:
-      - georocket_mongo
-      - mongo
-
-  georocket_mongo:
+  georocket:
     image: georocket/georocket
     command: server
     volumes:
       - ./conf/georocket_mongo:/usr/local/georocket/conf
     links:
       - mongo
+    ports:
+      - 63020
 
   mongo:
     image: mongo

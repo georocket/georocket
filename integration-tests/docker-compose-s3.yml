@@ -1,14 +1,6 @@
-version: "2"
+version: "3"
 services:
-  integration-tester:
-    build: .
-    command: s3
-    container_name: ci-integration-tester
-    links:
-      - georocket_s3
-      - s3
-
-  georocket_s3:
+  georocket:
     image: georocket/georocket
     command: server
     volumes:
@@ -16,10 +8,14 @@ services:
     links:
       - s3
       - mongo
+    ports:
+      - 63020
 
   s3:
     image: minio/minio
     command: server /data
+    ports:
+      - 9000
 
   mongo:
     image: mongo

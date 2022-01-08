@@ -10,14 +10,8 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-    
-    strategy:
-      fail-fast: true
-      matrix:
-        server-integration-test-var: [ 'standalone', 'h2', 'mongo', 'postgresql', 's3' ]
-        
+
     steps:
       - uses: actions/checkout@v2.4.0
       - name: Set up JDK 11
@@ -29,29 +23,94 @@ jobs:
       - name: Run tests and install
         run: ./gradlew check installDist -s
 
-      - name: Build Docker image
-        run: |
-          docker build -t georocket/georocket .
-          docker tag georocket/georocket georocket/georocket:unstable
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
 
-      - name: Run integration tests
-        run: |
-          cd integration-tests
-          ./test-one.sh ${{ matrix.server-integration-test-var }}
-          cd ../..
+      - name: Build and export Docker image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          tags: georocket/georocket:unstable
+          outputs: type=docker,dest=/tmp/georocket-docker-image.tar
 
-      - name: Push Docker image
-        if: github.repository == 'georocket/georocket' && github.event_name == 'push'
-        env:
-          DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
-          DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-        run: |
-          echo $DOCKER_HUB_ACCESS_TOKEN | docker login --username $DOCKER_HUB_USERNAME --password-stdin
-          docker push georocket/georocket:unstable
+      - name: Upload Docker image as artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: georocket-docker-image
+          path: /tmp/georocket-docker-image.tar
 
-      # upload junit test reports on failure
-      - uses: actions/upload-artifact@v2
+      - name: Upload junit test reports on failure
+        uses: actions/upload-artifact@v2
         if: failure()
         with:
           name: test-results
           path: build/reports/tests/test
+
+  integration-tests:
+    needs: build
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: true
+      matrix:
+        server-integration-test-var: [ 'standalone', 'h2', 'mongo', 'postgresql', 's3' ]
+
+    steps:
+      - uses: actions/checkout@v2.4.0
+      - uses: actions/setup-node@v2
+        with:
+          node-version: 16
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+      
+      - name: Download Docker image artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: georocket-docker-image
+          path: /tmp
+
+      - name: Load image
+        run: |
+          docker load --input /tmp/georocket-docker-image.tar
+          docker image ls -a
+
+      - name: Install dependencies
+        run: |
+          cd integration-tests
+          npm ci
+
+      - name: Run integration tests
+        run: |
+          cd integration-tests
+          npm run test-${{ matrix.server-integration-test-var }}
+
+  publish-docker-image:
+    needs: [build, integration-tests]
+    runs-on: ubuntu-latest
+    if: github.repository == 'georocket/georocket' && github.event_name == 'push'
+
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Download Docker image artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: georocket-docker-image
+          path: /tmp
+
+      - name: Load image
+        run: |
+          docker load --input /tmp/georocket-docker-image.tar
+          docker image ls -a
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1 
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Push Docker image
+        run: |
+          docker push georocket/georocket:unstable

@@ -1,9 +1,0 @@
-georocket:
-  host: 0.0.0.0
-  storage:
-    driver: h2
-    h2:
-      path: $GEOROCKET_HOME/storage/georocket
-  index:
-    mongodb:
-      connectionString: mongodb://mongo:27017/georocket

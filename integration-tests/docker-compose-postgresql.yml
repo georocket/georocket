@@ -1,16 +1,6 @@
-version: "2"
+version: "3"
 services:
-  integration-tester:
-    build: .
-    command: postgresql
-    container_name: ci-integration-tester
-    environment:
-      PGPASSWORD: mysecretpassword
-    links:
-      - georocket_postgresql
-      - postgresql
-
-  georocket_postgresql:
+  georocket:
     image: georocket/georocket
     command: server
     volumes:
@@ -18,6 +8,8 @@ services:
     links:
       - postgresql
       - mongo
+    ports:
+      - 63020
 
   postgresql:
     image: postgres

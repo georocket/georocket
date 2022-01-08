@@ -1,14 +1,9 @@
-version: "2"
+version: "3"
 services:
-  integration-tester:
-    build: .
-    command: standalone
-    container_name: ci-integration-tester
-    links:
-      - georocket_standalone
-
-  georocket_standalone:
+  georocket:
     image: georocket/georocket
     command: server
     volumes:
       - ./conf/georocket_standalone:/usr/local/georocket/conf
+    ports:
+      - 63020
