@@ -20,6 +20,7 @@ import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
 import software.amazon.awssdk.core.async.AsyncRequestBody
 import software.amazon.awssdk.core.async.AsyncResponseTransformer
+import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3AsyncClient
 import software.amazon.awssdk.services.s3.model.CreateBucketRequest
 import software.amazon.awssdk.services.s3.model.GetObjectRequest
@@ -38,6 +39,7 @@ class S3StoreTest : StorageTest() {
     private const val ACCESS_KEY = "minioadmin"
     private const val SECRET_KEY = "minioadmin"
     private const val BUCKET = "georocket"
+    private val REGION = Region.US_WEST_1
   }
 
   private lateinit var endpoint: String
@@ -58,6 +60,7 @@ class S3StoreTest : StorageTest() {
         .endpointOverride(URI(endpoint))
         .credentialsProvider(StaticCredentialsProvider.create(
             AwsBasicCredentials.create(ACCESS_KEY, SECRET_KEY)))
+        .region(REGION)
         .build()
     CoroutineScope(vertx.dispatcher()).launch {
       s3.createBucket(CreateBucketRequest.builder().bucket(BUCKET).build()).await()
@@ -71,7 +74,7 @@ class S3StoreTest : StorageTest() {
   }
 
   override suspend fun createStore(vertx: Vertx): Store {
-    return S3Store(vertx, ACCESS_KEY, SECRET_KEY, endpoint, BUCKET)
+    return S3Store(vertx, ACCESS_KEY, SECRET_KEY, endpoint, BUCKET, REGION.id())
   }
 
   override suspend fun prepareData(ctx: VertxTestContext, vertx: Vertx, path: String?): String {
