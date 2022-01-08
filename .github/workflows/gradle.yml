@@ -32,6 +32,8 @@ jobs:
           context: .
           tags: georocket/georocket:unstable
           outputs: type=docker,dest=/tmp/georocket-docker-image.tar
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Upload Docker image as artifact
         uses: actions/upload-artifact@v2
