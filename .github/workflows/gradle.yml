@@ -21,7 +21,7 @@ jobs:
           java-version: 11
 
       - name: Run tests and install
-        run: ./gradlew check installDist -s
+        run: ./gradlew check installDist
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
@@ -73,6 +73,7 @@ jobs:
       - name: Load image
         run: |
           docker load --input /tmp/georocket-docker-image.tar
+          docker tag georocket/georocket:unstable georocket/georocket
           docker image ls -a
 
       - name: Install dependencies
