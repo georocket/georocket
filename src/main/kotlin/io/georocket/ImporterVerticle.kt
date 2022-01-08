@@ -7,6 +7,7 @@ import de.undercouch.actson.JsonEvent
 import de.undercouch.actson.JsonParser
 import io.georocket.constants.AddressConstants
 import io.georocket.index.MainIndexer
+import io.georocket.index.MainIndexer.IndexAddParam
 import io.georocket.index.xml.XMLCRSIndexer
 import io.georocket.input.geojson.GeoJsonSplitter
 import io.georocket.input.xml.FirstLevelSplitter
@@ -217,14 +218,15 @@ class ImporterVerticle : CoroutineVerticle() {
 
     var flushQueueJob: Deferred<Unit>? = null
     val batchSize = 200 // TODO make configurable
-    val queue = AtomicReference(mutableListOf<Pair<Buffer, String>>())
+    val queue = AtomicReference(mutableListOf<Pair<Pair<Buffer, String>, IndexAddParam>>())
     suspend fun flushQueue() {
       val copy = queue.getAndSet(mutableListOf())
       if (copy.isEmpty()) {
         return
       }
       val start = System.currentTimeMillis()
-      store.addMany(copy)
+      store.addMany(copy.map { it.first })
+      indexer.addMany(copy.map { it.second })
       log.info("Finished importing ${copy.size} chunks in ${System.currentTimeMillis() - start} ms")
     }
 
@@ -254,15 +256,15 @@ class ImporterVerticle : CoroutineVerticle() {
         val result = splitter.onEvent(streamEvent)
         if (result != null) {
           val path = store.makePath(indexMeta, layer)
-          queue.get().add(result.chunk to path)
+          val iap = IndexAddParam(result.prefix, result.chunk, result.suffix,
+            result.meta, indexMeta, path)
+          queue.get().add((result.chunk to path) to iap)
           if (queue.get().size >= batchSize) {
             flushQueueJob?.await()
             flushQueueJob = async {
               flushQueue()
             }
           }
-          indexer.add(result.prefix, result.chunk, result.suffix, result.meta,
-            indexMeta, path)
           chunksAdded++
           updateProgress(chunksAdded, bytesProcessed, false)
         }
@@ -301,7 +303,6 @@ class ImporterVerticle : CoroutineVerticle() {
     // wait for remaining chunks to be imported and indexed
     flushQueueJob?.await()
     flushQueue()
-    indexer.flushAdd()
 
     updateProgress(chunksAdded, bytesProcessed, true)
 
@@ -335,14 +336,15 @@ class ImporterVerticle : CoroutineVerticle() {
 
     var flushQueueJob: Deferred<Unit>? = null
     val batchSize = 200 // TODO make configurable
-    val queue = AtomicReference(mutableListOf<Pair<Buffer, String>>())
+    val queue = AtomicReference(mutableListOf<Pair<Pair<Buffer, String>, IndexAddParam>>())
     suspend fun flushQueue() {
       val copy = queue.getAndSet(mutableListOf())
       if (copy.isEmpty()) {
         return
       }
       val start = System.currentTimeMillis()
-      store.addMany(copy)
+      store.addMany(copy.map { it.first })
+      indexer.addMany(copy.map { it.second })
       log.info("Finished importing ${copy.size} chunks in ${System.currentTimeMillis() - start} ms")
     }
 
@@ -362,15 +364,15 @@ class ImporterVerticle : CoroutineVerticle() {
         val result = splitter.onEvent(streamEvent)
         if (result != null) {
           val path = store.makePath(indexMeta, layer)
-          queue.get().add(result.chunk to path)
+          val iap = IndexAddParam(result.prefix, result.chunk, result.suffix,
+            result.meta, indexMeta, path)
+          queue.get().add((result.chunk to path) to iap)
           if (queue.get().size >= batchSize) {
             flushQueueJob?.await()
             flushQueueJob = async {
               flushQueue()
             }
           }
-          indexer.add(result.prefix, result.chunk, result.suffix, result.meta,
-            indexMeta, path)
           chunksAdded++
           updateProgress(chunksAdded, bytesProcessed, false)
         }
@@ -406,7 +408,6 @@ class ImporterVerticle : CoroutineVerticle() {
     // wait for remaining chunks to be imported and indexed
     flushQueueJob?.await()
     flushQueue()
-    indexer.flushAdd()
 
     updateProgress(chunksAdded, bytesProcessed, true)
 

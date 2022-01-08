@@ -10,7 +10,6 @@ import io.georocket.util.JsonStreamEvent
 import io.georocket.util.MimeTypeUtils
 import io.georocket.util.StreamEvent
 import io.georocket.util.XMLStreamEvent
-import io.georocket.util.debounce
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.json.JsonObject
@@ -31,8 +30,6 @@ class MainIndexer private constructor(override val coroutineContext: CoroutineCo
   }
 
   private lateinit var index: Index
-  private val queue = ArrayDeque<Queued>()
-  private val onBulkAdd = debounce(vertx) { doAddQueue() }
 
   /**
    * The maximum number of chunks to index in one bulk
@@ -50,29 +47,10 @@ class MainIndexer private constructor(override val coroutineContext: CoroutineCo
     index.close()
   }
 
-  suspend fun add(prefix: Buffer?, chunk: Buffer, suffix: Buffer?,
-      chunkMeta: ChunkMeta, indexMeta: IndexMeta, path: String) {
-    queue.add(Queued(prefix, chunk, suffix, chunkMeta, indexMeta, path))
-    if (queue.size >= maxBulkSize) {
-      doAddQueue()
-    } else {
-      onBulkAdd()
-    }
-  }
-
-  suspend fun flushAdd() {
-    doAddQueue()
-  }
-
-  private suspend fun doAddQueue() {
-    val toAdd = mutableListOf<Queued>()
-    while (!queue.isEmpty()) {
-      toAdd.add(queue.removeFirst())
-    }
-
-    val documents = toAdd.map { queued ->
-      val doc = queuedChunkToDocument(queued)
-      Index.AddManyParam(queued.path, JsonObject(doc), queued.chunkMeta)
+  suspend fun addMany(params: List<IndexAddParam>) {
+    val documents = params.map { p ->
+      val doc = chunkToDocument(p)
+      Index.AddManyParam(p.path, JsonObject(doc), p.chunkMeta)
     }
 
     if (documents.isNotEmpty()) {
@@ -87,32 +65,32 @@ class MainIndexer private constructor(override val coroutineContext: CoroutineCo
     }
   }
 
-  private suspend fun queuedChunkToDocument(queued: Queued): Map<String, Any> {
+  private suspend fun chunkToDocument(p: IndexAddParam): Map<String, Any> {
     // call meta indexers
     val metaResults = mutableMapOf<String, Any>()
     for (metaIndexerFactory in MetaIndexerFactory.ALL) {
       val metaIndexer = metaIndexerFactory.createIndexer()
-      val metaResult = metaIndexer.onChunk(queued.path, queued.indexMeta)
+      val metaResult = metaIndexer.onChunk(p.path, p.indexMeta)
       metaResults.putAll(metaResult)
     }
 
     // index chunks depending on the mime type
-    val mimeType = queued.chunkMeta.mimeType
+    val mimeType = p.chunkMeta.mimeType
     val doc = if (MimeTypeUtils.belongsTo(mimeType, "application", "xml") ||
       MimeTypeUtils.belongsTo(mimeType, "text", "xml")
     ) {
-      chunkToDocument(queued.prefix, queued.chunk, queued.suffix,
-        queued.indexMeta.fallbackCRSString, XMLStreamEvent::class.java,
+      chunkToDocument(p.prefix, p.chunk, p.suffix,
+        p.indexMeta.fallbackCRSString, XMLStreamEvent::class.java,
         XMLTransformer()
       )
     } else if (MimeTypeUtils.belongsTo(mimeType, "application", "json")) {
-      chunkToDocument(queued.prefix, queued.chunk, queued.suffix,
-        queued.indexMeta.fallbackCRSString, JsonStreamEvent::class.java,
+      chunkToDocument(p.prefix, p.chunk, p.suffix,
+        p.indexMeta.fallbackCRSString, JsonStreamEvent::class.java,
         JsonTransformer()
       )
     } else {
       throw IllegalArgumentException("Unexpected mime type '${mimeType}' " +
-          "while trying to index chunk `${queued.path}'")
+          "while trying to index chunk `${p.path}'")
     }
 
     // add results from meta indexers to converted document
@@ -142,7 +120,7 @@ class MainIndexer private constructor(override val coroutineContext: CoroutineCo
     return doc
   }
 
-  private data class Queued(val prefix: Buffer?, val chunk: Buffer,
+  data class IndexAddParam(val prefix: Buffer?, val chunk: Buffer,
     val suffix: Buffer?, val chunkMeta: ChunkMeta, val indexMeta: IndexMeta,
     val path: String)
 }
