@@ -2,6 +2,7 @@ package io.georocket.util;
 
 import io.georocket.ServerAPIException;
 import io.vertx.core.eventbus.ReplyException;
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 
 import java.io.FileNotFoundException;
 
@@ -23,7 +24,8 @@ public final class ThrowableHelper {
   public static int throwableToCode(Throwable t) {
     if (t instanceof ReplyException) {
       return ((ReplyException)t).failureCode();
-    } else if (t instanceof IllegalArgumentException) {
+    } else if (t instanceof IllegalArgumentException ||
+            t instanceof ParseCancellationException) {
       return 400;
     } else if (t instanceof FileNotFoundException) {
       return 404;

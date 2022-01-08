@@ -65,6 +65,11 @@ function json(ctx) {
       let res1 = await ctx.request.get("/store", { validateStatus: undefined })
       expect(res1.status).toBe(404)
     })
+
+    it("returns 400 if query contains syntax error", async () => {
+      let res = await ctx.request.get("/store/?search=EQ(name Fraunhofer IGD)", { validateStatus: undefined })
+      expect(res.status).toBe(400)
+    })
   })
 }
 
