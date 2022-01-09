@@ -9,6 +9,7 @@
     "test-h2": "npm run test -- tests/h2.test.js",
     "test-mongo": "npm run test -- tests/mongo.test.js",
     "test-postgresql": "npm run test -- tests/postgresql.test.js",
+    "test-postgresql-full": "npm run test -- tests/postgresql-full.test.js",
     "test-s3": "npm run test -- tests/s3.test.js",
     "test-standalone": "npm run test -- tests/standalone.test.js"
   },

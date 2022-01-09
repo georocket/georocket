@@ -56,7 +56,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        server-integration-test-var: [ 'standalone', 'h2', 'mongo', 'postgresql', 's3' ]
+        server-integration-test-var: [ 'standalone', 'h2', 'mongo', 'postgresql', 'postgresql-full', 's3' ]
 
     steps:
       - uses: actions/checkout@v2.4.0

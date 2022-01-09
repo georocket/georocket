@@ -39,6 +39,7 @@ open class PostgreSQLClient(vertx: Vertx, url: String, username: String, passwor
       if (!migratedDatabases.contains(md)) {
         val flyway = Flyway.configure()
           .dataSource(url, user, password)
+          .envVars()
           .load()
         flyway.migrate()
         migratedDatabases.add(md)
