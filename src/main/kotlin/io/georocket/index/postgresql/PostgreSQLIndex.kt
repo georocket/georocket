@@ -168,7 +168,7 @@ class PostgreSQLIndex private constructor(vertx: Vertx, url: String,
     val (where, params) = PostgreSQLQueryTranslator.translate(query)
     val n = params.size
     val statement = "UPDATE $DOCUMENTS SET $DATA = jsonb_set($DATA, '{$TAGS}', " +
-        "($DATA->'$TAGS')::jsonb - $${n + 1}::text[]) WHERE $where"
+        "COALESCE(($DATA->'$TAGS')::jsonb, '[]'::jsonb) - $${n + 1}::text[]) WHERE $where"
     val paramsList = params.toMutableList()
     paramsList.add(tags.toTypedArray())
     client.preparedQuery(statement).execute(Tuple.wrap(paramsList)).await()
