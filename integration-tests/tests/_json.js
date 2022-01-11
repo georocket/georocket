@@ -71,15 +71,288 @@ function json(ctx) {
       expect(res.status).toBe(400)
     })
 
-    // TODO test tags (see XMLTests.groovy)
+    it("returns Darmstadtium by tag", async () => {
+      // searching by tag should yield no result at the beginning
+      let res = await ctx.request.get("/store/?search=mytag1", { validateStatus: undefined })
+      expect(res.status).toBe(404)
 
-    // TODO test properties (see XMLTests.groovy)
+      // add two tags
+      res = await ctx.request.put("/store/?search=EQ(name Darmstadtium)&tags=mytag1,mytag2")
+      expect(res.status).toBe(204)
 
-    // TODO test tags+properties (see XMLTests.groovy)
+      // feature with tag should now be returned
+      res = await ctx.request.get("/store/?search=mytag1")
+      expect(res.status).toBe(200)
+      expect(res.data.features).toHaveLength(1)
+      expect(res.data.features[0].properties.name).toEqual("Darmstadtium")
 
-    // TODO test get properties list (see XMLTests.groovy)
+      res = await ctx.request.get("/store/?search=mytag2")
+      expect(res.status).toBe(200)
+      expect(res.data.features).toHaveLength(1)
+      expect(res.data.features[0].properties.name).toEqual("Darmstadtium")
 
-    // TODO test get list of generic attributes (see XMLTests.groovy)
+      // remove one of the tags
+      res = await ctx.request.delete("/store/?search=mytag1&tags=mytag2")
+      expect(res.status).toBe(204)
+
+      // searching by the removed tag should now yield no result again
+      res = await ctx.request.get("/store/?search=mytag2", { validateStatus: undefined })
+      expect(res.status).toBe(404)
+
+      // ... but the other tag should still work
+      res = await ctx.request.get("/store/?search=mytag1")
+      expect(res.status).toBe(200)
+      expect(res.data.features).toHaveLength(1)
+      expect(res.data.features[0].properties.name).toEqual("Darmstadtium")
+
+      // remove the other tag too
+      res = await ctx.request.delete("/store/?search=Darmstadtium&tags=mytag1")
+      expect(res.status).toBe(204)
+
+      // no feature should be returned now
+      res = await ctx.request.get("/store/?search=mytag1", { validateStatus: undefined })
+      expect(res.status).toBe(404)
+    })
+
+    it("can handle multiple tags on multiple features", async () => {
+      // searching by tag should yield no result at the beginning
+      let res = await ctx.request.get("/store/?search=mytag1", { validateStatus: undefined })
+      expect(res.status).toBe(404)
+
+      // add multiple tags to all features
+      res = await ctx.request.put("/store/?tags=mytag1,mytag2,mytag3")
+      expect(res.status).toBe(204)
+
+      // all features should now be returned
+      res = await ctx.request.get("/store/?search=mytag1")
+      expect(res.status).toBe(200)
+      expect(res.data.features).toHaveLength(2)
+
+      res = await ctx.request.get("/store/?search=mytag2")
+      expect(res.status).toBe(200)
+      expect(res.data.features).toHaveLength(2)
+
+      res = await ctx.request.get("/store/?search=mytag3")
+      expect(res.status).toBe(200)
+      expect(res.data.features).toHaveLength(2)
+
+      // remove one of the tags from all features
+      res = await ctx.request.delete("/store/?tags=mytag3")
+      expect(res.status).toBe(204)
+
+      // all features should now be returned (except for the removed tag)
+      res = await ctx.request.get("/store/?search=mytag1")
+      expect(res.status).toBe(200)
+      expect(res.data.features).toHaveLength(2)
+
+      res = await ctx.request.get("/store/?search=mytag2")
+      expect(res.status).toBe(200)
+      expect(res.data.features).toHaveLength(2)
+
+      res = await ctx.request.get("/store/?search=mytag3", { validateStatus: undefined })
+      expect(res.status).toBe(404)
+
+      // remove a tag from one feature
+      res = await ctx.request.delete("/store/?search=Darmstadtium&tags=mytag1")
+      expect(res.status).toBe(204)
+
+      // search should only return one result
+      res = await ctx.request.get("/store/?search=mytag1")
+      expect(res.status).toBe(200)
+      expect(res.data.features).toHaveLength(1)
+
+      // but still two results for the other tag
+      res = await ctx.request.get("/store/?search=mytag2")
+      expect(res.status).toBe(200)
+      expect(res.data.features).toHaveLength(2)
+    })
+
+    it("can delete tag that does not exist", async () => {
+      let res = await ctx.request.delete("/store/?tags=mytag1")
+      expect(res.status).toBe(204)
+    })
+
+    it("can handle duplicate tags", async () => {
+      // searching by tag should yield no result at the beginning
+      let res = await ctx.request.get("/store/?search=mytag1", { validateStatus: undefined })
+      expect(res.status).toBe(404)
+
+      // add tag to all features
+      res = await ctx.request.put("/store/?tags=mytag1")
+      expect(res.status).toBe(204)
+
+      // all features should now be returned
+      res = await ctx.request.get("/store/?search=mytag1")
+      expect(res.status).toBe(200)
+      expect(res.data.features).toHaveLength(2)
+
+      // add the same tag to all features again
+      res = await ctx.request.put("/store/?tags=mytag1")
+      expect(res.status).toBe(204)
+
+      // all features should now be returned
+      res = await ctx.request.get("/store/?search=mytag1")
+      expect(res.status).toBe(200)
+      expect(res.data.features).toHaveLength(2)
+
+      // remove the tag
+      res = await ctx.request.delete("/store/?tags=mytag1")
+      expect(res.status).toBe(204)
+
+      // no feature should be returned
+      res = await ctx.request.get("/store/?search=mytag1", { validateStatus: undefined })
+      expect(res.status).toBe(404)
+
+      // ... but the features should still be in the store
+      res = await ctx.request.get("/store")
+      expect(res.status).toBe(200)
+      expect(res.data.features).toHaveLength(2)
+    })
+
+    it("returns Darmstadtium by property", async () => {
+      // searching by property should yield no result at the beginning
+      let res = await ctx.request.get("/store/?search=EQ(myprop1 myvalue1)", { validateStatus: undefined })
+      expect(res.status).toBe(404)
+
+      // add two properties
+      res = await ctx.request.put("/store/?search=EQ(name Darmstadtium)&properties=myprop1:myvalue1,myprop2:myvalue2")
+      expect(res.status).toBe(204)
+
+      // feature with property should now be returned
+      res = await ctx.request.get("/store/?search=EQ(myprop1 myvalue1)")
+      expect(res.status).toBe(200)
+      expect(res.data.features).toHaveLength(1)
+      expect(res.data.features[0].properties.name).toEqual("Darmstadtium")
+
+      res = await ctx.request.get("/store/?search=myvalue1")
+      expect(res.status).toBe(200)
+      expect(res.data.features).toHaveLength(1)
+      expect(res.data.features[0].properties.name).toEqual("Darmstadtium")
+
+      res = await ctx.request.get("/store/?search=EQ(myprop2 myvalue2)")
+      expect(res.status).toBe(200)
+      expect(res.data.features).toHaveLength(1)
+      expect(res.data.features[0].properties.name).toEqual("Darmstadtium")
+
+      res = await ctx.request.get("/store/?search=myvalue2")
+      expect(res.status).toBe(200)
+      expect(res.data.features).toHaveLength(1)
+      expect(res.data.features[0].properties.name).toEqual("Darmstadtium")
+
+      // feature should not be returned if value is wrong
+      res = await ctx.request.get("/store/?search=EQ(myprop2 myvalueZZZ)", 
+        { validateStatus: undefined })
+      expect(res.status).toBe(404)
+
+      // remove one of the properties
+      res = await ctx.request.delete("/store/?search=myvalue1&properties=myprop2")
+      expect(res.status).toBe(204)
+
+      // searching by the removed property should now yield no result again
+      res = await ctx.request.get("/store/?search=myvalue2", { validateStatus: undefined })
+      expect(res.status).toBe(404)
+
+      // ... but the other property should still work
+      res = await ctx.request.get("/store/?search=myvalue1")
+      expect(res.status).toBe(200)
+      expect(res.data.features).toHaveLength(1)
+      expect(res.data.features[0].properties.name).toEqual("Darmstadtium")
+
+      // remove the other property too
+      res = await ctx.request.delete("/store/?search=Darmstadtium&properties=myprop1")
+      expect(res.status).toBe(204)
+
+      // no feature should be returned now
+      res = await ctx.request.get("/store/?search=myprop1", { validateStatus: undefined })
+      expect(res.status).toBe(404)
+    })
+
+    it("can update property", async() => {
+      // searching by property should yield no result at the beginning
+      let res = await ctx.request.get("/store/?search=EQ(myprop1 myvalue1)", { validateStatus: undefined })
+      expect(res.status).toBe(404)
+
+      // add a property
+      res = await ctx.request.put("/store/?search=EQ(name Darmstadtium)&properties=myprop1:myvalue1")
+      expect(res.status).toBe(204)
+
+      // feature with property should now be returned
+      res = await ctx.request.get("/store/?search=EQ(myprop1 myvalue1)")
+      expect(res.status).toBe(200)
+      expect(res.data.features).toHaveLength(1)
+      expect(res.data.features[0].properties.name).toEqual("Darmstadtium")
+
+      // feature should not be returned if value is wrong
+      res = await ctx.request.get("/store/?search=EQ(myprop1 myvalue2)", { validateStatus: undefined })
+      expect(res.status).toBe(404)
+
+      // modify property
+      res = await ctx.request.put("/store/?search=EQ(name Darmstadtium)&properties=myprop1:myvalue2")
+      expect(res.status).toBe(204)
+
+      // feature with property and new value should now be returned
+      res = await ctx.request.get("/store/?search=EQ(myprop1 myvalue2)")
+      expect(res.status).toBe(200)
+      expect(res.data.features).toHaveLength(1)
+      expect(res.data.features[0].properties.name).toEqual("Darmstadtium")
+
+      // feature should not be returned if value is old
+      res = await ctx.request.get("/store/?search=EQ(myprop1 myvalue1)", { validateStatus: undefined })
+      expect(res.status).toBe(404)
+    })
+
+    it("can delete property that does not exist", async () => {
+      let res = await ctx.request.delete("/store/?properties=myprop1")
+      expect(res.status).toBe(204)
+    })
+
+    it("returns empty property list", async () => {
+      let res = await ctx.request.get("/store/?property=myprop1", { validateStatus: undefined })
+      expect(res.status).toBe(200)
+      expect(res.data).toHaveLength(0)
+    })
+
+    it("returns property list", async () => {
+      // add a property
+      let res = await ctx.request.put("/store/?search=EQ(name Darmstadtium)&properties=myprop1:myvalue1")
+      expect(res.status).toBe(204)
+
+      res = await ctx.request.get("/store/?property=myprop1", { validateStatus: undefined })
+      expect(res.status).toBe(200)
+      expect(res.data).toEqual(["myvalue1"])
+
+      // add the same property to another feature
+      res = await ctx.request.put("/store/?search=EQ(name \"Fraunhofer IGD\")&properties=myprop1:myvalue2")
+      expect(res.status).toBe(204)
+
+      res = await ctx.request.get("/store/?property=myprop1", { validateStatus: undefined })
+      expect(res.status).toBe(200)
+      expect(res.data).toHaveLength(2)
+      expect(res.data).toEqual(expect.arrayContaining(["myvalue1", "myvalue2"]))
+
+      res = await ctx.request.get("/store/?search=Darmstadtium&property=myprop1", { validateStatus: undefined })
+      expect(res.status).toBe(200)
+      expect(res.data).toEqual(["myvalue1"])
+
+      res = await ctx.request.get("/store/?search=\"Fraunhofer IGD\"&property=myprop1", { validateStatus: undefined })
+      expect(res.status).toBe(200)
+      expect(res.data).toEqual(["myvalue2"])
+    })
+
+    it("returns attribute list", async () => {
+      let res = await ctx.request.get("/store/?search=EQ(name Darmstadtium)&attribute=name")
+      expect(res.status).toBe(200)
+      expect(res.data).toEqual(["Darmstadtium"])
+
+      res = await ctx.request.get("/store/?search=EQ(name \"Fraunhofer IGD\")&attribute=name")
+      expect(res.status).toBe(200)
+      expect(res.data).toEqual(["Fraunhofer IGD"])
+
+      res = await ctx.request.get("/store/?attribute=name")
+      expect(res.status).toBe(200)
+      expect(res.data).toHaveLength(2)
+      expect(res.data).toEqual(expect.arrayContaining(["Darmstadtium", "Fraunhofer IGD"]))
+    })
   })
 }
 
