@@ -57,7 +57,7 @@ open class PostgreSQLClient(vertx: Vertx, url: String, username: String, passwor
     val connectOptions = PgConnectOptions(parsedConfiguration)
       .setUser(username)
       .setPassword(password)
-    if (!parsedConfiguration.containsKey("search_path") &&
+    if (parsedConfiguration.getJsonObject("properties")?.containsKey("search_path") != true &&
       parsedConfiguration.containsKey("currentschema")) {
       connectOptions.addProperty("search_path",
         parsedConfiguration.getString("currentschema"))
