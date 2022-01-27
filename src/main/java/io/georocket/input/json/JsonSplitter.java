@@ -51,7 +51,7 @@ public class JsonSplitter implements Splitter<JsonStreamEvent, JsonChunkMeta> {
   protected int insideLevel = 0;
   
   /**
-   * <code>true</code> if the {@link #makeResult(int)} method was called
+   * <code>true</code> if the {@link #makeResult(long)} method was called
    * at least once
    */
   protected boolean resultsCreated = false;
