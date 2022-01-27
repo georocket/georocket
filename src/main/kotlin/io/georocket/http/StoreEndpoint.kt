@@ -12,12 +12,14 @@ import io.georocket.index.TagsParser
 import io.georocket.output.MultiMerger
 import io.georocket.query.DefaultQueryCompiler
 import io.georocket.query.IndexQuery
+import io.georocket.storage.ChunkMeta
 import io.georocket.storage.Store
 import io.georocket.storage.StoreFactory
 import io.georocket.tasks.ImportingTask
 import io.georocket.tasks.ReceivingTask
 import io.georocket.tasks.TaskError
 import io.georocket.tasks.TaskRegistry
+import io.georocket.util.HttpException
 import io.georocket.util.MimeTypeUtils.belongsTo
 import io.georocket.util.MimeTypeUtils.detect
 import io.georocket.util.collectChunked
@@ -74,6 +76,8 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
      * the missing chunks (e.g. with optimistic merging disabled) or not.
      */
     private const val TRAILER_UNMERGED_CHUNKS = "GeoRocket-Unmerged-Chunks"
+    private const val X_SCROLL_ID = "X-Scroll-Id"
+    private const val X_HITS = "X-Hits"
   }
 
   private lateinit var store: Store
@@ -159,19 +163,26 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
     val request = context.request()
     val response = context.response()
 
-    val path = Endpoint.getEndpointPath(context)
-    val search = request.getParam("search")
-
-    response.isChunked = true
-
-    val optimisticMerging = isOptimisticMerging(request)
-    val isTrailerAccepted = isTrailerAccepted(request)
-
-    if (isTrailerAccepted) {
-      response.putHeader("Trailer", TRAILER_UNMERGED_CHUNKS)
-    }
-
     try {
+      val path = Endpoint.getEndpointPath(context)
+      val search = request.getParam("search")
+      val scroll = request.getParam("scroll", "false")
+        .lowercase().trim().toBooleanStrictOrNull()
+        ?: throw HttpException(200, "The parameter 'scroll' must be either 'true' or 'false'.")
+      val size = request.getParam("size", "100")
+        .trim().toIntOrNull()?.takeIf { it > 0 }
+        ?: throw HttpException(200, "The parameter 'size' must be a valid integer that is larger than 0.")
+      val previousScrollId = request.getParam("scrollId")?.takeUnless { it.isEmpty() }
+
+      response.isChunked = true
+
+      val optimisticMerging = isOptimisticMerging(request)
+      val isTrailerAccepted = isTrailerAccepted(request)
+
+      if (isTrailerAccepted) {
+        response.putHeader("Trailer", TRAILER_UNMERGED_CHUNKS)
+      }
+
       val query = compileQuery(search, path)
 
       val merger = MultiMerger(optimisticMerging)
@@ -185,8 +196,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
       // merge chunks
       var accepted = 0L
       var notaccepted = 0L
-      val metas = index.getMeta(query)
-      metas.collect { chunkMeta ->
+      suspend fun collectChunk(chunkMeta: Pair<String, ChunkMeta>) {
         val chunk = store.getOne(chunkMeta.first)
         try {
           merger.merge(chunk, chunkMeta.second, response)
@@ -197,6 +207,19 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
           // ignore it, but emit a warning later
           notaccepted++
         }
+      }
+      if (scroll) {
+        val page = index.getPaginatedMeta(query, size, previousScrollId)
+        if (page.scrollId != null){
+          response.putHeader(X_SCROLL_ID, page.scrollId)
+          response.putHeader(X_HITS, page.items.size.toString())
+        }
+        for (item in page.items) {
+          collectChunk(item)
+        }
+      } else {
+        val metas = index.getMeta(query)
+        metas.collect(::collectChunk)
       }
 
       if (notaccepted > 0) {
