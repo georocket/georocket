@@ -166,12 +166,10 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
     try {
       val path = Endpoint.getEndpointPath(context)
       val search = request.getParam("search")
-      val scroll = request.getParam("scroll", "false")
-        .lowercase().trim().toBooleanStrictOrNull()
-        ?: throw HttpException(200, "The parameter 'scroll' must be either 'true' or 'false'.")
+      val scroll = BooleanUtils.toBoolean(request.getParam("scroll")?.trim())
       val size = request.getParam("size", "100")
         .trim().toIntOrNull()?.takeIf { it > 0 }
-        ?: throw HttpException(200, "The parameter 'size' must be a valid integer that is larger than 0.")
+        ?: throw HttpException(400, "The parameter 'size' must be a valid integer that is larger than 0.")
       val previousScrollId = request.getParam("scrollId")?.takeUnless { it.isEmpty() }
 
       response.isChunked = true
