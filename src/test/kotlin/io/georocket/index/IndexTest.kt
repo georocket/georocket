@@ -15,6 +15,7 @@ import org.junit.jupiter.api.extension.ExtendWith
 
 /**
  * Abstract test implementation for a [Index]
+ * @author Tobias Dorra
  */
 @ExtendWith(VertxExtension::class)
 abstract class IndexTest {
@@ -44,7 +45,8 @@ abstract class IndexTest {
         assertThat(page1.items.size).isEqualTo(3)
         assertThat(page2.items.size).isEqualTo(2)
         assertThat(page3.items.size).isEqualTo(0)
-        val returnedPaths = listOf(page1, page2, page3).flatMap { it.items }.map { (path, _) -> path }.toSet()
+        val returnedPaths = listOf(page1, page2, page3).flatMap { it.items }
+          .map { (path, _) -> path }.toSet()
         assertThat(returnedPaths).isEqualTo(paths)
         index.close()
       }

@@ -17,7 +17,8 @@ interface Index {
 
   suspend fun getMeta(query: IndexQuery): Flow<Pair<String, ChunkMeta>>
 
-  suspend fun getPaginatedMeta(query: IndexQuery, maxPageSize: Int, previousScrollId: String?): Page<Pair<String, ChunkMeta>>
+  suspend fun getPaginatedMeta(query: IndexQuery, maxPageSize: Int,
+    previousScrollId: String?): Page<Pair<String, ChunkMeta>>
 
   suspend fun getPaths(query: IndexQuery): Flow<String>
 

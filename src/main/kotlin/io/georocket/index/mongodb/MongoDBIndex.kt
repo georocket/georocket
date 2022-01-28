@@ -147,11 +147,8 @@ class MongoDBIndex private constructor() : Index, AbstractIndex() {
     }
   }
 
-  override suspend fun getPaginatedMeta(
-    query: IndexQuery,
-    maxPageSize: Int,
-    previousScrollId: String?
-  ): Index.Page<Pair<String, ChunkMeta>> {
+  override suspend fun getPaginatedMeta(query: IndexQuery, maxPageSize: Int,
+      previousScrollId: String?): Index.Page<Pair<String, ChunkMeta>> {
     val filter = if (previousScrollId != null) {
       jsonObjectOf("\$and" to jsonArrayOf(
         jsonObjectOf("_id" to jsonObjectOf("\$gt" to previousScrollId)),
