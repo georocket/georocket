@@ -24,7 +24,6 @@ function json(ctx) {
     })
 
     it("returns contents of entire store with scrolling", async () => {
-
       // page 1
       let res1 = await ctx.request.get("/store", {
         "params": {

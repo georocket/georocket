@@ -6,26 +6,26 @@ import io.georocket.storage.mongodb.MongoDBTestConnector
 import io.vertx.core.Vertx
 import org.junit.jupiter.api.AfterAll
 
+/**
+ * Test [MongoDBIndex]
+ * @author Tobias Dorra
+ */
 class MongoDBIndexTest : IndexTest() {
-
   companion object {
-    val mongoConnector by lazy { MongoDBTestConnector() }
+    private val COLLECTIONS = listOf("documents", "chunkMeta", "ogcapifeatures.collections")
+    private val mongoConnector by lazy { MongoDBTestConnector() }
 
     @AfterAll
     @JvmStatic
     fun tearDownClass() {
       mongoConnector.stop()
     }
-
-    private val COLLECTIONS = listOf("documents", "chunkMeta", "ogcapifeatures.collections")
   }
 
   override suspend fun createIndex(vertx: Vertx): Index =
     MongoDBIndex.create(vertx, mongoConnector.connectionString.connectionString, null)
 
-
   override suspend fun prepareTestData(vertx: Vertx, docs: List<Index.AddManyParam>) {
-
     // reset database
     val cs = mongoConnector.connectionString
     val client = SharedMongoClient.create(cs)
@@ -40,5 +40,4 @@ class MongoDBIndexTest : IndexTest() {
     index.addMany(docs)
     index.close()
   }
-
 }
