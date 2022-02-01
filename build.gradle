@@ -14,7 +14,7 @@ mainClassName = 'io.georocket.MainKt'
 ext {
     vertxVersion = '4.2.4'
     geotoolsVersion = '26.2'
-    slf4jVersion = '1.7.33'
+    slf4jVersion = '1.7.35'
     logbackVersion = '1.2.10'
     junitVersion = '5.8.2'
     testcontainersVersion = '1.16.3'
