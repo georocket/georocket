@@ -20,6 +20,7 @@
     "fast-xml-parser": "^4.0.0",
     "fs-extra": "^10.0.0",
     "jest": "^27.4.7",
+    "jest-extended": "^2.0.0",
     "minio": "^7.0.25",
     "testcontainers": "^8.1.2"
   }

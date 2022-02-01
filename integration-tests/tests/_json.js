@@ -59,8 +59,8 @@ function json(ctx) {
       expect(res3.status).toBe(404)
 
       let expected = JSON.parse(await fs.readFile("data/featurecollection.json", "utf-8"))
-      expect(res1.data).toHaveProperty("features", [expected.features[0]])
-      expect(res2.data).toHaveProperty("features", [expected.features[1]])
+      let actualFeatures = [...res1.data.features, ...res2.data.features]
+      expect(actualFeatures).toIncludeSameMembers(expected.features)
     })
 
     it("returns Darmstadtium by string search", async () => {
