@@ -104,7 +104,7 @@ dependencies {
     implementation 'de.flapdoodle.embed:de.flapdoodle.embed.mongo:3.3.1'
 
     // PostgreSQL
-    implementation "org.postgresql:postgresql:42.3.1"
+    implementation "org.postgresql:postgresql:42.3.2"
     implementation "org.flywaydb:flyway-core:8.4.3"
     implementation "com.ongres.scram:client:2.1" // for authentication
 
