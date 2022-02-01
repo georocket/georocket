@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface Index {
   data class AddManyParam(val path: String, val doc: JsonObject, val meta: ChunkMeta)
+  data class Page<T>(val items: List<T>, val scrollId: String?)
 
   suspend fun close()
 
@@ -15,6 +16,9 @@ interface Index {
   suspend fun getDistinctMeta(query: IndexQuery): Flow<ChunkMeta>
 
   suspend fun getMeta(query: IndexQuery): Flow<Pair<String, ChunkMeta>>
+
+  suspend fun getPaginatedMeta(query: IndexQuery, maxPageSize: Int,
+    previousScrollId: String?): Page<Pair<String, ChunkMeta>>
 
   suspend fun getPaths(query: IndexQuery): Flow<String>
 

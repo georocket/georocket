@@ -14,7 +14,7 @@ mainClassName = 'io.georocket.MainKt'
 ext {
     vertxVersion = '4.2.4'
     geotoolsVersion = '26.2'
-    slf4jVersion = '1.7.33'
+    slf4jVersion = '1.7.35'
     logbackVersion = '1.2.10'
     junitVersion = '5.8.2'
     testcontainersVersion = '1.16.3'
@@ -109,7 +109,7 @@ dependencies {
     implementation "com.ongres.scram:client:2.1" // for authentication
 
     // necessary for ALPN / HTTP/2
-    runtimeOnly "io.netty:netty-tcnative-boringssl-static:2.0.47.Final"
+    runtimeOnly "io.netty:netty-tcnative-boringssl-static:2.0.48.Final"
 
     implementation "org.jetbrains.kotlin:kotlin-reflect"
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"

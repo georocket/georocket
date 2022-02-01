@@ -140,6 +140,27 @@ class PostgreSQLIndex private constructor(vertx: Vertx, url: String,
     return streamQuery(statement, params) { it.getString(0) to findChunkMeta(it.getString(1)) }
   }
 
+  override suspend fun getPaginatedMeta(query: IndexQuery, maxPageSize: Int,
+      previousScrollId: String?): Index.Page<Pair<String, ChunkMeta>> {
+    val (where, whereParams) = PostgreSQLQueryTranslator.translate(query)
+    val (statement, params) = if (previousScrollId != null) {
+      val params = whereParams + previousScrollId + maxPageSize
+      val statement = "SELECT $ID, $DATA->>'$CHUNK_META' FROM $DOCUMENTS " +
+        "WHERE $ID > $${whereParams.size + 1} AND ($where) " +
+        "ORDER BY $ID LIMIT $${whereParams.size + 2}"
+      statement to params
+    } else {
+      val params = whereParams + maxPageSize
+      val statement = "SELECT $ID, $DATA->>'$CHUNK_META' FROM $DOCUMENTS " +
+        "WHERE $where ORDER BY $ID LIMIT $${whereParams.size + 1}"
+      statement to params
+    }
+    val items = client.preparedQuery(statement).execute(Tuple.from(params))
+      .await().map { it.getString(0) to findChunkMeta(it.getString(1)) }
+    val scrollId = items.lastOrNull()?.first
+    return Index.Page(items, scrollId)
+  }
+
   override suspend fun getPaths(query: IndexQuery): Flow<String> {
     val (where, params) = PostgreSQLQueryTranslator.translate(query)
     val statement = "SELECT $ID FROM $DOCUMENTS WHERE $where"

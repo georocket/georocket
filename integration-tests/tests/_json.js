@@ -23,6 +23,46 @@ function json(ctx) {
       expect(res.data).toEqual(JSON.parse(expected))
     })
 
+    it("returns contents of entire store with scrolling", async () => {
+      // page 1
+      let res1 = await ctx.request.get("/store", {
+        "params": {
+          "scroll": true,
+          "size": 1,
+        }
+      })
+      expect(res1.status).toBe(200)
+      expect(res1.headers).toHaveProperty("x-scroll-id")
+      expect(res1.headers).toHaveProperty("x-hits", "1")
+
+      // page 2
+      let res2 = await ctx.request.get("/store", {
+        "params": {
+          "scroll": true,
+          "size": 1,
+          "scrollId": res1.headers["x-scroll-id"]
+        }
+      })
+      expect(res2.status).toBe(200)
+      expect(res2.headers).toHaveProperty("x-scroll-id")
+      expect(res2.headers).toHaveProperty("x-hits", "1")
+
+      // no more pages
+      let res3 = await ctx.request.get("/store", {
+        "params": {
+          "scroll": true,
+          "size": 1,
+          "scrollId": res2.headers["x-scroll-id"]
+        },
+        "validateStatus": null
+      })
+      expect(res3.status).toBe(404)
+
+      let expected = JSON.parse(await fs.readFile("data/featurecollection.json", "utf-8"))
+      expect(res1.data).toHaveProperty("features", [expected.features[0]])
+      expect(res2.data).toHaveProperty("features", [expected.features[1]])
+    })
+
     it("returns Darmstadtium by string search", async () => {
       let res = await ctx.request.get("/store/?search=Darmstadtium")
       expect(res.status).toBe(200)

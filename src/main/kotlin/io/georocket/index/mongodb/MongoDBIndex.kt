@@ -30,10 +30,12 @@ import io.georocket.util.updateManyAwait
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.json
+import io.vertx.kotlin.core.json.jsonArrayOf
 import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.core.json.obj
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.reactive.awaitFirstOrNull
 
 class MongoDBIndex private constructor() : Index, AbstractIndex() {
@@ -144,6 +146,31 @@ class MongoDBIndex private constructor() : Index, AbstractIndex() {
       path to findChunkMeta(cmId)
     }
   }
+
+  override suspend fun getPaginatedMeta(query: IndexQuery, maxPageSize: Int,
+      previousScrollId: String?): Index.Page<Pair<String, ChunkMeta>> {
+    val filter = if (previousScrollId != null) {
+      jsonObjectOf("\$and" to jsonArrayOf(
+        jsonObjectOf("_id" to jsonObjectOf("\$gt" to previousScrollId)),
+        translate(query)
+      ))
+    } else {
+      translate(query)
+    }
+    val items = collDocuments.coFind(filter,
+      limit = maxPageSize,
+      sort = jsonObjectOf(INTERNAL_ID to 1),
+      projection = jsonObjectOf(CHUNK_META to 1, INTERNAL_ID to 1)
+    ).map { hit ->
+      val path = hit.getString(INTERNAL_ID)
+      val cmId = hit.getString(CHUNK_META)
+      path to findChunkMeta(cmId)
+    }.toList()
+    val lastId = items.lastOrNull()?.first
+
+    return Index.Page(items, lastId)
+  }
+
 
   override suspend fun getPaths(query: IndexQuery): Flow<String> {
     val results = collDocuments.coFind(translate(query), projection = json {
