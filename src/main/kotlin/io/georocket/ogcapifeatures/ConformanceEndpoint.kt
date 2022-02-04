@@ -22,9 +22,10 @@ class ConformanceEndpoint(private val vertx: Vertx) : Endpoint {
 
       response.end(Json.obj(
         "conformsTo" to Json.array(
-          "http://www.opengis.net/spec/wfs-1/3.0/req/core",
-          "http://www.opengis.net/spec/wfs-1/3.0/req/oas30",
-          "http://www.opengis.net/spec/wfs-1/3.0/req/gmlsf2"
+          "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core",
+          "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/geojson",
+          "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/gmlsf2",
+          "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas3",
         )
       ).encodePrettily())
     }
