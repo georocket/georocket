@@ -39,31 +39,34 @@ class OgcApiFeaturesEndpoint(override val coroutineContext: CoroutineContext,
 
   private fun onInfo(context: RoutingContext) {
     val uri = context.request().path()
-    val o = jsonArrayOf(
-      jsonObjectOf(
-        "href" to uri,
-        "rel" to "self",
-        "type" to "application/json",
-        "title" to "GeoRocket OGC API Features main endpoint"
+    val o = jsonObjectOf(
+      "title" to "GeoRocket OGC API Features main endpoint",
+      "links" to jsonArrayOf(
+        jsonObjectOf(
+          "href" to uri,
+          "rel" to "self",
+          "type" to "application/json",
+          "title" to "GeoRocket OGC API Features main endpoint"
+        ),
+        jsonObjectOf(
+          "href" to PathUtils.join(uri, "api"),
+          "rel" to "service-desc",
+          "type" to "application/vnd.oai.openapi+json;version=3.0",
+          "title" to "API definition"
+        ),
+        jsonObjectOf(
+          "href" to PathUtils.join(uri, "conformance"),
+          "rel" to "conformance",
+          "type" to "application/json",
+          "title" to "Conformance classes implemented by this server"
+        ),
+        jsonObjectOf(
+          "href" to PathUtils.join(uri, "collections"),
+          "rel" to "data",
+          "type" to "application/json",
+          "title" to "Metadata about feature collections"
+        )
       ),
-      jsonObjectOf(
-        "href" to PathUtils.join(uri, "api"),
-        "rel" to "service",
-        "type" to "application/openapi+json;version=3.0",
-        "title" to "API definition"
-      ),
-      jsonObjectOf(
-        "href" to PathUtils.join(uri, "conformance"),
-        "rel" to "conformance",
-        "type" to "application/json",
-        "title" to "Conformance classes implemented by this server"
-      ),
-      jsonObjectOf(
-        "href" to PathUtils.join(uri, "collections"),
-        "rel" to "data",
-        "type" to "application/json",
-        "title" to "Metadata about feature collections"
-      )
     )
 
     context.response()
