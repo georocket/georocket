@@ -6,14 +6,15 @@ import io.georocket.index.Index
 import io.georocket.index.IndexFactory
 import io.georocket.index.IndexerFactory
 import io.georocket.index.MetaIndexerFactory
+import io.georocket.ogcapifeatures.views.Views
+import io.georocket.ogcapifeatures.views.json.JsonViews
+import io.georocket.ogcapifeatures.views.xml.XmlViews
 import io.georocket.output.MultiMerger
 import io.georocket.query.DefaultQueryCompiler
 import io.georocket.query.IndexQuery
 import io.georocket.storage.Store
 import io.georocket.storage.StoreFactory
-import io.georocket.util.HttpException
-import io.georocket.util.PathUtils
-import io.georocket.util.collectChunked
+import io.georocket.util.*
 import io.vertx.core.Vertx
 import io.vertx.core.http.HttpServerResponse
 import io.vertx.core.json.JsonObject
@@ -23,9 +24,7 @@ import io.vertx.ext.web.handler.BodyHandler
 import io.vertx.kotlin.core.json.jsonArrayOf
 import io.vertx.kotlin.core.json.jsonObjectOf
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.buffer
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import org.apache.commons.text.StringEscapeUtils.escapeJava
 import org.slf4j.LoggerFactory
@@ -57,7 +56,12 @@ class CollectionsEndpoint(override val coroutineContext: CoroutineContext,
     index = IndexFactory.createIndex(vertx)
 
     val router = Router.router(vertx)
-    router.get("/").handler(::onGetAll)
+    router.get("/").produces("application/json").handler { ctx -> onGetAll(ctx,  JsonViews)}
+    router.get("/").produces("application/xml").handler { ctx -> onGetAll(ctx,  XmlViews)}
+    router.get("/").handler { context ->
+      respondWithHttp406NotAcceptable(context, listOf("application/json", "application/xml"))
+    }
+
     router.get("/:name").handler(::onGet)
     val postMaxSize = config.getLong(ConfigConstants.HTTP_POST_MAX_SIZE, -1L)
     router.post("/").handler(BodyHandler.create().setBodyLimit(postMaxSize)).handler(::onPost)
@@ -92,32 +96,25 @@ class CollectionsEndpoint(override val coroutineContext: CoroutineContext,
     )
   }
 
-  private fun onGetAll(ctx: RoutingContext) {
+  private fun onGetAll(ctx: RoutingContext, views: Views) {
     val request = ctx.request()
     val response = ctx.response()
-
-    response.putHeader("content-type", "application/json")
-
     launch {
-      try {
-        val r = jsonObjectOf(
-          "links" to jsonArrayOf(
-            jsonObjectOf(
-              "href" to request.path(),
-              "rel" to "self",
-              "type" to "application/json",
-              "title" to "this document"
+      val collections = index.getCollections().map { id ->
+        Views.Collection(
+          id = id,
+          links =  listOf(
+            Views.Link(
+              href = PathUtils.join(request.path(), id, "items"),
+              type = "application/geo+json",  // todo: find out which content type the merger will produce for this collection
+              rel = "items"
             )
-          ),
-          "collections" to index.getCollections().map {
-            itemToJson(it, PathUtils.join(request.path(), it)) }.toList()
+          )
         )
-
-        response.end(r.encode())
-      } catch (t: Throwable) {
-        Endpoint.fail(response, t)
-      }
+      }.toList()
+      views.collections(response, Endpoint.getLinksToSelf(ctx), collections)
     }
+
   }
 
   private fun onPost(ctx: RoutingContext) {

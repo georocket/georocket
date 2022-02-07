@@ -5,7 +5,7 @@ import io.georocket.http.Endpoint
 import io.georocket.http.GeneralEndpoint
 import io.georocket.http.StoreEndpoint
 import io.georocket.http.TaskEndpoint
-import io.georocket.ogcapifeatures.OgcApiFeaturesEndpoint
+import io.georocket.ogcapifeatures.LandingPageEndpoint
 import io.vertx.core.DeploymentOptions
 import io.vertx.core.Promise
 import io.vertx.core.http.HttpMethod
@@ -130,7 +130,7 @@ class GeoRocket(private val shutdownPromise: Promise<Unit>) : CoroutineVerticle(
     val te = TaskEndpoint(coroutineContext, vertx)
     router.mountSubRouter("/tasks", te.createRouter())
 
-    val ogc = OgcApiFeaturesEndpoint(coroutineContext, vertx)
+    val ogc = LandingPageEndpoint(coroutineContext, vertx)
     router.mountSubRouter("/ogcapifeatures", ogc.createRouter())
 
     router.route().handler { ctx ->
