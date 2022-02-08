@@ -96,7 +96,7 @@ dependencies {
     // mongodb driver + snappy compression
     implementation 'org.mongodb:bson:4.4.1'
     implementation 'org.mongodb:mongodb-driver-async:3.12.10'
-    implementation 'org.mongodb:mongodb-driver-reactivestreams:4.4.1'
+    implementation 'org.mongodb:mongodb-driver-reactivestreams:4.4.2'
     implementation 'org.xerial.snappy:snappy-java:1.1.8.4'
     implementation 'io.projectreactor:reactor-core:3.4.14'
 
