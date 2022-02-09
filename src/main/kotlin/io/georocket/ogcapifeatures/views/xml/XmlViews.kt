@@ -76,4 +76,8 @@ object XmlViews: Views {
       }
     })
   }
+
+  override fun collection(response: HttpServerResponse, links: List<Views.Link>, collection: Views.Collection) {
+    collections(response, links, listOf(collection))
+  }
 }

@@ -2,14 +2,12 @@ package io.georocket.ogcapifeatures
 
 import io.georocket.constants.ConfigConstants
 import io.georocket.http.Endpoint
-import io.georocket.index.Index
-import io.georocket.index.IndexFactory
-import io.georocket.index.IndexerFactory
-import io.georocket.index.MetaIndexerFactory
+import io.georocket.index.*
 import io.georocket.ogcapifeatures.views.Views
 import io.georocket.ogcapifeatures.views.json.JsonViews
 import io.georocket.ogcapifeatures.views.xml.XmlViews
 import io.georocket.output.MultiMerger
+import io.georocket.query.All
 import io.georocket.query.DefaultQueryCompiler
 import io.georocket.query.IndexQuery
 import io.georocket.storage.Store
@@ -21,8 +19,6 @@ import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
 import io.vertx.ext.web.handler.BodyHandler
-import io.vertx.kotlin.core.json.jsonArrayOf
-import io.vertx.kotlin.core.json.jsonObjectOf
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -36,8 +32,9 @@ import kotlin.coroutines.CoroutineContext
  * An endpoint to maintain collections
  * @author Michel Kraemer
  */
-class CollectionsEndpoint(override val coroutineContext: CoroutineContext,
-    private val vertx: Vertx) : Endpoint, CoroutineScope {
+class CollectionsEndpoint(
+  override val coroutineContext: CoroutineContext, private val vertx: Vertx
+) : Endpoint, CoroutineScope {
   companion object {
     private val log = LoggerFactory.getLogger(CollectionsEndpoint::class.java)
 
@@ -56,13 +53,21 @@ class CollectionsEndpoint(override val coroutineContext: CoroutineContext,
     index = IndexFactory.createIndex(vertx)
 
     val router = Router.router(vertx)
-    router.get("/").produces("application/json").handler { ctx -> onGetAll(ctx,  JsonViews)}
-    router.get("/").produces("application/xml").handler { ctx -> onGetAll(ctx,  XmlViews)}
+
+    // handler for list of all collections
+    router.get("/").produces("application/json").handler { ctx -> onGetAll(ctx, JsonViews) }
+    router.get("/").produces("application/xml").handler { ctx -> onGetAll(ctx, XmlViews) }
     router.get("/").handler { context ->
       respondWithHttp406NotAcceptable(context, listOf("application/json", "application/xml"))
     }
 
-    router.get("/:name").handler(::onGet)
+    // handler for collection details
+    router.get("/:name").produces("application/json").handler { ctx -> onGet(ctx, JsonViews) }
+    router.get("/:name").produces("application/xml").handler { ctx -> onGet(ctx, XmlViews) }
+    router.get("/:name").handler { context ->
+      respondWithHttp406NotAcceptable(context, listOf("application/json", "application/xml"))
+    }
+
     val postMaxSize = config.getLong(ConfigConstants.HTTP_POST_MAX_SIZE, -1L)
     router.post("/").handler(BodyHandler.create().setBodyLimit(postMaxSize)).handler(::onPost)
     router.delete("/:name").handler(::onDelete)
@@ -79,39 +84,30 @@ class CollectionsEndpoint(override val coroutineContext: CoroutineContext,
   }
 
   private fun compileQuery(search: String?, path: String): IndexQuery {
-    return DefaultQueryCompiler(MetaIndexerFactory.ALL + IndexerFactory.ALL)
-      .compileQuery(search ?: "", path)
+    return DefaultQueryCompiler(MetaIndexerFactory.ALL + IndexerFactory.ALL).compileQuery(search ?: "", path)
   }
 
-  private fun itemToJson(name: String, path: String): JsonObject {
-    return jsonObjectOf(
-      "name" to name,
-      "links" to jsonArrayOf(
-        jsonObjectOf(
-          "href" to PathUtils.join(path, "items"),
-          "rel" to "item",
-          "type" to "application/gml+xml"
+  private fun getCollectionById(context: RoutingContext, id: String): Views.Collection {
+    return Views.Collection(
+      id = id,
+      links = listOf(
+        Views.Link(
+          href = PathUtils.join(context.mountPoint() ?: "/", "collections", id, "items"),
+          type = "application/geo+json",  // todo: find out which content type the merger will produce for this collection
+          rel = "items"
         )
       )
     )
   }
 
+  /**
+   * Handles requests to 'GET <root>/collections/'
+   */
   private fun onGetAll(ctx: RoutingContext, views: Views) {
     val request = ctx.request()
     val response = ctx.response()
     launch {
-      val collections = index.getCollections().map { id ->
-        Views.Collection(
-          id = id,
-          links =  listOf(
-            Views.Link(
-              href = PathUtils.join(request.path(), id, "items"),
-              type = "application/geo+json",  // todo: find out which content type the merger will produce for this collection
-              rel = "items"
-            )
-          )
-        )
-      }.toList()
+      val collections = index.getPaths(All).map { id -> getCollectionById(ctx, id) }.toList()
       views.collections(response, Endpoint.getLinksToSelf(ctx), collections)
     }
 
@@ -123,9 +119,7 @@ class CollectionsEndpoint(override val coroutineContext: CoroutineContext,
     val name = body.getString("name")
 
     if (name == null) {
-      response
-          .setStatusCode(400)
-          .end("JSON object must have a name.")
+      response.setStatusCode(400).end("JSON object must have a name.")
       return
     }
 
@@ -142,14 +136,15 @@ class CollectionsEndpoint(override val coroutineContext: CoroutineContext,
     }
   }
 
-  private fun onGet(ctx: RoutingContext) {
+  /**
+   * Handles requests to 'GET <root>/collections/{collectionId}/'
+   */
+  private fun onGet(ctx: RoutingContext, views: Views) {
     val response = ctx.response()
 
     val name = ctx.pathParam("name")
     if (name == null) {
-      response
-        .setStatusCode(400)
-        .end("No collection name given.")
+      response.setStatusCode(400).end("No collection name given.")
       return
     }
 
@@ -157,10 +152,8 @@ class CollectionsEndpoint(override val coroutineContext: CoroutineContext,
       try {
         val exists = index.existsCollection(name)
         if (exists) {
-          response
-            .putHeader("content-type", "application/json")
-            .setStatusCode(200)
-            .end(itemToJson(name, ctx.request().path()).encode())
+          val collection = getCollectionById(ctx, name)
+          views.collection(response, Endpoint.getLinksToSelf(ctx), collection)
         } else {
           throw HttpException(404, "The collection `$name' does not exist")
         }
@@ -175,9 +168,7 @@ class CollectionsEndpoint(override val coroutineContext: CoroutineContext,
 
     val name = ctx.pathParam("name")
     if (name == null) {
-      response
-        .setStatusCode(400)
-        .end("No collection name given.")
+      response.setStatusCode(400).end("No collection name given.")
       return
     }
 
@@ -194,8 +185,7 @@ class CollectionsEndpoint(override val coroutineContext: CoroutineContext,
         // delete collection
         index.deleteCollection(name)
 
-        response
-          .setStatusCode(204) // No Content
+        response.setStatusCode(204) // No Content
           .end()
       } catch (t: Throwable) {
         Endpoint.fail(response, t)
@@ -253,16 +243,14 @@ class CollectionsEndpoint(override val coroutineContext: CoroutineContext,
   }
 
   /**
-   * Get items from a collection
+   * Handles requests to 'GET <root>/collections/{collectionId}/items/'
    */
   private fun onGetItems(ctx: RoutingContext) {
     val response = ctx.response()
 
     val name = ctx.pathParam("name")
     if (name == null) {
-      response
-        .setStatusCode(400)
-        .end("No collection name given.")
+      response.setStatusCode(400).end("No collection name given.")
       return
     }
 
@@ -279,10 +267,9 @@ class CollectionsEndpoint(override val coroutineContext: CoroutineContext,
           if (BBOX_REGEX matches value) {
             search += "\"${escapeJava(value)}\""
           } else {
-            response
-                .setStatusCode(400)
-                .end("Parameter `bbox' must contain four floating point " +
-                    "numbers separated by a comma")
+            response.setStatusCode(400).end(
+                "Parameter `bbox' must contain four floating point " + "numbers separated by a comma"
+              )
             return
           }
         }
@@ -290,9 +277,7 @@ class CollectionsEndpoint(override val coroutineContext: CoroutineContext,
         "limit" -> try {
           limit = value.toInt()
         } catch (e: NumberFormatException) {
-          response
-              .setStatusCode(400)
-              .end("Parameter `limit' must be a number")
+          response.setStatusCode(400).end("Parameter `limit' must be a number")
           return
         }
 
@@ -320,17 +305,13 @@ class CollectionsEndpoint(override val coroutineContext: CoroutineContext,
 
     val name = ctx.pathParam("name")
     if (name == null) {
-      response
-        .setStatusCode(400)
-        .end("No collection name given.")
+      response.setStatusCode(400).end("No collection name given.")
       return
     }
 
     val id = ctx.pathParam("id")
     if (id == null) {
-      response
-          .setStatusCode(400)
-          .end("No feature id given.")
+      response.setStatusCode(400).end("No feature id given.")
       return
     }
 

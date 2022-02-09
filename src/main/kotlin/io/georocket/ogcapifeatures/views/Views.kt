@@ -21,4 +21,6 @@ interface Views {
   fun conformances(response: HttpServerResponse, conformsTo: List<String>)
 
   fun collections(response: HttpServerResponse, links: List<Link>, collections: List<Collection>)
+
+  fun collection(response: HttpServerResponse, links: List<Link>, collection: Collection)
 }

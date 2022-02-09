@@ -60,4 +60,13 @@ object JsonViews: Views {
     response.putHeader("content-type", "application/json")
     response.end(o)
   }
+
+  override fun collection(response: HttpServerResponse, links: List<Views.Link>, collection: Views.Collection) {
+    val o = collectionToJson(
+      collection.copy(links = links + collection.links)
+    ).encodePrettily()
+
+    response.putHeader("content-type", "application/json")
+    response.end(o)
+  }
 }
