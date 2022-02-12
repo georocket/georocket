@@ -15,8 +15,3 @@ CREATE TABLE chunkMeta (
   data jsonb NOT NULL UNIQUE,
   PRIMARY KEY(id)
 );
-
-CREATE TABLE ogcapifeatures_collections (
-  name VARCHAR,
-  PRIMARY KEY(name)
-);

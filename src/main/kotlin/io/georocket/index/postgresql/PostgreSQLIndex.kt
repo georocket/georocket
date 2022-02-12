@@ -29,7 +29,6 @@ class PostgreSQLIndex private constructor(vertx: Vertx, url: String,
      */
     private const val CHUNK_META = "chunkMeta"
     private const val DOCUMENTS = "documents"
-    private const val COLLECTIONS = "ogcapifeatures_collections"
     private const val ID = "id"
     private const val DATA = "data"
     private const val TAGS = "tags"

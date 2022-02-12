@@ -14,8 +14,6 @@ import io.georocket.index.AbstractIndex
 import io.georocket.index.Index
 import io.georocket.index.mongodb.MongoDBQueryTranslator.translate
 import io.georocket.index.normalizeLayer
-import io.georocket.index.postgresql.PostgreSQLIndex
-import io.georocket.index.postgresql.PostgreSQLQueryTranslator
 import io.georocket.query.IndexQuery
 import io.georocket.query.StartsWith
 import io.georocket.storage.ChunkMeta
@@ -23,7 +21,6 @@ import io.georocket.util.UniqueID
 import io.georocket.util.aggregateAwait
 import io.georocket.util.coDistinct
 import io.georocket.util.coFind
-import io.georocket.util.countDocumentsAwait
 import io.georocket.util.deleteManyAwait
 import io.georocket.util.findOneAndUpdateAwait
 import io.georocket.util.findOneAwait
@@ -36,8 +33,6 @@ import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.jsonArrayOf
 import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.core.json.obj
-import io.vertx.kotlin.coroutines.await
-import io.vertx.sqlclient.Tuple
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
@@ -51,7 +46,6 @@ class MongoDBIndex private constructor() : Index, AbstractIndex() {
     private const val LAYER = "layer"
     private const val COLL_DOCUMENTS = "documents"
     private const val COLL_CHUNKMETA = "chunkMeta"
-    private const val COLL_COLLECTIONS = "ogcapifeatures.collections"
 
     suspend fun create(vertx: Vertx, connectionString: String? = null,
         storagePath: String? = null): MongoDBIndex {
@@ -66,7 +60,6 @@ class MongoDBIndex private constructor() : Index, AbstractIndex() {
 
   private lateinit var collDocuments: MongoCollection<JsonObject>
   private lateinit var collChunkMeta: MongoCollection<JsonObject>
-  private lateinit var collCollections: MongoCollection<JsonObject>
 
   private suspend fun start(vertx: Vertx, connectionString: String?,
       storagePath: String?) {
@@ -89,7 +82,6 @@ class MongoDBIndex private constructor() : Index, AbstractIndex() {
 
     collDocuments = db.getCollection(COLL_DOCUMENTS, JsonObject::class.java)
     collChunkMeta = db.getCollection(COLL_CHUNKMETA, JsonObject::class.java)
-    collCollections = db.getCollection(COLL_COLLECTIONS, JsonObject::class.java)
 
     collDocuments.createIndexes(listOf(IndexModel(Indexes.ascending(CHUNK_META),
       IndexOptions().background(true)),
@@ -318,7 +310,6 @@ class MongoDBIndex private constructor() : Index, AbstractIndex() {
   }
 
   override suspend fun existsLayer(name: String): Boolean {
-    val q = translate(StartsWith(LAYER, normalizeLayer(name)))
     return collDocuments.coFind(
       translate(StartsWith(LAYER, normalizeLayer(name))),
       limit = 1
