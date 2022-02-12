@@ -8,6 +8,8 @@ import de.undercouch.actson.JsonParser
 import io.georocket.constants.AddressConstants
 import io.georocket.index.MainIndexer
 import io.georocket.index.MainIndexer.IndexAddParam
+import io.georocket.index.isLayerValid
+import io.georocket.index.normalizeLayer
 import io.georocket.index.xml.XMLCRSIndexer
 import io.georocket.input.geojson.GeoJsonSplitter
 import io.georocket.input.xml.FirstLevelSplitter
@@ -75,7 +77,7 @@ class ImporterVerticle : CoroutineVerticle() {
   private suspend fun onImport(msg: Message<JsonObject>) {
     val body = msg.body()
     val filepath = body.getString("filepath")
-    val layer = body.getString("layer") ?: "/"
+    val layer = normalizeLayer(body.getString("layer") ?: "/")
     val contentType = body.getString("contentType")
     val correlationId = body.getString("correlationId")
     val fallbackCRSString = body.getString("fallbackCRSString")
@@ -160,6 +162,9 @@ class ImporterVerticle : CoroutineVerticle() {
     }
 
     try {
+      if (!isLayerValid(layer)) {
+        throw IllegalArgumentException("Invalid layer")
+      }
       val result = if (belongsTo(contentType, "application", "xml") ||
           belongsTo(contentType, "text", "xml")) {
         importXML(file, correlationId, filename, timestamp, layer, tags,
@@ -211,7 +216,7 @@ class ImporterVerticle : CoroutineVerticle() {
     val parser = InputFactoryImpl().createAsyncForByteArray()
 
     val makeIndexMeta = { crsString: String? ->
-      IndexMeta(correlationId, filename, timestamp, tags, properties, crsString)
+      IndexMeta(correlationId, filename, timestamp, layer, tags, properties, crsString)
     }
 
     var indexMeta = makeIndexMeta(fallbackCRSString)
@@ -255,7 +260,7 @@ class ImporterVerticle : CoroutineVerticle() {
 
         val result = splitter.onEvent(streamEvent)
         if (result != null) {
-          val path = store.makePath(indexMeta, layer)
+          val path = store.makePath(indexMeta)
           val iap = IndexAddParam(result.prefix, result.chunk, result.suffix,
             result.meta, indexMeta, path)
           queue.get().add((result.chunk to path) to iap)
@@ -331,7 +336,7 @@ class ImporterVerticle : CoroutineVerticle() {
     val splitter = GeoJsonSplitter(window)
     val parser = JsonParser()
 
-    val indexMeta = IndexMeta(correlationId, filename, timestamp, tags,
+    val indexMeta = IndexMeta(correlationId, filename, timestamp, layer, tags,
         properties, null)
 
     var flushQueueJob: Deferred<Unit>? = null
@@ -363,7 +368,7 @@ class ImporterVerticle : CoroutineVerticle() {
         val streamEvent = JsonStreamEvent(nextEvent, parser.parsedCharacterCount, value)
         val result = splitter.onEvent(streamEvent)
         if (result != null) {
-          val path = store.makePath(indexMeta, layer)
+          val path = store.makePath(indexMeta)
           val iap = IndexAddParam(result.prefix, result.chunk, result.suffix,
             result.meta, indexMeta, path)
           queue.get().add((result.chunk to path) to iap)
