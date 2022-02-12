@@ -49,9 +49,10 @@ fun normalizeLayer(layer: String): String {
  *  - Maliciously crafted layer names cannot be used to access resources outside the storage path.
  *    Most importantly, the usage of relative paths (../../folder) or the shortcut
  *    to the (linux) home folder (~/Documents), is forbidden.
- *  - The ogc-api-features endpoint uses '.' as an alternative path separator. The same holds for
+ *  - The ogc-api-features endpoint uses ':' as an alternative path separator. The same holds for
  *    windows and its '\' path separator (when using the FileStore storage implementation).
- *    Replacing the path separators '/' with '\' or '.' does not lead to ambiguities.
+ *    Replacing the path separators '/' with '\' or ':' does not lead to ambiguities, because neither '\' nor ':'
+ *    are allowed characters in the original layer names.
  */
 fun isLayerValid(layer: String): Boolean {
   return layer.matches(Regex("[a-zA-Z0-9-_ /]*"))

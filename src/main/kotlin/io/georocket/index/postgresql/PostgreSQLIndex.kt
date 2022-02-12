@@ -3,7 +3,9 @@ package io.georocket.index.postgresql
 import io.georocket.constants.ConfigConstants
 import io.georocket.index.AbstractIndex
 import io.georocket.index.Index
+import io.georocket.index.normalizeLayer
 import io.georocket.query.IndexQuery
+import io.georocket.query.StartsWith
 import io.georocket.storage.ChunkMeta
 import io.georocket.util.UniqueID
 import io.georocket.util.getAwait
@@ -36,6 +38,7 @@ class PostgreSQLIndex private constructor(vertx: Vertx, url: String,
     private const val KEY = "key"
     private const val VALUE = "value"
     private const val NAME = "name"
+    private const val LAYER = "layer"
 
     suspend fun create(vertx: Vertx, url: String? = null, username: String? = null,
         password: String? = null): PostgreSQLIndex {
@@ -268,24 +271,16 @@ class PostgreSQLIndex private constructor(vertx: Vertx, url: String,
     }
   }
 
-  override suspend fun getCollections(): Flow<String> {
-    val statement = "SELECT $NAME FROM $COLLECTIONS"
+  override suspend fun getLayers(): Flow<String> {
+    val statement = "SELECT DISTINCT $DATA->>'$LAYER' FROM $DOCUMENTS"
     return streamQuery(statement, emptyList()) { it.getString(0) }
   }
 
-  override suspend fun addCollection(name: String) {
-    val statement = "INSERT INTO $COLLECTIONS ($NAME) VALUES ($1)"
-    client.preparedQuery(statement).execute(Tuple.of(name)).await()
-  }
-
-  override suspend fun existsCollection(name: String): Boolean {
-    val statement = "SELECT TRUE FROM $COLLECTIONS WHERE $NAME=$1"
-    val r = client.preparedQuery(statement).execute(Tuple.of(name)).await()
+  override suspend fun existsLayer(name: String): Boolean {
+    val (where, params) = PostgreSQLQueryTranslator.translate(StartsWith(LAYER, normalizeLayer(name)))
+    val statement = "SELECT TRUE FROM $DOCUMENTS WHERE $where LIMIT 1"
+    val r = client.preparedQuery(statement).execute(Tuple.wrap(params)).await()
     return r.size() > 0
   }
 
-  override suspend fun deleteCollection(name: String) {
-    val statement = "DELETE FROM $COLLECTIONS WHERE $NAME=$1"
-    client.preparedQuery(statement).execute(Tuple.of(name)).await()
-  }
 }

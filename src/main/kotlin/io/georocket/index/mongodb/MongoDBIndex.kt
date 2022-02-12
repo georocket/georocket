@@ -13,7 +13,11 @@ import io.georocket.constants.ConfigConstants.INDEX_MONGODB_CONNECTION_STRING
 import io.georocket.index.AbstractIndex
 import io.georocket.index.Index
 import io.georocket.index.mongodb.MongoDBQueryTranslator.translate
+import io.georocket.index.normalizeLayer
+import io.georocket.index.postgresql.PostgreSQLIndex
+import io.georocket.index.postgresql.PostgreSQLQueryTranslator
 import io.georocket.query.IndexQuery
+import io.georocket.query.StartsWith
 import io.georocket.storage.ChunkMeta
 import io.georocket.util.UniqueID
 import io.georocket.util.aggregateAwait
@@ -25,7 +29,6 @@ import io.georocket.util.findOneAndUpdateAwait
 import io.georocket.util.findOneAwait
 import io.georocket.util.getAwait
 import io.georocket.util.insertManyAwait
-import io.georocket.util.insertOneAwait
 import io.georocket.util.updateManyAwait
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
@@ -33,7 +36,10 @@ import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.core.json.jsonArrayOf
 import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.core.json.obj
+import io.vertx.kotlin.coroutines.await
+import io.vertx.sqlclient.Tuple
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.reactive.awaitFirstOrNull
@@ -42,6 +48,7 @@ class MongoDBIndex private constructor() : Index, AbstractIndex() {
   companion object {
     private const val INTERNAL_ID = "_id"
     private const val CHUNK_META = "chunkMeta"
+    private const val LAYER = "layer"
     private const val COLL_DOCUMENTS = "documents"
     private const val COLL_CHUNKMETA = "chunkMeta"
     private const val COLL_COLLECTIONS = "ogcapifeatures.collections"
@@ -306,31 +313,16 @@ class MongoDBIndex private constructor() : Index, AbstractIndex() {
     }
   }
 
-  /**
-   * Get a list of all collections
-   */
-  override suspend fun getCollections(): Flow<String> {
-    return collCollections.coFind(jsonObjectOf()).map { it.getString("name") }
+  override suspend fun getLayers(): Flow<String> {
+    return collDocuments.coDistinct(LAYER, jsonObjectOf(), String::class.java)
   }
 
-  /**
-   * Add a collection with a given [name]
-   */
-  override suspend fun addCollection(name: String) {
-    collCollections.insertOneAwait(jsonObjectOf("name" to name))
+  override suspend fun existsLayer(name: String): Boolean {
+    val q = translate(StartsWith(LAYER, normalizeLayer(name)))
+    return collDocuments.coFind(
+      translate(StartsWith(LAYER, normalizeLayer(name))),
+      limit = 1
+    ).firstOrNull() != null
   }
 
-  /**
-   * Test if a collection with a given [name] exists
-   */
-  override suspend fun existsCollection(name: String): Boolean {
-    return collCollections.countDocumentsAwait(jsonObjectOf("name" to name)) > 0
-  }
-
-  /**
-   * Delete one or more collections with the given [name]
-   */
-  override suspend fun deleteCollection(name: String) {
-    collCollections.deleteManyAwait(jsonObjectOf("name" to name))
-  }
 }

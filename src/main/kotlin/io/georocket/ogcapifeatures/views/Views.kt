@@ -13,6 +13,7 @@ interface Views {
 
   data class Collection(
     val id: String,
+    val title: String? = null,
     val links: List<Link>,
   )
 

@@ -24,10 +24,14 @@ object JsonViews: Views {
   }
 
   private fun collectionToJson(collection: Views.Collection): JsonObject {
-    return jsonObjectOf(
+    val json = jsonObjectOf(
       "id" to collection.id,
       "links" to collection.links.map(this::linkToJson)
     )
+    if (collection.title != null) {
+      json.put("title", collection.title)
+    }
+    return json
   }
 
   override fun landingPage(response: HttpServerResponse, links: List<Views.Link>) {

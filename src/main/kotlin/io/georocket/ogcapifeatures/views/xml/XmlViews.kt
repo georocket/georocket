@@ -29,6 +29,11 @@ object XmlViews: Views {
       core.id() {
         text(collection.id)
       }
+      if (collection.title != null) {
+        core.title {
+          text(collection.title)
+        }
+      }
       collection.links.forEach { link ->
         atom.link(response, link)
       }

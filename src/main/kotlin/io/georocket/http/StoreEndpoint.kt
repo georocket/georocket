@@ -116,7 +116,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
     val request = context.request()
     val response = context.response()
 
-    val path = Endpoint.getEndpointPath(context)
+    val layer = Endpoint.getEndpointPath(context)
     val search = request.getParam("search")
     val property = request.getParam("property")
     val attribute = request.getParam("attribute")
@@ -127,9 +127,9 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
             .setStatusCode(400)
             .end("You can only get the values of a property or an attribute, but not both")
       } else if (property != null) {
-        getPropertyValues(search, path, property, response)
+        getPropertyValues(search, layer, property, response)
       } else if (attribute != null) {
-        getAttributeValues(search, path, attribute, response)
+        getAttributeValues(search, layer, attribute, response)
       } else {
         getChunks(context)
       }
@@ -151,9 +151,9 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
     return te != null && te.lowercase(Locale.getDefault()).contains("trailers")
   }
 
-  private fun compileQuery(search: String?, path: String): IndexQuery {
+  private fun compileQuery(search: String?, layer: String): IndexQuery {
     return DefaultQueryCompiler(MetaIndexerFactory.ALL + IndexerFactory.ALL)
-      .compileQuery(search ?: "", path)
+      .compileQuery(search ?: "", layer)
   }
 
   /**
@@ -164,7 +164,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
     val response = context.response()
 
     try {
-      val path = Endpoint.getEndpointPath(context)
+      val layer = Endpoint.getEndpointPath(context)
       val search = request.getParam("search")
       val scroll = BooleanUtils.toBoolean(request.getParam("scroll")?.trim())
       val size = request.getParam("size", "100")
@@ -181,7 +181,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
         response.putHeader("Trailer", TRAILER_UNMERGED_CHUNKS)
       }
 
-      val query = compileQuery(search, path)
+      val query = compileQuery(search, layer)
 
       val merger = MultiMerger(optimisticMerging)
 
@@ -250,15 +250,15 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
 
   /**
    * Get the values of the specified [attribute] of all chunks matching the
-   * given [search] query and [path]
+   * given [search] query and [layer]
    */
-  private suspend fun getAttributeValues(search: String?, path: String,
-      attribute: String, response: HttpServerResponse) {
+  private suspend fun getAttributeValues(search: String?, layer: String,
+                                         attribute: String, response: HttpServerResponse) {
     var first = true
     response.isChunked = true
     response.setStatusCode(200).write("[")
 
-    val query = compileQuery(search, path)
+    val query = compileQuery(search, layer)
     val values = index.getAttributeValues(query, attribute)
 
     try {
@@ -282,16 +282,16 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
 
   /**
    * Get the values of the specified [property] of all chunks matching the
-   * given [search] query and [path]
+   * given [search] query and [layer]
    */
-  private suspend fun getPropertyValues(search: String?, path: String,
-      property: String, response: HttpServerResponse) {
+  private suspend fun getPropertyValues(search: String?, layer: String,
+                                        property: String, response: HttpServerResponse) {
     var first = true
     response.isChunked = true
     response.setStatusCode(200).write("[")
 
     try {
-      val query = compileQuery(search, path)
+      val query = compileQuery(search, layer)
       val values = index.getPropertyValues(query, property)
 
       values.collect { v ->
@@ -497,7 +497,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
    * @param context the routing context
    */
   private fun onDelete(context: RoutingContext) {
-    val path = Endpoint.getEndpointPath(context)
+    val layer = Endpoint.getEndpointPath(context)
     val response = context.response()
     val request = context.request()
     val search = request.getParam("search")
@@ -511,24 +511,24 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
             .setStatusCode(400)
             .end("You can only delete properties or tags, but not both")
       } else if (StringUtils.isNotEmpty(properties)) {
-        removeProperties(search, path, properties, response)
+        removeProperties(search, layer, properties, response)
       } else if (StringUtils.isNotEmpty(tags)) {
-        removeTags(search, path, tags, response)
+        removeTags(search, layer, tags, response)
       } else {
-        deleteChunks(search, path, response, await)
+        deleteChunks(search, layer, response, await)
       }
     }
   }
 
   /**
    * Remove [properties] from all chunks matching the given [search] query
-   * and [path]
+   * and [layer]
    */
-  private suspend fun removeProperties(search: String?, path: String,
-      properties: String, response: HttpServerResponse) {
+  private suspend fun removeProperties(search: String?, layer: String,
+                                       properties: String, response: HttpServerResponse) {
     val list = TagsParser.parse(properties)
     try {
-      val query = compileQuery(search, path)
+      val query = compileQuery(search, layer)
       index.removeProperties(query, list)
       response
           .setStatusCode(204)
@@ -539,13 +539,13 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
   }
 
   /**
-   * Remove [tags] from all chunks matching the given [search] query and [path]
+   * Remove [tags] from all chunks matching the given [search] query and [layer]
    */
-  private suspend fun removeTags(search: String?, path: String, tags: String,
-      response: HttpServerResponse) {
+  private suspend fun removeTags(search: String?, layer: String, tags: String,
+                                 response: HttpServerResponse) {
     val list = TagsParser.parse(tags)
     try {
-      val query = compileQuery(search, path)
+      val query = compileQuery(search, layer)
       index.removeTags(query, list)
       response
           .setStatusCode(204)
@@ -556,15 +556,15 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
   }
 
   /**
-   * Delete all chunks matching the given [search] query and [path].
+   * Delete all chunks matching the given [search] query and [layer].
    */
-  private suspend fun deleteChunks(search: String?, path: String,
-      response: HttpServerResponse, await: Boolean) {
+  private suspend fun deleteChunks(search: String?, layer: String,
+                                   response: HttpServerResponse, await: Boolean) {
     val answerSent = AtomicBoolean(false)
     coroutineScope {
       launch {
         try {
-          val query = compileQuery(search, path)
+          val query = compileQuery(search, layer)
           val paths = index.getPaths(query)
           var deleted = 0L
           paths.buffer().collectChunked(10000) { chunk ->
@@ -605,7 +605,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
    * @param context the routing context
    */
   private fun onPut(context: RoutingContext) {
-    val path = Endpoint.getEndpointPath(context)
+    val layer = Endpoint.getEndpointPath(context)
     val response = context.response()
     val request = context.request()
     val search = request.getParam("search") ?: ""
@@ -614,7 +614,7 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
 
     launch {
       if (StringUtils.isNotEmpty(properties) || StringUtils.isNotEmpty(tags)) {
-        val query = compileQuery(search, path)
+        val query = compileQuery(search, layer)
 
         try {
           if (StringUtils.isNotEmpty(properties)) {
