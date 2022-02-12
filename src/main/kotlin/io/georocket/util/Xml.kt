@@ -35,10 +35,6 @@ class XmlContext {
     this.writer.append("/>\n")
   }
 
-  fun element(e: XmlElement) {
-    this.writer.append(e.toString().prependIndent(indent))
-  }
-
   fun text(contents: String) {
     this.writer.append(StringEscapeUtils.escapeXml10(contents).prependIndent(indent))
     this.writer.append("\n")
@@ -86,16 +82,4 @@ fun xmlDocument(version: String = "1.0", encoding: String = "UTF-8", tags: XmlCo
   context.xmlDeclaration(version, encoding)
   context.apply(tags)
   return context.done()
-}
-
-fun xmlElement(name: String, vararg attrs: Pair<String, String?>, children: XmlContext.() -> Unit): XmlElement {
-  val context = XmlContext()
-  context.element(name = name, attrs = attrs, children = children)
-  return XmlElement(context.done())
-}
-
-fun xmlElement(name: String, vararg attrs: Pair<String, String?>): XmlElement {
-  val context = XmlContext()
-  context.element(name = name, attrs = attrs)
-  return XmlElement(context.done())
 }
