@@ -1,5 +1,6 @@
 package io.georocket.query
 
+import io.georocket.index.normalizeLayer
 import io.georocket.query.QueryCompiler.MatchPriority
 import io.georocket.query.QueryPart.ComparisonOperator
 import io.georocket.query.parser.QueryBaseListener
@@ -26,12 +27,12 @@ import org.antlr.v4.runtime.tree.ParseTreeWalker
  */
 class DefaultQueryCompiler(private val queryCompilers: Collection<QueryCompiler>) : QueryCompiler {
   /**
-   * Compile a [search] string with an optional chunk [path]
+   * Compile a [search] string with an optional chunk [layer]
    */
-  fun compileQuery(search: String, path: String?): IndexQuery {
+  fun compileQuery(search: String, layer: String?): IndexQuery {
     var qb = compileQuery(search)
-    if (path != null && path != "/") {
-      qb = And(qb, StartsWith("path", path))
+    if (layer != null && normalizeLayer(layer).isNotEmpty()) {
+      qb = And(qb, StartsWith("layer", normalizeLayer(layer)))
     }
     return qb
   }

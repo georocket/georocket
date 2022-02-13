@@ -13,6 +13,7 @@ class DefaultMetaIndexer : MetaIndexer {
     val result = mutableMapOf<String, Any>()
 
     result["path"] = path
+    result["layer"] = indexMeta.layer
 
     if (indexMeta.tags != null) {
       result["tags"] = indexMeta.tags

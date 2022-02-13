@@ -1,6 +1,7 @@
 package io.georocket.http
 
 import io.georocket.ServerAPIException
+import io.georocket.ogcapifeatures.views.Views
 import io.georocket.util.HttpException
 import io.georocket.util.ThrowableHelper
 import io.vertx.core.eventbus.ReplyException
@@ -43,6 +44,40 @@ interface Endpoint {
         result = "/$result"
       }
       return result
+    }
+
+    fun getLinksToSelf(context: RoutingContext, supportsJson: Boolean = true, supportsXml: Boolean = true, ): List<Views.Link> {
+      val path = context.request().path()
+      val links = mutableListOf<Views.Link>()
+      if (supportsJson) {
+        links.add(Views.Link(
+          href = path,
+          type = "application/json",
+          rel = when (context.acceptableContentType) {
+            "application/json" -> "self"
+            else -> "alternate"
+          },
+          title = when (context.acceptableContentType) {
+            "application/json" -> "This document"
+            else -> "This document in JSON"
+          },
+        ))
+      }
+      if (supportsXml) {
+        links.add(Views.Link(
+          href = path,
+          type = "application/xml",
+          rel = when (context.acceptableContentType) {
+            "application/xml" -> "self"
+            else -> "alternate"
+          },
+          title = when (context.acceptableContentType) {
+            "application/xml" -> "This document"
+            else -> "This document in XML"
+          },
+        ))
+      }
+      return links
     }
 
     /**

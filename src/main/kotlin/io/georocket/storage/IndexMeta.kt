@@ -21,6 +21,11 @@ data class IndexMeta(
   val timestamp: Long,
 
   /**
+   * The layer where the file should be stored
+   */
+  val layer: String,
+
+  /**
    * The list of tags to attach to the chunk
    */
   val tags: List<String>? = null,
@@ -35,5 +40,5 @@ data class IndexMeta(
    * import if it does not specify a CRS itself (may be `nul if no CRS is
    * available as fallback)
    */
-  val fallbackCRSString: String? = null
+  val fallbackCRSString: String? = null,
 )

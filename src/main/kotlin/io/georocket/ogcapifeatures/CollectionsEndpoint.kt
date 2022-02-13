@@ -1,31 +1,23 @@
 package io.georocket.ogcapifeatures
 
-import io.georocket.constants.ConfigConstants
 import io.georocket.http.Endpoint
-import io.georocket.index.Index
-import io.georocket.index.IndexFactory
-import io.georocket.index.IndexerFactory
-import io.georocket.index.MetaIndexerFactory
+import io.georocket.index.*
+import io.georocket.ogcapifeatures.views.Views
+import io.georocket.ogcapifeatures.views.json.JsonViews
+import io.georocket.ogcapifeatures.views.xml.XmlViews
 import io.georocket.output.MultiMerger
 import io.georocket.query.DefaultQueryCompiler
 import io.georocket.query.IndexQuery
 import io.georocket.storage.Store
 import io.georocket.storage.StoreFactory
-import io.georocket.util.HttpException
-import io.georocket.util.PathUtils
-import io.georocket.util.collectChunked
+import io.georocket.util.*
 import io.vertx.core.Vertx
 import io.vertx.core.http.HttpServerResponse
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
-import io.vertx.ext.web.handler.BodyHandler
-import io.vertx.kotlin.core.json.jsonArrayOf
-import io.vertx.kotlin.core.json.jsonObjectOf
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.buffer
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import org.apache.commons.text.StringEscapeUtils.escapeJava
 import org.slf4j.LoggerFactory
@@ -37,8 +29,9 @@ import kotlin.coroutines.CoroutineContext
  * An endpoint to maintain collections
  * @author Michel Kraemer
  */
-class CollectionsEndpoint(override val coroutineContext: CoroutineContext,
-    private val vertx: Vertx) : Endpoint, CoroutineScope {
+class CollectionsEndpoint(
+  override val coroutineContext: CoroutineContext, private val vertx: Vertx
+) : Endpoint, CoroutineScope {
   companion object {
     private val log = LoggerFactory.getLogger(CollectionsEndpoint::class.java)
 
@@ -57,14 +50,23 @@ class CollectionsEndpoint(override val coroutineContext: CoroutineContext,
     index = IndexFactory.createIndex(vertx)
 
     val router = Router.router(vertx)
-    router.get("/").handler(::onGetAll)
-    router.get("/:name").handler(::onGet)
-    val postMaxSize = config.getLong(ConfigConstants.HTTP_POST_MAX_SIZE, -1L)
-    router.post("/").handler(BodyHandler.create().setBodyLimit(postMaxSize)).handler(::onPost)
-    router.delete("/:name").handler(::onDelete)
 
-    router.get("/:name/items").handler(::onGetItems)
-    router.get("/:name/items/:id").handler(::onGetItemById)
+    // handler for list of all collections
+    router.get("/").produces("application/json").handler { ctx -> onGetAll(ctx, JsonViews) }
+    router.get("/").produces("application/xml").handler { ctx -> onGetAll(ctx, XmlViews) }
+    router.get("/").handler { context ->
+      respondWithHttp406NotAcceptable(context, listOf("application/json", "application/xml"))
+    }
+
+    // handler for collection details
+    router.get("/:collectionId").produces("application/json").handler { ctx -> onGet(ctx, JsonViews) }
+    router.get("/:collectionId").produces("application/xml").handler { ctx -> onGet(ctx, XmlViews) }
+    router.get("/:collectionId").handler { context ->
+      respondWithHttp406NotAcceptable(context, listOf("application/json", "application/xml"))
+    }
+
+    router.get("/:collectionId/items").handler(::onGetItems)
+    router.get("/:collectionId/items/:id").handler(::onGetItemById)
 
     return router
   }
@@ -75,131 +77,98 @@ class CollectionsEndpoint(override val coroutineContext: CoroutineContext,
   }
 
   private fun compileQuery(search: String?, path: String): IndexQuery {
-    return DefaultQueryCompiler(MetaIndexerFactory.ALL + IndexerFactory.ALL)
-      .compileQuery(search ?: "", path)
+    return DefaultQueryCompiler(MetaIndexerFactory.ALL + IndexerFactory.ALL).compileQuery(search ?: "", path)
   }
 
-  private fun itemToJson(name: String, path: String): JsonObject {
-    return jsonObjectOf(
-      "name" to name,
-      "links" to jsonArrayOf(
-        jsonObjectOf(
-          "href" to PathUtils.join(path, "items"),
-          "rel" to "item",
-          "type" to "application/gml+xml"
+  /**
+   * Layers with multiple path segments (separated using '/') would lead to ambiguous urls.
+   * For example, consider the url "<root>/collections/foo/bar/items/" - is this the Collection end point for the
+   * layer "foo/bar/items", or is it the Items end point for the layer "foo/bar"?
+   * Therefor we use ':' as a path seperator for the collection id instead of '/'.
+   * The conversion process is isomorphic and does not introduce additional ambiguities, because ':' is not allowed
+   * as a character in layer names. As a result, we have unambiguous URLs:
+   *  - <root>/collections/foo:bar/items/  for the Items end point of the layer foo/bar/
+   *  - <root>/collections/foo:bar:items/  for the Collection end point of the layer foo/bar/items/
+   */
+  private fun layerToCollectionId(layer: String): String {
+    val normalized = normalizeLayer(layer);
+    return if (normalized.isEmpty()) {
+      ":"
+    } else {
+      normalizeLayer(layer).replace('/', ':').trimEnd(':')
+    }
+  }
+
+  /**
+   * Inverse of [layerToCollectionId]
+   */
+  private fun collectionIdToLayer(collectionId: String): String =
+    normalizeLayer(collectionId.replace(':', '/'))
+
+
+
+  private fun getCollectionByLayer(context: RoutingContext, layer: String): Views.Collection {
+    val id = layerToCollectionId(layer)
+    return Views.Collection(
+      id = id,
+      title = if (layer.isEmpty()) { "root layer" } else { "layer at $layer" },
+      links = listOf(
+        Views.Link(
+          href = PathUtils.join(context.mountPoint() ?: "/", id, "items"),
+          type = "application/geo+json",  // todo: find out which content type the merger will produce for this collection
+          rel = "items"
         )
       )
     )
   }
 
-  private fun onGetAll(ctx: RoutingContext) {
-    val request = ctx.request()
+  /**
+   * Handles requests to 'GET <root>/collections/'
+   */
+  private fun onGetAll(ctx: RoutingContext, views: Views) {
     val response = ctx.response()
-
-    response.putHeader("content-type", "application/json")
-
     launch {
-      try {
-        val r = jsonObjectOf(
-          "links" to jsonArrayOf(
-            jsonObjectOf(
-              "href" to request.path(),
-              "rel" to "self",
-              "type" to "application/json",
-              "title" to "this document"
-            )
-          ),
-          "collections" to index.getCollections().map {
-            itemToJson(it, PathUtils.join(request.path(), it)) }.toList()
-        )
-
-        response.end(r.encode())
-      } catch (t: Throwable) {
-        Endpoint.fail(response, t)
-      }
-    }
-  }
-
-  private fun onPost(ctx: RoutingContext) {
-    val response = ctx.response()
-    val body = ctx.bodyAsJson
-    val name = body.getString("name")
-
-    if (name == null) {
-      response
-          .setStatusCode(400)
-          .end("JSON object must have a name.")
-      return
-    }
-
-    launch {
-      try {
-        if (index.existsCollection(name)) {
-          throw HttpException(409, "A collection with this name already exists")
+      val collections = index.getLayers()
+        .toList()
+        .flatMap { layer ->
+          // also include all parent layers of the layers that directly contain data
+          val segments = layer.trim('/').split("/").map { "$it/" }
+          (0 .. segments.size).map { index ->
+            segments.subList(0, index).joinToString("")
+          }
         }
-        index.addCollection(name)
-        response.setStatusCode(204).end()
-      } catch (t: Throwable) {
-        Endpoint.fail(response, t)
-      }
+        .map { normalizeLayer(it) }
+        .toSet()
+        .sorted()
+        .map { layer -> getCollectionByLayer(ctx, layer) }
+
+      views.collections(response, Endpoint.getLinksToSelf(ctx), collections)
     }
+
   }
 
-  private fun onGet(ctx: RoutingContext) {
+  /**
+   * Handles requests to 'GET <root>/collections/{collectionId}/'
+   */
+  private fun onGet(ctx: RoutingContext, views: Views) {
     val response = ctx.response()
 
-    val name = ctx.pathParam("name")
-    if (name == null) {
-      response
-        .setStatusCode(400)
-        .end("No collection name given.")
+    val collectionId = ctx.pathParam("collectionId")
+    if (collectionId == null) {
+      response.setStatusCode(400).end("No collection name given.")
       return
     }
 
     launch {
       try {
-        val exists = index.existsCollection(name)
+        val layer = collectionIdToLayer(collectionId)
+        val exists = index.existsLayer(layer)
         if (exists) {
-          response
-            .putHeader("content-type", "application/json")
-            .setStatusCode(200)
-            .end(itemToJson(name, ctx.request().path()).encode())
+          val collection = getCollectionByLayer(ctx, layer)
+          views.collection(response, Endpoint.getLinksToSelf(ctx), collection)
         } else {
-          throw HttpException(404, "The collection `$name' does not exist")
+          throw HttpException(404, "The collection `$collectionId' does not exist")
         }
-      } catch (t: Throwable) {
-        Endpoint.fail(response, t)
-      }
-    }
-  }
-
-  private fun onDelete(ctx: RoutingContext) {
-    val response = ctx.response()
-
-    val name = ctx.pathParam("name")
-    if (name == null) {
-      response
-        .setStatusCode(400)
-        .end("No collection name given.")
-      return
-    }
-
-    launch {
-      try {
-        // delete chunks in the given layer in index and store
-        val query = compileQuery(null, "/$name")
-        val paths = index.getPaths(query)
-        paths.buffer().collectChunked(10000) { chunk ->
-          index.delete(chunk)
-          store.delete(chunk)
-        }
-
-        // delete collection
-        index.deleteCollection(name)
-
-        response
-          .setStatusCode(204) // No Content
-          .end()
       } catch (t: Throwable) {
         Endpoint.fail(response, t)
       }
@@ -256,18 +225,17 @@ class CollectionsEndpoint(override val coroutineContext: CoroutineContext,
   }
 
   /**
-   * Get items from a collection
+   * Handles requests to 'GET <root>/collections/{collectionId}/items/'
    */
   private fun onGetItems(ctx: RoutingContext) {
     val response = ctx.response()
 
-    val name = ctx.pathParam("name")
-    if (name == null) {
-      response
-        .setStatusCode(400)
-        .end("No collection name given.")
+    val collectionId = ctx.pathParam("collectionId")
+    if (collectionId == null) {
+      response.setStatusCode(400).end("No collection name given.")
       return
     }
+    val layer = collectionIdToLayer(collectionId)
 
     // TODO respect 'limit' parameter
     var limit = 10
@@ -282,10 +250,9 @@ class CollectionsEndpoint(override val coroutineContext: CoroutineContext,
           if (BBOX_REGEX matches value) {
             search += "\"${escapeJava(value)}\""
           } else {
-            response
-                .setStatusCode(400)
-                .end("Parameter `bbox' must contain four floating point " +
-                    "numbers separated by a comma")
+            response.setStatusCode(400).end(
+                "Parameter `bbox' must contain four floating point " + "numbers separated by a comma"
+              )
             return
           }
         }
@@ -293,9 +260,7 @@ class CollectionsEndpoint(override val coroutineContext: CoroutineContext,
         "limit" -> try {
           limit = value.toInt()
         } catch (e: NumberFormatException) {
-          response
-              .setStatusCode(400)
-              .end("Parameter `limit' must be a number")
+          response.setStatusCode(400).end("Parameter `limit' must be a number")
           return
         }
 
@@ -311,7 +276,7 @@ class CollectionsEndpoint(override val coroutineContext: CoroutineContext,
       "AND(${search.joinToString(" ")})"
     }
 
-    processQuery(joinedSearch, name, response)
+    processQuery(joinedSearch, layer, response)
   }
 
   /**
@@ -321,23 +286,20 @@ class CollectionsEndpoint(override val coroutineContext: CoroutineContext,
   private fun onGetItemById(ctx: RoutingContext) {
     val response = ctx.response()
 
-    val name = ctx.pathParam("name")
-    if (name == null) {
-      response
-        .setStatusCode(400)
-        .end("No collection name given.")
+    val collectionId = ctx.pathParam("collectionId")
+    if (collectionId == null) {
+      response.setStatusCode(400).end("No collection name given.")
       return
     }
+    val layer = collectionIdToLayer(collectionId)
 
     val id = ctx.pathParam("id")
     if (id == null) {
-      response
-          .setStatusCode(400)
-          .end("No feature id given.")
+      response.setStatusCode(400).end("No feature id given.")
       return
     }
 
     val encodedId = URLEncoder.encode(id, "UTF-8")
-    processQuery("EQ(gmlId $encodedId)", name, response)
+    processQuery("EQ(gmlId $encodedId)", layer, response)
   }
 }

@@ -16,8 +16,8 @@ interface Store {
     // nothing to do by default
   }
 
-  fun makePath(indexMetadata: IndexMeta, layer: String): String {
-    val path = layer.ifEmpty { "/" }
+  fun makePath(indexMetadata: IndexMeta): String {
+    val path = indexMetadata.layer.ifEmpty { "/" }
     return PathUtils.join(path, indexMetadata.correlationId + UniqueID.next())
   }
 

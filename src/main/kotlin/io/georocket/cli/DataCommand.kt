@@ -19,7 +19,7 @@ import io.vertx.core.streams.WriteStream
 abstract class DataCommand : GeoRocketCommand() {
   protected fun compileQuery(search: String?, layer: String?): IndexQuery {
     return DefaultQueryCompiler(MetaIndexerFactory.ALL + IndexerFactory.ALL)
-      .compileQuery(search ?: "", PathUtils.addLeadingSlash(layer ?: ""))
+      .compileQuery(search ?: "", layer)
   }
 
   override suspend fun doRun(remainingArgs: Array<String>, reader: InputReader,

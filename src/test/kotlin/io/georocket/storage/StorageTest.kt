@@ -115,7 +115,7 @@ abstract class StorageTest {
       vertx: Vertx, path: String)
 
   /**
-   * Call [testAdd] with `null` as path
+   * Call [testAdd] with `null` as layer
    */
   @Test
   fun testAddWithoutSubfolder(ctx: VertxTestContext, vertx: Vertx) {
@@ -123,7 +123,7 @@ abstract class StorageTest {
   }
 
   /**
-   * Call [testAdd] with a path
+   * Call [testAdd] with a layer
    */
   @Test
   fun testAddWithSubfolder(ctx: VertxTestContext, vertx: Vertx) {
@@ -152,15 +152,15 @@ abstract class StorageTest {
   /**
    * Add test data and compare the data with the stored one
    */
-  private fun testAdd(ctx: VertxTestContext, vertx: Vertx, path: String?) {
+  private fun testAdd(ctx: VertxTestContext, vertx: Vertx, layer: String?) {
     CoroutineScope(vertx.dispatcher()).launch {
       val store = createStore(vertx)
-      val indexMeta = IndexMeta(IMPORT_ID, ID, TIMESTAMP, TAGS, PROPERTIES, FALLBACK_CRS_STRING)
+      val indexMeta = IndexMeta(IMPORT_ID, ID, TIMESTAMP, layer ?: "", TAGS, PROPERTIES, FALLBACK_CRS_STRING)
 
       ctx.coVerify {
-        val p = store.makePath(indexMeta, path ?: "/")
+        val p = store.makePath(indexMeta)
         store.add(Buffer.buffer(CHUNK_CONTENT), p)
-        validateAfterStoreAdd(ctx, vertx, path)
+        validateAfterStoreAdd(ctx, vertx, layer)
       }
       ctx.completeNow()
     }
