@@ -14,7 +14,7 @@ mainClassName = 'io.georocket.MainKt'
 ext {
     vertxVersion = '4.2.4'
     geotoolsVersion = '26.2'
-    slf4jVersion = '1.7.35'
+    slf4jVersion = '1.7.36'
     logbackVersion = '1.2.10'
     junitVersion = '5.8.2'
     testcontainersVersion = '1.16.3'
@@ -96,7 +96,7 @@ dependencies {
     // mongodb driver + snappy compression
     implementation 'org.mongodb:bson:4.4.1'
     implementation 'org.mongodb:mongodb-driver-async:3.12.10'
-    implementation 'org.mongodb:mongodb-driver-reactivestreams:4.4.1'
+    implementation 'org.mongodb:mongodb-driver-reactivestreams:4.5.0'
     implementation 'org.xerial.snappy:snappy-java:1.1.8.4'
     implementation 'io.projectreactor:reactor-core:3.4.14'
 
@@ -104,8 +104,8 @@ dependencies {
     implementation 'de.flapdoodle.embed:de.flapdoodle.embed.mongo:3.3.1'
 
     // PostgreSQL
-    implementation "org.postgresql:postgresql:42.3.1"
-    implementation "org.flywaydb:flyway-core:8.4.3"
+    implementation "org.postgresql:postgresql:42.3.2"
+    implementation "org.flywaydb:flyway-core:8.4.4"
     implementation "com.ongres.scram:client:2.1" // for authentication
 
     // necessary for ALPN / HTTP/2
