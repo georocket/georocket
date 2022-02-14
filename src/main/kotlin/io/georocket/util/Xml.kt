@@ -46,12 +46,6 @@ class XmlContext {
 
 }
 
-class XmlElement(private val markup: String) {
-  override fun toString(): String {
-    return markup
-  }
-}
-
 /**
  * Creates an XML document,
  * that can be written in an intuitive kotlin-dsl style.
