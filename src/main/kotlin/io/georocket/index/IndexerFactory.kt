@@ -2,6 +2,7 @@ package io.georocket.index
 
 import io.georocket.index.generic.BoundingBoxIndexerFactory
 import io.georocket.index.generic.GenericAttributeIndexerFactory
+import io.georocket.index.geojson.GeoJsonIdIndexerFactory
 import io.georocket.index.xml.GmlIdIndexerFactory
 import io.georocket.index.xml.XalAddressIndexerFactory
 import io.georocket.query.QueryCompiler
@@ -17,6 +18,7 @@ interface IndexerFactory : QueryCompiler {
       BoundingBoxIndexerFactory(),
       GenericAttributeIndexerFactory(),
       GmlIdIndexerFactory(),
+      GeoJsonIdIndexerFactory(),
       XalAddressIndexerFactory()
     )
   }
