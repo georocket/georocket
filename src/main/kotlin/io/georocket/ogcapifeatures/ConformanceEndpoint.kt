@@ -4,15 +4,9 @@ import io.georocket.http.Endpoint
 import io.georocket.ogcapifeatures.views.Views
 import io.georocket.ogcapifeatures.views.json.JsonViews
 import io.georocket.ogcapifeatures.views.xml.XmlViews
-import io.georocket.util.atom
-import io.georocket.util.core
-import io.georocket.util.xmlDocument
 import io.vertx.core.Vertx
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
-import io.vertx.kotlin.core.json.Json
-import io.vertx.kotlin.core.json.array
-import io.vertx.kotlin.core.json.obj
 
 /**
  * An endpoint that provides supported OGC API Features conformance classes
@@ -36,7 +30,7 @@ class ConformanceEndpoint(private val vertx: Vertx) : Endpoint {
       "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/gmlsf2",
       "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas3"
     )
-    views.conformances(context.response(), conformsTo)
+    views.conformance(context.response(), conformsTo)
   }
 
 }

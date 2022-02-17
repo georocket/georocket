@@ -16,14 +16,14 @@ import io.vertx.core.http.HttpServerResponse
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
-import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
 import org.apache.commons.text.StringEscapeUtils.escapeJava
 import org.slf4j.LoggerFactory
 import java.io.FileNotFoundException
 import java.net.URLEncoder
 import kotlin.coroutines.CoroutineContext
+import kotlin.streams.toList
 
 /**
  * An endpoint to maintain collections
@@ -76,8 +76,9 @@ class CollectionsEndpoint(
     index.close()
   }
 
-  private fun compileQuery(search: String?, path: String): IndexQuery {
-    return DefaultQueryCompiler(MetaIndexerFactory.ALL + IndexerFactory.ALL).compileQuery(search ?: "", path)
+  private fun compileQuery(search: String?, layer: String): IndexQuery {
+    return DefaultQueryCompiler(MetaIndexerFactory.ALL + IndexerFactory.ALL)
+      .compileQuery(search ?: "", layer)
   }
 
   /**
@@ -107,7 +108,24 @@ class CollectionsEndpoint(
 
 
 
-  private fun getCollectionByLayer(context: RoutingContext, layer: String): Views.Collection {
+  private suspend fun getCollectionByLayer(context: RoutingContext, layer: String): Views.Collection {
+    // Guess the mime type, that the merger will produce for this layer
+    val mimeTypes = index.getDistinctMeta(compileQuery("", layer))
+      .map { meta -> meta.mimeType }
+      .toSet()
+    val isJson = mimeTypes.all { MimeTypeUtils.belongsTo(it, "application", "json") }
+    val isXml = mimeTypes.all { MimeTypeUtils.belongsTo(it, "application", "xml") }
+    val mimeType = if (isJson) {
+      "application/geo+json"
+    } else if (isXml) {
+      "application/gml+xml; version=3.2; profile=http://www.opengis.net/def/profile/ogc/2.0/gml-sf2"
+    } else if (mimeTypes.size == 1) {
+      mimeTypes.first()
+    }  else {
+      "application/octet-stream"
+    }
+
+    // build collection
     val id = layerToCollectionId(layer)
     return Views.Collection(
       id = id,
@@ -115,7 +133,7 @@ class CollectionsEndpoint(
       links = listOf(
         Views.Link(
           href = PathUtils.join(context.mountPoint() ?: "/", id, "items"),
-          type = "application/geo+json",  // todo: find out which content type the merger will produce for this collection
+          type = mimeType,
           rel = "items"
         )
       )
@@ -128,7 +146,7 @@ class CollectionsEndpoint(
   private fun onGetAll(ctx: RoutingContext, views: Views) {
     val response = ctx.response()
     launch {
-      val collections = index.getLayers()
+      val layers = index.getLayers()
         .toList()
         .flatMap { layer ->
           // also include all parent layers of the layers that directly contain data
@@ -140,7 +158,11 @@ class CollectionsEndpoint(
         .map { normalizeLayer(it) }
         .toSet()
         .sorted()
-        .map { layer -> getCollectionByLayer(ctx, layer) }
+      val collections = layers.map { layer ->
+        async { // get the collections in parallel
+          getCollectionByLayer(ctx, layer)
+        }
+      }.awaitAll()
 
       views.collections(response, Endpoint.getLinksToSelf(ctx), collections)
     }
