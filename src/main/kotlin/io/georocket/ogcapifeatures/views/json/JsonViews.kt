@@ -28,9 +28,7 @@ object JsonViews: Views {
       "id" to collection.id,
       "links" to collection.links.map(this::linkToJson)
     )
-    if (collection.title != null) {
-      json.put("title", collection.title)
-    }
+    json.put("title", collection.title)
     return json
   }
 
@@ -44,7 +42,7 @@ object JsonViews: Views {
     response.end(o.encodePrettily())
   }
 
-  override fun conformances(response: HttpServerResponse, conformsTo: List<String>) {
+  override fun conformance(response: HttpServerResponse, conformsTo: List<String>) {
     val o = jsonObjectOf(
       "title" to "Conformances",
       "description" to "List of conformance classes that this API implements.",
@@ -57,7 +55,7 @@ object JsonViews: Views {
   override fun collections(response: HttpServerResponse, links: List<Views.Link>, collections: List<Views.Collection>) {
     val o = jsonObjectOf(
       "title" to "Collections",
-      "description" to "List of collections",
+      "description" to "List of all collections",
       "links" to links.map(this::linkToJson),
       "collections" to collections.map(this::collectionToJson)
     ).encodePrettily()
