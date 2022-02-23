@@ -2,8 +2,10 @@ openapi: 3.0.1
 info:
   title: GeoRocket - OGC API Features
   version: {{ version }}
+servers:
+  - url: {{ path }}
 paths:
-  '{{ path }}/':
+  '/':
     get:
       summary: landing page of this API
       description: >-
@@ -22,7 +24,7 @@ paths:
             text/html:
               schema:
                 type: string
-  '{{ path }}/conformance':
+  '/conformance':
     get:
       summary: information about standards that this API conforms to
       description: >-
@@ -44,7 +46,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/exception'
-  '{{ path }}/collections':
+  '/collections':
     get:
       summary: describe the feature collections in the dataset
       operationId: describeCollections
@@ -69,7 +71,7 @@ paths:
             text/html:
               schema:
                 type: string
-  '{{ path }}/collections/{collectionId}':
+  '/collections/{collectionId}':
     get:
       summary: 'describe the {collectionId} feature collection'
       operationId: describeCollection
@@ -96,7 +98,7 @@ paths:
             text/html:
               schema:
                 type: string
-  '{{ path }}/collections/{collectionId}/items':
+  '/collections/{collectionId}/items':
     get:
       summary: 'retrieve features of feature collection {collectionId}'
       description: >-
@@ -110,7 +112,7 @@ paths:
       - $ref: '#/components/parameters/collectionId'
       - $ref: '#/components/parameters/limit'
       - $ref: '#/components/parameters/bbox'
-      - $ref: '#/components/parameters/time'
+      - $ref: '#/components/parameters/datetime'
       responses:
         '200':
           description: >-
@@ -132,7 +134,7 @@ paths:
             text/html:
               schema:
                 type: string
-  '{{ path }}/collections/{collectionId}/items/{featureId}':
+  '/collections/{collectionId}/items/{featureId}':
     get:
       summary: retrieve a feature
       operationId: getFeature
@@ -220,8 +222,8 @@ components:
           type: number
       style: form
       explode: false
-    time:
-      name: time
+    datetime:
+      name: datetime
       in: query
       description: >-
         Either a date-time or a period string that adheres to RFC 3339. Examples:

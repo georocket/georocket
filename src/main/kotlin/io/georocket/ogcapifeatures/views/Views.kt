@@ -2,9 +2,17 @@ package io.georocket.ogcapifeatures.views
 
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty
+import io.georocket.http.Endpoint
 import io.georocket.ogcapifeatures.views.xml.XML_NAMESPACE_ATOM
 import io.georocket.ogcapifeatures.views.xml.XML_NAMESPACE_CORE
+import io.georocket.ogcapifeatures.views.xml.XmlViews
+import io.georocket.output.Merger
+import io.georocket.storage.ChunkMeta
+import io.georocket.storage.XMLChunkMeta
+import io.vertx.core.buffer.Buffer
 import io.vertx.core.http.HttpServerResponse
+import kotlinx.coroutines.flow.Flow
+import org.slf4j.Logger
 
 interface Views {
 
@@ -41,4 +49,35 @@ interface Views {
   fun collections(response: HttpServerResponse, links: List<Link>, collections: List<Collection>)
 
   fun collection(response: HttpServerResponse, links: List<Link>, collection: Collection)
+
+  suspend fun items(response: HttpServerResponse, links: List<Link>, numberReturned: Int, chunks: Flow<Pair<Buffer, ChunkMeta>>)
+
+}
+
+suspend inline fun<reified T: ChunkMeta> mergeChunks(response: HttpServerResponse, merger: Merger<T>, chunks: Flow<Pair<Buffer, ChunkMeta>>, log: Logger) {
+  try {
+    var notaccepted = 0L
+    chunks.collect { (chunk, chunkMeta) ->
+      try {
+        if (chunkMeta !is T) {
+          throw IllegalStateException("Only Xml chunks allowed")
+        }
+        merger.merge(chunk, chunkMeta, response)
+      } catch (e: IllegalStateException) {
+        // Chunk cannot be merged. maybe it's a new one that has
+        // been added after the merger was initialized. Just
+        // ignore it, but emit a warning later
+        log.warn("", e)
+        notaccepted++
+      }
+    }
+    if (notaccepted > 0) {
+      log.warn("Could not merge $notaccepted chunks.")
+    }
+    merger.finish(response)
+    response.end()
+  } catch (t: Throwable) {
+    log.error("Could not perform query", t)
+    Endpoint.fail(response, t)
+  }
 }

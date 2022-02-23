@@ -3,7 +3,10 @@ package io.georocket.output.geojson
 import io.georocket.output.Merger
 import io.georocket.storage.GeoJsonChunkMeta
 import io.vertx.core.buffer.Buffer
+import io.vertx.core.json.Json
+import io.vertx.core.json.JsonObject
 import io.vertx.core.streams.WriteStream
+import io.vertx.kotlin.core.json.jsonObjectOf
 
 /**
  * Merges chunks to valid GeoJSON documents
@@ -12,7 +15,7 @@ import io.vertx.core.streams.WriteStream
  * `FeatureCollection`s.
  * @author Michel Kraemer
  */
-class GeoJsonMerger(optimistic: Boolean) : Merger<GeoJsonChunkMeta> {
+class GeoJsonMerger(optimistic: Boolean, private val extensionProperties: JsonObject = jsonObjectOf()) : Merger<GeoJsonChunkMeta> {
   companion object {
     private const val NOT_SPECIFIED = 0
     private const val GEOMETRY_COLLECTION = 1
@@ -22,6 +25,7 @@ class GeoJsonMerger(optimistic: Boolean) : Merger<GeoJsonChunkMeta> {
         listOf(FEATURE_COLLECTION, GEOMETRY_COLLECTION),
         listOf(FEATURE_COLLECTION, FEATURE_COLLECTION)
     )
+    private val RESERVED_PROPERTY_NAMES = listOf("type", "features", "geometries")
   }
 
   /**
@@ -39,14 +43,36 @@ class GeoJsonMerger(optimistic: Boolean) : Merger<GeoJsonChunkMeta> {
    */
   private var mergedType = if (optimistic) FEATURE_COLLECTION else NOT_SPECIFIED
 
+  init {
+    // check, that all passed extension properties are valid.
+    val usesReservedProperty = RESERVED_PROPERTY_NAMES.any {
+      extensionProperties.containsKey(it)
+    }
+    if (usesReservedProperty) {
+      throw IllegalArgumentException("One of the extension properties is invalid, because the property " +
+        "names \"${RESERVED_PROPERTY_NAMES.joinToString("\", \"")}\" are reserved.")
+    }
+  }
+
+  private fun writeExtensionProperties(outputStream: WriteStream<Buffer>) {
+    for ((key, value) in extensionProperties) {
+      outputStream.write(Json.encodeToBuffer(key))
+      outputStream.write(Buffer.buffer(":"))
+      outputStream.write(Json.encodeToBuffer(value))
+      outputStream.write(Buffer.buffer(","))
+    }
+  }
+
   /**
    * Write the header to the given [outputStream]
    */
   private fun writeHeader(outputStream: WriteStream<Buffer>) {
+    outputStream.write(Buffer.buffer("{"))
+    writeExtensionProperties(outputStream)
     if (mergedType == FEATURE_COLLECTION) {
-      outputStream.write(Buffer.buffer("{\"type\":\"FeatureCollection\",\"features\":["))
+      outputStream.write(Buffer.buffer("\"type\":\"FeatureCollection\",\"features\":["))
     } else if (mergedType == GEOMETRY_COLLECTION) {
-      outputStream.write(Buffer.buffer("{\"type\":\"GeometryCollection\",\"geometries\":["))
+      outputStream.write(Buffer.buffer("\"type\":\"GeometryCollection\",\"geometries\":["))
     }
   }
 
@@ -98,6 +124,9 @@ class GeoJsonMerger(optimistic: Boolean) : Merger<GeoJsonChunkMeta> {
   }
 
   override fun finish(outputStream: WriteStream<Buffer>) {
+    if (!headerWritten) {
+      writeHeader(outputStream)
+    }
     if (mergedType == FEATURE_COLLECTION || mergedType == GEOMETRY_COLLECTION) {
       outputStream.write(Buffer.buffer("]}"))
     }

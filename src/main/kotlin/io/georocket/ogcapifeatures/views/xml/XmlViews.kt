@@ -6,8 +6,19 @@ import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.dataformat.xml.XmlFactory
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.fasterxml.jackson.dataformat.xml.ser.ToXmlGenerator
+import io.georocket.http.Endpoint
 import io.georocket.ogcapifeatures.views.Views
+import io.georocket.ogcapifeatures.views.json.JsonViews
+import io.georocket.ogcapifeatures.views.mergeChunks
+import io.georocket.output.geojson.GeoJsonMerger
+import io.georocket.output.xml.XMLMerger
+import io.georocket.storage.ChunkMeta
+import io.georocket.storage.GeoJsonChunkMeta
+import io.georocket.storage.XMLChunkMeta
+import io.vertx.core.buffer.Buffer
 import io.vertx.core.http.HttpServerResponse
+import kotlinx.coroutines.flow.Flow
+import org.slf4j.LoggerFactory
 import java.io.Writer
 import javax.xml.stream.XMLStreamWriter
 
@@ -15,6 +26,8 @@ const val XML_NAMESPACE_ATOM = "http://www.w3.org/2005/Atom"
 const val XML_NAMESPACE_CORE = "http://www.opengis.net/ogcapi-features-1/1.0"
 
 object XmlViews: Views {
+
+  private val log = LoggerFactory.getLogger(XmlViews::class.java)
 
   /**
    * Object mapper for xml serialisation
@@ -96,6 +109,27 @@ object XmlViews: Views {
         collections = listOf(collection),
       )
     ))
+  }
+
+  override suspend fun items(
+    response: HttpServerResponse,
+    links: List<Views.Link>,
+    numberReturned: Int,
+    chunks: Flow<Pair<Buffer, ChunkMeta>>
+  ) {
+
+    // headers
+    addLinkHeaders(response, links)
+    response.putHeader("OGC-NumberReturned", numberReturned.toString())
+    response.putHeader(
+      "content-type",
+      "application/gml+xml; version=3.2; profile=http://www.opengis.net/def/profile/ogc/2.0/gml-sf2"
+    )
+    response.isChunked = true
+
+    // body is the merged xml
+    val merger = XMLMerger(true)
+    mergeChunks(response, merger, chunks, log)
   }
 }
 

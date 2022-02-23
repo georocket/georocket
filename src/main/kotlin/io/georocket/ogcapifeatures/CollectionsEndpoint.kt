@@ -21,9 +21,14 @@ import kotlinx.coroutines.flow.*
 import org.apache.commons.text.StringEscapeUtils.escapeJava
 import org.slf4j.LoggerFactory
 import java.io.FileNotFoundException
+import java.net.URL
 import java.net.URLEncoder
+import java.nio.charset.Charset
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
 import kotlin.coroutines.CoroutineContext
-import kotlin.streams.toList
 
 /**
  * An endpoint to maintain collections
@@ -65,7 +70,10 @@ class CollectionsEndpoint(
       respondWithHttp406NotAcceptable(context, listOf("application/json", "application/xml"))
     }
 
-    router.get("/:collectionId/items").handler(::onGetItems)
+    // handler for collection features
+    router.get("/:collectionId/items").produces("application/geo+json").handler { ctx -> onGetItems(ctx, JsonViews) }
+    router.get("/:collectionId/items").produces("application/gml+xml").handler { ctx -> onGetItems(ctx, XmlViews) }
+
     router.get("/:collectionId/items/:id").handler(::onGetItemById)
 
     return router
@@ -106,23 +114,22 @@ class CollectionsEndpoint(
   private fun collectionIdToLayer(collectionId: String): String =
     normalizeLayer(collectionId.replace(':', '/'))
 
-
-
-  private suspend fun getCollectionByLayer(context: RoutingContext, layer: String): Views.Collection {
-    // Guess the mime type, that the merger will produce for this layer
+  private suspend fun getCollectionByLayer(context: RoutingContext, layer: String): Views.Collection? {
+    // List of mime types, that can be produced from the documents in the layer
     val mimeTypes = index.getDistinctMeta(compileQuery("", layer))
       .map { meta -> meta.mimeType }
       .toSet()
     val isJson = mimeTypes.all { MimeTypeUtils.belongsTo(it, "application", "json") }
     val isXml = mimeTypes.all { MimeTypeUtils.belongsTo(it, "application", "xml") }
-    val mimeType = if (isJson) {
-      "application/geo+json"
-    } else if (isXml) {
-      "application/gml+xml; version=3.2; profile=http://www.opengis.net/def/profile/ogc/2.0/gml-sf2"
-    } else if (mimeTypes.size == 1) {
-      mimeTypes.first()
-    }  else {
-      "application/octet-stream"
+    val mergedMimeTypes = listOf(
+      "application/geo+json" to isJson,
+      "application/gml+xml; version=3.2; profile=http://www.opengis.net/def/profile/ogc/2.0/gml-sf2" to isXml
+    ).mapNotNull { (mimeType, isSupported) -> mimeType.takeIf { isSupported }}
+
+    // If no mime type can be built (for example because GeoJson and Gml documents are mixed - currently, there is
+    // no support for converting between the two), we exclude the whole collection from the result.
+    if (mergedMimeTypes.isEmpty()) {
+      return null
     }
 
     // build collection
@@ -130,13 +137,13 @@ class CollectionsEndpoint(
     return Views.Collection(
       id = id,
       title = if (layer.isEmpty()) { "root layer" } else { "layer at $layer" },
-      links = listOf(
+      links = mergedMimeTypes.map { mimeType ->
         Views.Link(
           href = PathUtils.join(context.mountPoint() ?: "/", id, "items"),
           type = mimeType,
           rel = "items"
         )
-      )
+      }
     )
   }
 
@@ -158,11 +165,14 @@ class CollectionsEndpoint(
         .map { normalizeLayer(it) }
         .toSet()
         .sorted()
-      val collections = layers.map { layer ->
-        async { // get the collections in parallel
-          getCollectionByLayer(ctx, layer)
+      val collections = layers
+        .map { layer ->
+          async { // get the collections in parallel
+            getCollectionByLayer(ctx, layer)
+          }
         }
-      }.awaitAll()
+        .awaitAll()
+        .filterNotNull()
 
       views.collections(response, Endpoint.getLinksToSelf(ctx), collections)
     }
@@ -187,10 +197,31 @@ class CollectionsEndpoint(
         val exists = index.existsLayer(layer)
         if (exists) {
           val collection = getCollectionByLayer(ctx, layer)
+              ?: throw HttpException(404, "The collection `$collectionId' exist, but is unavailable because it mixes incompatible mime types.")
           views.collection(response, Endpoint.getLinksToSelf(ctx), collection)
         } else {
           throw HttpException(404, "The collection `$collectionId' does not exist")
         }
+      } catch (t: Throwable) {
+        Endpoint.fail(response, t)
+      }
+    }
+  }
+
+  private fun processFeatureCollectionQuery(
+    search: String,
+    layer: String,
+    response: HttpServerResponse,
+    links: List<Views.Link>
+  ) {
+    launch {
+      response.isChunked = true
+      try {
+
+
+        // run query normally
+
+
       } catch (t: Throwable) {
         Endpoint.fail(response, t)
       }
@@ -249,9 +280,10 @@ class CollectionsEndpoint(
   /**
    * Handles requests to 'GET <root>/collections/{collectionId}/items/'
    */
-  private fun onGetItems(ctx: RoutingContext) {
+  private fun onGetItems(ctx: RoutingContext, views: Views) {
     val response = ctx.response()
 
+    // get layer from path segment
     val collectionId = ctx.pathParam("collectionId")
     if (collectionId == null) {
       response.setStatusCode(400).end("No collection name given.")
@@ -259,37 +291,69 @@ class CollectionsEndpoint(
     }
     val layer = collectionIdToLayer(collectionId)
 
-    // TODO respect 'limit' parameter
-    var limit = 10
+    // get query parameters
     val search = mutableListOf<String>()
-
-    // translate params to GeoRocket query
-    ctx.queryParams().forEach { e ->
-      val key = e.key
-      val value = e.value
-      when (key) {
+    var limit = 100
+    var prevScrollId: String? = null
+    ctx.queryParams().forEach { (key, value) ->
+      when(key) {
+        "limit" -> {
+          try {
+            limit = value.toInt()
+          } catch (_: java.lang.NumberFormatException) {
+            response.setStatusCode(400).end("Parameter `limit' must be a number")
+            return
+          }
+        }
         "bbox" -> {
           if (BBOX_REGEX matches value) {
             search += "\"${escapeJava(value)}\""
           } else {
-            response.setStatusCode(400).end(
-                "Parameter `bbox' must contain four floating point " + "numbers separated by a comma"
-              )
+            response.setStatusCode(400).end("Parameter `bbox' must contain four floating point " +
+              "numbers separated by a comma")
             return
           }
         }
-
-        "limit" -> try {
-          limit = value.toInt()
-        } catch (e: NumberFormatException) {
-          response.setStatusCode(400).end("Parameter `limit' must be a number")
-          return
+        "datetime" -> {
+          // GeoRocket currently does not do any sort of temporal indexing.
+          // Thus, the datetime parameter has no effect on the query result.
+          // However, in order to conform to the ogc-api-features spec,
+          // we still have to validate the parameter if it is defined.
+          // see: http://docs.opengeospatial.org/is/17-069r3/17-069r3.html#_parameter_datetime
+          var valid = true
+          val intervalParts = value.split('/')
+          if (intervalParts.size == 1) {
+            try {
+              DateTimeFormatter.ISO_DATE_TIME.parse(value)
+            } catch (_: DateTimeParseException) {
+              valid = false
+            }
+          } else if (intervalParts.size == 2) {
+            if (intervalParts == listOf("..", "..")) {
+              valid = false
+            }
+            for (part in intervalParts.filter { it != ".." }) {
+              try {
+                DateTimeFormatter.ISO_DATE_TIME.parse(part)
+              } catch (_: DateTimeParseException) {
+                valid = false
+              }
+            }
+          }
+          if (!valid) {
+            response.setStatusCode(400).end("Parameter `datetime' must contain a valid date-time (ISO 8601) " +
+              "or time interval.")
+            return
+          }
         }
-
+        "scrollId" -> {
+          prevScrollId = value
+        }
         else -> search.add("EQ(\"${escapeJava(key)}\" \"${escapeJava(value)}\")")
       }
     }
 
+    // assemble query
     val joinedSearch = if (search.isEmpty()) {
       ""
     } else if (search.size == 1) {
@@ -298,7 +362,44 @@ class CollectionsEndpoint(
       "AND(${search.joinToString(" ")})"
     }
 
-    processQuery(joinedSearch, layer, response)
+    // query
+    launch {
+      val q = compileQuery(joinedSearch, layer)
+      val result = index.getPaginatedMeta(q, limit, prevScrollId)
+
+      val contentType = when (ctx.acceptableContentType) {
+        "application/xml+xml" -> "application/gml+xml; version=3.2; profile=http://www.opengis.net/def/profile/ogc/2.0/gml-sf2"
+        else -> ctx.acceptableContentType
+      }
+      val linkToSelf = Views.Link(
+        href = ctx.request().uri(),
+        type = contentType,
+        rel = "self"
+      )
+      val linkToNext = if (result.scrollId != null ) {
+        val params = ctx.queryParams()
+        params.set("scrollId", result.scrollId)
+        val queryStr = params.map { (key, value) ->
+          val encodedKey = URLEncoder.encode(key, "UTF-8")
+          val encodedVal = URLEncoder.encode(value, "UTF-8")
+          "$encodedKey=$encodedVal"
+        }.joinToString("&")
+        Views.Link(
+          href = ctx.request().path() + "?" + queryStr,
+          type = contentType,
+          rel = "next"
+        )
+      } else {
+        null
+      }
+      val chunks = result.items.asFlow().map { (path, meta) ->
+        store.getOne(path) to meta
+      }
+      views.items(response, listOfNotNull(linkToSelf, linkToNext), result.items.size, chunks)
+    }
+
+
+
   }
 
   /**

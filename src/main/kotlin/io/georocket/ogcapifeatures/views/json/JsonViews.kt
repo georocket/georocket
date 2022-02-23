@@ -1,14 +1,24 @@
 package io.georocket.ogcapifeatures.views.json
 
+import io.georocket.http.Endpoint
 import io.georocket.ogcapifeatures.views.Views
-import io.georocket.util.PathUtils
+import io.georocket.ogcapifeatures.views.mergeChunks
+import io.georocket.ogcapifeatures.views.xml.XmlViews
+import io.georocket.output.geojson.GeoJsonMerger
+import io.georocket.storage.ChunkMeta
+import io.georocket.storage.GeoJsonChunkMeta
+import io.vertx.core.buffer.Buffer
 import io.vertx.core.http.HttpServerResponse
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.*
+import kotlinx.coroutines.flow.Flow
+import org.slf4j.LoggerFactory
 
 object JsonViews: Views {
 
-  private fun linkToJson(link: Views.Link): JsonObject {
+  private val log = LoggerFactory.getLogger(JsonViews::class.java)
+
+  fun linkToJson(link: Views.Link): JsonObject {
     val json = JsonObject()
     json.put("href", link.href)
     if (link.rel != null) {
@@ -44,8 +54,6 @@ object JsonViews: Views {
 
   override fun conformance(response: HttpServerResponse, conformsTo: List<String>) {
     val o = jsonObjectOf(
-      "title" to "Conformances",
-      "description" to "List of conformance classes that this API implements.",
       "conformsTo" to conformsTo
     ).encodePrettily()
     response.putHeader("content-type", "application/json")
@@ -70,5 +78,31 @@ object JsonViews: Views {
 
     response.putHeader("content-type", "application/json")
     response.end(o)
+  }
+
+  override suspend fun items(
+    response: HttpServerResponse,
+    links: List<Views.Link>,
+    numberReturned: Int,
+    chunks: Flow<Pair<Buffer, ChunkMeta>>
+  ) {
+
+    // initialize  merger
+    // optimistic merging ensures, that the merger produces a FeatureCollection object,
+    // as required by the ogc-api-features spec.
+    val extensionProps = jsonObjectOf(
+      "numberReturned" to numberReturned,
+    )
+    if (links.isNotEmpty()) {
+      extensionProps.put("links", links.map { JsonViews.linkToJson(it) })
+    }
+    val merger = GeoJsonMerger(true, extensionProps)
+
+    // response headers
+    response.putHeader("content-type", "application/geo+json")
+    response.isChunked = true
+
+    // response body
+    mergeChunks(response, merger, chunks, log)
   }
 }
