@@ -1,5 +1,6 @@
 {
     "type": "Feature",
+    "id": "fid",
     "geometry": {
         "type": "LineString",
         "coordinates": [
