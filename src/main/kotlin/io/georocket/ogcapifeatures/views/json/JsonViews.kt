@@ -1,12 +1,9 @@
 package io.georocket.ogcapifeatures.views.json
 
-import io.georocket.http.Endpoint
 import io.georocket.ogcapifeatures.views.Views
 import io.georocket.ogcapifeatures.views.mergeChunks
-import io.georocket.ogcapifeatures.views.xml.XmlViews
 import io.georocket.output.geojson.GeoJsonMerger
 import io.georocket.storage.ChunkMeta
-import io.georocket.storage.GeoJsonChunkMeta
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.http.HttpServerResponse
 import io.vertx.core.json.JsonObject
@@ -18,7 +15,7 @@ object JsonViews: Views {
 
   private val log = LoggerFactory.getLogger(JsonViews::class.java)
 
-  fun linkToJson(link: Views.Link): JsonObject {
+  private fun linkToJson(link: Views.Link): JsonObject {
     val json = JsonObject()
     json.put("href", link.href)
     if (link.rel != null) {
@@ -48,7 +45,7 @@ object JsonViews: Views {
       "description" to "Welcome to the GeoRocket OGC API Features",
       "links" to links.map(this::linkToJson)
     )
-    response.putHeader("Content-Type", "application/json")
+    response.putHeader("Content-Type", Views.ContentTypes.JSON)
     response.end(o.encodePrettily())
   }
 
@@ -56,7 +53,7 @@ object JsonViews: Views {
     val o = jsonObjectOf(
       "conformsTo" to conformsTo
     ).encodePrettily()
-    response.putHeader("content-type", "application/json")
+    response.putHeader("content-type", Views.ContentTypes.JSON)
     response.end(o)
   }
 
@@ -67,7 +64,7 @@ object JsonViews: Views {
       "links" to links.map(this::linkToJson),
       "collections" to collections.map(this::collectionToJson)
     ).encodePrettily()
-    response.putHeader("content-type", "application/json")
+    response.putHeader("content-type", Views.ContentTypes.JSON)
     response.end(o)
   }
 
@@ -76,7 +73,7 @@ object JsonViews: Views {
       collection.copy(links = links + collection.links)
     ).encodePrettily()
 
-    response.putHeader("content-type", "application/json")
+    response.putHeader("content-type", Views.ContentTypes.JSON)
     response.end(o)
   }
 
@@ -99,7 +96,7 @@ object JsonViews: Views {
     val merger = GeoJsonMerger(true, extensionProps)
 
     // response headers
-    response.putHeader("content-type", "application/geo+json")
+    response.putHeader("content-type", Views.ContentTypes.GEO_JSON)
     response.isChunked = true
 
     // response body

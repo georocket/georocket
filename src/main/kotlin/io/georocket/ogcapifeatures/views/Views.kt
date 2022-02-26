@@ -5,10 +5,8 @@ import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty
 import io.georocket.http.Endpoint
 import io.georocket.ogcapifeatures.views.xml.XML_NAMESPACE_ATOM
 import io.georocket.ogcapifeatures.views.xml.XML_NAMESPACE_CORE
-import io.georocket.ogcapifeatures.views.xml.XmlViews
 import io.georocket.output.Merger
 import io.georocket.storage.ChunkMeta
-import io.georocket.storage.XMLChunkMeta
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.http.HttpServerResponse
 import kotlinx.coroutines.flow.Flow
@@ -41,6 +39,14 @@ interface Views {
     @JacksonXmlProperty(localName = "Link", namespace = XML_NAMESPACE_ATOM)
     val links: List<Link>,
   )
+
+  object ContentTypes {
+    const val JSON = "application/json"
+    const val GEO_JSON = "application/geo+json"
+    const val XML = "application/xml"
+    const val GML_XML = "application/gml+xml"
+    const val GML_SF2_XML = "application/gml+xml; version=3.2; profile=http://www.opengis.net/def/profile/ogc/2.0/gml-sf2"  // GML profile simple features level 2
+  }
 
   fun landingPage(response: HttpServerResponse, links: List<Link>)
 

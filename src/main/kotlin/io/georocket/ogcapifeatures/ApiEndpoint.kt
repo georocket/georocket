@@ -4,6 +4,7 @@ import com.mitchellbosecke.pebble.PebbleEngine
 import com.mitchellbosecke.pebble.loader.ClasspathLoader
 import io.georocket.GeoRocket
 import io.georocket.http.Endpoint
+import io.georocket.ogcapifeatures.views.Views
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.Router
@@ -33,7 +34,7 @@ class ApiEndpoint(private val vertx: Vertx) : Endpoint {
     router.get("/").handler { ctx ->
       val response = ctx.response()
       try {
-        response.putHeader("content-type", "application/json")
+        response.putHeader("content-type", Views.ContentTypes.JSON)
 
         val engine = PebbleEngine.Builder()
           .loader(ClasspathLoader(this::class.java.classLoader))

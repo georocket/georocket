@@ -1,5 +1,6 @@
 package io.georocket.ogcapifeatures
 
+import io.georocket.ogcapifeatures.views.Views
 import io.vertx.ext.web.RoutingContext
 import io.vertx.kotlin.core.json.jsonObjectOf
 
@@ -10,7 +11,7 @@ fun respondWithHttp406NotAcceptable(context: RoutingContext, accept: List<String
   val response = context.response()
   response.statusCode = 406
   response.statusMessage = "Not Acceptable"
-  response.putHeader("Content-Type", "application/json")
+  response.putHeader("Content-Type", Views.ContentTypes.JSON)
   response.send(jsonObjectOf(
     "accept" to accept
   ).encodePrettily())

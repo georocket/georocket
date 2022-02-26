@@ -57,24 +57,32 @@ class CollectionsEndpoint(
     val router = Router.router(vertx)
 
     // handler for list of all collections
-    router.get("/").produces("application/json").handler { ctx -> onGetAll(ctx, JsonViews) }
-    router.get("/").produces("application/xml").handler { ctx -> onGetAll(ctx, XmlViews) }
+    router.get("/").produces(Views.ContentTypes.JSON).handler { ctx -> onGetAll(ctx, JsonViews) }
+    router.get("/").produces(Views.ContentTypes.XML).handler { ctx -> onGetAll(ctx, XmlViews) }
     router.get("/").handler { context ->
-      respondWithHttp406NotAcceptable(context, listOf("application/json", "application/xml"))
+      respondWithHttp406NotAcceptable(context, listOf(Views.ContentTypes.JSON, Views.ContentTypes.XML))
     }
 
     // handler for collection details
-    router.get("/:collectionId").produces("application/json").handler { ctx -> onGet(ctx, JsonViews) }
-    router.get("/:collectionId").produces("application/xml").handler { ctx -> onGet(ctx, XmlViews) }
+    router.get("/:collectionId").produces(Views.ContentTypes.JSON).handler { ctx -> onGet(ctx, JsonViews) }
+    router.get("/:collectionId").produces(Views.ContentTypes.XML).handler { ctx -> onGet(ctx, XmlViews) }
     router.get("/:collectionId").handler { context ->
-      respondWithHttp406NotAcceptable(context, listOf("application/json", "application/xml"))
+      respondWithHttp406NotAcceptable(context, listOf(Views.ContentTypes.JSON, Views.ContentTypes.XML))
     }
 
     // handler for collection features
-    router.get("/:collectionId/items").produces("application/geo+json").handler { ctx -> onGetItems(ctx, JsonViews) }
-    router.get("/:collectionId/items").produces("application/gml+xml").handler { ctx -> onGetItems(ctx, XmlViews) }
+    router.get("/:collectionId/items").produces(Views.ContentTypes.GEO_JSON).handler { ctx -> onGetItems(ctx, JsonViews) }
+    router.get("/:collectionId/items").produces(Views.ContentTypes.GML_XML).handler { ctx -> onGetItems(ctx, XmlViews) }
+    router.get("/:collectionId/items").handler { context ->
+      respondWithHttp406NotAcceptable(context, listOf(Views.ContentTypes.GEO_JSON, Views.ContentTypes.GML_XML))
+    }
 
-    router.get("/:collectionId/items/:id").handler(::onGetItemById)
+    // handler for a single feature
+    router.get("/:collectionId/items/:id").produces(Views.ContentTypes.GEO_JSON).handler { ctx -> onGetItemById(ctx, JsonViews) }
+    router.get("/:collectionId/items/:id").produces(Views.ContentTypes.GML_XML).handler { ctx -> onGetItemById(ctx, XmlViews) }
+    router.get("/:collectionId/items").handler { context ->
+      respondWithHttp406NotAcceptable(context, listOf(Views.ContentTypes.GEO_JSON, Views.ContentTypes.GML_XML))
+    }
 
     return router
   }
@@ -122,8 +130,8 @@ class CollectionsEndpoint(
     val isJson = mimeTypes.all { MimeTypeUtils.belongsTo(it, "application", "json") }
     val isXml = mimeTypes.all { MimeTypeUtils.belongsTo(it, "application", "xml") }
     val mergedMimeTypes = listOf(
-      "application/geo+json" to isJson,
-      "application/gml+xml; version=3.2; profile=http://www.opengis.net/def/profile/ogc/2.0/gml-sf2" to isXml
+      Views.ContentTypes.GEO_JSON to isJson,
+      Views.ContentTypes.GML_SF2_XML to isXml
     ).mapNotNull { (mimeType, isSupported) -> mimeType.takeIf { isSupported }}
 
     // If no mime type can be built (for example because GeoJson and Gml documents are mixed - currently, there is
@@ -202,26 +210,6 @@ class CollectionsEndpoint(
         } else {
           throw HttpException(404, "The collection `$collectionId' does not exist")
         }
-      } catch (t: Throwable) {
-        Endpoint.fail(response, t)
-      }
-    }
-  }
-
-  private fun processFeatureCollectionQuery(
-    search: String,
-    layer: String,
-    response: HttpServerResponse,
-    links: List<Views.Link>
-  ) {
-    launch {
-      response.isChunked = true
-      try {
-
-
-        // run query normally
-
-
       } catch (t: Throwable) {
         Endpoint.fail(response, t)
       }
@@ -368,7 +356,7 @@ class CollectionsEndpoint(
       val result = index.getPaginatedMeta(q, limit, prevScrollId)
 
       val contentType = when (ctx.acceptableContentType) {
-        "application/xml+xml" -> "application/gml+xml; version=3.2; profile=http://www.opengis.net/def/profile/ogc/2.0/gml-sf2"
+        Views.ContentTypes.GML_XML -> Views.ContentTypes.GML_SF2_XML
         else -> ctx.acceptableContentType
       }
       val linkToSelf = Views.Link(
@@ -406,7 +394,7 @@ class CollectionsEndpoint(
    * Get a single item from a collection by its ID
    * @param ctx the current routing context
    */
-  private fun onGetItemById(ctx: RoutingContext) {
+  private fun onGetItemById(ctx: RoutingContext, views: Views) {
     val response = ctx.response()
 
     val collectionId = ctx.pathParam("collectionId")

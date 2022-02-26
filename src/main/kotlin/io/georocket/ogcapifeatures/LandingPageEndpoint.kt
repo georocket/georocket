@@ -24,10 +24,10 @@ class LandingPageEndpoint(
 
   override suspend fun createRouter(): Router {
     val router = Router.router(vertx)
-    router.get("/").produces("application/json").handler { ctx -> onInfo(ctx, JsonViews) }
-    router.get("/").produces("application/xml").handler { ctx -> onInfo(ctx, XmlViews) }
+    router.get("/").produces(Views.ContentTypes.JSON).handler { ctx -> onInfo(ctx, JsonViews) }
+    router.get("/").produces(Views.ContentTypes.XML).handler { ctx -> onInfo(ctx, XmlViews) }
     router.get("/").handler { context ->
-      respondWithHttp406NotAcceptable(context, listOf("application/json", "application/xml"))
+      respondWithHttp406NotAcceptable(context, listOf(Views.ContentTypes.JSON, Views.ContentTypes.XML))
     }
 
     router.mountSubRouter("/api", ae.createRouter())
@@ -49,25 +49,25 @@ class LandingPageEndpoint(
       Views.Link(
         href = PathUtils.join(basePath, "conformance"),
         rel = "conformance",
-        type = "application/json",
+        type = Views.ContentTypes.JSON,
         title = "Conformance classes implemented by this server as JSON"
       ),
       Views.Link(
         href = PathUtils.join(basePath, "conformance"),
         rel = "conformance",
-        type = "application/xml",
+        type = Views.ContentTypes.XML,
         title = "Conformance classes implemented by this server as XML"
       ),
       Views.Link(
         href = PathUtils.join(basePath, "collections"),
         rel = "data",
-        type = "application/json",
+        type = Views.ContentTypes.JSON,
         title = "Metadata about feature collections as JSON"
       ),
       Views.Link(
         href = PathUtils.join(basePath, "collections"),
         rel = "data",
-        type = "application/xml",
+        type = Views.ContentTypes.XML,
         title = "Metadata about feature collections as XML"
       ),
       Views.Link(

@@ -70,7 +70,7 @@ object XmlViews: Views {
   }
 
   override fun landingPage(response: HttpServerResponse, links: List<Views.Link>) {
-    response.putHeader("Content-Type", "application/xml")
+    response.putHeader("Content-Type", Views.ContentTypes.XML)
     addLinkHeaders(response, links)
     response.send(objectMapper.writeValueAsString(LandingPage(
       title = "GeoRocket OGC API Features",
@@ -80,7 +80,7 @@ object XmlViews: Views {
   }
 
   override fun conformance(response: HttpServerResponse, conformsTo: List<String>) {
-    response.putHeader("content-type", "application/xml")
+    response.putHeader("content-type", Views.ContentTypes.XML)
     response.end(objectMapper.writeValueAsString(ConformsTo(
       title = "Conformances",
       description = "List of conformance classes that this API implements.",
@@ -89,7 +89,7 @@ object XmlViews: Views {
   }
 
   override fun collections(response: HttpServerResponse, links: List<Views.Link>, collections: List<Views.Collection>) {
-    response.putHeader("content-type", "application/xml")
+    response.putHeader("content-type", Views.ContentTypes.XML)
     addLinkHeaders(response, links + collections.flatMap { it.links })
     response.end(objectMapper.writeValueAsString(Collections(
       title = "Collections",
@@ -100,7 +100,7 @@ object XmlViews: Views {
   }
 
   override fun collection(response: HttpServerResponse, links: List<Views.Link>, collection: Views.Collection) {
-    response.putHeader("content-type", "application/xml")
+    response.putHeader("content-type", Views.ContentTypes.XML)
     addLinkHeaders(response, links + collection.links)
     response.end(objectMapper.writeValueAsString(
       Collections(
@@ -121,10 +121,7 @@ object XmlViews: Views {
     // headers
     addLinkHeaders(response, links)
     response.putHeader("OGC-NumberReturned", numberReturned.toString())
-    response.putHeader(
-      "content-type",
-      "application/gml+xml; version=3.2; profile=http://www.opengis.net/def/profile/ogc/2.0/gml-sf2"
-    )
+    response.putHeader("content-type", Views.ContentTypes.GML_SF2_XML)
     response.isChunked = true
 
     // body is the merged xml
