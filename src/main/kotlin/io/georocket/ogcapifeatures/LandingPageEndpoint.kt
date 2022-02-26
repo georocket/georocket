@@ -27,7 +27,7 @@ class LandingPageEndpoint(
     router.get("/").produces(Views.ContentTypes.JSON).handler { ctx -> onInfo(ctx, JsonViews) }
     router.get("/").produces(Views.ContentTypes.XML).handler { ctx -> onInfo(ctx, XmlViews) }
     router.get("/").handler { context ->
-      respondWithHttp406NotAcceptable(context, listOf(Views.ContentTypes.JSON, Views.ContentTypes.XML))
+      respondWithHttp406NotAcceptable(context.response(), listOf(Views.ContentTypes.JSON, Views.ContentTypes.XML))
     }
 
     router.mountSubRouter("/api", ae.createRouter())

@@ -58,6 +58,8 @@ interface Views {
 
   suspend fun items(response: HttpServerResponse, links: List<Link>, numberReturned: Int, chunks: Flow<Pair<Buffer, ChunkMeta>>)
 
+  suspend fun item(response: HttpServerResponse, links: List<Link>, chunk: Buffer, meta: ChunkMeta, id: String)
+
 }
 
 suspend inline fun<reified T: ChunkMeta> mergeChunks(response: HttpServerResponse, merger: Merger<T>, chunks: Flow<Pair<Buffer, ChunkMeta>>, log: Logger) {

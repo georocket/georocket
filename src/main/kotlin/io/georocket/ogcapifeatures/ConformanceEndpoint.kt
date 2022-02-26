@@ -18,7 +18,7 @@ class ConformanceEndpoint(private val vertx: Vertx) : Endpoint {
     router.get("/").produces(Views.ContentTypes.JSON).handler() { ctx -> onGet(ctx, JsonViews) }
     router.get("/").produces(Views.ContentTypes.XML).handler() { ctx -> onGet(ctx, XmlViews) }
     router.get("/").handler { context ->
-      respondWithHttp406NotAcceptable(context, listOf(Views.ContentTypes.JSON, Views.ContentTypes.XML))
+      respondWithHttp406NotAcceptable(context.response(), listOf(Views.ContentTypes.JSON, Views.ContentTypes.XML))
     }
     return router
   }

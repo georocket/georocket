@@ -60,28 +60,28 @@ class CollectionsEndpoint(
     router.get("/").produces(Views.ContentTypes.JSON).handler { ctx -> onGetAll(ctx, JsonViews) }
     router.get("/").produces(Views.ContentTypes.XML).handler { ctx -> onGetAll(ctx, XmlViews) }
     router.get("/").handler { context ->
-      respondWithHttp406NotAcceptable(context, listOf(Views.ContentTypes.JSON, Views.ContentTypes.XML))
+      respondWithHttp406NotAcceptable(context.response(), listOf(Views.ContentTypes.JSON, Views.ContentTypes.XML))
     }
 
     // handler for collection details
     router.get("/:collectionId").produces(Views.ContentTypes.JSON).handler { ctx -> onGet(ctx, JsonViews) }
     router.get("/:collectionId").produces(Views.ContentTypes.XML).handler { ctx -> onGet(ctx, XmlViews) }
     router.get("/:collectionId").handler { context ->
-      respondWithHttp406NotAcceptable(context, listOf(Views.ContentTypes.JSON, Views.ContentTypes.XML))
+      respondWithHttp406NotAcceptable(context.response(), listOf(Views.ContentTypes.JSON, Views.ContentTypes.XML))
     }
 
     // handler for collection features
     router.get("/:collectionId/items").produces(Views.ContentTypes.GEO_JSON).handler { ctx -> onGetItems(ctx, JsonViews) }
     router.get("/:collectionId/items").produces(Views.ContentTypes.GML_XML).handler { ctx -> onGetItems(ctx, XmlViews) }
     router.get("/:collectionId/items").handler { context ->
-      respondWithHttp406NotAcceptable(context, listOf(Views.ContentTypes.GEO_JSON, Views.ContentTypes.GML_XML))
+      respondWithHttp406NotAcceptable(context.response(), listOf(Views.ContentTypes.GEO_JSON, Views.ContentTypes.GML_XML))
     }
 
     // handler for a single feature
     router.get("/:collectionId/items/:id").produces(Views.ContentTypes.GEO_JSON).handler { ctx -> onGetItemById(ctx, JsonViews) }
     router.get("/:collectionId/items/:id").produces(Views.ContentTypes.GML_XML).handler { ctx -> onGetItemById(ctx, XmlViews) }
     router.get("/:collectionId/items").handler { context ->
-      respondWithHttp406NotAcceptable(context, listOf(Views.ContentTypes.GEO_JSON, Views.ContentTypes.GML_XML))
+      respondWithHttp406NotAcceptable(context.response(), listOf(Views.ContentTypes.GEO_JSON, Views.ContentTypes.GML_XML))
     }
 
     return router
@@ -385,9 +385,6 @@ class CollectionsEndpoint(
       }
       views.items(response, listOfNotNull(linkToSelf, linkToNext), result.items.size, chunks)
     }
-
-
-
   }
 
   /**
@@ -410,7 +407,54 @@ class CollectionsEndpoint(
       return
     }
 
+    // links
+    val contentType = when (ctx.acceptableContentType) {
+      Views.ContentTypes.GML_XML -> Views.ContentTypes.GML_SF2_XML
+      else -> ctx.acceptableContentType
+    }
+    val links = listOf(
+      Views.Link(
+        href = ctx.request().uri(),
+        type = contentType,
+        rel = "self"
+      ),
+      Views.Link(
+        href = PathUtils.join(ctx.mountPoint() ?: "/", collectionId),
+        type = Views.ContentTypes.JSON,
+        rel = "collection"
+      ),
+      Views.Link(
+        href = PathUtils.join(ctx.mountPoint() ?: "/", collectionId),
+        type = Views.ContentTypes.XML,
+        rel = "collection"
+      ),
+    )
+
+    // build query string to search for item with that id
     val encodedId = URLEncoder.encode(id, "UTF-8")
-    processQuery("EQ(gmlId $encodedId)", layer, response)
+    val search = when (ctx.acceptableContentType) {
+      Views.ContentTypes.GEO_JSON -> "EQ(geoJsonFeatureId $encodedId)"
+      Views.ContentTypes.GML_XML -> "EQ(gmlId $encodedId)"
+      else -> {
+        // should be unreachable, because the route is only defined for those two content types (see createRouter())
+        throw Exception("Unexpected content type")
+      }
+    }
+
+    // query for the feature
+    launch {
+      val query = compileQuery(search, layer)
+      val result = index.getPaginatedMeta(query, 1, null)
+      if (result.items.isEmpty()) {
+        response.setStatusCode(404).end()
+        return@launch
+      }
+      val (path, meta) = result.items.first()
+      val chunk = store.getOne(path)
+      views.item(response, links, chunk, meta, id)
+    }
+
+
+
   }
 }

@@ -6,21 +6,25 @@ import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.dataformat.xml.XmlFactory
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.fasterxml.jackson.dataformat.xml.ser.ToXmlGenerator
-import io.georocket.http.Endpoint
 import io.georocket.ogcapifeatures.views.Views
-import io.georocket.ogcapifeatures.views.json.JsonViews
 import io.georocket.ogcapifeatures.views.mergeChunks
-import io.georocket.output.geojson.GeoJsonMerger
 import io.georocket.output.xml.XMLMerger
 import io.georocket.storage.ChunkMeta
-import io.georocket.storage.GeoJsonChunkMeta
 import io.georocket.storage.XMLChunkMeta
+import io.georocket.util.io.BufferWriteStream
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.http.HttpServerResponse
 import kotlinx.coroutines.flow.Flow
 import org.slf4j.LoggerFactory
+import org.w3c.dom.Element
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.Writer
+import javax.xml.parsers.DocumentBuilderFactory
 import javax.xml.stream.XMLStreamWriter
+import javax.xml.transform.TransformerFactory
+import javax.xml.transform.dom.DOMSource
+import javax.xml.transform.stream.StreamResult
 
 const val XML_NAMESPACE_ATOM = "http://www.w3.org/2005/Atom"
 const val XML_NAMESPACE_CORE = "http://www.opengis.net/ogcapi-features-1/1.0"
@@ -127,6 +131,58 @@ object XmlViews: Views {
     // body is the merged xml
     val merger = XMLMerger(true)
     mergeChunks(response, merger, chunks, log)
+  }
+
+  override suspend fun item(response: HttpServerResponse, links: List<Views.Link>, chunk: Buffer, meta: ChunkMeta, id: String) {
+
+    // use the merger to assemble the full xml document (including all parent elements)
+    if (meta !is XMLChunkMeta) {
+      return
+    }
+    val merger = XMLMerger(false)
+    val mergedStream = BufferWriteStream()
+    merger.init(meta)
+    merger.merge(chunk, meta, mergedStream)
+    merger.finish(mergedStream)
+    val merged = mergedStream.buffer.bytes
+
+    // search for the element with this gml:id in the xml document
+    @Suppress("BlockingMethodInNonBlockingContext") // there is no blocking, because there is no i/o.
+    val document = DocumentBuilderFactory.newInstance()
+      .apply { isNamespaceAware = true }
+      .newDocumentBuilder()
+      .parse(ByteArrayInputStream(merged))
+    fun searchInElement(el: Element): Element? {
+      if (el.hasAttribute("gml:id") && el.getAttribute("gml:id") == id) {
+        return el
+      }
+      val children = el.childNodes
+      for (i in 0 until children.length) {
+        val child = children.item(i)
+        if (child is Element) {
+          val recursiveResult = searchInElement(child)
+          if (recursiveResult != null) {
+            return recursiveResult
+          }
+        }
+      }
+      return null
+    }
+    val found = searchInElement(document.documentElement) ?: document.documentElement
+
+    // encode the found xml element
+    val resultStream = ByteArrayOutputStream()
+    TransformerFactory.newInstance()
+      .newTransformer()
+      .transform(DOMSource(found), StreamResult(resultStream))
+    val result = resultStream.toByteArray()
+
+    // headers
+    addLinkHeaders(response, links)
+    response.putHeader("content-type", Views.ContentTypes.GML_SF2_XML)
+
+    // body
+    response.end(Buffer.buffer(result))
   }
 }
 
