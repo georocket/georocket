@@ -1,19 +1,14 @@
 package io.georocket.ogcapifeatures.views.json
 
-import io.georocket.http.Endpoint
-import io.georocket.ogcapifeatures.respondWithHttp406NotAcceptable
 import io.georocket.ogcapifeatures.views.Views
 import io.georocket.ogcapifeatures.views.mergeChunks
 import io.georocket.output.geojson.GeoJsonMerger
 import io.georocket.storage.ChunkMeta
-import io.georocket.storage.GeoJsonChunkMeta
-import io.georocket.storage.JsonChunkMeta
-import io.georocket.util.HttpException
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.http.HttpServerResponse
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
-import io.vertx.kotlin.core.json.*
+import io.vertx.kotlin.core.json.jsonObjectOf
 import kotlinx.coroutines.flow.Flow
 import org.slf4j.LoggerFactory
 
@@ -109,42 +104,24 @@ object JsonViews: Views {
     mergeChunks(response, merger, chunks, log)
   }
 
-  override suspend fun item(response: HttpServerResponse, links: List<Views.Link>, chunk: Buffer, meta: ChunkMeta, id: String) {
-
-    // We can only handle GeoJson here.
-    // If the item is not GeoJson, the client needs to retry his request, probably with gml as a content type...
-    if (meta !is GeoJsonChunkMeta) {
-      respondWithHttp406NotAcceptable(response, listOf(meta.mimeType))
-      return
-    }
+  override fun item(response: HttpServerResponse, links: List<Views.Link>, item: Buffer) {
 
     // links
     val jsonLinks = JsonArray(links.map {
       JsonViews.linkToJson(it)
     }).encode()
 
-    // Assemble the json output:
-    //  - include the links in the json object
-    //  - if this is a raw geometry object, wrap it in a feature object
-    val isGeometry = meta.type != "Feature" // assuming type is never a "FeatureCollection" because the splitter would have split this into many chunks.
+    // insert the links into the json object
+    // By searching for the beginning of the object (usually the initial '{' character is at position 0, but there
+    // might also be white spaces before it) and inserting them as a new property directly after the '{'.
     val output = Buffer.buffer()
-    if (isGeometry) {
-      output.appendString("{\"type\": \"Feature\",")
-      if (links.isNotEmpty()) {
-        output.appendString("\"links\": $jsonLinks,")
-      }
-      output.appendString("\"geometry\":")
-      output.appendBuffer(chunk)
-      output.appendString("}")
-    } else {
-      output.appendString("{\"links\": $jsonLinks,")
-      for (i in 0 until  chunk.length()) {
-        val charAt = chunk.getString(i, i+1)
-        if (charAt == "{") {
-          val rest = chunk.slice(i + 1, chunk.length())
-          output.appendBuffer(rest)
-          break
-        }
+    output.appendString("{\"links\": $jsonLinks,")
+    for (i in 0 until  item.length()) {
+      val charAt = item.getString(i, i+1)
+      if (charAt == "{") {
+        val rest = item.slice(i + 1, item.length())
+        output.appendBuffer(rest)
+        break
       }
     }
 

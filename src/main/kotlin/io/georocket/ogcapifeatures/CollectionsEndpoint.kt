@@ -1,18 +1,23 @@
 package io.georocket.ogcapifeatures
 
+import de.undercouch.actson.JsonEvent
+import de.undercouch.actson.JsonParser
 import io.georocket.http.Endpoint
 import io.georocket.index.*
 import io.georocket.ogcapifeatures.views.Views
 import io.georocket.ogcapifeatures.views.json.JsonViews
 import io.georocket.ogcapifeatures.views.xml.XmlViews
 import io.georocket.output.MultiMerger
+import io.georocket.output.xml.XMLMerger
 import io.georocket.query.DefaultQueryCompiler
 import io.georocket.query.IndexQuery
-import io.georocket.storage.Store
-import io.georocket.storage.StoreFactory
+import io.georocket.storage.*
 import io.georocket.util.*
+import io.georocket.util.io.BufferWriteStream
 import io.vertx.core.Vertx
+import io.vertx.core.buffer.Buffer
 import io.vertx.core.http.HttpServerResponse
+import io.vertx.core.json.Json
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
@@ -20,6 +25,9 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import org.apache.commons.text.StringEscapeUtils.escapeJava
 import org.slf4j.LoggerFactory
+import org.w3c.dom.Element
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.FileNotFoundException
 import java.net.URL
 import java.net.URLEncoder
@@ -28,6 +36,10 @@ import java.time.Instant
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
+import javax.xml.parsers.DocumentBuilderFactory
+import javax.xml.transform.TransformerFactory
+import javax.xml.transform.dom.DOMSource
+import javax.xml.transform.stream.StreamResult
 import kotlin.coroutines.CoroutineContext
 
 /**
@@ -153,6 +165,140 @@ class CollectionsEndpoint(
         )
       }
     )
+  }
+
+
+  private fun findGeoJsonFeatureById(chunk: Buffer, meta: GeoJsonChunkMeta, id: String): Buffer? {
+    when (meta.type) {
+      "Feature" -> return chunk
+      "FeatureCollection" -> {
+        // find the feature in the feature collection, that has the requested id
+        val parser = JsonParser()
+        val bytes = chunk.bytes
+        var feedPosition = 0
+        var currentField: String? = null
+        var currentDepth = 0
+        var inFeaturesArray = false
+        var currentFeatureStartPos = 0L
+        var currentFeatureMatches = false
+        var matchingFeature: Buffer? = null
+        while (matchingFeature == null) {
+          val currentPosition = parser.parsedCharacterCount
+          when (parser.nextEvent()) {
+            JsonEvent.START_OBJECT, JsonEvent.START_ARRAY -> {
+              if (currentDepth == 1 && currentField == "features") {
+                inFeaturesArray = true
+              }
+              if (currentDepth == 2 && inFeaturesArray) {
+                currentFeatureStartPos = currentPosition
+                currentFeatureMatches = false
+              }
+              currentField = null
+              currentDepth += 1
+            }
+            JsonEvent.VALUE_INT -> {
+              if (currentDepth == 3 && inFeaturesArray && currentField == "id" && parser.currentInt.toString() == id) {
+                currentFeatureMatches = true
+              }
+            }
+            JsonEvent.VALUE_STRING -> {
+              if (currentDepth == 3 && inFeaturesArray && currentField == "id" && parser.currentString == id) {
+                currentFeatureMatches = true
+              }
+            }
+            JsonEvent.END_OBJECT, JsonEvent.END_ARRAY -> {
+              if (currentDepth == 3 && currentFeatureMatches) {
+                val currentFeatureEndPos = parser.parsedCharacterCount
+                matchingFeature = chunk.slice(currentFeatureStartPos.toInt(), currentFeatureEndPos.toInt())
+              }
+              if (currentDepth == 2 && inFeaturesArray) {
+                inFeaturesArray = false
+              }
+              currentDepth -= 1
+            }
+            JsonEvent.FIELD_NAME -> {
+              currentField = parser.currentString
+            }
+            JsonEvent.NEED_MORE_INPUT -> {
+              if (feedPosition == bytes.size) {
+                parser.feeder.done()
+              }
+              feedPosition += parser.feeder.feed(bytes, feedPosition, bytes.size - feedPosition)
+            }
+            JsonEvent.EOF, JsonEvent.ERROR -> {
+              break
+            }
+          }
+        }
+        return matchingFeature
+      }
+      else -> {
+        // Type is not a Feature nor a FeatureCollection, so it must be a geometry type.
+        // Wrap it in a feature object with the requested id.
+        val output = Buffer.buffer()
+        output.appendString("{\"type\": \"Feature\",\"id\": ${Json.encode(id)},")
+        output.appendString("\"geometry\":")
+        output.appendBuffer(chunk)
+        output.appendString("}")
+        return output
+      }
+    }
+  }
+
+  private suspend fun findGmlFeatureById(chunk: Buffer, meta: XMLChunkMeta, id: String): Buffer? {
+
+    // use the merger to assemble the full xml document (including all parent elements)
+    val merger = XMLMerger(false)
+    val mergedStream = BufferWriteStream()
+    merger.init(meta)
+    merger.merge(chunk, meta, mergedStream)
+    merger.finish(mergedStream)
+    val merged = mergedStream.buffer.bytes
+
+    // search for the element with this gml:id in the xml document
+    @Suppress("BlockingMethodInNonBlockingContext") // there is no blocking, because there is no i/o.
+    val document = DocumentBuilderFactory.newInstance()
+      .apply { isNamespaceAware = true }
+      .newDocumentBuilder()
+      .parse(ByteArrayInputStream(merged))
+    fun searchInElement(el: Element): Element? {
+      if (el.hasAttribute("gml:id") && el.getAttribute("gml:id") == id) {
+        return el
+      }
+      val children = el.childNodes
+      for (i in 0 until children.length) {
+        val child = children.item(i)
+        if (child is Element) {
+          val recursiveResult = searchInElement(child)
+          if (recursiveResult != null) {
+            return recursiveResult
+          }
+        }
+      }
+      return null
+    }
+    val found = searchInElement(document.documentElement) ?: return null
+
+    // encode the found xml element
+    val resultStream = ByteArrayOutputStream()
+    TransformerFactory.newInstance()
+      .newTransformer()
+      .transform(DOMSource(found), StreamResult(resultStream))
+    return Buffer.buffer(resultStream.toByteArray())
+  }
+
+  private suspend fun findFeatureById(chunk: Buffer, meta: ChunkMeta, id: String): Buffer? {
+    return when (meta) {
+      is GeoJsonChunkMeta -> {
+        findGeoJsonFeatureById(chunk, meta, id)
+      }
+      is XMLChunkMeta -> {
+        findGmlFeatureById(chunk, meta, id)
+      }
+      else -> {
+        return chunk
+      }
+    }
   }
 
   /**
@@ -443,18 +589,26 @@ class CollectionsEndpoint(
 
     // query for the feature
     launch {
+
+      // execute query, load (one) chunk
       val query = compileQuery(search, layer)
       val result = index.getPaginatedMeta(query, 1, null)
       if (result.items.isEmpty()) {
-        response.setStatusCode(404).end()
+        response.setStatusCode(404).end("Not found")
         return@launch
       }
       val (path, meta) = result.items.first()
       val chunk = store.getOne(path)
-      views.item(response, links, chunk, meta, id)
+
+      // locate the feature with the requested id inside the chunk
+      val item = findFeatureById(chunk, meta, id)
+      if (item == null) {
+        response.setStatusCode(404).end("Not found")
+        return@launch
+      }
+
+      // make response
+      views.item(response, links, item)
     }
-
-
-
   }
 }

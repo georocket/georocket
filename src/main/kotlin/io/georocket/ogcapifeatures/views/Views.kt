@@ -58,7 +58,7 @@ interface Views {
 
   suspend fun items(response: HttpServerResponse, links: List<Link>, numberReturned: Int, chunks: Flow<Pair<Buffer, ChunkMeta>>)
 
-  suspend fun item(response: HttpServerResponse, links: List<Link>, chunk: Buffer, meta: ChunkMeta, id: String)
+  fun item(response: HttpServerResponse, links: List<Link>, item: Buffer)
 
 }
 
