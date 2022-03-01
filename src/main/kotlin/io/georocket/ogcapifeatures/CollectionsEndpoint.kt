@@ -33,6 +33,7 @@ import java.io.ByteArrayOutputStream
 import java.io.FileNotFoundException
 import java.net.URLDecoder
 import java.net.URLEncoder
+import java.nio.charset.Charset
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import java.util.*
@@ -323,8 +324,10 @@ class CollectionsEndpoint(
 
   private fun completeGeoJsonFeatureIds(chunk: Buffer, meta: ChunkMeta, path: String): Buffer {
     data class StackFrame(var isFeature: Boolean, var hasId: Boolean)
-    val parser = JsonParser()
+    val charset = Charset.forName("UTF-8")
+    val parser = JsonParser(charset)
     val bytes = chunk.bytes
+    val characters = chunk.toString(charset)
     var feedPosition = 0
     val output = Buffer.buffer()
     var outPosition = 0
@@ -333,8 +336,7 @@ class CollectionsEndpoint(
     var currentFieldName: String? = null
 
     // copy data from chunk to output, and insert additional ids wherever needed
-    while (true) {
-      val currentPosition = parser.parsedCharacterCount.toInt()
+    parse_loop@while (true) {
       when (parser.nextEvent()) {
         JsonEvent.START_OBJECT -> {
           stack.push(StackFrame(isFeature = false, hasId = false))
@@ -342,8 +344,9 @@ class CollectionsEndpoint(
         JsonEvent.END_OBJECT -> {
           val obj = stack.pop()
           if (obj.isFeature && !obj.hasId) {
-            val copy = chunk.slice(outPosition, currentPosition)
-            output.appendBuffer(copy)
+            val currentPosition = parser.parsedCharacterCount.toInt() - 1;
+            val copy = characters.substring(outPosition until  currentPosition)
+            output.appendString(copy)
             output.appendString(",\"id\":${Json.encode(makeArtificialId(path, i))}")
             i += 1
             outPosition = currentPosition
@@ -369,15 +372,15 @@ class CollectionsEndpoint(
           }
           feedPosition += parser.feeder.feed(bytes, feedPosition, bytes.size - feedPosition)
         }
-        JsonEvent.EOF, JsonEvent.ERROR -> {
-          break
+        JsonEvent.ERROR, JsonEvent.EOF -> {
+          break@parse_loop
         }
       }
     }
 
     // copy remaining data
-    val copy = chunk.slice(outPosition, chunk.length())
-    output.appendBuffer(copy)
+    val copy = characters.substring(outPosition until characters.length)
+    output.appendString(copy)
 
     return output
   }
