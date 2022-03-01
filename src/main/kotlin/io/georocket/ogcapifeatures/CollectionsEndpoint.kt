@@ -31,7 +31,6 @@ import org.w3c.dom.Element
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.FileNotFoundException
-import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.charset.Charset
 import java.time.format.DateTimeFormatter
@@ -168,7 +167,6 @@ class CollectionsEndpoint(
     )
   }
 
-
   private fun findGeoJsonFeatureById(chunk: Buffer, meta: GeoJsonChunkMeta, id: String): Buffer? {
     when (meta.type) {
       "Feature" -> return chunk
@@ -302,17 +300,27 @@ class CollectionsEndpoint(
     }
   }
 
+  /**
+   * Crerates a unique ID for features, that do not already have one.
+   * The ID contains
+   *  - The path of the chunk containing the feature, that can later be used to query for a feature based on its ID
+   *  - A counting integer to make the ID unique (in case a chunk contains multiple features)
+   */
   private fun makeArtificialId(path: String, i: Int): String {
     // Substitutions:
     // Would usually not be necessary. However, there seems to be a bug in the
     // OGC API - Features Conformance Test Suite (https://github.com/opengeospatial/ets-ogcapi-features10)
-    // that does not properly percent-encode path separators (other characters are encoded just fine...)
+    // that does not properly percent-encode path separators (other special characters are encoded just fine...)
     // in url components. This leads to failing tests due to the '/' characters in the path.
     val pathSub = path.replace("-", "-2d").replace("/", "-2f")
 
     return "chunk_${pathSub}_feature_$i"
   }
 
+  /**
+   * Checks, if the given feature ID was created by [makeArtificialId] and returns the path of the chunk
+   * that contains the feature, or null otherwise.
+   */
   private fun parseArtificialId(id: String): String? {
     val regex = "chunk_(.*)_feature_[0-9]+".toRegex()
     val match = regex.matchEntire(id)
@@ -322,7 +330,7 @@ class CollectionsEndpoint(
     return null
   }
 
-  private fun completeGeoJsonFeatureIds(chunk: Buffer, meta: ChunkMeta, path: String): Buffer {
+  private fun insertArtificialIdsIntoGeoJson(chunk: Buffer, meta: ChunkMeta, path: String): Buffer {
     data class StackFrame(var isFeature: Boolean, var hasId: Boolean)
     val charset = Charset.forName("UTF-8")
     val parser = JsonParser(charset)
@@ -385,16 +393,43 @@ class CollectionsEndpoint(
     return output
   }
 
-  private fun completeFeatureIds(chunk: Buffer, meta: ChunkMeta, path: String): Buffer {
+  /**
+   * Ogc-Api Features requires all features to have an ID.
+   * This method adds "artificial" ID values to features where the ID is missing.
+   * See also: [makeArtificialId] and [parseArtificialId]
+   */
+  private fun insertArtificialIds(chunk: Buffer, meta: ChunkMeta, path: String): Buffer {
     return when (meta) {
 
       // In geojson, the id property is optional. However, the ogc api spec requires all features to have an id.
       // So we add artificial ids on-the-fly.
-      is GeoJsonChunkMeta -> completeGeoJsonFeatureIds(chunk, meta, path)
+      is GeoJsonChunkMeta -> insertArtificialIdsIntoGeoJson(chunk, meta, path)
 
       // gml requires every feature to have a gml:id, so we do not need to add any ids
       else -> chunk
     }
+  }
+
+  private fun queryByFeatureId(ctx: RoutingContext, id: String, layer: String): IndexQuery {
+    // Build query string to search for feature with that id
+    // IDEA assumes that URLEncoder.encode does IO, because it throws UnsupportedEncodingException, which is extends
+    // IOException. This is wrong -> suppress warning.
+    @Suppress("BlockingMethodInNonBlockingContext")
+    val encodedId = URLEncoder.encode(id, "UTF-8")
+    val search = when (ctx.acceptableContentType) {
+      Views.ContentTypes.GEO_JSON -> "EQ(geoJsonFeatureId $encodedId)"
+      Views.ContentTypes.GML_XML -> "EQ(gmlId $encodedId)"
+      else -> {
+        // should be unreachable, because the route is only defined for those two content types (see createRouter())
+        throw Exception("Unexpected content type")
+      }
+    }
+    return compileQuery(search, layer)
+  }
+
+  private fun queryByArtificialId(id: String): IndexQuery? {
+    val path = parseArtificialId(id) ?: return null
+    return Compare("path", path, QueryPart.ComparisonOperator.EQ)
   }
 
   /**
@@ -624,7 +659,7 @@ class CollectionsEndpoint(
       }
       val chunks = result.items.asFlow().map { (path, meta) ->
         val chunk = store.getOne(path)
-        val chunkWithIds = completeFeatureIds(chunk, meta, path)
+        val chunkWithIds = insertArtificialIds(chunk, meta, path)
         chunkWithIds to meta
       }
       views.items(response, listOfNotNull(linkToSelf, linkToNext), result.items.size, chunks)
@@ -675,7 +710,7 @@ class CollectionsEndpoint(
     )
 
     // query for the feature with the requested id
-    val query = queryChunkByArtificialId(id) ?: queryChunkByFeatureId(ctx, id, layer)
+    val query = queryByArtificialId(id) ?: queryByFeatureId(ctx, id, layer)
 
     launch {
 
@@ -689,7 +724,7 @@ class CollectionsEndpoint(
       val chunk = store.getOne(path)
 
       // locate the feature with the requested id inside the chunk
-      val chunkWithIds = completeFeatureIds(chunk, meta, path)
+      val chunkWithIds = insertArtificialIds(chunk, meta, path)
       val item = findFeatureById(chunkWithIds, meta, id)
       if (item == null) {
         response.setStatusCode(404).end("Not found")
@@ -699,29 +734,6 @@ class CollectionsEndpoint(
       // make response
       views.item(response, links, item)
     }
-  }
-
-  private fun queryChunkByFeatureId(ctx: RoutingContext, id: String, layer: String): IndexQuery {
-
-    // Build query string to search for feature with that id
-    // IDEA assumes that URLEncoder.encode does IO, because it throws UnsupportedEncodingException, which is extends
-    // IOException. This is wrong -> suppress warning.
-    @Suppress("BlockingMethodInNonBlockingContext")
-    val encodedId = URLEncoder.encode(id, "UTF-8")
-    val search = when (ctx.acceptableContentType) {
-      Views.ContentTypes.GEO_JSON -> "EQ(geoJsonFeatureId $encodedId)"
-      Views.ContentTypes.GML_XML -> "EQ(gmlId $encodedId)"
-      else -> {
-        // should be unreachable, because the route is only defined for those two content types (see createRouter())
-        throw Exception("Unexpected content type")
-      }
-    }
-    return compileQuery(search, layer)
-  }
-
-  private fun queryChunkByArtificialId(id: String): IndexQuery? {
-    val path = parseArtificialId(id) ?: return null
-    return Compare("path", path, QueryPart.ComparisonOperator.EQ)
   }
 
 }
