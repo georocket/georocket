@@ -172,8 +172,10 @@ class CollectionsEndpoint(
       "Feature" -> return chunk
       "FeatureCollection" -> {
         // find the feature in the feature collection, that has the requested id
-        val parser = JsonParser()
+        val charset = Charset.forName("UTF-8")
+        val parser = JsonParser(charset)
         val bytes = chunk.bytes
+        val chars = chunk.toString(charset)
         var feedPosition = 0
         var currentField: String? = null
         var currentDepth = 0
@@ -182,14 +184,13 @@ class CollectionsEndpoint(
         var currentFeatureMatches = false
         var matchingFeature: Buffer? = null
         while (matchingFeature == null) {
-          val currentPosition = parser.parsedCharacterCount
           when (parser.nextEvent()) {
             JsonEvent.START_OBJECT, JsonEvent.START_ARRAY -> {
               if (currentDepth == 1 && currentField == "features") {
                 inFeaturesArray = true
               }
               if (currentDepth == 2 && inFeaturesArray) {
-                currentFeatureStartPos = currentPosition
+                currentFeatureStartPos = parser.parsedCharacterCount - 1
                 currentFeatureMatches = false
               }
               currentField = null
@@ -208,7 +209,7 @@ class CollectionsEndpoint(
             JsonEvent.END_OBJECT, JsonEvent.END_ARRAY -> {
               if (currentDepth == 3 && currentFeatureMatches) {
                 val currentFeatureEndPos = parser.parsedCharacterCount
-                matchingFeature = chunk.slice(currentFeatureStartPos.toInt(), currentFeatureEndPos.toInt())
+                matchingFeature = Buffer.buffer(chars.slice(currentFeatureStartPos.toInt() until currentFeatureEndPos.toInt()))
               }
               if (currentDepth == 2 && inFeaturesArray) {
                 inFeaturesArray = false
