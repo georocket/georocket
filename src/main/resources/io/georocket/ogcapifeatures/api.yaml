@@ -113,6 +113,7 @@ paths:
       - $ref: '#/components/parameters/limit'
       - $ref: '#/components/parameters/bbox'
       - $ref: '#/components/parameters/datetime'
+      - $ref: '#/components/parameters/freeform'
       responses:
         '200':
           description: >-
@@ -164,6 +165,13 @@ paths:
                 type: string
 components:
   parameters:
+    freeform:
+      name: queryField
+      in: query
+      schema:
+        type: object
+        additionalProperties: true
+      style: form
     limit:
       name: limit
       in: query
