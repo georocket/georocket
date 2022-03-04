@@ -34,19 +34,20 @@ class XMLTransformerTest {
      * The expected events
      */
     private val EXPECTED_EVENTS = listOf(
-      XMLStreamEvent(XMLEvent.START_DOCUMENT, 0, null),
-      XMLStreamEvent(XMLEvent.START_ELEMENT, 0, null),
-      XMLStreamEvent(XMLEvent.END_ELEMENT, 62, null),
-      XMLStreamEvent(XMLEvent.END_DOCUMENT, 69, null)
+      // (position, event)
+      0L to XMLEvent.START_DOCUMENT,
+      0L to XMLEvent.START_ELEMENT,
+      62L to XMLEvent.END_ELEMENT,
+      69L to XMLEvent.END_DOCUMENT
     )
   }
 
   private val expectedEvents = ArrayDeque(EXPECTED_EVENTS)
 
   private fun onEvent(e: XMLStreamEvent) {
-    val expected = expectedEvents.removeFirst()
-    Assertions.assertThat(e.event).isEqualTo(expected.event)
-    Assertions.assertThat(e.pos).isEqualTo(expected.pos)
+    val (expectedPos, expectedEvent) = expectedEvents.removeFirst()
+    Assertions.assertThat(e.event).isEqualTo(expectedEvent)
+    Assertions.assertThat(e.pos).isEqualTo(expectedPos)
   }
 
   private fun onEnd() {

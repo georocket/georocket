@@ -26,7 +26,7 @@ class AllSameStrategyTest {
     private const val XMLHEADER = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>${"\n"}"""
     private val chunk1 = Buffer.buffer("""<test chunk="1"></test>""")
     private val chunk2 = Buffer.buffer("""<test chunk="2"></test>""")
-    private val cm = XMLChunkMeta(listOf(XMLStartElement("root")))
+    private val cm = XMLChunkMeta(listOf(XMLStartElement(localName = "root")))
   }
 
   /**
@@ -78,9 +78,9 @@ class AllSameStrategyTest {
    */
   @Test
   fun canMerge(vertx: Vertx, ctx: VertxTestContext) {
-    val cm2 = XMLChunkMeta(listOf(XMLStartElement("other")))
+    val cm2 = XMLChunkMeta(listOf(XMLStartElement(localName = "other")))
     val cm3 = XMLChunkMeta(listOf(XMLStartElement("pre", "root")))
-    val cm4 = XMLChunkMeta(listOf(XMLStartElement(null, "root", arrayOf(""), arrayOf("uri"))))
+    val cm4 = XMLChunkMeta(listOf(XMLStartElement(null, "root", namespacePrefixes = listOf(null), namespaceUris = listOf("uri"))))
     val strategy = AllSameStrategy()
 
     CoroutineScope(vertx.dispatcher()).launch {
@@ -101,7 +101,7 @@ class AllSameStrategyTest {
    */
   @Test
   fun mergeFail(vertx: Vertx, ctx: VertxTestContext) {
-    val cm2 = XMLChunkMeta(listOf(XMLStartElement("other")))
+    val cm2 = XMLChunkMeta(listOf(XMLStartElement(localName = "other")))
     val strategy = AllSameStrategy()
     val bws = BufferWriteStream()
 

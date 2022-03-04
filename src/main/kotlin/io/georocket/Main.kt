@@ -191,7 +191,7 @@ private fun overwriteWithEnvironmentVariables(conf: JsonObject) {
  * the config key in the config object.
  */
 private fun overwriteWithEnvironmentVariables(conf: JsonObject, env: Map<String, String>) {
-  val names = ConfigConstants.getConfigKeys()
+  val names = ConfigConstants.configKeys
     .associateBy { s -> s.uppercase().replace(".", "_") }
   env.forEach { (key, v) ->
     val name = names[key.uppercase()]

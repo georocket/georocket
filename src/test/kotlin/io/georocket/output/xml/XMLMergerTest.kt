@@ -36,9 +36,15 @@ class XMLMergerTest {
     private const val NS_SCHEMA_INSTANCE = "http://www.w3.org/2001/XMLSchema-instance"
   }
 
-  private fun doMerge(vertx: Vertx, ctx: VertxTestContext, chunks: List<Buffer>,
-      metas: List<XMLChunkMeta>, xmlContents: String, optimistic: Boolean,
-      expected: Class<out Throwable>? = null) {
+  private fun doMerge(
+    vertx: Vertx,
+    ctx: VertxTestContext,
+    chunks: List<Buffer>,
+    metas: List<XMLChunkMeta>,
+    xmlContents: String,
+    optimistic: Boolean,
+    expected: Class<out Throwable>? = null
+  ) {
     val m = XMLMerger(optimistic)
     val bws = BufferWriteStream()
 
@@ -77,20 +83,39 @@ class XMLMergerTest {
     val chunk1 = Buffer.buffer("""<test chunk="1"></test>""")
     val chunk2 = Buffer.buffer("""<test chunk="2"></test>""")
 
-    val cm = XMLChunkMeta(listOf(XMLStartElement("root")))
+    val cm = XMLChunkMeta(listOf(XMLStartElement(localName = "root")))
 
-    doMerge(vertx, ctx, listOf(chunk1, chunk2), listOf(cm, cm),
-        """<root><test chunk="1"></test><test chunk="2"></test></root>""", false)
+    doMerge(
+      vertx,
+      ctx,
+      listOf(chunk1, chunk2),
+      listOf(cm, cm),
+      """<root><test chunk="1"></test><test chunk="2"></test></root>""",
+      false
+    )
   }
 
-  private fun mergeNamespaces(vertx: Vertx, ctx: VertxTestContext, optimistic: Boolean,
-      expected: Class<out Throwable>?) {
-    val root1 = XMLStartElement(null, "CityModel", arrayOf("", "gml", "gen", XSI),
-        arrayOf(NS_CITYGML_1_0, NS_GML, NS_CITYGML_1_0_GENERICS, NS_SCHEMA_INSTANCE),
-        arrayOf(XSI), arrayOf(SCHEMA_LOCATION), arrayOf(NS_CITYGML_1_0_GENERICS_SCHEMA_LOCATION))
-    val root2 = XMLStartElement(null, "CityModel", arrayOf("", "gml", "bldg", XSI),
-        arrayOf(NS_CITYGML_1_0, NS_GML, NS_CITYGML_1_0_BUILDING, NS_SCHEMA_INSTANCE),
-        arrayOf(XSI), arrayOf(SCHEMA_LOCATION), arrayOf(NS_CITYGML_1_0_BUILDING_SCHEMA_LOCATION))
+  private fun mergeNamespaces(
+    vertx: Vertx, ctx: VertxTestContext, optimistic: Boolean, expected: Class<out Throwable>?
+  ) {
+    val root1 = XMLStartElement(
+      null,
+      "CityModel",
+      listOf(null, "gml", "gen", XSI),
+      listOf(NS_CITYGML_1_0, NS_GML, NS_CITYGML_1_0_GENERICS, NS_SCHEMA_INSTANCE),
+      listOf(XSI),
+      listOf(SCHEMA_LOCATION),
+      listOf(NS_CITYGML_1_0_GENERICS_SCHEMA_LOCATION)
+    )
+    val root2 = XMLStartElement(
+      null,
+      "CityModel",
+      listOf(null, "gml", "bldg", XSI),
+      listOf(NS_CITYGML_1_0, NS_GML, NS_CITYGML_1_0_BUILDING, NS_SCHEMA_INSTANCE),
+      listOf(XSI),
+      listOf(SCHEMA_LOCATION),
+      listOf(NS_CITYGML_1_0_BUILDING_SCHEMA_LOCATION)
+    )
 
     val contents1 = "<cityObjectMember><gen:GenericCityObject></gen:GenericCityObject></cityObjectMember>"
     val chunk1 = Buffer.buffer(contents1)
@@ -100,13 +125,24 @@ class XMLMergerTest {
     val cm1 = XMLChunkMeta(listOf(root1))
     val cm2 = XMLChunkMeta(listOf(root2))
 
-    val expectedRoot = XMLStartElement(null, "CityModel", arrayOf("", "gml", "gen", XSI, "bldg"),
-        arrayOf(NS_CITYGML_1_0, NS_GML, NS_CITYGML_1_0_GENERICS, NS_SCHEMA_INSTANCE, NS_CITYGML_1_0_BUILDING),
-        arrayOf(XSI), arrayOf(SCHEMA_LOCATION),
-        arrayOf("""$NS_CITYGML_1_0_GENERICS_SCHEMA_LOCATION $NS_CITYGML_1_0_BUILDING_SCHEMA_LOCATION"""))
-    doMerge(vertx, ctx, listOf(chunk1, chunk2), listOf(cm1, cm2),
-        """$expectedRoot$contents1$contents2</${expectedRoot.name}>""",
-        optimistic, expected)
+    val expectedRoot = XMLStartElement(
+      null,
+      "CityModel",
+      listOf(null, "gml", "gen", XSI, "bldg"),
+      listOf(NS_CITYGML_1_0, NS_GML, NS_CITYGML_1_0_GENERICS, NS_SCHEMA_INSTANCE, NS_CITYGML_1_0_BUILDING),
+      listOf(XSI),
+      listOf(SCHEMA_LOCATION),
+      listOf("""$NS_CITYGML_1_0_GENERICS_SCHEMA_LOCATION $NS_CITYGML_1_0_BUILDING_SCHEMA_LOCATION""")
+    )
+    doMerge(
+      vertx,
+      ctx,
+      listOf(chunk1, chunk2),
+      listOf(cm1, cm2),
+      """$expectedRoot$contents1$contents2</${expectedRoot.name}>""",
+      optimistic,
+      expected
+    )
   }
 
   /**
@@ -131,10 +167,15 @@ class XMLMergerTest {
    */
   @Test
   fun mergeOptimistic(vertx: Vertx, ctx: VertxTestContext) {
-    val root1 = XMLStartElement(null, "CityModel", arrayOf("", "gml", "gen", XSI),
-        arrayOf(NS_CITYGML_1_0, NS_GML, NS_CITYGML_1_0_GENERICS, NS_SCHEMA_INSTANCE),
-        arrayOf(XSI), arrayOf(SCHEMA_LOCATION),
-        arrayOf(NS_CITYGML_1_0_GENERICS_SCHEMA_LOCATION))
+    val root1 = XMLStartElement(
+      null,
+      "CityModel",
+      listOf(null, "gml", "gen", XSI),
+      listOf(NS_CITYGML_1_0, NS_GML, NS_CITYGML_1_0_GENERICS, NS_SCHEMA_INSTANCE),
+      listOf(XSI),
+      listOf(SCHEMA_LOCATION),
+      listOf(NS_CITYGML_1_0_GENERICS_SCHEMA_LOCATION)
+    )
 
     val contents1 = "<cityObjectMember><gen:GenericCityObject></gen:GenericCityObject></cityObjectMember>"
     val chunk1 = Buffer.buffer(contents1)
@@ -144,7 +185,8 @@ class XMLMergerTest {
     val cm1 = XMLChunkMeta(listOf(root1))
     val cm2 = XMLChunkMeta(listOf(root1))
 
-    doMerge(vertx, ctx, listOf(chunk1, chunk2), listOf(cm1, cm2),
-        """$root1$contents1$contents2</${root1.name}>""", true)
+    doMerge(
+      vertx, ctx, listOf(chunk1, chunk2), listOf(cm1, cm2), """$root1$contents1$contents2</${root1.name}>""", true
+    )
   }
 }

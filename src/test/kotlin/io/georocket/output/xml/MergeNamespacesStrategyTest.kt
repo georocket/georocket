@@ -25,19 +25,27 @@ class MergeNamespacesStrategyTest {
   companion object {
     private const val XMLHEADER = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>${"\n"}"""
 
-    private val ROOT1 = XMLStartElement(null, "root", arrayOf("", "ns1", "xsi"),
-        arrayOf("uri0", "uri1", "http://www.w3.org/2001/XMLSchema-instance"),
-        arrayOf("xsi", "ns1"), arrayOf("schemaLocation", "attr1"),
-        arrayOf("uri0 location0 uri1 location1", "value1"))
-    private val ROOT2 = XMLStartElement(null, "root", arrayOf("", "ns2", "xsi"),
-        arrayOf("uri0", "uri2", "http://www.w3.org/2001/XMLSchema-instance"),
-        arrayOf("xsi", "ns2"), arrayOf("schemaLocation", "attr2"),
-        arrayOf("uri0 location0 uri2 location2", "value2"))
-
-    private val EXPECTEDROOT = XMLStartElement(null, "root", arrayOf("", "ns1", "xsi", "ns2"),
-        arrayOf("uri0", "uri1", "http://www.w3.org/2001/XMLSchema-instance", "uri2"),
-        arrayOf("xsi", "ns1", "ns2"), arrayOf("schemaLocation", "attr1", "attr2"),
-        arrayOf("uri0 location0 uri1 location1 uri2 location2", "value1", "value2"))
+    private val ROOT1 = XMLStartElement(null, "root",
+      namespacePrefixes = listOf(null, "ns1", "xsi"),
+      namespaceUris = listOf("uri0", "uri1", "http://www.w3.org/2001/XMLSchema-instance"),
+      attributePrefixes = listOf("xsi", "ns1"),
+      attributeLocalNames = listOf("schemaLocation", "attr1"),
+      attributeValues = listOf("uri0 location0 uri1 location1", "value1")
+    )
+    private val ROOT2 = XMLStartElement(null, "root",
+      namespacePrefixes = listOf(null, "ns2", "xsi"),
+      namespaceUris = listOf("uri0", "uri2", "http://www.w3.org/2001/XMLSchema-instance"),
+      attributePrefixes = listOf("xsi", "ns2"),
+      attributeLocalNames = listOf("schemaLocation", "attr2"),
+      attributeValues = listOf("uri0 location0 uri2 location2", "value2")
+    )
+    private val EXPECTEDROOT = XMLStartElement(null, "root",
+      namespacePrefixes = listOf(null, "ns1", "xsi", "ns2"),
+      namespaceUris = listOf("uri0", "uri1", "http://www.w3.org/2001/XMLSchema-instance", "uri2"),
+      attributePrefixes = listOf("xsi", "ns1", "ns2"),
+      attributeLocalNames = listOf("schemaLocation", "attr1", "attr2"),
+      attributeValues = listOf("uri0 location0 uri1 location1 uri2 location2", "value1", "value2")
+    )
 
     private const val CONTENTS1 = "<elem><ns1:child1></ns1:child1></elem>"
     private val CHUNK1 = Buffer.buffer(CONTENTS1)
