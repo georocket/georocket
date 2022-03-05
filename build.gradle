@@ -121,7 +121,7 @@ dependencies {
     testImplementation 'com.github.tomakehurst:wiremock-jre8:2.32.0'
     testImplementation 'org.mongodb:mongodb-driver:3.12.10'
 
-    testImplementation "io.mockk:mockk:1.12.2"
+    testImplementation "io.mockk:mockk:1.12.3"
     testImplementation "io.vertx:vertx-junit5:$vertxVersion"
     testImplementation "org.assertj:assertj-core:3.22.0"
     testImplementation "org.junit.jupiter:junit-jupiter-api:$junitVersion"
