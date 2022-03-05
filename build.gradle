@@ -12,7 +12,7 @@ group = 'io.georocket'
 mainClassName = 'io.georocket.MainKt'
 
 ext {
-    vertxVersion = '4.2.4'
+    vertxVersion = '4.2.5'
     geotoolsVersion = '26.2'
     slf4jVersion = '1.7.36'
     logbackVersion = '1.2.10'
