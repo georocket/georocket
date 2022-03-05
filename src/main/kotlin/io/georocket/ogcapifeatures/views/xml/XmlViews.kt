@@ -7,14 +7,31 @@ import com.fasterxml.jackson.dataformat.xml.XmlFactory
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.fasterxml.jackson.dataformat.xml.ser.ToXmlGenerator
 import io.georocket.ogcapifeatures.views.Views
+import io.georocket.ogcapifeatures.views.mergeChunks
+import io.georocket.output.xml.XMLMerger
+import io.georocket.storage.ChunkMeta
+import io.georocket.storage.XMLChunkMeta
+import io.georocket.util.io.BufferWriteStream
+import io.vertx.core.buffer.Buffer
 import io.vertx.core.http.HttpServerResponse
+import kotlinx.coroutines.flow.Flow
+import org.slf4j.LoggerFactory
+import org.w3c.dom.Element
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.Writer
+import javax.xml.parsers.DocumentBuilderFactory
 import javax.xml.stream.XMLStreamWriter
+import javax.xml.transform.TransformerFactory
+import javax.xml.transform.dom.DOMSource
+import javax.xml.transform.stream.StreamResult
 
 const val XML_NAMESPACE_ATOM = "http://www.w3.org/2005/Atom"
 const val XML_NAMESPACE_CORE = "http://www.opengis.net/ogcapi-features-1/1.0"
 
 object XmlViews: Views {
+
+  private val log = LoggerFactory.getLogger(XmlViews::class.java)
 
   /**
    * Object mapper for xml serialisation
@@ -57,7 +74,7 @@ object XmlViews: Views {
   }
 
   override fun landingPage(response: HttpServerResponse, links: List<Views.Link>) {
-    response.putHeader("Content-Type", "application/xml")
+    response.putHeader("Content-Type", Views.ContentTypes.XML)
     addLinkHeaders(response, links)
     response.send(objectMapper.writeValueAsString(LandingPage(
       title = "GeoRocket OGC API Features",
@@ -67,7 +84,7 @@ object XmlViews: Views {
   }
 
   override fun conformance(response: HttpServerResponse, conformsTo: List<String>) {
-    response.putHeader("content-type", "application/xml")
+    response.putHeader("content-type", Views.ContentTypes.XML)
     response.end(objectMapper.writeValueAsString(ConformsTo(
       title = "Conformances",
       description = "List of conformance classes that this API implements.",
@@ -76,7 +93,7 @@ object XmlViews: Views {
   }
 
   override fun collections(response: HttpServerResponse, links: List<Views.Link>, collections: List<Views.Collection>) {
-    response.putHeader("content-type", "application/xml")
+    response.putHeader("content-type", Views.ContentTypes.XML)
     addLinkHeaders(response, links + collections.flatMap { it.links })
     response.end(objectMapper.writeValueAsString(Collections(
       title = "Collections",
@@ -87,7 +104,7 @@ object XmlViews: Views {
   }
 
   override fun collection(response: HttpServerResponse, links: List<Views.Link>, collection: Views.Collection) {
-    response.putHeader("content-type", "application/xml")
+    response.putHeader("content-type", Views.ContentTypes.XML)
     addLinkHeaders(response, links + collection.links)
     response.end(objectMapper.writeValueAsString(
       Collections(
@@ -96,6 +113,34 @@ object XmlViews: Views {
         collections = listOf(collection),
       )
     ))
+  }
+
+  override suspend fun items(
+    response: HttpServerResponse,
+    links: List<Views.Link>,
+    numberReturned: Int,
+    chunks: Flow<Pair<Buffer, ChunkMeta>>
+  ) {
+
+    // headers
+    addLinkHeaders(response, links)
+    response.putHeader("OGC-NumberReturned", numberReturned.toString())
+    response.putHeader("content-type", Views.ContentTypes.GML_SF2_XML)
+    response.isChunked = true
+
+    // body is the merged xml
+    val merger = XMLMerger(true)
+    mergeChunks(response, merger, chunks, log)
+  }
+
+  override fun item(response: HttpServerResponse, links: List<Views.Link>, item: Buffer) {
+
+    // headers
+    addLinkHeaders(response, links)
+    response.putHeader("content-type", Views.ContentTypes.GML_SF2_XML)
+
+    // body
+    response.end(item)
   }
 }
 

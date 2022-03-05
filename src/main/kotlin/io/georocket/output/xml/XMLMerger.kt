@@ -53,7 +53,7 @@ class XMLMerger(private val optimistic: Boolean) : Merger<XMLChunkMeta> {
 
     // current strategy is able to handle the chunk
     initialized = true
-    return strategy.init(chunkMetadata)
+    strategy.init(chunkMetadata)
   }
 
   override suspend fun merge(chunk: Buffer, chunkMetadata: XMLChunkMeta,
