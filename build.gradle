@@ -13,7 +13,7 @@ mainClassName = 'io.georocket.MainKt'
 
 ext {
     vertxVersion = '4.2.5'
-    geotoolsVersion = '26.2'
+    geotoolsVersion = '26.3'
     slf4jVersion = '1.7.36'
     logbackVersion = '1.2.10'
     junitVersion = '5.8.2'
@@ -111,7 +111,7 @@ dependencies {
     implementation "com.ongres.scram:client:2.1" // for authentication
 
     // necessary for ALPN / HTTP/2
-    runtimeOnly "io.netty:netty-tcnative-boringssl-static:2.0.48.Final"
+    runtimeOnly "io.netty:netty-tcnative-boringssl-static:2.0.50.Final"
 
     implementation "org.jetbrains.kotlin:kotlin-reflect"
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
@@ -121,7 +121,7 @@ dependencies {
     testImplementation 'com.github.tomakehurst:wiremock-jre8:2.32.0'
     testImplementation 'org.mongodb:mongodb-driver:3.12.10'
 
-    testImplementation "io.mockk:mockk:1.12.2"
+    testImplementation "io.mockk:mockk:1.12.3"
     testImplementation "io.vertx:vertx-junit5:$vertxVersion"
     testImplementation "org.assertj:assertj-core:3.22.0"
     testImplementation "org.junit.jupiter:junit-jupiter-api:$junitVersion"
