@@ -32,17 +32,17 @@ class CoordinateTransformer(crs: CoordinateReferenceSystem) {
    * @throws TransformException if the coordinates could not be transformed
    */
   fun transform(from: DoubleArray, dimension: Int): DoubleArray? {
-    var dimension = dimension
-    if (dimension <= 0) {
-      dimension = guessDimension(from)
+    var dimension1 = dimension
+    if (dimension1 <= 0) {
+      dimension1 = guessDimension(from)
     }
-    if (dimension != 2 && dimension != 3) {
+    if (dimension1 != 2 && dimension1 != 3) {
       return null
     }
-    if (from.size % dimension != 0) {
+    if (from.size % dimension1 != 0) {
       return null
     }
-    val count = from.size / dimension
+    val count = from.size / dimension1
     var i = 0
     while (i < from.size) {
       if (flipped) {
@@ -50,7 +50,7 @@ class CoordinateTransformer(crs: CoordinateReferenceSystem) {
         from[i] = from[i + 1]
         from[i + 1] = tmp
       }
-      i += dimension
+      i += dimension1
     }
     val destination = DoubleArray(count * 2)
     transform.transform(from, 0, destination, 0, count)

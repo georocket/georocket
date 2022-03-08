@@ -331,7 +331,7 @@ class CollectionsEndpoint(
     return null
   }
 
-  private fun insertArtificialIdsIntoGeoJson(chunk: Buffer, meta: ChunkMeta, path: String): Buffer {
+  private fun insertArtificialIdsIntoGeoJson(chunk: Buffer, path: String): Buffer {
     data class StackFrame(var isFeature: Boolean, var hasId: Boolean)
     val charset = Charset.forName("UTF-8")
     val parser = JsonParser(charset)
@@ -404,7 +404,7 @@ class CollectionsEndpoint(
 
       // In geojson, the id property is optional. However, the ogc api spec requires all features to have an id.
       // So we add artificial ids on-the-fly.
-      is GeoJsonChunkMeta -> insertArtificialIdsIntoGeoJson(chunk, meta, path)
+      is GeoJsonChunkMeta -> insertArtificialIdsIntoGeoJson(chunk, path)
 
       // gml requires every feature to have a gml:id, so we do not need to add any ids
       else -> chunk

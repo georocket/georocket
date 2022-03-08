@@ -18,10 +18,9 @@ object WKTCRSDecoder {
    * @return true if the code represents a WKT CRS, false otherwise
    */
   fun isWKT(code: String): Boolean {
-    var code = code
-    code = code.trim { it <= ' ' }
+    val trimmed = code.trim { it <= ' ' }
     for (type in TYPES) {
-      if (code.startsWith(type)) {
+      if (trimmed.startsWith(type)) {
         return true
       }
     }

@@ -32,13 +32,13 @@ object CompoundCRSDecoder {
      * or if one of its components could not be decoded
      */
     fun decode(code: String): CoordinateReferenceSystem {
-        var code = code
-        code = code.trim { it <= ' ' }
-        if (!isCompound(code)) {
-            throw NoSuchAuthorityCodeException("No compound CRS", AUTHORITY, code)
+        var trimmed = code
+        trimmed = trimmed.trim { it <= ' ' }
+        if (!isCompound(trimmed)) {
+            throw NoSuchAuthorityCodeException("No compound CRS", AUTHORITY, trimmed)
         }
-        code = code.substring(PREFIX.length)
-        val parts = code.split(",".toRegex()).toTypedArray()
+        trimmed = trimmed.substring(PREFIX.length)
+        val parts = trimmed.split(",".toRegex()).toTypedArray()
         val crss = arrayOfNulls<CoordinateReferenceSystem>(parts.size)
         for (i in crss.indices) {
             crss[i] = CRS.decode(AUTHORITY + ":" + parts[i].trim { it <= ' ' })
