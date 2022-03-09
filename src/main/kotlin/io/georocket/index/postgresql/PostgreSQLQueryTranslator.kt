@@ -138,9 +138,8 @@ object PostgreSQLQueryTranslator {
       }
 
       is StartsWith -> {
-        result.append("(")
         appendField(jsonField, query.field, result)
-        result.append(")::text LIKE ")
+        result.append("#>> '{}' LIKE ")
         appendParam(escapeLikeExpression(query.prefix) + "%", result, params)
       }
     }
