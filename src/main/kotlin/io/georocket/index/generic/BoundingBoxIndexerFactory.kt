@@ -32,19 +32,22 @@ class BoundingBoxIndexerFactory : IndexerFactory {
         FLOAT_REGEX + COMMA_REGEX + FLOAT_REGEX + COMMA_REGEX + FLOAT_REGEX).toRegex()
   }
 
-  var defaultCrs: String? = null
+  val defaultCrs: String?
 
   /**
    * Default constructor
    */
-  init {
-    val ctx = Vertx.currentContext()
-    if (ctx != null) {
-      val config = ctx.config()
-      if (config != null) {
-        defaultCrs = config.getString(ConfigConstants.QUERY_DEFAULT_CRS)
-      }
-    }
+  constructor() {
+    defaultCrs = Vertx.currentContext()
+      ?.config()
+      ?.getString(ConfigConstants.QUERY_DEFAULT_CRS)
+  }
+
+  /**
+   * Construct a new instance with an explicit defaultCrs
+   */
+  constructor(defaultCrs: String?) {
+    this.defaultCrs = defaultCrs
   }
 
   @Suppress("UNCHECKED_CAST")
@@ -92,7 +95,7 @@ class BoundingBoxIndexerFactory : IndexerFactory {
     var points = co.split(",").map { it.trim().toDouble() }.toDoubleArray()
     if (crs != null) {
       val transformer = CoordinateTransformer(crs)
-      points = transformer.transform(points, -1)
+      points = transformer.transform(points, 2)!!
     }
 
     val minX = points[0]

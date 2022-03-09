@@ -4,7 +4,6 @@ import com.mongodb.ConnectionString
 import com.mongodb.MongoClientSettings
 import com.mongodb.reactivestreams.client.MongoClient
 import com.mongodb.reactivestreams.client.MongoClients
-import de.flapdoodle.embed.mongo.Command
 import de.flapdoodle.embed.mongo.MongodExecutable
 import de.flapdoodle.embed.mongo.MongodStarter
 import de.flapdoodle.embed.mongo.config.Defaults
@@ -12,6 +11,7 @@ import de.flapdoodle.embed.mongo.config.MongodConfig
 import de.flapdoodle.embed.mongo.config.Net
 import de.flapdoodle.embed.mongo.config.Storage
 import de.flapdoodle.embed.mongo.distribution.Version
+import de.flapdoodle.embed.mongo.packageresolver.Command
 import de.flapdoodle.embed.process.runtime.Network
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject

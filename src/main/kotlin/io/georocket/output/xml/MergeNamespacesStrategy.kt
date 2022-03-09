@@ -12,12 +12,12 @@ class MergeNamespacesStrategy : AbstractMergeStrategy() {
   /**
    * The namespaces of the current XML root elements
    */
-  private var currentNamespaces: MutableList<MutableMap<String, String>>? = null
+  private var currentNamespaces: MutableList<MutableMap<String?, String>>? = null
 
   /**
    * The attributes of the current XML root elements
    */
-  private var currentAttributes: MutableList<MutableMap<Pair<String, String>, String>>? = null
+  private var currentAttributes: MutableList<MutableMap<Pair<String?, String>, String>>? = null
 
   override var parents: List<XMLStartElement>?
     get() = super.parents
@@ -26,27 +26,21 @@ class MergeNamespacesStrategy : AbstractMergeStrategy() {
       currentAttributes = mutableListOf()
       for (e in parents!!) {
         // collect namespaces from parents
-        val nss = mutableMapOf<String, String>()
+        val nss = mutableMapOf<String?, String>()
         currentNamespaces!!.add(nss)
         for (i in 0 until e.namespaceCount) {
-          var nsp1 = e.getNamespacePrefix(i)
+          val nsp1 = e.getNamespacePrefix(i)
           val nsu1 = e.getNamespaceUri(i)
-          if (nsp1 == null) {
-            nsp1 = ""
-          }
           nss[nsp1] = nsu1
         }
 
         // collect attributes from parents
-        val attrs = mutableMapOf<Pair<String, String>, String>()
+        val attrs = mutableMapOf<Pair<String?, String>, String>()
         currentAttributes!!.add(attrs)
         for (i in 0 until e.attributeCount) {
-          var ap = e.getAttributePrefix(i)
+          val ap = e.getAttributePrefix(i)
           val aln = e.getAttributeLocalName(i)
           val av = e.getAttributeValue(i)
-          if (ap == null) {
-            ap = ""
-          }
           attrs[ap to aln] = av
         }
       }
@@ -211,16 +205,13 @@ class MergeNamespacesStrategy : AbstractMergeStrategy() {
    * Merge an XML start element [e] into a map of [namespaces] and a map of
    * [attributes]. Return the merged element or `null` if no merge was necessary
    */
-  private fun mergeParent(e: XMLStartElement, namespaces: MutableMap<String, String>,
-      attributes: MutableMap<Pair<String, String>, String>): XMLStartElement? {
+  private fun mergeParent(e: XMLStartElement, namespaces: MutableMap<String?, String>,
+      attributes: MutableMap<Pair<String?, String>, String>): XMLStartElement? {
     var changed = false
 
     // merge namespaces
     for (i in 0 until e.namespaceCount) {
-      var nsp = e.getNamespacePrefix(i)
-      if (nsp == null) {
-        nsp = ""
-      }
+      val nsp = e.getNamespacePrefix(i)
       if (!namespaces.containsKey(nsp)) {
         val nsu = e.getNamespaceUri(i)
         namespaces[nsp] = nsu
@@ -230,11 +221,8 @@ class MergeNamespacesStrategy : AbstractMergeStrategy() {
 
     // merge attributes
     for (i in 0 until e.attributeCount) {
-      var ap = e.getAttributePrefix(i)
+      val ap = e.getAttributePrefix(i)
       val aln = e.getAttributeLocalName(i)
-      if (ap == null) {
-        ap = ""
-      }
       val name = ap to aln
       if (!attributes.containsKey(name)) {
         // add new attribute
@@ -285,12 +273,15 @@ class MergeNamespacesStrategy : AbstractMergeStrategy() {
       null
     } else {
       // create new merged parent
+      val orderedNamespaces = namespaces.entries.toList()
+      val orderedAttributes = attributes.entries.toList()
       XMLStartElement(e.prefix, e.localName,
-          namespaces.keys.toTypedArray(),
-          namespaces.values.toTypedArray(),
-          attributes.keys.map { it.first }.toTypedArray(),
-          attributes.keys.map { it.second }.toTypedArray(),
-          attributes.values.toTypedArray())
+        namespacePrefixes = orderedNamespaces.map { it.key },
+        namespaceUris = orderedNamespaces.map { it.value },
+        attributePrefixes = orderedAttributes.map { it.key.first },
+        attributeLocalNames = orderedAttributes.map { it.key.second },
+        attributeValues = orderedAttributes.map { it.value },
+      )
     }
   }
 }
