@@ -4,6 +4,7 @@ import io.georocket.coVerify
 import io.georocket.constants.ConfigConstants
 import io.georocket.index.Index
 import io.georocket.index.IndexFactory
+import io.georocket.storage.ChunkMeta
 import io.georocket.storage.GeoJsonChunkMeta
 import io.georocket.storage.Store
 import io.georocket.storage.StoreFactory
@@ -26,8 +27,11 @@ import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.dispatcher
+import io.vertx.sqlclient.Tuple
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
@@ -72,7 +76,7 @@ class StoreEndpointTest {
 
     val config = json {
       obj(
-          ConfigConstants.STORAGE_FILE_PATH to tempDir.toString()
+        ConfigConstants.STORAGE_FILE_PATH to tempDir.toString()
       )
     }
     val options = deploymentOptionsOf(config = config)
@@ -99,14 +103,17 @@ class StoreEndpointTest {
     coEvery { index.getDistinctMeta(any()) } returns listOf(cm).asFlow()
     coEvery { index.getMeta(any()) } returns listOf(chunk1Path to cm).asFlow()
     coEvery { store.getOne(chunk1Path) } returns chunk1
+    coEvery { store.getManyParallelBatched<Any>(any()) } answers {
+      arg<Flow<Pair<String, Any>>>(0)
+        .map { (path, meta) -> store.getOne(path) to meta }
+    }
 
     val client = WebClient.create(vertx)
     CoroutineScope(vertx.dispatcher()).launch {
       ctx.coVerify {
-        val response = client.get(port, "localhost", "/store")
-            .`as`(BodyCodec.string())
-            .expect(ResponsePredicate.SC_OK)
-            .send().await()
+        val response =
+          client.get(port, "localhost", "/store").`as`(BodyCodec.string()).expect(ResponsePredicate.SC_OK).send()
+            .await()
         assertThat(response.body()).isEqualTo(expected)
       }
       ctx.completeNow()

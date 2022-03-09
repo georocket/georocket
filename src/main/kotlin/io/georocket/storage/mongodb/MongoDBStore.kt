@@ -12,12 +12,18 @@ import io.georocket.constants.ConfigConstants.INDEX_MONGODB_CONNECTION_STRING
 import io.georocket.constants.ConfigConstants.STORAGE_MONGODB_CONNECTION_STRING
 import io.georocket.index.mongodb.SharedMongoClient
 import io.georocket.storage.Store
+import io.georocket.util.chunked
 import io.georocket.util.coFind
 import io.georocket.util.deleteManyAwait
 import io.georocket.util.insertManyAwait
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import io.vertx.kotlin.core.json.jsonObjectOf
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.reactive.awaitFirstOrNull
 import org.bson.BsonBinary
 import org.bson.BsonDocument
@@ -93,6 +99,43 @@ class MongoDBStore private constructor() : Store {
       throw NoSuchElementException("Could not find chunk with path `$path'")
     }
     return result
+  }
+
+  override suspend fun getMany(paths: List<String>): Map<String, Buffer> {
+
+    // query for all chunks in this batch
+    val chunks = collChunks.coFind(
+      jsonObjectOf(
+        "filename" to jsonObjectOf(
+          "\$in" to paths
+        )
+      ),
+      sort = jsonObjectOf(
+        "filename" to 1,
+        "n" to 1
+      ))
+
+    // concatenate buffers for each file
+    var curFileName: String? = null
+    var curBuffer = Buffer.buffer()
+    val results = mutableMapOf<String, Buffer>()
+    chunks.collect { c ->
+      val filename = c.getString("filename").value
+      val data = c.getBinary("data").data
+      if (filename != curFileName) {
+        curFileName = filename
+        curBuffer = Buffer.buffer()
+        results[filename] = curBuffer
+      }
+      curBuffer.appendBuffer(Buffer.buffer(data))
+    }
+
+    // Check, that all chunks were found
+    if (results.size < paths.size) {
+      val missing = paths.find { !results.containsKey(it) }!!
+      throw NoSuchElementException("Could not find chunk with path `$missing'")
+    }
+    return results
   }
 
   private fun chunkToBson(chunk: Buffer, path: String): List<BsonDocument> {

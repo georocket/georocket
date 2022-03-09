@@ -78,10 +78,10 @@ class SearchCommand : DataCommand() {
       var accepted = 0L
       var notaccepted = 0L
       val metas = index.getMeta(query)
-      metas.collect { chunkMeta ->
-        val chunk = store.getOne(chunkMeta.first)
+      val chunks = store.getManyParallelBatched(metas)
+      chunks.collect { (chunk, meta) ->
         try {
-          merger.merge(chunk, chunkMeta.second, out)
+          merger.merge(chunk, meta, out)
           accepted++
         } catch (e: IllegalStateException) {
           // Chunk cannot be merged. maybe it's a new one that has

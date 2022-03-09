@@ -65,6 +65,26 @@ class PostgreSQLStore private constructor(vertx: Vertx, url: String,
       throw NoSuchElementException("Could not find chunk with path `$path'")
   }
 
+  override suspend fun getMany(paths: List<String>): Map<String, Buffer> {
+    val statement = "SELECT $ID, $DATA FROM $CHUNKS WHERE $ID=$1"
+    val params = paths.map { path -> Tuple.of(path) }
+    var batchQueryResults = client.preparedQuery(statement).executeBatch(params).await()
+    val results = mutableMapOf<String, Buffer>()
+    while (batchQueryResults != null) {
+      batchQueryResults.forEach { row ->
+        val path = row.getString(0)
+        val data = row.getBuffer(1)
+        results[path] = data
+      }
+      batchQueryResults = batchQueryResults.next()
+    }
+    if (results.size < paths.size) {
+      val missing = paths.find { !results.containsKey(it) }
+      throw NoSuchElementException("Could not find chunk with path `$missing'")
+    }
+    return results
+  }
+
   override suspend fun delete(paths: Collection<String>): Long {
     var result = 0L
     val chunk = mutableListOf<String>()

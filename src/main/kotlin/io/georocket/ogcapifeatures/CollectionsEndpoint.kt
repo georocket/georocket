@@ -658,8 +658,10 @@ class CollectionsEndpoint(
       } else {
         null
       }
-      val chunks = result.items.asFlow().map { (path, meta) ->
-        val chunk = store.getOne(path)
+      val chunks = store.getManyParallelBatched(result.items.asFlow()
+        .map{(path, meta) -> path to (path to meta)}
+      ).map { (chunk, pathMeta) ->
+        val (path, meta) = pathMeta
         val chunkWithIds = insertArtificialIds(chunk, meta, path)
         chunkWithIds to meta
       }
