@@ -25,6 +25,7 @@ import io.georocket.util.MimeTypeUtils.detect
 import io.georocket.util.collectChunked
 import io.vertx.core.Promise
 import io.vertx.core.Vertx
+import io.vertx.core.buffer.Buffer
 import io.vertx.core.file.OpenOptions
 import io.vertx.core.http.HttpServerRequest
 import io.vertx.core.http.HttpServerResponse
@@ -38,7 +39,9 @@ import io.vertx.kotlin.coroutines.toReceiveChannel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.buffer
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import org.antlr.v4.runtime.misc.ParseCancellationException
 import org.apache.commons.lang3.BooleanUtils
@@ -194,10 +197,10 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
       // merge chunks
       var accepted = 0L
       var notaccepted = 0L
-      suspend fun collectChunk(chunkMeta: Pair<String, ChunkMeta>) {
-        val chunk = store.getOne(chunkMeta.first)
+      suspend fun collectChunk(chunk: Pair<Buffer, ChunkMeta>) {
+        val (buf, meta) = chunk
         try {
-          merger.merge(chunk, chunkMeta.second, response)
+          merger.merge(buf, meta, response)
           accepted++
         } catch (e: IllegalStateException) {
           // Chunk cannot be merged. maybe it's a new one that has
@@ -212,12 +215,12 @@ class StoreEndpoint(override val coroutineContext: CoroutineContext,
           response.putHeader(X_SCROLL_ID, page.scrollId)
           response.putHeader(X_HITS, page.items.size.toString())
         }
-        for (item in page.items) {
-          collectChunk(item)
-        }
+        val chunks = store.getManyParallelBatched(page.items.asFlow())
+        chunks.collect(::collectChunk)
       } else {
         val metas = index.getMeta(query)
-        metas.collect(::collectChunk)
+        val chunks = store.getManyParallelBatched(metas)
+        chunks.collect(::collectChunk)
       }
 
       if (notaccepted > 0) {

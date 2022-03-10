@@ -149,6 +149,35 @@ abstract class StorageTest {
     }
   }
 
+  @Test
+  fun testGetMany(ctx: VertxTestContext, vertx: Vertx) {
+    CoroutineScope(vertx.dispatcher()).launch {
+      val store = createStore(vertx)
+
+      // prepareData only adds a single file.
+      // Add a few more, so we can test getMany with many files.
+      store.addMany(listOf(
+        Buffer.buffer("file 1") to "a",
+        Buffer.buffer("file 2") to "b",
+        Buffer.buffer("file 3") to "c",
+        Buffer.buffer("file 4") to "d",
+        Buffer.buffer("file 5") to "e",
+      ))
+
+      // test by getting 3 files in bulk
+      val result = store.getMany(listOf("a", "c", "e"))
+      ctx.verify {
+        assertThat(result).isEqualTo(mapOf(
+          "a" to Buffer.buffer("file 1"),
+          "c" to Buffer.buffer("file 3"),
+          "e" to Buffer.buffer("file 5"),
+        ))
+      }
+
+      ctx.completeNow()
+    }
+  }
+
   /**
    * Add test data and compare the data with the stored one
    */
