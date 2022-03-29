@@ -1,5 +1,6 @@
 package io.georocket.index.xml
 
+import io.georocket.index.DatabaseIndex
 import io.georocket.index.Indexer
 import io.georocket.index.IndexerFactory
 import io.georocket.query.Contains
@@ -16,6 +17,11 @@ import io.georocket.util.XMLStreamEvent
  * @author Michel Kraemer
  */
 class GmlIdIndexerFactory : IndexerFactory {
+
+  companion object {
+    val validFieldNames = setOf("gmlId", "gml:id", "id")
+  }
+
   override fun <T : StreamEvent> createIndexer(eventType: Class<T>): Indexer<T>? {
     if (eventType.isAssignableFrom(XMLStreamEvent::class.java)) {
       @Suppress("UNCHECKED_CAST")
@@ -31,7 +37,7 @@ class GmlIdIndexerFactory : IndexerFactory {
   private fun isGmlIdEQ(qp: StringQueryPart): Boolean {
     val key = qp.key
     val comp = qp.comparisonOperator
-    return comp === ComparisonOperator.EQ && ("gmlId" == key || "gml:id" == key)
+    return comp === ComparisonOperator.EQ && validFieldNames.contains(key)
   }
 
   override fun getQueryPriority(queryPart: QueryPart): MatchPriority {
@@ -57,4 +63,8 @@ class GmlIdIndexerFactory : IndexerFactory {
       null
     }
   }
+
+  override fun getDatabaseIndexes(indexedFields: List<String>): List<DatabaseIndex> = listOf(
+    DatabaseIndex.Array("gmlIds", "gml_ids_array")
+  )
 }

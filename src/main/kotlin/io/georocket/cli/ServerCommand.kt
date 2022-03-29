@@ -22,9 +22,10 @@ class ServerCommand : GeoRocketCommand() {
   override val usageName = "server"
   override val usageDescription = "Run GeoRocket in server mode"
 
-  override suspend fun doRun(remainingArgs: Array<String>, reader: InputReader,
-      out: WriteStream<Buffer>): Int {
-    // print banner
+  override suspend fun doRun(
+    remainingArgs: Array<String>, reader: InputReader,
+    out: WriteStream<Buffer>
+  ): Int {
     val banner = GeoRocket::class.java.getResource("georocket_banner.txt")!!.readText()
     println(banner)
 
@@ -32,8 +33,10 @@ class ServerCommand : GeoRocketCommand() {
     val memoryMXBean = ManagementFactory.getMemoryMXBean()
     val memoryInit = memoryMXBean.heapMemoryUsage.init
     val memoryMax = memoryMXBean.heapMemoryUsage.max
-    log.info("Initial heap size: ${SizeFormat.format(memoryInit)}, " +
-        "max heap size: ${SizeFormat.format(memoryMax)}")
+    log.info(
+      "Initial heap size: ${SizeFormat.format(memoryInit)}, " +
+        "max heap size: ${SizeFormat.format(memoryMax)}"
+    )
 
     // deploy main verticle
     val shutdownPromise = Promise.promise<Unit>()

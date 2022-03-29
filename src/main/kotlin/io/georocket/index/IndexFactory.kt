@@ -25,10 +25,16 @@ object IndexFactory {
     val driver = config.getString(ConfigConstants.INDEX_DRIVER, DRIVER_MONGODB)
 
     log.info("Using database driver: $driver")
-    return when (driver) {
+    val index = when (driver) {
       DRIVER_MONGODB -> MongoDBIndex.create(vertx)
       DRIVER_POSTGRESQL -> PostgreSQLIndex.create(vertx)
       else -> throw IllegalStateException("Unknown database driver `$driver'")
     }
+
+    val indexedFields = config.getJsonArray(ConfigConstants.INDEX_INDEXED_FIELDS).map { it.toString() }
+    val databaseIndexes = (MetaIndexerFactory.ALL + IndexerFactory.ALL)
+      .flatMap { it.getDatabaseIndexes(indexedFields) }
+    index.setUpDatabaseIndexes(databaseIndexes)
+    return index
   }
 }

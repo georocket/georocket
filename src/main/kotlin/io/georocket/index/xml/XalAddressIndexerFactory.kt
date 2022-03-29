@@ -1,14 +1,11 @@
 package io.georocket.index.xml
 
+import io.georocket.index.DatabaseIndex
 import io.georocket.index.Indexer
 import io.georocket.index.IndexerFactory
-import io.georocket.query.Compare
-import io.georocket.query.IndexQuery
-import io.georocket.query.Or
+import io.georocket.query.*
 import io.georocket.query.QueryCompiler.MatchPriority
-import io.georocket.query.QueryPart
 import io.georocket.query.QueryPart.ComparisonOperator.EQ
-import io.georocket.query.StringQueryPart
 import io.georocket.util.StreamEvent
 import io.georocket.util.XMLStreamEvent
 
@@ -49,5 +46,12 @@ class XalAddressIndexerFactory : IndexerFactory {
 
       else -> null
     }
+  }
+
+  override fun getDatabaseIndexes(indexedFields: List<String>): List<DatabaseIndex> {
+    return XalAddressIndexer.Companion.Keys.values()
+      .map { k ->
+        DatabaseIndex.Eq("address.${k.key}", "address_${k.key}_eq")
+      }
   }
 }

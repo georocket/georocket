@@ -2,9 +2,12 @@ package io.georocket.index.postgresql
 
 import io.georocket.constants.ConfigConstants
 import io.georocket.index.AbstractIndex
+import io.georocket.index.DatabaseIndex
 import io.georocket.index.Index
 import io.georocket.index.normalizeLayer
+import io.georocket.query.Compare
 import io.georocket.query.IndexQuery
+import io.georocket.query.QueryPart
 import io.georocket.query.StartsWith
 import io.georocket.storage.ChunkMeta
 import io.georocket.util.UniqueID
@@ -20,10 +23,16 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
+import org.slf4j.LoggerFactory
 
-class PostgreSQLIndex private constructor(vertx: Vertx, url: String,
-    username: String, password: String) : Index, AbstractIndex() {
+class PostgreSQLIndex private constructor(
+  vertx: Vertx, url: String,
+  username: String, password: String
+) : Index, AbstractIndex() {
   companion object {
+
+    private val log = LoggerFactory.getLogger(PostgreSQLIndex::class.java)
+
     /**
      * Table and column names
      */
@@ -38,25 +47,30 @@ class PostgreSQLIndex private constructor(vertx: Vertx, url: String,
     private const val VALUE = "value"
     private const val NAME = "name"
     private const val LAYER = "layer"
+    private const val IDX_PREFIX = "georocket_"
 
-    suspend fun create(vertx: Vertx, url: String? = null, username: String? = null,
-        password: String? = null): PostgreSQLIndex {
+    suspend fun create(
+      vertx: Vertx, url: String? = null, username: String? = null,
+      password: String? = null
+    ): PostgreSQLIndex {
       val config = vertx.orCreateContext.config()
 
-      val actualUrl = url ?:
-        config.getString(ConfigConstants.INDEX_POSTGRESQL_URL) ?:
-        throw IllegalStateException("Missing configuration item `" +
-            ConfigConstants.INDEX_POSTGRESQL_URL + "'")
+      val actualUrl = url ?: config.getString(ConfigConstants.INDEX_POSTGRESQL_URL) ?: throw IllegalStateException(
+        "Missing configuration item `" +
+          ConfigConstants.INDEX_POSTGRESQL_URL + "'"
+      )
 
-      val actualUsername = username ?:
-        config.getString(ConfigConstants.INDEX_POSTGRESQL_USERNAME) ?:
-        throw IllegalStateException("Missing configuration item `" +
-            ConfigConstants.INDEX_POSTGRESQL_USERNAME + "'")
+      val actualUsername =
+        username ?: config.getString(ConfigConstants.INDEX_POSTGRESQL_USERNAME) ?: throw IllegalStateException(
+          "Missing configuration item `" +
+            ConfigConstants.INDEX_POSTGRESQL_USERNAME + "'"
+        )
 
-      val actualPassword = password ?:
-        config.getString(ConfigConstants.INDEX_POSTGRESQL_PASSWORD) ?:
-        throw IllegalStateException("Missing configuration item `" +
-            ConfigConstants.INDEX_POSTGRESQL_PASSWORD + "'")
+      val actualPassword =
+        password ?: config.getString(ConfigConstants.INDEX_POSTGRESQL_PASSWORD) ?: throw IllegalStateException(
+          "Missing configuration item `" +
+            ConfigConstants.INDEX_POSTGRESQL_PASSWORD + "'"
+        )
 
       return vertx.executeBlocking<PostgreSQLIndex> { p ->
         p.complete(PostgreSQLIndex(vertx, actualUrl, actualUsername, actualPassword))
@@ -70,12 +84,12 @@ class PostgreSQLIndex private constructor(vertx: Vertx, url: String,
   private suspend fun addOrGetChunkMeta(meta: ChunkMeta): String {
     return addedChunkMetaCache.getAwait(meta) {
       val statement = "WITH new_id AS (" +
-            "INSERT INTO $CHUNK_META ($ID, $DATA) VALUES ($1, $2) " +
-            "ON CONFLICT DO NOTHING RETURNING $ID" +
-          ") SELECT COALESCE(" +
-            "(SELECT $ID FROM new_id)," +
-            "(SELECT $ID from $CHUNK_META WHERE $DATA=$2)" +
-          ")"
+        "INSERT INTO $CHUNK_META ($ID, $DATA) VALUES ($1, $2) " +
+        "ON CONFLICT DO NOTHING RETURNING $ID" +
+        ") SELECT COALESCE(" +
+        "(SELECT $ID FROM new_id)," +
+        "(SELECT $ID from $CHUNK_META WHERE $DATA=$2)" +
+        ")"
 
       val params = Tuple.of(UniqueID.next(), meta.toJsonObject())
 
@@ -88,8 +102,8 @@ class PostgreSQLIndex private constructor(vertx: Vertx, url: String,
     val r = loadedChunkMetaCache.getAwait(id) {
       val statement = "SELECT $DATA FROM $CHUNK_META WHERE $ID=$1"
       val r = client.preparedQuery(statement).execute(Tuple.of(id)).await()
-      r?.first()?.getJsonObject(0)?.let { createChunkMeta(it) } ?:
-        throw NoSuchElementException("Could not find chunk metadata with ID `$id' in index")
+      r?.first()?.getJsonObject(0)?.let { createChunkMeta(it) }
+        ?: throw NoSuchElementException("Could not find chunk metadata with ID `$id' in index")
     }
     return r
   }
@@ -109,8 +123,10 @@ class PostgreSQLIndex private constructor(vertx: Vertx, url: String,
     client.preparedQuery(statement).executeBatch(params).await()
   }
 
-  private suspend fun <T> streamQuery(statement: String, params: List<Any>,
-      readSize: Int = 50, rowToItem: suspend (Row) -> T): Flow<T> = flow {
+  private suspend fun <T> streamQuery(
+    statement: String, params: List<Any>,
+    readSize: Int = 50, rowToItem: suspend (Row) -> T
+  ): Flow<T> = flow {
     pgClient.withConnection { conn ->
       val preparedStatement = conn.prepare(statement).await()
       val transaction = conn.begin().await()
@@ -142,8 +158,10 @@ class PostgreSQLIndex private constructor(vertx: Vertx, url: String,
     return streamQuery(statement, params) { it.getString(0) to findChunkMeta(it.getString(1)) }
   }
 
-  override suspend fun getPaginatedMeta(query: IndexQuery, maxPageSize: Int,
-      previousScrollId: String?): Index.Page<Pair<String, ChunkMeta>> {
+  override suspend fun getPaginatedMeta(
+    query: IndexQuery, maxPageSize: Int,
+    previousScrollId: String?
+  ): Index.Page<Pair<String, ChunkMeta>> {
     val (where, whereParams) = PostgreSQLQueryTranslator.translate(query)
     val (statement, params) = if (previousScrollId != null) {
       val params = whereParams + previousScrollId + maxPageSize
@@ -173,15 +191,15 @@ class PostgreSQLIndex private constructor(vertx: Vertx, url: String,
     val (where, params) = PostgreSQLQueryTranslator.translate(query)
     val n = params.size
     val statement = "UPDATE $DOCUMENTS SET " +
-        "$DATA = jsonb_set(" +
-          "$DATA, '{$TAGS}', to_jsonb(" +
-            "ARRAY(" +
-              "SELECT DISTINCT jsonb_array_elements(" +
-                "COALESCE($DATA->'$TAGS', '[]'::jsonb) || $${n + 1}" +
-              ")" +
-            ")" +
-          ")" +
-        ") WHERE $where"
+      "$DATA = jsonb_set(" +
+      "$DATA, '{$TAGS}', to_jsonb(" +
+      "ARRAY(" +
+      "SELECT DISTINCT jsonb_array_elements(" +
+      "COALESCE($DATA->'$TAGS', '[]'::jsonb) || $${n + 1}" +
+      ")" +
+      ")" +
+      ")" +
+      ") WHERE $where"
     val paramsList = params.toMutableList()
     paramsList.add(JsonArray(tags.toList()))
     client.preparedQuery(statement).execute(Tuple.wrap(paramsList)).await()
@@ -191,7 +209,7 @@ class PostgreSQLIndex private constructor(vertx: Vertx, url: String,
     val (where, params) = PostgreSQLQueryTranslator.translate(query)
     val n = params.size
     val statement = "UPDATE $DOCUMENTS SET $DATA = jsonb_set($DATA, '{$TAGS}', " +
-        "COALESCE(($DATA->'$TAGS')::jsonb, '[]'::jsonb) - $${n + 1}::text[]) WHERE $where"
+      "COALESCE(($DATA->'$TAGS')::jsonb, '[]'::jsonb) - $${n + 1}::text[]) WHERE $where"
     val paramsList = params.toMutableList()
     paramsList.add(tags.toTypedArray())
     client.preparedQuery(statement).execute(Tuple.wrap(paramsList)).await()
@@ -201,7 +219,8 @@ class PostgreSQLIndex private constructor(vertx: Vertx, url: String,
     // convert to JSON array
     val props = jsonArrayOf()
     properties.entries.forEach { e ->
-      props.add(jsonObjectOf(KEY to e.key, VALUE to e.value)) }
+      props.add(jsonObjectOf(KEY to e.key, VALUE to e.value))
+    }
 
     // remove properties with these keys (if they exist)
     removeProperties(query, properties.keys)
@@ -209,8 +228,8 @@ class PostgreSQLIndex private constructor(vertx: Vertx, url: String,
     val (where, params) = PostgreSQLQueryTranslator.translate(query)
     val n = params.size
     val statement = "UPDATE $DOCUMENTS SET $DATA = jsonb_set(" +
-          "$DATA, '{$PROPS}', $DATA->'$PROPS' || $${n + 1}" +
-        ") WHERE $where"
+      "$DATA, '{$PROPS}', $DATA->'$PROPS' || $${n + 1}" +
+      ") WHERE $where"
     val paramsList = params.toMutableList()
     paramsList.add(props)
     client.preparedQuery(statement).execute(Tuple.wrap(paramsList)).await()
@@ -220,14 +239,14 @@ class PostgreSQLIndex private constructor(vertx: Vertx, url: String,
     val (where, params) = PostgreSQLQueryTranslator.translate(query)
     val n = params.size
     val statement = "UPDATE $DOCUMENTS SET " +
-        "$DATA = jsonb_set(" +
-          "$DATA, '{$PROPS}', to_jsonb(" +
-            "ARRAY(" +
-              "WITH a AS (SELECT jsonb_array_elements($DATA->'$PROPS') AS c) " +
-              "SELECT * FROM a WHERE c->>'$KEY' != ANY($${n + 1})" +
-            ")" +
-          ")" +
-        ") WHERE $where"
+      "$DATA = jsonb_set(" +
+      "$DATA, '{$PROPS}', to_jsonb(" +
+      "ARRAY(" +
+      "WITH a AS (SELECT jsonb_array_elements($DATA->'$PROPS') AS c) " +
+      "SELECT * FROM a WHERE c->>'$KEY' != ANY($${n + 1})" +
+      ")" +
+      ")" +
+      ") WHERE $where"
     val paramsList = params.toMutableList()
     paramsList.add(properties.toTypedArray())
     client.preparedQuery(statement).execute(Tuple.wrap(paramsList)).await()
@@ -237,8 +256,8 @@ class PostgreSQLIndex private constructor(vertx: Vertx, url: String,
     val (where, params) = PostgreSQLQueryTranslator.translate(query)
     val n = params.size
     val statement = "WITH p AS (SELECT jsonb_array_elements($DATA->'$PROPS') " +
-        "AS a FROM $DOCUMENTS WHERE $where) " +
-        "SELECT DISTINCT a->'$VALUE' FROM p WHERE a->'$KEY'=$${n + 1}"
+      "AS a FROM $DOCUMENTS WHERE $where) " +
+      "SELECT DISTINCT a->'$VALUE' FROM p WHERE a->'$KEY'=$${n + 1}"
     val paramsList = params.toMutableList()
     paramsList.add(propertyName)
     return streamQuery(statement, paramsList) { it.getValue(0) }
@@ -248,8 +267,8 @@ class PostgreSQLIndex private constructor(vertx: Vertx, url: String,
     val (where, params) = PostgreSQLQueryTranslator.translate(query)
     val n = params.size
     val statement = "WITH p AS (SELECT jsonb_array_elements($DATA->'$GENATTRS') " +
-        "AS a FROM $DOCUMENTS WHERE $where) " +
-        "SELECT DISTINCT a->'$VALUE' FROM p WHERE a->'$KEY'=$${n + 1}"
+      "AS a FROM $DOCUMENTS WHERE $where) " +
+      "SELECT DISTINCT a->'$VALUE' FROM p WHERE a->'$KEY'=$${n + 1}"
     val paramsList = params.toMutableList()
     paramsList.add(attributeName)
     return streamQuery(statement, paramsList) { it.getValue(0) }
@@ -282,4 +301,62 @@ class PostgreSQLIndex private constructor(vertx: Vertx, url: String,
     return r.size() > 0
   }
 
+  override suspend fun setUpDatabaseIndexes(indexes: List<DatabaseIndex>) {
+
+    fun indexName(idx: DatabaseIndex): String = "$IDX_PREFIX${idx.name.lowercase()}"
+
+    // Check which indexes already exist.
+    // We only ever touch indexes, that start with the prefix 'georocket_',
+    // so that we do not accidentally remove/overwrite/alter any indexes that the user/dba added
+    // manually or the default index on the primary key.
+    val existingIndexes =
+      client.query("SELECT indexname FROM pg_indexes WHERE tablename = '$DOCUMENTS' AND indexname LIKE '$IDX_PREFIX%'")
+        .execute().await().map { it.getString(0) }
+
+    // create new indexes
+    val indexesToAdd = indexes.filter { idx ->
+      val name = indexName(idx)
+      !existingIndexes.contains(name)
+    }
+    for (idx in indexesToAdd) {
+      val using = when (idx) {
+        is DatabaseIndex.Array -> "gin((${fieldJsonValue(DATA, idx.field)}) jsonb_path_ops)"
+        is DatabaseIndex.ElemMatchExists -> "gin((${fieldJsonValue(DATA, idx.field)}) jsonb_path_ops)"
+        is DatabaseIndex.Eq -> "hash((${fieldJsonValue(DATA, idx.field)}))"
+        is DatabaseIndex.Geo -> "gist(ST_GeomFromGeoJSON(${fieldJsonValue(DATA, idx.field)}))"
+        is DatabaseIndex.Range -> "btree((${fieldJsonValue(DATA, idx.field)}))"
+        is DatabaseIndex.StartsWith -> "btree((${fieldStringValue(DATA, idx.field)}) text_pattern_ops)"
+        is DatabaseIndex.ElemMatchCompare -> {
+          val array = fieldJsonValue(DATA, idx.field)
+          val jsonpath = jsonPathToArrayElementField(
+            listOf(
+              Compare(idx.elemKeyField, idx.keyValue, QueryPart.ComparisonOperator.EQ)
+            ), idx.elemValueField
+          )
+          "btree(jsonb_path_query_first($array, '$jsonpath'))"
+        }
+      }
+      val name = indexName(idx)
+      log.info("Creating database index $name")
+      val statement = "CREATE INDEX $name ON $DOCUMENTS USING $using"
+      log.debug("Index definition: $statement")
+      client.query(statement).execute().await()
+    }
+
+    // Remove indexes that are not present anymore.
+    val indexesToRemove =
+      existingIndexes.filter { index_name ->
+        indexes.none { indexName(it) == index_name }
+      }
+    for (name in indexesToRemove) {
+      log.info("Dropping database index $name")
+      client.query("DROP INDEX $name").execute().await()
+    }
+
+    // Refresh statistics
+    if (indexesToAdd.isNotEmpty() || indexesToRemove.isNotEmpty()) {
+      log.debug("Executing ANALYZE")
+      client.query("ANALYZE").execute().await()
+    }
+  }
 }

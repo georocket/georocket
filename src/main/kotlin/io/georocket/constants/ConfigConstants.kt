@@ -43,6 +43,7 @@ object ConfigConstants {
   const val STORAGE_S3_BUCKET = "georocket.storage.s3.bucket"
   const val STORAGE_S3_PATH_STYLE_ACCESS = "georocket.storage.s3.pathStyleAccess"
   const val INDEX_DRIVER = "georocket.index.driver"
+  const val INDEX_INDEXED_FIELDS = "georocket.index.indexedFields"
   const val INDEX_MAX_BULK_SIZE = "georocket.index.maxBulkSize"
   const val INDEX_MONGODB_CONNECTION_STRING = "georocket.index.mongodb.connectionString"
   const val INDEX_POSTGRESQL_URL = "georocket.index.postgresql.url"

@@ -1,17 +1,10 @@
 package io.georocket.index.generic
 
+import io.georocket.index.DatabaseIndex
 import io.georocket.index.MetaIndexerFactory
-import io.georocket.query.Compare
-import io.georocket.query.Contains
-import io.georocket.query.DoubleQueryPart
-import io.georocket.query.ElemMatch
-import io.georocket.query.IndexQuery
-import io.georocket.query.LongQueryPart
-import io.georocket.query.Or
+import io.georocket.query.*
 import io.georocket.query.QueryCompiler.MatchPriority
-import io.georocket.query.QueryPart
 import io.georocket.query.QueryPart.ComparisonOperator.EQ
-import io.georocket.query.StringQueryPart
 
 /**
  * Factory for [DefaultMetaIndexer] instances
@@ -35,12 +28,13 @@ class DefaultMetaIndexerFactory : MetaIndexerFactory {
           val search = queryPart.value
           Or(
             Contains("tags", search),
-            ElemMatch("props", Compare("value", search, EQ))
+            ElemMatchExists("props", "value" to search)
           )
         } else {
-          val r = ElemMatch("props",
-            Compare("key", key, EQ),
-            Compare("value", queryPart.value, queryPart.comparisonOperator ?: EQ)
+          val r = ElemMatchCompare(
+            "props",
+            listOf("key" to key),
+            Compare("value", queryPart.value, queryPart.comparisonOperator ?: EQ),
           )
           if (queryPart.comparisonOperator == EQ && queryPart.key == "correlationId") {
             Or(r, Compare("correlationId", queryPart.value, EQ))
@@ -51,4 +45,20 @@ class DefaultMetaIndexerFactory : MetaIndexerFactory {
       }
     }
   }
+
+  override fun getDatabaseIndexes(indexedFields: List<String>): List<DatabaseIndex> = listOf(
+    DatabaseIndex.Array("tags", "tags_array"),
+    DatabaseIndex.ElemMatchExists("props", listOf("value", "key"), "props_elem_match_exists"),
+    *indexedFields.map { fieldName ->
+      DatabaseIndex.ElemMatchCompare(
+        "props",
+        "key",
+        "value",
+        fieldName,
+        "props_${fieldName}_elem_match_cmp"
+      )
+    }.toTypedArray(),
+    DatabaseIndex.Eq("correlationId", "correlation_id_eq"),
+    DatabaseIndex.StartsWith("layer", "layer_starts_with")
+  )
 }

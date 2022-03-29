@@ -86,6 +86,18 @@ georocket:
     # import as soon as at least half of the queued chunks have been indexed.
     maxQueuedChunks: 10000
 
+    # Properties and/or attributes, for which to add database indexes in addition to the generic database indexes that
+    # are always created. This allows efficient range queries for the listed fields with the postgres driver.
+    #
+    # For example, the query 'LTE(scalerank 2)' would benefit from declaring 'scalerank' as an indexed field.
+    # It is not necessary to include fields that are only ever used with equality conditions. For example, a field
+    # such as 'country_code' would only make sense to be used like 'EQ(country_code de)' but not  as a
+    # range query (LT, LTE, GT, GTE operators).
+    # Also, the mongodb driver currently does not use the indexed fields, so indexedFields can be left empty
+    # when using mongodb.
+    indexedFields:
+      - scalerank
+
     # After chunks have been imported into the store and before they are
     # indexed, they are temporarily put into a cache to save bandwidth and time.
     indexableChunkCache:

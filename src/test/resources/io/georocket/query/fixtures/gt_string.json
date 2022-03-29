@@ -1,29 +1,37 @@
 {
   "query": "GT(foo \"12\")",
-  "queryCompilers": ["io.georocket.index.generic.GenericAttributeIndexerFactory"],
+  "queryCompilers": [
+    "io.georocket.index.generic.GenericAttributeIndexerFactory"
+  ],
   "expected": {
-    "$or": [{
-      "genAttrs": {
-        "$elemMatch": {
-          "key": "foo",
-          "value": {
-            "$gt": "12"
+    "$or": [
+      {
+        "genAttrs": {
+          "$elemMatch": {
+            "key": "foo",
+            "value": {
+              "$gt": "12"
+            }
+          }
+        }
+      },
+      {
+        "props": {
+          "$elemMatch": {
+            "key": "foo",
+            "value": {
+              "$gt": "12"
+            }
           }
         }
       }
-    }, {
-      "props": {
-        "$elemMatch": {
-          "key": "foo",
-          "value": {
-            "$gt": "12"
-          }
-        }
-      }
-    }]
+    ]
   },
   "expectedPg": {
-    "where": "(EXISTS (SELECT FROM jsonb_array_elements(data->'genAttrs') a WHERE a->'key' = $1 AND a->'value' > $2) OR EXISTS (SELECT FROM jsonb_array_elements(data->'props') a WHERE a->'key' = $3 AND a->'value' > $4))",
-    "params": ["foo", "12", "foo", "12"]
+    "where": "(jsonb_path_query_first(data->'genAttrs', 'strict $[*] ? (@. \"key\" == \"foo\"). \"value\"')>$1 OR jsonb_path_query_first(data->'props', 'strict $[*] ? (@. \"key\" == \"foo\"). \"value\"')>$2)",
+    "params": [
+      "12",
+      "12"
+    ]
   }
 }
