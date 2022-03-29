@@ -31,7 +31,7 @@ object IndexFactory {
       else -> throw IllegalStateException("Unknown database driver `$driver'")
     }
 
-    val indexedFields = config.getJsonArray(ConfigConstants.INDEX_INDEXED_FIELDS).map { it.toString() }
+    val indexedFields = config.getJsonArray(ConfigConstants.INDEX_INDEXED_FIELDS)?.map { it.toString() } ?: emptyList()
     val databaseIndexes = (MetaIndexerFactory.ALL + IndexerFactory.ALL)
       .flatMap { it.getDatabaseIndexes(indexedFields) }
     index.setUpDatabaseIndexes(databaseIndexes)
