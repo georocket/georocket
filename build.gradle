@@ -79,7 +79,7 @@ dependencies {
     implementation 'org.fusesource.jansi:jansi:2.4.0'
     implementation 'org.jline:jline:3.21.0'
     implementation 'org.yaml:snakeyaml:1.30'
-    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.13.1'
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.13.2'
     implementation "com.fasterxml.jackson.module:jackson-module-kotlin:2.13.1"
 
     implementation("org.geotools:gt-epsg-extension:$geotoolsVersion") {
