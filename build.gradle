@@ -6,7 +6,7 @@ apply plugin: 'java'
 apply plugin: 'application'
 apply plugin: 'antlr'
 
-version = '2.0.0-alpha.1'
+version = '2.0.0-beta.1'
 group = 'io.georocket'
 
 mainClassName = 'io.georocket.MainKt'
