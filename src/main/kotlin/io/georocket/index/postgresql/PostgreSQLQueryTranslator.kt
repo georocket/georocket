@@ -1,42 +1,13 @@
 package io.georocket.index.postgresql
 
-import io.georocket.query.All
-import io.georocket.query.And
-import io.georocket.query.Compare
-import io.georocket.query.Contains
-import io.georocket.query.ElemMatch
-import io.georocket.query.GeoIntersects
-import io.georocket.query.IndexQuery
-import io.georocket.query.Not
-import io.georocket.query.Or
-import io.georocket.query.QueryPart.ComparisonOperator.EQ
-import io.georocket.query.QueryPart.ComparisonOperator.GT
-import io.georocket.query.QueryPart.ComparisonOperator.GTE
-import io.georocket.query.QueryPart.ComparisonOperator.LT
-import io.georocket.query.QueryPart.ComparisonOperator.LTE
-import io.georocket.query.StartsWith
+import io.georocket.query.*
+import io.georocket.query.QueryPart.ComparisonOperator.*
+import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.jsonArrayOf
-import io.vertx.kotlin.core.json.jsonObjectOf
 
 object PostgreSQLQueryTranslator {
   private fun escapeLikeExpression(expr: String): String {
     return expr.replace("\\", "\\\\").replace("_", "\\_").replace("%", "\\%")
-  }
-
-  private fun checkField(field: String) {
-    if (!field.matches("""[a-zA-Z0-9]+""".toRegex())) {
-      throw IllegalArgumentException("Illegal field name: `$field'")
-    }
-  }
-
-  private fun appendField(jsonField: String, field: String, result: StringBuilder) {
-    val parts = field.split(".")
-    checkField(jsonField)
-    for (p in parts) {
-      checkField(p)
-    }
-    val cf = parts.joinToString(separator = "'->'", prefix = "'", postfix = "'")
-    result.append("${jsonField}->${cf}")
   }
 
   private fun appendParam(value: Any, result: StringBuilder, params: MutableList<Any>) {
@@ -51,8 +22,10 @@ object PostgreSQLQueryTranslator {
     return result.toString() to params
   }
 
-  private fun translate(jsonField: String, query: IndexQuery, result: StringBuilder,
-      params: MutableList<Any>) {
+  private fun translate(
+    jsonField: String, query: IndexQuery, result: StringBuilder,
+    params: MutableList<Any>
+  ) {
     when (query) {
       is All -> result.append("TRUE")
 
@@ -68,7 +41,7 @@ object PostgreSQLQueryTranslator {
       }
 
       is Compare -> {
-        appendField(jsonField, query.field, result)
+        result.append(fieldJsonValue(jsonField, query.field))
         when (query.op) {
           EQ -> result.append(" = ")
           GT -> result.append(" > ")
@@ -80,42 +53,52 @@ object PostgreSQLQueryTranslator {
       }
 
       is Contains -> {
-        appendField(jsonField, query.arrayField, result)
-        result.append(" ? ")
-        appendParam(query.value, result, params)
+        result.append(fieldJsonValue(jsonField, query.arrayField))
+        result.append(" @> ")
+        appendParam(jsonArrayOf(query.value), result, params)
       }
 
-      is ElemMatch -> {
-        if (query.operands.all { it.op == EQ }) {
-          // shortcut
-          appendField(jsonField, query.arrayField, result)
-          result.append(" @> ")
-          val obj = jsonObjectOf()
-          for (op in query.operands) {
-            obj.put(op.field, op.value)
-          }
-          appendParam(jsonArrayOf(obj), result, params)
-        } else {
-          // Heads up: This query may be very slow. Perhaps, there are ways to
-          // improve the performance. See this Stackoverflow answer (and the
-          // related links at the end of the answer) for more information:
-          // https://stackoverflow.com/a/49542329/309962
-          result.append("EXISTS (SELECT FROM jsonb_array_elements(")
-          appendField(jsonField, query.arrayField, result)
-          result.append(") a WHERE ")
-          for ((i, op) in query.operands.withIndex()) {
-            if (i > 0) {
-              result.append(" AND ")
-            }
-            translate("a", op, result, params)
-          }
-          result.append(")")
+      is ElemMatchExists -> {
+        result.append(fieldJsonValue(jsonField, query.arrayField))
+        result.append(" @> ")
+        appendParam(jsonArrayOf(JsonObject(query.matches.toMap())), result, params)
+      }
+
+      is ElemMatchCompare -> {
+        if (query.condition.op == EQ) {
+          return translate(
+            jsonField, ElemMatchExists(
+              query.arrayField,
+              matches = query.match.toTypedArray() + (query.condition.field to query.condition.value)
+            ), result,
+            params
+          )
         }
+        result.append("jsonb_path_query_first(")
+        result.append(fieldJsonValue(jsonField, query.arrayField))
+        result.append(", '")
+        result.append(
+          jsonPathToArrayElementField(
+            query.match.map { (field, value) -> Compare(field, value, EQ) },
+            query.condition.field
+          )
+        )
+        result.append("')")
+        result.append(
+          when (query.condition.op) {
+            EQ -> "="
+            GT -> ">"
+            GTE -> ">="
+            LT -> "<"
+            LTE -> "<="
+          }
+        )
+        appendParam(query.condition.value, result, params)
       }
 
       is GeoIntersects -> {
         result.append("ST_Intersects(ST_GeomFromGeoJSON(")
-        appendField(jsonField, query.field, result)
+        result.append(fieldJsonValue(jsonField, query.field))
         result.append("), ST_GeomFromGeoJSON(")
         appendParam(query.geometry, result, params)
         result.append("::jsonb))")
@@ -138,8 +121,8 @@ object PostgreSQLQueryTranslator {
       }
 
       is StartsWith -> {
-        appendField(jsonField, query.field, result)
-        result.append("#>> '{}' LIKE ")
+        result.append(fieldStringValue(jsonField, query.field))
+        result.append(" LIKE ")
         appendParam(escapeLikeExpression(query.prefix) + "%", result, params)
       }
     }

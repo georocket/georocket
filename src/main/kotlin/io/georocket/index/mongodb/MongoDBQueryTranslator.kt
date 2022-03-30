@@ -1,21 +1,7 @@
 package io.georocket.index.mongodb
 
-import io.georocket.query.All
-import io.georocket.query.And
-import io.georocket.query.Compare
-import io.georocket.query.Contains
-import io.georocket.query.ElemMatch
-import io.georocket.query.GeoIntersects
-import io.georocket.query.IndexQuery
-import io.georocket.query.Not
-import io.georocket.query.Or
-import io.georocket.query.QueryPart.ComparisonOperator.EQ
-import io.georocket.query.QueryPart.ComparisonOperator.GT
-import io.georocket.query.QueryPart.ComparisonOperator.GTE
-import io.georocket.query.QueryPart.ComparisonOperator.LT
-import io.georocket.query.QueryPart.ComparisonOperator.LTE
-import io.georocket.query.StartsWith
-import io.georocket.query.escapeRegex
+import io.georocket.query.*
+import io.georocket.query.QueryPart.ComparisonOperator.*
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.jsonObjectOf
@@ -46,28 +32,44 @@ object MongoDBQueryTranslator {
 
       is Contains -> jsonObjectOf(query.arrayField to query.value)
 
-      is ElemMatch -> {
-        if (query.operands.size == 1) {
-          val fo = query.operands.first()
-          val tfo = translate(fo).map.entries.first()
+      is ElemMatchExists -> {
+        if (query.matches.size == 1) {
+          val (field, value) = query.matches.first()
+          val tfo = translate(Compare(field, value, EQ)).map.entries.first()
           jsonObjectOf("${query.arrayField}.${tfo.key}" to tfo.value)
         } else {
           val ops = mutableMapOf<String, Any>()
-          for (op in query.operands) {
-            ops.putAll(translate(op).map)
+          for ((field, value) in query.matches) {
+            ops.putAll(translate(Compare(field, value, EQ)).map)
           }
-          jsonObjectOf(query.arrayField to jsonObjectOf("\$elemMatch" to ops))
+          jsonObjectOf(query.arrayField to jsonObjectOf("\$elemMatch" to query))
         }
       }
 
-      is GeoIntersects -> jsonObjectOf(query.field to jsonObjectOf("\$geoIntersects" to
-          jsonObjectOf("\$geometry" to query.geometry)))
+      is GeoIntersects -> jsonObjectOf(
+        query.field to jsonObjectOf(
+          "\$geoIntersects" to
+            jsonObjectOf("\$geometry" to query.geometry)
+        )
+      )
 
       is Not -> jsonObjectOf("\$not" to translate(query.operand))
 
       is Or -> jsonObjectOf("\$or" to JsonArray(query.operands.map { translate(it) }))
 
       is StartsWith -> jsonObjectOf(query.field to jsonObjectOf("\$regex" to "^${query.prefix.escapeRegex()}"))
+      is ElemMatchCompare -> {
+        val ops = mutableMapOf<String, Any>()
+        query.match.forEach { (field, value) ->
+          ops.putAll(translate(Compare(field, value, EQ)).map)
+        }
+        ops.putAll(translate(query.condition).map)
+        jsonObjectOf(
+          query.arrayField to jsonObjectOf(
+            "\$elemMatch" to ops
+          )
+        )
+      }
     }
   }
 }

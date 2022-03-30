@@ -1,5 +1,7 @@
 package io.georocket.query
 
+import io.georocket.index.DatabaseIndex
+
 /**
  * Compiles search strings to MongoDB queries
  * @since 1.0.0
@@ -26,6 +28,11 @@ interface QueryCompiler {
      */
     ONLY
   }
+
+  /**
+   * Return a list of database indexes, that can be used to accelerate the index queries returned by [compileQuery].
+   */
+  fun getDatabaseIndexes(indexedFields: List<String>): List<DatabaseIndex> = emptyList()
 
   /**
    * Get the priority with which the MongoDB query returned by [compileQuery]

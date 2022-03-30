@@ -9,7 +9,16 @@
     }]
   },
   "expectedPg": {
-    "where": "(data->'tags' ? $1 OR data->'props' @> $2)",
-    "params": ["bla", [{"value": "bla"}]]
+    "where": "(data->'tags' @> $1 OR data->'props' @> $2)",
+    "params": [
+      [
+        "bla"
+      ],
+      [
+        {
+          "value": "bla"
+        }
+      ]
+    ]
   }
 }

@@ -1,6 +1,7 @@
 package io.georocket.index.generic
 
 import io.georocket.constants.ConfigConstants
+import io.georocket.index.DatabaseIndex
 import io.georocket.index.Indexer
 import io.georocket.index.IndexerFactory
 import io.georocket.index.geojson.GeoJsonBoundingBoxIndexer
@@ -29,7 +30,7 @@ class BoundingBoxIndexerFactory : IndexerFactory {
     private const val COMMA_REGEX = "\\s*,\\s*"
     private const val CODE_PREFIX = "([a-zA-Z]+:\\d+:)?"
     private val BBOX_REGEX = (CODE_PREFIX + FLOAT_REGEX + COMMA_REGEX +
-        FLOAT_REGEX + COMMA_REGEX + FLOAT_REGEX + COMMA_REGEX + FLOAT_REGEX).toRegex()
+      FLOAT_REGEX + COMMA_REGEX + FLOAT_REGEX + COMMA_REGEX + FLOAT_REGEX).toRegex()
   }
 
   val defaultCrs: String?
@@ -103,17 +104,23 @@ class BoundingBoxIndexerFactory : IndexerFactory {
     val maxX = points[2]
     val maxY = points[3]
 
-    return GeoIntersects("bbox", jsonObjectOf(
-      "type" to "Polygon",
-      "coordinates" to jsonArrayOf(
-        jsonArrayOf(
-          jsonArrayOf(minX, minY),
-          jsonArrayOf(maxX, minY),
-          jsonArrayOf(maxX, maxY),
-          jsonArrayOf(minX, maxY),
-          jsonArrayOf(minX, minY)
+    return GeoIntersects(
+      "bbox", jsonObjectOf(
+        "type" to "Polygon",
+        "coordinates" to jsonArrayOf(
+          jsonArrayOf(
+            jsonArrayOf(minX, minY),
+            jsonArrayOf(maxX, minY),
+            jsonArrayOf(maxX, maxY),
+            jsonArrayOf(minX, maxY),
+            jsonArrayOf(minX, minY)
+          )
         )
       )
-    ))
+    )
   }
+
+  override fun getDatabaseIndexes(indexedFields: List<String>): List<DatabaseIndex> = listOf(
+    DatabaseIndex.Geo("bbox", "bbox_geo")
+  )
 }

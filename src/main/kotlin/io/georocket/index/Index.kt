@@ -1,13 +1,9 @@
 package io.georocket.index
 
-import io.georocket.query.DefaultQueryCompiler
 import io.georocket.query.IndexQuery
 import io.georocket.storage.ChunkMeta
 import io.vertx.core.json.JsonObject
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.flow.singleOrNull
 
 interface Index {
   data class AddManyParam(val path: String, val doc: JsonObject, val meta: ChunkMeta)
@@ -21,8 +17,10 @@ interface Index {
 
   suspend fun getMeta(query: IndexQuery): Flow<Pair<String, ChunkMeta>>
 
-  suspend fun getPaginatedMeta(query: IndexQuery, maxPageSize: Int,
-    previousScrollId: String?): Page<Pair<String, ChunkMeta>>
+  suspend fun getPaginatedMeta(
+    query: IndexQuery, maxPageSize: Int,
+    previousScrollId: String?
+  ): Page<Pair<String, ChunkMeta>>
 
   suspend fun getPaths(query: IndexQuery): Flow<String>
 
@@ -45,5 +43,7 @@ interface Index {
   suspend fun getLayers(): Flow<String>
 
   suspend fun existsLayer(name: String): Boolean
+
+  suspend fun setUpDatabaseIndexes(indexes: List<DatabaseIndex>)
 
 }
