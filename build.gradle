@@ -15,7 +15,7 @@ ext {
     vertxVersion = '4.2.5'
     geotoolsVersion = '26.3'
     slf4jVersion = '1.7.36'
-    logbackVersion = '1.2.10'
+    logbackVersion = '1.2.11'
     junitVersion = '5.8.2'
     testcontainersVersion = '1.16.3'
 }
@@ -79,7 +79,7 @@ dependencies {
     implementation 'org.fusesource.jansi:jansi:2.4.0'
     implementation 'org.jline:jline:3.21.0'
     implementation 'org.yaml:snakeyaml:1.30'
-    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.13.1'
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.13.2'
     implementation "com.fasterxml.jackson.module:jackson-module-kotlin:2.13.1"
 
     implementation("org.geotools:gt-epsg-extension:$geotoolsVersion") {
@@ -96,22 +96,22 @@ dependencies {
     }
 
     // mongodb driver + snappy compression
-    implementation 'org.mongodb:bson:4.5.0'
+    implementation 'org.mongodb:bson:4.5.1'
     implementation 'org.mongodb:mongodb-driver-async:3.12.10'
     implementation 'org.mongodb:mongodb-driver-reactivestreams:4.5.0'
     implementation 'org.xerial.snappy:snappy-java:1.1.8.4'
-    implementation 'io.projectreactor:reactor-core:3.4.15'
+    implementation 'io.projectreactor:reactor-core:3.4.16'
 
     // embedded mongodb for standalone mode
     implementation 'de.flapdoodle.embed:de.flapdoodle.embed.mongo:3.4.3'
 
     // PostgreSQL
     implementation "org.postgresql:postgresql:42.3.3"
-    implementation "org.flywaydb:flyway-core:8.5.2"
+    implementation "org.flywaydb:flyway-core:8.5.5"
     implementation "com.ongres.scram:client:2.1" // for authentication
 
     // necessary for ALPN / HTTP/2
-    runtimeOnly "io.netty:netty-tcnative-boringssl-static:2.0.48.Final"
+    runtimeOnly "io.netty:netty-tcnative-boringssl-static:2.0.51.Final"
 
     implementation "org.jetbrains.kotlin:kotlin-reflect"
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
