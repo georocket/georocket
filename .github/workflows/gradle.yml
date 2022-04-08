@@ -39,14 +39,14 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Upload Docker image as artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: georocket-docker-image
           path: /tmp/georocket-docker-image.tar
           retention-days: 1
 
       - name: Upload junit test reports on failure
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         if: failure()
         with:
           name: test-results
