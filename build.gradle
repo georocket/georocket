@@ -1,5 +1,5 @@
 plugins {
-    id 'org.jetbrains.kotlin.jvm' version '1.6.10'
+    id 'org.jetbrains.kotlin.jvm' version '1.6.21'
 }
 
 apply plugin: 'java'
@@ -12,8 +12,8 @@ group = 'io.georocket'
 mainClassName = 'io.georocket.MainKt'
 
 ext {
-    vertxVersion = '4.2.5'
-    geotoolsVersion = '26.3'
+    vertxVersion = '4.2.6'
+    geotoolsVersion = '26.4'
     slf4jVersion = '1.7.36'
     logbackVersion = '1.2.11'
     junitVersion = '5.8.2'
@@ -66,7 +66,7 @@ dependencies {
     implementation 'com.h2database:h2:2.1.210'
     implementation 'com.vividsolutions:jts:1.13'
     implementation 'commons-io:commons-io:2.11.0'
-    implementation "com.fasterxml.jackson.module:jackson-module-kotlin:2.13.1"
+    implementation "com.fasterxml.jackson.module:jackson-module-kotlin:2.13.2"
     implementation 'io.pebbletemplates:pebble:3.1.5'
     implementation 'javax.servlet:javax.servlet-api:4.0.1'
     implementation 'net.java.dev.jna:jna:5.11.0'
@@ -80,7 +80,7 @@ dependencies {
     implementation 'org.jline:jline:3.21.0'
     implementation 'org.yaml:snakeyaml:1.30'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.13.2'
-    implementation "com.fasterxml.jackson.module:jackson-module-kotlin:2.13.1"
+    implementation "com.fasterxml.jackson.module:jackson-module-kotlin:2.13.2"
 
     implementation("org.geotools:gt-epsg-extension:$geotoolsVersion") {
         // exclude invalid dependency
@@ -103,7 +103,7 @@ dependencies {
     implementation 'io.projectreactor:reactor-core:3.4.16'
 
     // embedded mongodb for standalone mode
-    implementation 'de.flapdoodle.embed:de.flapdoodle.embed.mongo:3.4.3'
+    implementation 'de.flapdoodle.embed:de.flapdoodle.embed.mongo:3.4.5'
 
     // PostgreSQL
     implementation "org.postgresql:postgresql:42.3.3"
@@ -116,7 +116,7 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-reflect"
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.6.0'
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-reactive:1.6.0'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-reactive:1.6.1'
 
     testImplementation 'com.github.tomakehurst:wiremock-jre8:2.32.0'
     testImplementation 'org.mongodb:mongodb-driver:3.12.10'
