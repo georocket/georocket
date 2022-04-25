@@ -16,10 +16,10 @@
   "author": "Michel Kraemer",
   "license": "Apache-2.0",
   "dependencies": {
-    "axios": "^0.26.0",
+    "axios": "^0.27.0",
     "fast-xml-parser": "^4.0.0",
     "fs-extra": "^10.0.0",
-    "jest": "^27.4.7",
+    "jest": "^28.0.0",
     "jest-extended": "^2.0.0",
     "minio": "^7.0.25",
     "testcontainers": "^8.1.2"
