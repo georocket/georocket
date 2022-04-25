@@ -4,7 +4,8 @@ import com.fasterxml.aalto.AsyncXMLInputFactory
 import com.fasterxml.aalto.AsyncXMLStreamReader
 import com.fasterxml.aalto.stax.InputFactoryImpl
 import io.georocket.input.Splitter
-import io.georocket.storage.XMLChunkMeta
+import io.georocket.storage.GenericXmlChunkMeta
+import io.georocket.storage.XmlChunkMeta
 import io.georocket.util.Window
 import io.georocket.util.XMLStartElement
 import io.georocket.util.XMLStreamEvent
@@ -25,7 +26,7 @@ class FirstLevelSplitterTest {
    * @throws Exception if the XML string could not be parsed
    */
   @Throws(Exception::class)
-  private fun split(xml: String): List<Splitter.Result<XMLChunkMeta>> {
+  private fun split(xml: String): List<Splitter.Result<XmlChunkMeta>> {
     val window = Window()
     window.append(Buffer.buffer(xml))
     val xmlInputFactory: AsyncXMLInputFactory = InputFactoryImpl()
@@ -33,7 +34,7 @@ class FirstLevelSplitterTest {
     val xmlBytes = xml.toByteArray(StandardCharsets.UTF_8)
     reader.inputFeeder.feedInput(xmlBytes, 0, xmlBytes.size)
     val splitter = FirstLevelSplitter(window)
-    val chunks: MutableList<Splitter.Result<XMLChunkMeta>> = ArrayList()
+    val chunks: MutableList<Splitter.Result<XmlChunkMeta>> = ArrayList()
     while (reader.hasNext()) {
       val event = reader.next()
       if (event == AsyncXMLStreamReader.EVENT_INCOMPLETE) {
@@ -63,7 +64,7 @@ class FirstLevelSplitterTest {
     val chunks = split(xml)
     Assert.assertEquals(1, chunks.size.toLong())
     val (chunk1, prefix, suffix, meta1) = chunks[0]
-    val meta = XMLChunkMeta(listOf(XMLStartElement(localName = "root")))
+    val meta = GenericXmlChunkMeta(listOf(XMLStartElement(localName = "root")))
     Assert.assertEquals(meta, meta1)
     Assert.assertEquals(XMLHEADER + PREFIX, prefix.toString())
     Assert.assertEquals(SUFFIX, suffix.toString())
@@ -85,7 +86,7 @@ class FirstLevelSplitterTest {
     val (chunk, prefix, suffix, meta1) = chunks[0]
     val (chunk1, prefix1, suffix1, meta2) = chunks[1]
     val parents = listOf(XMLStartElement(localName = "root"))
-    val meta = XMLChunkMeta(parents)
+    val meta = GenericXmlChunkMeta(parents)
     Assert.assertEquals(meta, meta1)
     Assert.assertEquals(XMLHEADER + PREFIX, prefix.toString())
     Assert.assertEquals(SUFFIX, suffix.toString())
@@ -119,7 +120,7 @@ class FirstLevelSplitterTest {
         namespaceUris = listOf("http://example.com", "http://example.com")
       )
     )
-    val meta = XMLChunkMeta(parents)
+    val meta = GenericXmlChunkMeta(parents)
     Assert.assertEquals(meta, meta1)
     Assert.assertEquals("$XMLHEADER$root\n", prefix.toString())
     Assert.assertEquals(SUFFIX, suffix.toString())
@@ -154,7 +155,7 @@ class FirstLevelSplitterTest {
         attributeValues = listOf("value", "value2")
       )
     )
-    val meta = XMLChunkMeta(parents)
+    val meta = GenericXmlChunkMeta(parents)
     Assert.assertEquals(meta, meta1)
     Assert.assertEquals("$XMLHEADER$root\n", prefix.toString())
     Assert.assertEquals(SUFFIX, suffix.toString())
@@ -191,7 +192,7 @@ class FirstLevelSplitterTest {
         attributeValues = listOf("value", "value2")
       )
     )
-    val meta = XMLChunkMeta(parents)
+    val meta = GenericXmlChunkMeta(parents)
     Assert.assertEquals(meta, meta1)
     Assert.assertEquals("$XMLHEADER$root\n", prefix.toString())
     Assert.assertEquals(SUFFIX, suffix.toString())
@@ -214,7 +215,7 @@ class FirstLevelSplitterTest {
     val chunks = split(xml)
     Assert.assertEquals(1, chunks.size.toLong())
     val (chunk1, prefix, suffix, meta1) = chunks[0]
-    val meta = XMLChunkMeta(listOf(XMLStartElement(localName = "root")))
+    val meta = GenericXmlChunkMeta(listOf(XMLStartElement(localName = "root")))
     Assert.assertEquals(meta, meta1)
     Assert.assertEquals(XMLHEADER + PREFIX, prefix.toString())
     Assert.assertEquals(SUFFIX, suffix.toString())

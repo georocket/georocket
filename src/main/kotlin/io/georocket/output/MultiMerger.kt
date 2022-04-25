@@ -4,7 +4,7 @@ import io.georocket.output.geojson.GeoJsonMerger
 import io.georocket.output.xml.XMLMerger
 import io.georocket.storage.ChunkMeta
 import io.georocket.storage.GeoJsonChunkMeta
-import io.georocket.storage.XMLChunkMeta
+import io.georocket.storage.XmlChunkMeta
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.streams.WriteStream
 
@@ -26,7 +26,7 @@ class MultiMerger(private val optimistic: Boolean) : Merger<ChunkMeta> {
 
   private fun ensureMerger(chunkMetadata: ChunkMeta) {
     when (chunkMetadata) {
-      is XMLChunkMeta -> if (xmlMerger == null) {
+      is XmlChunkMeta -> if (xmlMerger == null) {
         if (geoJsonMerger != null) {
           throw IllegalStateException("Cannot merge XML chunk into a GeoJSON document.")
         }
@@ -47,21 +47,31 @@ class MultiMerger(private val optimistic: Boolean) : Merger<ChunkMeta> {
   override fun init(chunkMetadata: ChunkMeta) {
     ensureMerger(chunkMetadata)
 
-    if (chunkMetadata is XMLChunkMeta) {
-      xmlMerger!!.init(chunkMetadata)
-    } else {
-      geoJsonMerger!!.init(chunkMetadata as GeoJsonChunkMeta)
+    when (chunkMetadata) {
+      is XmlChunkMeta -> {
+        xmlMerger!!.init(chunkMetadata)
+      }
+      is GeoJsonChunkMeta -> {
+        geoJsonMerger!!.init(chunkMetadata)
+      }
+      else -> throw IllegalArgumentException()  // unreachable
     }
   }
 
-  override suspend fun merge(chunk: Buffer, chunkMetadata: ChunkMeta,
-      outputStream: WriteStream<Buffer>) {
+  override suspend fun merge(
+    chunk: Buffer, chunkMetadata: ChunkMeta,
+    outputStream: WriteStream<Buffer>
+  ) {
     ensureMerger(chunkMetadata)
 
-    if (chunkMetadata is XMLChunkMeta) {
-      xmlMerger!!.merge(chunk, chunkMetadata, outputStream)
-    } else {
-      geoJsonMerger!!.merge(chunk, chunkMetadata as GeoJsonChunkMeta, outputStream)
+    when (chunkMetadata) {
+      is XmlChunkMeta -> {
+        xmlMerger!!.merge(chunk, chunkMetadata, outputStream)
+      }
+      is GeoJsonChunkMeta -> {
+        geoJsonMerger!!.merge(chunk, chunkMetadata, outputStream)
+      }
+      else -> throw IllegalArgumentException()  // unreachable
     }
   }
 

@@ -1,7 +1,8 @@
 package io.georocket.input.xml
 
 import io.georocket.input.Splitter
-import io.georocket.storage.XMLChunkMeta
+import io.georocket.storage.GenericXmlChunkMeta
+import io.georocket.storage.XmlChunkMeta
 import io.georocket.util.Window
 import io.georocket.util.XMLStartElement
 import io.georocket.util.XMLStreamEvent
@@ -14,7 +15,7 @@ import javax.xml.stream.events.XMLEvent
  * Abstract base class for splitters that split XML streams
  * @author Michel Kraemer
  */
-abstract class XMLSplitter(private val window: Window) : Splitter<XMLStreamEvent, XMLChunkMeta> {
+abstract class XMLSplitter(private val window: Window) : Splitter<XMLStreamEvent, XmlChunkMeta> {
 
   /**
    * A marked position. See [.mark]
@@ -35,7 +36,7 @@ abstract class XMLSplitter(private val window: Window) : Splitter<XMLStreamEvent
   /**
    * The [ChunkMeta] object created by the last call to [.makeResult]
    */
-  private var lastChunkMeta: XMLChunkMeta? = null
+  private var lastChunkMeta: XmlChunkMeta? = null
 
   /**
    * The prefix created by the last call to [.makeResult]
@@ -47,7 +48,7 @@ abstract class XMLSplitter(private val window: Window) : Splitter<XMLStreamEvent
    */
   private var lastSuffix: Buffer? = null
 
-  override fun onEvent(event: XMLStreamEvent): Splitter.Result<XMLChunkMeta>? {
+  override fun onEvent(event: XMLStreamEvent): Splitter.Result<XmlChunkMeta>? {
     val chunk = onXMLEvent(event)
     if (!isMarked) {
       if (event.event == XMLEvent.START_ELEMENT) {
@@ -122,7 +123,7 @@ abstract class XMLSplitter(private val window: Window) : Splitter<XMLStreamEvent
    * @param pos the end position
    * @return the [io.georocket.input.Splitter.Result] object
    */
-  protected fun makeResult(pos: Long): Splitter.Result<XMLChunkMeta> {
+  protected fun makeResult(pos: Long): Splitter.Result<XmlChunkMeta> {
     if (startElementsChanged) {
       startElementsChanged = false
 
@@ -141,7 +142,7 @@ abstract class XMLSplitter(private val window: Window) : Splitter<XMLStreamEvent
       val sbSuffix = StringBuilder()
       startElements.forEach { e -> sbSuffix.append("\n</").append(e.name).append(">") }
       lastSuffix = Buffer.buffer(sbSuffix.toString())
-      lastChunkMeta = XMLChunkMeta(chunkParents)
+      lastChunkMeta = GenericXmlChunkMeta(chunkParents)
     }
     val bytes = window.getBytes(mark, pos)
     val buf = Buffer.buffer(bytes)
@@ -156,5 +157,5 @@ abstract class XMLSplitter(private val window: Window) : Splitter<XMLStreamEvent
    * @return a new [io.georocket.input.Splitter.Result] object (containing
    * chunk and metadata) or `null` if no result was produced
    */
-  protected abstract fun onXMLEvent(event: XMLStreamEvent): Splitter.Result<XMLChunkMeta>?
+  protected abstract fun onXMLEvent(event: XMLStreamEvent): Splitter.Result<XmlChunkMeta>?
 }

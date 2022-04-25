@@ -61,8 +61,10 @@ class FileStoreTest : StorageTest() {
     }
   }
 
-  override suspend fun validateAfterStoreDelete(ctx: VertxTestContext,
-      vertx: Vertx, path: String) {
+  override suspend fun validateAfterStoreDelete(
+    ctx: VertxTestContext,
+    vertx: Vertx, path: String
+  ) {
     val fs = vertx.fileSystem()
     ctx.coVerify {
       assertThat(fs.exists(path).await()).isFalse()

@@ -120,7 +120,9 @@ class MainIndexer private constructor(override val coroutineContext: CoroutineCo
     return doc
   }
 
-  data class IndexAddParam(val prefix: Buffer?, val chunk: Buffer,
+  data class IndexAddParam(
+    val prefix: Buffer?, val chunk: Buffer,
     val suffix: Buffer?, val chunkMeta: ChunkMeta, val indexMeta: IndexMeta,
-    val path: String)
+    val path: String
+  )
 }

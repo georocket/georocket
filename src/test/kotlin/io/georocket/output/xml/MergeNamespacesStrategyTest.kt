@@ -2,7 +2,7 @@ package io.georocket.output.xml
 
 import io.georocket.assertThatThrownBy
 import io.georocket.coVerify
-import io.georocket.storage.XMLChunkMeta
+import io.georocket.storage.GenericXmlChunkMeta
 import io.georocket.util.XMLStartElement
 import io.georocket.util.io.BufferWriteStream
 import io.vertx.core.Vertx
@@ -32,14 +32,16 @@ class MergeNamespacesStrategyTest {
       attributeLocalNames = listOf("schemaLocation", "attr1"),
       attributeValues = listOf("uri0 location0 uri1 location1", "value1")
     )
-    private val ROOT2 = XMLStartElement(null, "root",
+    private val ROOT2 = XMLStartElement(
+      null, "root",
       namespacePrefixes = listOf(null, "ns2", "xsi"),
       namespaceUris = listOf("uri0", "uri2", "http://www.w3.org/2001/XMLSchema-instance"),
       attributePrefixes = listOf("xsi", "ns2"),
       attributeLocalNames = listOf("schemaLocation", "attr2"),
       attributeValues = listOf("uri0 location0 uri2 location2", "value2")
     )
-    private val EXPECTEDROOT = XMLStartElement(null, "root",
+    private val EXPECTEDROOT = XMLStartElement(
+      null, "root",
       namespacePrefixes = listOf(null, "ns1", "xsi", "ns2"),
       namespaceUris = listOf("uri0", "uri1", "http://www.w3.org/2001/XMLSchema-instance", "uri2"),
       attributePrefixes = listOf("xsi", "ns1", "ns2"),
@@ -52,8 +54,8 @@ class MergeNamespacesStrategyTest {
     private const val CONTENTS2 = "<elem><ns2:child2></ns2:child2></elem>"
     private val CHUNK2 = Buffer.buffer(CONTENTS2)
 
-    private val META1 = XMLChunkMeta(listOf(ROOT1))
-    private val META2 = XMLChunkMeta(listOf(ROOT2))
+    private val META1 = GenericXmlChunkMeta(listOf(ROOT1))
+    private val META2 = GenericXmlChunkMeta(listOf(ROOT2))
   }
 
   /**

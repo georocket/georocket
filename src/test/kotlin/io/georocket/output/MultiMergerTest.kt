@@ -3,8 +3,8 @@ package io.georocket.output
 import io.georocket.assertThatThrownBy
 import io.georocket.coVerify
 import io.georocket.storage.ChunkMeta
+import io.georocket.storage.GenericXmlChunkMeta
 import io.georocket.storage.GeoJsonChunkMeta
-import io.georocket.storage.XMLChunkMeta
 import io.georocket.util.XMLStartElement
 import io.georocket.util.io.BufferWriteStream
 import io.vertx.core.Vertx
@@ -28,8 +28,10 @@ class MultiMergerTest {
     private const val XMLHEADER = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>${"\n"}"""
   }
 
-  private fun doMerge(vertx: Vertx, ctx: VertxTestContext, chunks: List<Buffer>,
-      metas: List<ChunkMeta>, contents: String) {
+  private fun doMerge(
+    vertx: Vertx, ctx: VertxTestContext, chunks: List<Buffer>,
+    metas: List<ChunkMeta>, contents: String
+  ) {
     val m = MultiMerger(false)
     val bws = BufferWriteStream()
 
@@ -87,7 +89,7 @@ class MultiMergerTest {
     val chunk1 = Buffer.buffer("""<test chunk="1"></test>""")
     val chunk2 = Buffer.buffer("""<test chunk="2"></test>""")
 
-    val cm = XMLChunkMeta(listOf(XMLStartElement(localName = "root")))
+    val cm = GenericXmlChunkMeta(listOf(XMLStartElement(localName = "root")))
 
     doMerge(vertx, ctx, listOf(chunk1, chunk2), listOf(cm, cm),
         """$XMLHEADER<root><test chunk="1"></test><test chunk="2"></test></root>""")
@@ -99,7 +101,7 @@ class MultiMergerTest {
   @Test
   fun mixedInit(vertx: Vertx, ctx: VertxTestContext) {
     val cm1 = GeoJsonChunkMeta("Feature", "features")
-    val cm2 = XMLChunkMeta(listOf(XMLStartElement(localName = "root")))
+    val cm2 = GenericXmlChunkMeta(listOf(XMLStartElement(localName = "root")))
 
     val m = MultiMerger(false)
 
@@ -126,7 +128,7 @@ class MultiMergerTest {
     val chunk2 = Buffer.buffer(strChunk2)
 
     val cm1 = GeoJsonChunkMeta("Feature", "features")
-    val cm2 = XMLChunkMeta(listOf(XMLStartElement(localName = "root")))
+    val cm2 = GenericXmlChunkMeta(listOf(XMLStartElement(localName = "root")))
 
     val m = MultiMerger(false)
     val bws = BufferWriteStream()

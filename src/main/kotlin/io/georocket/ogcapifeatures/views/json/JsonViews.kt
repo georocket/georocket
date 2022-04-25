@@ -82,7 +82,7 @@ object JsonViews: Views {
     response: HttpServerResponse,
     links: List<Views.Link>,
     numberReturned: Int,
-    chunks: Flow<Pair<Buffer, ChunkMeta>>
+      chunks: Flow<Pair<Buffer, ChunkMeta>>
   ) {
 
     // initialize  merger

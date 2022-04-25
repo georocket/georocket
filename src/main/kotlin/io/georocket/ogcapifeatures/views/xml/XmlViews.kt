@@ -10,21 +10,12 @@ import io.georocket.ogcapifeatures.views.Views
 import io.georocket.ogcapifeatures.views.mergeChunks
 import io.georocket.output.xml.XMLMerger
 import io.georocket.storage.ChunkMeta
-import io.georocket.storage.XMLChunkMeta
-import io.georocket.util.io.BufferWriteStream
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.http.HttpServerResponse
 import kotlinx.coroutines.flow.Flow
 import org.slf4j.LoggerFactory
-import org.w3c.dom.Element
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
 import java.io.Writer
-import javax.xml.parsers.DocumentBuilderFactory
 import javax.xml.stream.XMLStreamWriter
-import javax.xml.transform.TransformerFactory
-import javax.xml.transform.dom.DOMSource
-import javax.xml.transform.stream.StreamResult
 
 const val XML_NAMESPACE_ATOM = "http://www.w3.org/2005/Atom"
 const val XML_NAMESPACE_CORE = "http://www.opengis.net/ogcapi-features-1/1.0"

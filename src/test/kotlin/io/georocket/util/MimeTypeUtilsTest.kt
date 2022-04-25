@@ -30,11 +30,18 @@ class MimeTypeUtilsTest {
    */
   @Test
   fun testBelongsTo() {
+    Assert.assertTrue(belongsTo("application/gml+xml", "application", "gml+xml"))
     Assert.assertTrue(belongsTo("application/gml+xml", "application", "xml"))
     Assert.assertTrue(belongsTo("application/exp+xml", "application", "xml"))
     Assert.assertTrue(belongsTo("application/xml", "application", "xml"))
+    Assert.assertTrue(belongsTo("application/gml+xml;version=3.2", "application", "gml+xml"))
+    Assert.assertTrue(belongsTo("application/gml+xml;version=3.2", "application", "xml"))
+
     Assert.assertFalse(belongsTo("application/exp+xml", "text", "xml"))
     Assert.assertFalse(belongsTo("application/exp+xml", "application", "json"))
+    Assert.assertFalse(belongsTo("application/exp+xml", "application", "gml+xml"))
+    Assert.assertFalse(belongsTo("application/xml", "application", "gml+xml"))
+    Assert.assertFalse(belongsTo("    application/xml     ", "application", "xml"))
   }
 
   /**

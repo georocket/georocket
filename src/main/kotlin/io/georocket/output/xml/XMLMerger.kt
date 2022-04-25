@@ -1,7 +1,7 @@
 package io.georocket.output.xml
 
 import io.georocket.output.Merger
-import io.georocket.storage.XMLChunkMeta
+import io.georocket.storage.XmlChunkMeta
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.streams.WriteStream
 
@@ -11,7 +11,7 @@ import io.vertx.core.streams.WriteStream
  * without prior initialization
  * @author Michel Kraemer
  */
-class XMLMerger(private val optimistic: Boolean) : Merger<XMLChunkMeta> {
+class XMLMerger(private val optimistic: Boolean) : Merger<XmlChunkMeta> {
   /**
    * The merger strategy determined by [init]
    */
@@ -34,14 +34,18 @@ class XMLMerger(private val optimistic: Boolean) : Merger<XMLChunkMeta> {
     if (strategy is AllSameStrategy) {
       return MergeNamespacesStrategy()
     }
-    throw UnsupportedOperationException("Cannot merge chunks. No valid " +
-        "strategy available.")
+    throw UnsupportedOperationException(
+      "Cannot merge chunks. No valid " +
+          "strategy available."
+    )
   }
 
-  override fun init(chunkMetadata: XMLChunkMeta) {
+  override fun init(chunkMetadata: XmlChunkMeta) {
     if (mergeStarted) {
-      throw IllegalStateException("You cannot initialize the merger anymore " +
-          "after merging has begun")
+      throw IllegalStateException(
+        "You cannot initialize the merger anymore " +
+            "after merging has begun"
+      )
     }
 
     while (!strategy.canMerge(chunkMetadata)) {
@@ -56,8 +60,11 @@ class XMLMerger(private val optimistic: Boolean) : Merger<XMLChunkMeta> {
     strategy.init(chunkMetadata)
   }
 
-  override suspend fun merge(chunk: Buffer, chunkMetadata: XMLChunkMeta,
-      outputStream: WriteStream<Buffer>) {
+  override suspend fun merge(
+    chunk: Buffer,
+    chunkMetadata: XmlChunkMeta,
+    outputStream: WriteStream<Buffer>
+  ) {
     mergeStarted = true
     if (!initialized) {
       if (optimistic) {

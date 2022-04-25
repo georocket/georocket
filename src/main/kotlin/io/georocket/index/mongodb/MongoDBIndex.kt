@@ -18,7 +18,16 @@ import io.georocket.index.normalizeLayer
 import io.georocket.query.IndexQuery
 import io.georocket.query.StartsWith
 import io.georocket.storage.ChunkMeta
-import io.georocket.util.*
+import io.georocket.util.UniqueID
+import io.georocket.util.aggregateAwait
+import io.georocket.util.coDistinct
+import io.georocket.util.coFind
+import io.georocket.util.deleteManyAwait
+import io.georocket.util.findOneAndUpdateAwait
+import io.georocket.util.findOneAwait
+import io.georocket.util.getAwait
+import io.georocket.util.insertManyAwait
+import io.georocket.util.updateManyAwait
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.mongo.impl.JsonObjectBsonAdapter
@@ -35,7 +44,6 @@ import kotlinx.coroutines.reactive.collect
 import org.bson.BsonDocument
 import org.bson.BsonInvalidOperationException
 import org.slf4j.LoggerFactory
-
 
 class MongoDBIndex private constructor() : Index, AbstractIndex() {
   companion object {
@@ -131,7 +139,7 @@ class MongoDBIndex private constructor() : Index, AbstractIndex() {
     return loadedChunkMetaCache.getAwait(id) {
       val o = collChunkMeta.findOneAwait(jsonObjectOf(INTERNAL_ID to id))
         ?: throw NoSuchElementException("Could not find chunk metadata with ID `$id' in index")
-      createChunkMeta(o.getJsonObject(CHUNK_META))
+      ChunkMeta.fromJsonObject(o.getJsonObject(CHUNK_META))
     }
   }
 

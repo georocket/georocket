@@ -1,7 +1,8 @@
 package io.georocket.output.xml
 
 import io.georocket.coVerify
-import io.georocket.storage.XMLChunkMeta
+import io.georocket.storage.GenericXmlChunkMeta
+import io.georocket.storage.XmlChunkMeta
 import io.georocket.util.XMLStartElement
 import io.georocket.util.io.BufferWriteStream
 import io.vertx.core.Vertx
@@ -40,7 +41,7 @@ class XMLMergerTest {
     vertx: Vertx,
     ctx: VertxTestContext,
     chunks: List<Buffer>,
-    metas: List<XMLChunkMeta>,
+    metas: List<XmlChunkMeta>,
     xmlContents: String,
     optimistic: Boolean,
     expected: Class<out Throwable>? = null
@@ -83,7 +84,7 @@ class XMLMergerTest {
     val chunk1 = Buffer.buffer("""<test chunk="1"></test>""")
     val chunk2 = Buffer.buffer("""<test chunk="2"></test>""")
 
-    val cm = XMLChunkMeta(listOf(XMLStartElement(localName = "root")))
+    val cm = GenericXmlChunkMeta(listOf(XMLStartElement(localName = "root")))
 
     doMerge(
       vertx,
@@ -122,8 +123,8 @@ class XMLMergerTest {
     val contents2 = "<cityObjectMember><bldg:Building></bldg:Building></cityObjectMember>"
     val chunk2 = Buffer.buffer(contents2)
 
-    val cm1 = XMLChunkMeta(listOf(root1))
-    val cm2 = XMLChunkMeta(listOf(root2))
+    val cm1 = GenericXmlChunkMeta(listOf(root1))
+    val cm2 = GenericXmlChunkMeta(listOf(root2))
 
     val expectedRoot = XMLStartElement(
       null,
@@ -182,8 +183,8 @@ class XMLMergerTest {
     val contents2 = "<cityObjectMember><gen:Building></gen:Building></cityObjectMember>"
     val chunk2 = Buffer.buffer(contents2)
 
-    val cm1 = XMLChunkMeta(listOf(root1))
-    val cm2 = XMLChunkMeta(listOf(root1))
+    val cm1 = GenericXmlChunkMeta(listOf(root1))
+    val cm2 = GenericXmlChunkMeta(listOf(root1))
 
     doMerge(
       vertx, ctx, listOf(chunk1, chunk2), listOf(cm1, cm2), """$root1$contents1$contents2</${root1.name}>""", true
