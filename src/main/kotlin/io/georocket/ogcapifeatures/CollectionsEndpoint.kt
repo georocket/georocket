@@ -3,7 +3,11 @@ package io.georocket.ogcapifeatures
 import de.undercouch.actson.JsonEvent
 import de.undercouch.actson.JsonParser
 import io.georocket.http.Endpoint
-import io.georocket.index.*
+import io.georocket.index.Index
+import io.georocket.index.IndexFactory
+import io.georocket.index.IndexerFactory
+import io.georocket.index.MetaIndexerFactory
+import io.georocket.index.normalizeLayer
 import io.georocket.ogcapifeatures.views.Views
 import io.georocket.ogcapifeatures.views.json.JsonViews
 import io.georocket.ogcapifeatures.views.xml.XmlViews
@@ -13,8 +17,14 @@ import io.georocket.query.Compare
 import io.georocket.query.DefaultQueryCompiler
 import io.georocket.query.IndexQuery
 import io.georocket.query.QueryPart
-import io.georocket.storage.*
-import io.georocket.util.*
+import io.georocket.storage.ChunkMeta
+import io.georocket.storage.GeoJsonChunkMeta
+import io.georocket.storage.Store
+import io.georocket.storage.StoreFactory
+import io.georocket.storage.XmlChunkMeta
+import io.georocket.util.HttpException
+import io.georocket.util.MimeTypeUtils
+import io.georocket.util.PathUtils
 import io.georocket.util.io.BufferWriteStream
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
@@ -23,8 +33,14 @@ import io.vertx.core.json.Json
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
-import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.flow.toSet
+import kotlinx.coroutines.launch
 import org.apache.commons.text.StringEscapeUtils.escapeJava
 import org.slf4j.LoggerFactory
 import org.w3c.dom.Element
@@ -245,7 +261,7 @@ class CollectionsEndpoint(
     }
   }
 
-  private suspend fun findGmlFeatureById(chunk: Buffer, meta: XMLChunkMeta, id: String): Buffer? {
+  private suspend fun findGmlFeatureById(chunk: Buffer, meta: XmlChunkMeta, id: String): Buffer? {
 
     // use the merger to assemble the full xml document (including all parent elements)
     val merger = XMLMerger(false)
@@ -292,7 +308,7 @@ class CollectionsEndpoint(
       is GeoJsonChunkMeta -> {
         findGeoJsonFeatureById(chunk, meta, id)
       }
-      is XMLChunkMeta -> {
+      is XmlChunkMeta -> {
         findGmlFeatureById(chunk, meta, id)
       }
       else -> {

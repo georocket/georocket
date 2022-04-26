@@ -1,5 +1,6 @@
 package io.georocket.util
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.core.json.jsonObjectOf
 
@@ -44,12 +45,14 @@ data class XMLStartElement constructor(
   /**
    * @return the elements name consisting of the prefix and the local name
    */
+  @get:JsonIgnore
   val name: String
     get() = if (prefix != null) "$prefix:$localName" else localName
 
   /**
    * @return the number of namespaces attached to this element
    */
+  @get:JsonIgnore
   val namespaceCount: Int
     get() = namespacePrefixes.size
 
@@ -74,6 +77,7 @@ data class XMLStartElement constructor(
   /**
    * @return the number of attributes attached to this element
    */
+  @get:JsonIgnore
   val attributeCount: Int
     get() = attributePrefixes.size
 

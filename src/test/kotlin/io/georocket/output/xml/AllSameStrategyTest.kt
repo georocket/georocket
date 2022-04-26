@@ -2,7 +2,7 @@ package io.georocket.output.xml
 
 import io.georocket.assertThatThrownBy
 import io.georocket.coVerify
-import io.georocket.storage.XMLChunkMeta
+import io.georocket.storage.GenericXmlChunkMeta
 import io.georocket.util.XMLStartElement
 import io.georocket.util.io.BufferWriteStream
 import io.vertx.core.Vertx
@@ -26,7 +26,7 @@ class AllSameStrategyTest {
     private const val XMLHEADER = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>${"\n"}"""
     private val chunk1 = Buffer.buffer("""<test chunk="1"></test>""")
     private val chunk2 = Buffer.buffer("""<test chunk="2"></test>""")
-    private val cm = XMLChunkMeta(listOf(XMLStartElement(localName = "root")))
+    private val cm = GenericXmlChunkMeta(listOf(XMLStartElement(localName = "root")))
   }
 
   /**
@@ -78,9 +78,18 @@ class AllSameStrategyTest {
    */
   @Test
   fun canMerge(vertx: Vertx, ctx: VertxTestContext) {
-    val cm2 = XMLChunkMeta(listOf(XMLStartElement(localName = "other")))
-    val cm3 = XMLChunkMeta(listOf(XMLStartElement("pre", "root")))
-    val cm4 = XMLChunkMeta(listOf(XMLStartElement(null, "root", namespacePrefixes = listOf(null), namespaceUris = listOf("uri"))))
+    val cm2 = GenericXmlChunkMeta(listOf(XMLStartElement(localName = "other")))
+    val cm3 = GenericXmlChunkMeta(listOf(XMLStartElement("pre", "root")))
+    val cm4 = GenericXmlChunkMeta(
+      listOf(
+        XMLStartElement(
+          null,
+          "root",
+          namespacePrefixes = listOf(null),
+          namespaceUris = listOf("uri")
+        )
+      )
+    )
     val strategy = AllSameStrategy()
 
     CoroutineScope(vertx.dispatcher()).launch {
@@ -101,7 +110,7 @@ class AllSameStrategyTest {
    */
   @Test
   fun mergeFail(vertx: Vertx, ctx: VertxTestContext) {
-    val cm2 = XMLChunkMeta(listOf(XMLStartElement(localName = "other")))
+    val cm2 = GenericXmlChunkMeta(listOf(XMLStartElement(localName = "other")))
     val strategy = AllSameStrategy()
     val bws = BufferWriteStream()
 

@@ -20,8 +20,10 @@ import org.junit.jupiter.api.extension.ExtendWith
  */
 @ExtendWith(VertxExtension::class)
 class GeoJsonMergerTest {
-  private fun doMerge(vertx: Vertx, ctx: VertxTestContext, chunks: List<Buffer>,
-      metas: List<GeoJsonChunkMeta>, jsonContents: String, optimistic: Boolean = false) {
+  private fun doMerge(
+    vertx: Vertx, ctx: VertxTestContext, chunks: List<Buffer>,
+    metas: List<GeoJsonChunkMeta>, jsonContents: String, optimistic: Boolean = false
+  ) {
     val m = GeoJsonMerger(optimistic)
     val bws = BufferWriteStream()
 
@@ -62,7 +64,7 @@ class GeoJsonMergerTest {
   fun oneGeometryOptimistic(vertx: Vertx, ctx: VertxTestContext) {
     val strChunk1 = """{"type":"Polygon"}"""
     val expected = """{"type":"FeatureCollection","features":[""" +
-      """{"type":"Feature","geometry":$strChunk1}]}"""
+        """{"type":"Feature","geometry":$strChunk1}]}"""
     val chunk1 = Buffer.buffer(strChunk1)
     val cm1 = GeoJsonChunkMeta("Polygon", "geometries")
     doMerge(vertx, ctx, listOf(chunk1), listOf(cm1), expected, true)
@@ -92,8 +94,10 @@ class GeoJsonMergerTest {
     val chunk2 = Buffer.buffer(strChunk2)
     val cm1 = GeoJsonChunkMeta("Polygon", "geometries")
     val cm2 = GeoJsonChunkMeta("Point", "geometries")
-    doMerge(vertx, ctx, listOf(chunk1, chunk2), listOf(cm1, cm2),
-        "{\"type\":\"GeometryCollection\",\"geometries\":[$strChunk1,$strChunk2]}")
+    doMerge(
+      vertx, ctx, listOf(chunk1, chunk2), listOf(cm1, cm2),
+      "{\"type\":\"GeometryCollection\",\"geometries\":[$strChunk1,$strChunk2]}"
+    )
   }
 
   /**
@@ -127,8 +131,10 @@ class GeoJsonMergerTest {
     val cm1 = GeoJsonChunkMeta("Polygon", "geometries")
     val cm2 = GeoJsonChunkMeta("Point", "geometries")
     val cm3 = GeoJsonChunkMeta("MultiPoint", "geometries")
-    doMerge(vertx, ctx, listOf(chunk1, chunk2, chunk3), listOf(cm1, cm2, cm3),
-        """{"type":"GeometryCollection","geometries":[$strChunk1,$strChunk2,$strChunk3]}""")
+    doMerge(
+      vertx, ctx, listOf(chunk1, chunk2, chunk3), listOf(cm1, cm2, cm3),
+      """{"type":"GeometryCollection","geometries":[$strChunk1,$strChunk2,$strChunk3]}"""
+    )
   }
 
   /**
@@ -141,8 +147,10 @@ class GeoJsonMergerTest {
     val chunk1 = Buffer.buffer(strChunk1)
     val chunk2 = Buffer.buffer(strChunk2)
     val cm1 = GeoJsonChunkMeta("Feature", "features")
-    doMerge(vertx, ctx, listOf(chunk1, chunk2), listOf(cm1, cm1),
-        """{"type":"FeatureCollection","features":[$strChunk1,$strChunk2]}""")
+    doMerge(
+      vertx, ctx, listOf(chunk1, chunk2), listOf(cm1, cm1),
+      """{"type":"FeatureCollection","features":[$strChunk1,$strChunk2]}"""
+    )
   }
 
   /**
@@ -155,8 +163,10 @@ class GeoJsonMergerTest {
     val chunk1 = Buffer.buffer(strChunk1)
     val chunk2 = Buffer.buffer(strChunk2)
     val cm1 = GeoJsonChunkMeta("Feature", "features")
-    doMerge(vertx, ctx, listOf(chunk1, chunk2), listOf(cm1, cm1),
-        """{"type":"FeatureCollection","features":[$strChunk1,$strChunk2]}""", true)
+    doMerge(
+      vertx, ctx, listOf(chunk1, chunk2), listOf(cm1, cm1),
+      """{"type":"FeatureCollection","features":[$strChunk1,$strChunk2]}""", true
+    )
   }
 
   /**
@@ -171,8 +181,10 @@ class GeoJsonMergerTest {
     val chunk2 = Buffer.buffer(strChunk2)
     val chunk3 = Buffer.buffer(strChunk3)
     val cm1 = GeoJsonChunkMeta("Feature", "features")
-    doMerge(vertx, ctx, listOf(chunk1, chunk2, chunk3), listOf(cm1, cm1, cm1),
-        """{"type":"FeatureCollection","features":[$strChunk1,$strChunk2,$strChunk3]}""")
+    doMerge(
+      vertx, ctx, listOf(chunk1, chunk2, chunk3), listOf(cm1, cm1, cm1),
+      """{"type":"FeatureCollection","features":[$strChunk1,$strChunk2,$strChunk3]}"""
+    )
   }
 
   /**
@@ -186,9 +198,11 @@ class GeoJsonMergerTest {
     val chunk2 = Buffer.buffer(strChunk2)
     val cm1 = GeoJsonChunkMeta("Polygon", "geometries")
     val cm2 = GeoJsonChunkMeta("Feature", "features")
-    doMerge(vertx, ctx, listOf(chunk1, chunk2), listOf(cm1, cm2),
-        """{"type":"FeatureCollection","features":[""" +
-            """{"type":"Feature","geometry":$strChunk1},$strChunk2]}""")
+    doMerge(
+      vertx, ctx, listOf(chunk1, chunk2), listOf(cm1, cm2),
+      """{"type":"FeatureCollection","features":[""" +
+          """{"type":"Feature","geometry":$strChunk1},$strChunk2]}"""
+    )
   }
 
   /**
@@ -202,9 +216,11 @@ class GeoJsonMergerTest {
     val chunk2 = Buffer.buffer(strChunk2)
     val cm1 = GeoJsonChunkMeta("Feature", "features")
     val cm2 = GeoJsonChunkMeta("Polygon", "geometries")
-    doMerge(vertx, ctx, listOf(chunk1, chunk2), listOf(cm1, cm2),
-        """{"type":"FeatureCollection","features":[$strChunk1,""" +
-            """{"type":"Feature","geometry":$strChunk2}]}""")
+    doMerge(
+      vertx, ctx, listOf(chunk1, chunk2), listOf(cm1, cm2),
+      """{"type":"FeatureCollection","features":[$strChunk1,""" +
+          """{"type":"Feature","geometry":$strChunk2}]}"""
+    )
   }
 
   /**
@@ -221,10 +237,12 @@ class GeoJsonMergerTest {
     val cm1 = GeoJsonChunkMeta("Polygon", "geometries")
     val cm2 = GeoJsonChunkMeta("Point", "geometries")
     val cm3 = GeoJsonChunkMeta("Feature", "features")
-    doMerge(vertx, ctx, listOf(chunk1, chunk2, chunk3), listOf(cm1, cm2, cm3),
-        """{"type":"FeatureCollection","features":[""" +
-            """{"type":"Feature","geometry":$strChunk1},""" +
-            """{"type":"Feature","geometry":$strChunk2},$strChunk3]}""")
+    doMerge(
+      vertx, ctx, listOf(chunk1, chunk2, chunk3), listOf(cm1, cm2, cm3),
+      """{"type":"FeatureCollection","features":[""" +
+          """{"type":"Feature","geometry":$strChunk1},""" +
+          """{"type":"Feature","geometry":$strChunk2},$strChunk3]}"""
+    )
   }
 
   /**
@@ -240,9 +258,11 @@ class GeoJsonMergerTest {
     val chunk3 = Buffer.buffer(strChunk3)
     val cm1 = GeoJsonChunkMeta("Feature", "features")
     val cm2 = GeoJsonChunkMeta("Point", "geometries")
-    doMerge(vertx, ctx, listOf(chunk1, chunk2, chunk3), listOf(cm1, cm1, cm2),
-        """{"type":"FeatureCollection","features":[$strChunk1,$strChunk2,""" +
-            """{"type":"Feature","geometry":$strChunk3}]}""")
+    doMerge(
+      vertx, ctx, listOf(chunk1, chunk2, chunk3), listOf(cm1, cm1, cm2),
+      """{"type":"FeatureCollection","features":[$strChunk1,$strChunk2,""" +
+          """{"type":"Feature","geometry":$strChunk3}]}"""
+    )
   }
 
   /**

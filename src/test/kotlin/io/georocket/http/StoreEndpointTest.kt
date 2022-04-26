@@ -4,8 +4,8 @@ import io.georocket.coVerify
 import io.georocket.constants.ConfigConstants
 import io.georocket.index.Index
 import io.georocket.index.IndexFactory
-import io.georocket.storage.ChunkMeta
 import io.georocket.storage.GeoJsonChunkMeta
+
 import io.georocket.storage.Store
 import io.georocket.storage.StoreFactory
 import io.mockk.coEvery
@@ -27,7 +27,6 @@ import io.vertx.kotlin.core.json.obj
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.dispatcher
-import io.vertx.sqlclient.Tuple
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow

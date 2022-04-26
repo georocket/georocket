@@ -15,15 +15,16 @@ import io.vertx.kotlin.core.json.jsonObjectOf
  * `FeatureCollection`s.
  * @author Michel Kraemer
  */
-class GeoJsonMerger(optimistic: Boolean, private val extensionProperties: JsonObject = jsonObjectOf()) : Merger<GeoJsonChunkMeta> {
+class GeoJsonMerger(optimistic: Boolean, private val extensionProperties: JsonObject = jsonObjectOf()) :
+  Merger<GeoJsonChunkMeta> {
   companion object {
     private const val NOT_SPECIFIED = 0
     private const val GEOMETRY_COLLECTION = 1
     private const val FEATURE_COLLECTION = 2
     private val TRANSITIONS = listOf(
-        listOf(FEATURE_COLLECTION, GEOMETRY_COLLECTION),
-        listOf(FEATURE_COLLECTION, GEOMETRY_COLLECTION),
-        listOf(FEATURE_COLLECTION, FEATURE_COLLECTION)
+      listOf(FEATURE_COLLECTION, GEOMETRY_COLLECTION),
+      listOf(FEATURE_COLLECTION, GEOMETRY_COLLECTION),
+      listOf(FEATURE_COLLECTION, FEATURE_COLLECTION)
     )
     private val RESERVED_PROPERTY_NAMES = listOf("type", "features", "geometries")
   }
@@ -78,8 +79,10 @@ class GeoJsonMerger(optimistic: Boolean, private val extensionProperties: JsonOb
 
   override fun init(chunkMetadata: GeoJsonChunkMeta) {
     if (mergeStarted) {
-      throw IllegalStateException("You cannot initialize the merger anymore " +
-          "after merging has begun")
+      throw IllegalStateException(
+        "You cannot initialize the merger anymore " +
+            "after merging has begun"
+      )
     }
     if (mergedType == FEATURE_COLLECTION) {
       // shortcut: we don't need to analyse the other chunks anymore,
@@ -95,8 +98,10 @@ class GeoJsonMerger(optimistic: Boolean, private val extensionProperties: JsonOb
     }
   }
 
-  override suspend fun merge(chunk: Buffer, chunkMetadata: GeoJsonChunkMeta,
-      outputStream: WriteStream<Buffer>) {
+  override suspend fun merge(
+    chunk: Buffer, chunkMetadata: GeoJsonChunkMeta,
+    outputStream: WriteStream<Buffer>
+  ) {
     mergeStarted = true
     if (!headerWritten) {
       writeHeader(outputStream)
@@ -105,8 +110,10 @@ class GeoJsonMerger(optimistic: Boolean, private val extensionProperties: JsonOb
       if (mergedType == FEATURE_COLLECTION || mergedType == GEOMETRY_COLLECTION) {
         outputStream.write(Buffer.buffer(","))
       } else {
-        throw IllegalStateException("Trying to merge two or more chunks but " +
-            "the merger has only been initialized with one chunk.")
+        throw IllegalStateException(
+          "Trying to merge two or more chunks but " +
+              "the merger has only been initialized with one chunk."
+        )
       }
     }
 

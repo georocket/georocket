@@ -56,13 +56,22 @@ interface Views {
 
   fun collection(response: HttpServerResponse, links: List<Link>, collection: Collection)
 
-  suspend fun items(response: HttpServerResponse, links: List<Link>, numberReturned: Int, chunks: Flow<Pair<Buffer, ChunkMeta>>)
+  suspend fun items(
+    response: HttpServerResponse,
+    links: List<Link>,
+    numberReturned: Int,
+    chunks: Flow<Pair<Buffer, ChunkMeta>>
+  )
 
   fun item(response: HttpServerResponse, links: List<Link>, item: Buffer)
-
 }
 
-suspend inline fun<reified T: ChunkMeta> mergeChunks(response: HttpServerResponse, merger: Merger<T>, chunks: Flow<Pair<Buffer, ChunkMeta>>, log: Logger) {
+suspend inline fun <reified T : ChunkMeta> mergeChunks(
+  response: HttpServerResponse,
+  merger: Merger<T>,
+  chunks: Flow<Pair<Buffer, ChunkMeta>>,
+  log: Logger
+) {
   try {
     var notaccepted = 0L
     chunks.collect { (chunk, chunkMeta) ->

@@ -84,12 +84,12 @@ class PostgreSQLIndex private constructor(
   private suspend fun addOrGetChunkMeta(meta: ChunkMeta): String {
     return addedChunkMetaCache.getAwait(meta) {
       val statement = "WITH new_id AS (" +
-        "INSERT INTO $CHUNK_META ($ID, $DATA) VALUES ($1, $2) " +
-        "ON CONFLICT DO NOTHING RETURNING $ID" +
-        ") SELECT COALESCE(" +
-        "(SELECT $ID FROM new_id)," +
-        "(SELECT $ID from $CHUNK_META WHERE $DATA=$2)" +
-        ")"
+          "INSERT INTO $CHUNK_META ($ID, $DATA) VALUES ($1, $2) " +
+          "ON CONFLICT DO NOTHING RETURNING $ID" +
+          ") SELECT COALESCE(" +
+          "(SELECT $ID FROM new_id)," +
+          "(SELECT $ID from $CHUNK_META WHERE $DATA=$2)" +
+          ")"
 
       val params = Tuple.of(UniqueID.next(), meta.toJsonObject())
 
@@ -102,7 +102,7 @@ class PostgreSQLIndex private constructor(
     val r = loadedChunkMetaCache.getAwait(id) {
       val statement = "SELECT $DATA FROM $CHUNK_META WHERE $ID=$1"
       val r = client.preparedQuery(statement).execute(Tuple.of(id)).await()
-      r?.first()?.getJsonObject(0)?.let { createChunkMeta(it) }
+      r?.first()?.getJsonObject(0)?.let { ChunkMeta.fromJsonObject(it) }
         ?: throw NoSuchElementException("Could not find chunk metadata with ID `$id' in index")
     }
     return r
@@ -166,13 +166,13 @@ class PostgreSQLIndex private constructor(
     val (statement, params) = if (previousScrollId != null) {
       val params = whereParams + previousScrollId + maxPageSize
       val statement = "SELECT $ID, $DATA->>'$CHUNK_META' FROM $DOCUMENTS " +
-        "WHERE $ID > $${whereParams.size + 1} AND ($where) " +
-        "ORDER BY $ID LIMIT $${whereParams.size + 2}"
+          "WHERE $ID > $${whereParams.size + 1} AND ($where) " +
+          "ORDER BY $ID LIMIT $${whereParams.size + 2}"
       statement to params
     } else {
       val params = whereParams + maxPageSize
       val statement = "SELECT $ID, $DATA->>'$CHUNK_META' FROM $DOCUMENTS " +
-        "WHERE $where ORDER BY $ID LIMIT $${whereParams.size + 1}"
+          "WHERE $where ORDER BY $ID LIMIT $${whereParams.size + 1}"
       statement to params
     }
     val items = client.preparedQuery(statement).execute(Tuple.from(params))

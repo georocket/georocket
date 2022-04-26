@@ -1,16 +1,20 @@
 package io.georocket.index
 
+import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import io.georocket.coVerify
 import io.georocket.query.All
-import io.georocket.storage.ChunkMeta
+import io.georocket.storage.GenericJsonChunkMeta
 import io.vertx.core.Vertx
+import io.vertx.core.json.jackson.DatabindCodec
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.core.json.jsonObjectOf
 import io.vertx.kotlin.coroutines.dispatcher
-import kotlinx.coroutines.*
-import org.junit.jupiter.api.Test
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 
 /**
@@ -23,6 +27,15 @@ abstract class IndexTest {
 
   abstract suspend fun prepareTestData(vertx: Vertx, docs: List<Index.AddManyParam>)
 
+  companion object {
+    @BeforeAll
+    @JvmStatic
+    private fun setupKotlinModule() {
+      DatabindCodec.mapper().registerKotlinModule()
+      DatabindCodec.prettyMapper().registerKotlinModule()
+    }
+  }
+
   @Test
   fun testGetPaginatedMeta(ctx: VertxTestContext, vertx: Vertx) {
     CoroutineScope(vertx.dispatcher()).launch {
@@ -31,7 +44,7 @@ abstract class IndexTest {
         // prepare index
         val paths = setOf("document1", "document2", "document3", "document4", "document5")
         prepareTestData(vertx, paths.map { path ->
-          Index.AddManyParam(path, jsonObjectOf(), ChunkMeta("application/json"))
+          Index.AddManyParam(path, jsonObjectOf(), GenericJsonChunkMeta(parentName = null))
         }.toList())
         val index = createIndex(vertx)
 

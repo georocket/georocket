@@ -1,7 +1,11 @@
 package io.georocket.util
 
 import org.apache.commons.io.input.BOMInputStream
-import java.io.*
+import java.io.BufferedInputStream
+import java.io.File
+import java.io.FileInputStream
+import java.io.IOException
+import java.io.InputStream
 import java.util.zip.GZIPInputStream
 
 /**
@@ -40,24 +44,8 @@ object MimeTypeUtils {
     mimeType: String, otherType: String,
     otherStructuredSyntaxSuffix: String
   ): Boolean {
-    val mediaParts = mimeType.split("/".toRegex()).toTypedArray()
-    if (mediaParts.size != 2) {
-      return false
-    }
-    val type = mediaParts[0]
-    val subtype = mediaParts[1]
-    if (type != otherType) {
-      return false
-    }
-    if (subtype == otherStructuredSyntaxSuffix) {
-      return true
-    }
-    val subtypeParts = subtype.split("\\+".toRegex()).toTypedArray()
-    if (subtypeParts.size != 2) {
-      return false
-    }
-    val structuredSyntaxSuffix = subtypeParts[1]
-    return structuredSyntaxSuffix == otherStructuredSyntaxSuffix
+    val regex = "${Regex.escape(otherType)}/(.*\\+)?${Regex.escape(otherStructuredSyntaxSuffix)}(;.*)?"
+    return mimeType matches regex.toRegex()
   }
 
   /**

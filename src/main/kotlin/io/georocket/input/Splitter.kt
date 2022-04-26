@@ -16,7 +16,7 @@ interface Splitter<E : StreamEvent, M : ChunkMeta> {
    * a chunk and its metadata.
    * @param <M> the type of the metadata
    */
-  data class Result<M : ChunkMeta>(
+  data class Result<out M : ChunkMeta>(
     val chunk: Buffer,
     val prefix: Buffer?,
     val suffix: Buffer?,

@@ -58,7 +58,7 @@ class GeoJsonSplitterTest {
 
         val t1 = chunks[0]
         val m1 = t1.first
-        assertThat(m1.parentFieldName).isNull()
+        assertThat(m1.parentName).isNull()
         assertThat(m1.type).isEqualTo("Feature")
 
         val o1 = t1.second
@@ -84,7 +84,7 @@ class GeoJsonSplitterTest {
 
         val t1 = chunks[0]
         val m1 = t1.first
-        assertThat(m1.parentFieldName).isNull()
+        assertThat(m1.parentName).isNull()
         assertThat(m1.type).isEqualTo("Feature")
 
         val o1 = t1.second
@@ -113,7 +113,7 @@ class GeoJsonSplitterTest {
 
         val t1 = chunks[0]
         val m1 = t1.first
-        assertThat(m1.parentFieldName).isEqualTo("features")
+        assertThat(m1.parentName).isEqualTo("features")
         assertThat(m1.type).isEqualTo("Feature")
 
         val o1 = t1.second
@@ -122,7 +122,7 @@ class GeoJsonSplitterTest {
 
         val t2 = chunks[1]
         val m2 = t2.first
-        assertThat(m2.parentFieldName).isEqualTo("features")
+        assertThat(m2.parentName).isEqualTo("features")
         assertThat(m2.type).isEqualTo("Feature")
 
         val o2 = t2.second
@@ -148,7 +148,7 @@ class GeoJsonSplitterTest {
 
         val t1 = chunks[0]
         val m1 = t1.first
-        assertThat(m1.parentFieldName).isEqualTo("geometries")
+        assertThat(m1.parentName).isEqualTo("geometries")
         assertThat(m1.type).isEqualTo("Point")
 
         val o1 = t1.second
@@ -157,7 +157,7 @@ class GeoJsonSplitterTest {
 
         val t2 = chunks[1]
         val m2 = t2.first
-        assertThat(m2.parentFieldName).isEqualTo("geometries")
+        assertThat(m2.parentName).isEqualTo("geometries")
         assertThat(m2.type).isEqualTo("Point")
 
         val o2 = t2.second
@@ -183,7 +183,7 @@ class GeoJsonSplitterTest {
 
         val t1 = chunks[0]
         val m1 = t1.first
-        assertThat(m1.parentFieldName).isNull()
+        assertThat(m1.parentName).isNull()
         assertThat(m1.type).isEqualTo("LineString")
 
         val o1 = t1.second
@@ -209,7 +209,7 @@ class GeoJsonSplitterTest {
 
         val t1 = chunks[0]
         val m1 = t1.first
-        assertThat(m1.parentFieldName).isNull()
+        assertThat(m1.parentName).isNull()
         assertThat(m1.type).isEqualTo("MultiLineString")
 
         val o1 = t1.second
@@ -235,7 +235,7 @@ class GeoJsonSplitterTest {
 
         val t1 = chunks[0]
         val m1 = t1.first
-        assertThat(m1.parentFieldName).isNull()
+        assertThat(m1.parentName).isNull()
         assertThat(m1.type).isEqualTo("MultiPoint")
 
         val o1 = t1.second
@@ -261,7 +261,7 @@ class GeoJsonSplitterTest {
 
         val t1 = chunks[0]
         val m1 = t1.first
-        assertThat(m1.parentFieldName).isNull()
+        assertThat(m1.parentName).isNull()
         assertThat(m1.type).isEqualTo("MultiPolygon")
 
         val o1 = t1.second
@@ -289,7 +289,7 @@ class GeoJsonSplitterTest {
 
         val t1 = chunks[0]
         val m1 = t1.first
-        assertThat(m1.parentFieldName).isNull()
+        assertThat(m1.parentName).isNull()
         assertThat(m1.type).isEqualTo("Point")
 
         val o1 = t1.second
@@ -316,7 +316,7 @@ class GeoJsonSplitterTest {
         val t1 = chunks[0]
         val m1 = t1.first
 
-        assertThat(m1.parentFieldName).isNull()
+        assertThat(m1.parentName).isNull()
         assertThat(m1.type).isEqualTo("Polygon")
 
         val o1 = t1.second
@@ -343,7 +343,7 @@ class GeoJsonSplitterTest {
 
         val t1 = chunks[0]
         val m1 = t1.first
-        assertThat(m1.parentFieldName).isEqualTo("features")
+        assertThat(m1.parentName).isEqualTo("features")
         assertThat(m1.type).isEqualTo("Feature")
 
         val o1 = t1.second
@@ -352,7 +352,7 @@ class GeoJsonSplitterTest {
 
         val t2 = chunks[1]
         val m2 = t2.first
-        assertThat(m2.parentFieldName).isEqualTo("features")
+        assertThat(m2.parentName).isEqualTo("features")
         assertThat(m2.type).isEqualTo("Feature")
 
         val o2 = t2.second

@@ -1,7 +1,7 @@
 package io.georocket.input.xml
 
 import io.georocket.input.Splitter
-import io.georocket.storage.XMLChunkMeta
+import io.georocket.storage.XmlChunkMeta
 import io.georocket.util.Window
 import io.georocket.util.XMLStreamEvent
 import javax.xml.stream.events.XMLEvent
@@ -15,8 +15,8 @@ class FirstLevelSplitter(window: Window) : XMLSplitter(window) {
 
   private var depth = 0
 
-  override fun onXMLEvent(event: XMLStreamEvent): Splitter.Result<XMLChunkMeta>? {
-    var result: Splitter.Result<XMLChunkMeta>? = null
+  override fun onXMLEvent(event: XMLStreamEvent): Splitter.Result<XmlChunkMeta>? {
+    var result: Splitter.Result<XmlChunkMeta>? = null
 
     // create new chunk if we're just after the end of a first-level element
     if (depth == 1 && isMarked) {

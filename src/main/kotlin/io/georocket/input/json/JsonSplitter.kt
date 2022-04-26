@@ -2,6 +2,7 @@ package io.georocket.input.json
 
 import de.undercouch.actson.JsonEvent
 import io.georocket.input.Splitter
+import io.georocket.storage.GenericJsonChunkMeta
 import io.georocket.storage.JsonChunkMeta
 import io.georocket.util.JsonStreamEvent
 import io.georocket.util.StringWindow
@@ -128,7 +129,7 @@ open class JsonSplitter(
     val str = window.getChars(mark, pos)
     window.advanceTo(pos)
     val buf = Buffer.buffer(str)
-    val meta = JsonChunkMeta(lastFieldName)
+    val meta = GenericJsonChunkMeta(lastFieldName)
     return Splitter.Result(buf, null, null, meta)
   }
 }
