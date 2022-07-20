@@ -1,5 +1,5 @@
 plugins {
-    id 'org.jetbrains.kotlin.jvm' version '1.7.0'
+    id 'org.jetbrains.kotlin.jvm' version '1.7.10'
 }
 
 apply plugin: 'java'
@@ -12,12 +12,12 @@ group = 'io.georocket'
 mainClassName = 'io.georocket.MainKt'
 
 ext {
-    vertxVersion = '4.3.1'
+    vertxVersion = '4.3.2'
     geotoolsVersion = '27.0'
     slf4jVersion = '1.7.36'
     logbackVersion = '1.2.11'
     junitVersion = '5.8.2'
-    testcontainersVersion = '1.17.2'
+    testcontainersVersion = '1.17.3'
 }
 
 repositories {
@@ -57,7 +57,7 @@ dependencies {
     implementation "io.vertx:vertx-web:$vertxVersion"
     implementation "io.vertx:vertx-web-client:$vertxVersion"
 
-    implementation 'software.amazon.awssdk:s3:2.17.219'
+    implementation 'software.amazon.awssdk:s3:2.17.236'
     implementation 'de.undercouch:actson:2.0.0'
     implementation 'de.undercouch:underline:1.0.0'
     implementation 'com.github.ben-manes.caffeine:caffeine:3.1.1'
@@ -68,7 +68,7 @@ dependencies {
     implementation 'commons-io:commons-io:2.11.0'
     implementation 'io.pebbletemplates:pebble:3.1.5'
     implementation 'javax.servlet:javax.servlet-api:4.0.1'
-    implementation 'net.java.dev.jna:jna:5.12.0'
+    implementation 'net.java.dev.jna:jna:5.12.1'
     implementation 'net.time4j:time4j-core:4.38'
     implementation 'org.apache.ant:ant:1.10.12'
     implementation 'org.apache.commons:commons-exec:1.3'
@@ -95,18 +95,18 @@ dependencies {
     }
 
     // mongodb driver + snappy compression
-    implementation 'org.mongodb:bson:4.6.1'
+    implementation 'org.mongodb:bson:4.7.0'
     implementation 'org.mongodb:mongodb-driver-async:3.12.11'
-    implementation 'org.mongodb:mongodb-driver-reactivestreams:4.6.1'
+    implementation 'org.mongodb:mongodb-driver-reactivestreams:4.7.0'
     implementation 'org.xerial.snappy:snappy-java:1.1.8.4'
-    implementation 'io.projectreactor:reactor-core:3.4.19'
+    implementation 'io.projectreactor:reactor-core:3.4.21'
 
     // embedded mongodb for standalone mode
-    implementation 'de.flapdoodle.embed:de.flapdoodle.embed.mongo:3.4.6'
+    implementation 'de.flapdoodle.embed:de.flapdoodle.embed.mongo:3.4.7'
 
     // PostgreSQL
     implementation "org.postgresql:postgresql:42.4.0"
-    implementation "org.flywaydb:flyway-core:8.5.13"
+    implementation "org.flywaydb:flyway-core:9.0.1"
     implementation "com.ongres.scram:client:2.1" // for authentication
 
     // necessary for ALPN / HTTP/2
@@ -114,8 +114,8 @@ dependencies {
 
     implementation "org.jetbrains.kotlin:kotlin-reflect"
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.6.3'
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-reactive:1.6.3'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.6.4'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-reactive:1.6.4'
 
     testImplementation 'com.github.tomakehurst:wiremock-jre8:2.33.2'
     testImplementation 'org.mongodb:mongodb-driver:3.12.11'
