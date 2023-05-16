@@ -1,19 +1,1 @@
-.classpath
-.DS_Store
-.externalToolBuilders/
-.gradle/
-.project
-.settings/
-.vertx/
-bin/
-build/
-node_modules/
-out/
-src-gen/
-gradle.properties
-.gradletasknamecache
-# IntelliJ  project structure
 .idea/
-*.iml
-logs/
-/storage
