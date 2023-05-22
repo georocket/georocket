@@ -1,7 +1,0 @@
-{
-  "extends": [
-    ":autodetectPinVersions",
-    "group:all"
-  ],
-  "ignoreDeps": ["ubuntu"]
-}
