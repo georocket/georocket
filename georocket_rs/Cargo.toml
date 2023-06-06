@@ -7,5 +7,6 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.71"
+async-channel = "1.8.0"
 thiserror = "1.0.40"
 tokio = {version = "1.28.2", features = ["sync", "rt", "macros"]}
