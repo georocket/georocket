@@ -25,16 +25,16 @@ pub enum Error {
     ChannelError(anyhow::Error),
 }
 
-pub struct Indexer {
-    chunk_receiver: async_channel::Receiver<Chunk>,
+pub struct IndexManager<D, H> {
+    chunk_receiver: async_channel::Receiver<Chunk<D, H>>,
     metadata_sender: mpsc::Sender<Result<GeoMetaDataCollection>>,
 }
 
-impl Indexer {
-    /// Construct a new `Indexer`, which takes chunks out of the `chunk_receiver` and puts
+impl<D, H> IndexManager<D, H> {
+    /// Construct a new `Indexmanager`, which takes chunks out of the `chunk_receiver` and puts
     /// the calculated metadata in `metadata_sender`.
     fn new(
-        chunk_receiver: async_channel::Receiver<Chunk>,
+        chunk_receiver: async_channel::Receiver<Chunk<D, H>>,
         metadata_sender: mpsc::Sender<Result<GeoMetaDataCollection>>,
     ) -> Self {
         Self {
@@ -51,7 +51,7 @@ impl Indexer {
         processed_feature_channel_capacity: usize,
     ) -> (
         Self,
-        async_channel::Sender<Chunk>,
+        async_channel::Sender<Chunk<D, H>>,
         mpsc::Receiver<Result<GeoMetaDataCollection>>,
     ) {
         let (chunk_sender, chuck_receiver) = async_channel::bounded(feature_channel_capacity);
@@ -71,16 +71,16 @@ impl Indexer {
     /// The amount of spawned tasks can be configured with the `task_count` parameter.
     async fn run(self, task_count: usize) -> Vec<Result<()>> {
         // contains handles to all indexing tasks that are spawned
-        let mut index_tasks = tokio::task::JoinSet::new();
+        let mut indexing_tasks = tokio::task::JoinSet::new();
         // spawn index tasks
         for _ in 0..task_count {
             let chunks = self.chunk_receiver.clone();
             let metadata = self.metadata_sender.clone();
-            index_tasks.spawn(Self::index_task(chunks, metadata));
+            indexing_tasks.spawn(Self::index_task(chunks, metadata));
         }
         //
         let mut indexer_results: Vec<Result<()>> = Vec::new();
-        while let Some(index_task_join) = index_tasks.join_next().await {
+        while let Some(index_task_join) = indexing_tasks.join_next().await {
             // Nested `Result<Result<()>, JoinError>`.
             // Unwrap the inner result if it is Ok, or turn the contained
             // `JoinError` into an `index::Error` and wrap it in `Result::Err`
@@ -150,7 +150,8 @@ mod tests {
             .map(|(i, feature)| Chunk::new(Some(i), GeoJSON, Vec::from(feature.as_bytes())))
             .collect();
 
-        let (indexer, chunk_sender, mut metadata_receiver) = Indexer::new_with_channels(64, 64);
+        let (indexer, chunk_sender, mut metadata_receiver) =
+            IndexManager::new_with_channels(64, 64);
 
         // run the `FeatureProcessor`
         let indexer_handle = tokio::spawn(indexer.run(INDEX_TASK_COUNT));

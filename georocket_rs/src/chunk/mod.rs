@@ -1,26 +1,45 @@
-/// Chunks are a contiguous array of bytes. They are tagged with their `Source`, allowing this
-/// representation to cover UTF8 or ASCII strings, as well as binary formats.
-#[derive(Clone)]
-pub struct Chunk {
-    id: Option<usize>,
-    source: Source,
-    data: Vec<u8>,
+#[derive(Clone, Debug)]
+pub(crate) struct Chunk<E, H> {
+    index_meta: IndexMeta<H>,
+    data: Vec<E>,
 }
 
-impl Chunk {
-    pub fn new(id: Option<usize>, source: Source, data: Vec<u8>) -> Self {
-        Self { id, source, data }
+#[derive(Clone, Debug)]
+struct IndexMeta<H> {
+    filename: String,
+    header: H,
+}
+
+impl<H> IndexMeta<H>
+where
+    H: Header,
+{
+    fn source(&self) -> Source {
+        self.header.source()
+    }
+}
+
+trait Header {
+    fn source(&self) -> Source;
+}
+
+impl<E, H> Chunk<E, H> {
+    pub fn new(index_meta: IndexMeta<H>) -> Self {
+        Self {
+            index_meta,
+            data: vec![],
+        }
     }
 
-    pub fn id(&self) -> Option<usize> {
-        self.id
+    pub fn push(&mut self, data: E) {
+        self.data.push(data);
     }
 
-    pub fn source(&self) -> Source {
-        self.source
+    pub fn index_meta(&self) -> &IndexMeta<H> {
+        &self.index_meta
     }
 
-    pub fn data(&self) -> &Vec<u8> {
+    pub fn data(&self) -> &[E] {
         &self.data
     }
 }
@@ -30,25 +49,4 @@ impl Chunk {
 #[derive(Copy, Clone)]
 pub enum Source {
     GeoJSON,
-}
-
-#[derive(Debug)]
-pub struct GeoMetaDataCollection {
-    id: Option<usize>,
-    inner: Vec<GeoMetaData>,
-}
-
-impl GeoMetaDataCollection {
-    pub fn new(id: Option<usize>) -> Self {
-        Self {
-            id,
-            inner: Vec::new(),
-        }
-    }
-}
-
-#[derive(Debug)]
-enum GeoMetaData {
-    //TODO: Add variants such as `BoundingBox` or other meta data that is intended
-    // for indexing or other post-processing requirements
 }
