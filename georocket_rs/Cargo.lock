@@ -3,6 +3,15 @@
 version = 3
 
 [[package]]
+name = "actson"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f9d4e3146b74cb03aa4001f90ecf5c53252eb3abf149854d398400dfe718a54b"
+dependencies = [
+ "ringbuffer",
+]
+
+[[package]]
 name = "anyhow"
 version = "1.0.71"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -68,9 +77,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4bca583b7e26f571124fe5b7561d49cb2868d79116cfa0eefce955557c6fee8c"
 
 [[package]]
-name = "georocket_rs"
+name = "georocket"
 version = "0.1.0"
 dependencies = [
+ "actson",
  "anyhow",
  "async-channel",
  "thiserror",
@@ -100,6 +110,12 @@ checksum = "1b9ab9c7eadfd8df19006f1cf1a4aed13540ed5cbc047010ece5826e10825488"
 dependencies = [
  "proc-macro2",
 ]
+
+[[package]]
+name = "ringbuffer"
+version = "0.14.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "00cd23b78b7c0c29b99a7840f540c48def3cfd303024faf2f45d7b064e4cb930"
 
 [[package]]
 name = "syn"
