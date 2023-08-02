@@ -9,7 +9,7 @@ use tokio::sync::mpsc;
 use tokio::task::JoinError;
 
 // Crate imports:
-use crate::chunk::{Chunk, GeoMetaDataCollection, Source};
+use crate::chunk::{Chunk, Source};
 
 /// Specialized [`Result`] type indexing errors.
 pub type Result<T> = std::result::Result<T, Error>;
