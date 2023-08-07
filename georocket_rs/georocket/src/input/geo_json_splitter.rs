@@ -11,14 +11,6 @@ const EXTEND: usize = 1024;
 mod buffer;
 use buffer::Buffer;
 
-struct GeoJsonSplitter<R> {
-    reader: BufReader<R>,
-    parser: JsonParser<PushJsonFeeder>,
-    buffer: Buffer,
-    chunk_out: async_channel::Sender<Chunk>,
-    raw_out: tokio::sync::mpsc::Sender<String>,
-}
-
 #[derive(Debug, Clone)]
 enum Payload {
     String(String),
@@ -55,28 +47,49 @@ impl From<&str> for FieldNames {
     }
 }
 
+/// The `GeoJsonSplitter` takes GeoJSON from an asynchronous input and attemtps to split it into its
+/// constituent parts. If the GeoJSON is a `FeatureCollection` or a `GeometryCollection`, it will
+/// output the individual geometries or features through the the `raw_send` and `chunk_send` channels, to
+/// be processed.
+struct GeoJsonSplitter<R> {
+    reader: BufReader<R>,
+    parser: JsonParser<PushJsonFeeder>,
+    buffer: Buffer,
+    chunk_send: async_channel::Sender<Chunk>,
+    raw_send: tokio::sync::mpsc::Sender<String>,
+}
+
 impl<R> GeoJsonSplitter<R>
 where
     R: AsyncRead + Unpin,
 {
+    /// Constructs a new `GeoJsonSplitter` object that will read a GeoJSON file from the reader
+    /// and send out the resulting chunks and features through the provided channels.  
     pub fn new(
         reader: R,
-        chunk_out: async_channel::Sender<Chunk>,
-        raw_out: mpsc::Sender<String>,
+        chunk_send: async_channel::Sender<Chunk>,
+        raw_send: mpsc::Sender<String>,
     ) -> Self {
         Self {
             reader: BufReader::new(reader),
             parser: JsonParser::new(PushJsonFeeder::new()),
             buffer: Buffer::new(),
-            chunk_out,
-            raw_out,
+            chunk_send,
+            raw_send,
         }
     }
 
-    async fn run(mut self) -> Result<GeoJsonType> {
+    /// Consumes the `GeoJsonSplitter` and initiates the processing of the associated GeoJSON file.
+    pub async fn run(mut self) -> Result<GeoJsonType> {
         self.process_top_level_object().await
     }
 
+    /// Begins the processing of the associated GeoJSON file, by assuming it to be a non-nested
+    /// GeoJSON type (`Feature` or `Geometry`). If a field with the name "features" or "geometries"
+    /// is encountered, it will switch to the `process_collection` method.
+    ///
+    /// Sends the resulting `Chunk` and the raw string of the feature through the respective
+    /// channels for further processing
     async fn process_top_level_object(&mut self) -> Result<GeoJsonType> {
         use JsonEvent::*;
         self.find_next(&[StartObject]).await?;
@@ -107,6 +120,9 @@ where
                 }
                 _ => Payload::None,
             };
+            // Check if the field name indicates that this is a `FeatureCollection` or
+            // `GeometryCollection` and proceed accordingly, calling the `process_collection()`
+            // method in such a case.
             if event == FieldName {
                 if let Payload::String(f) = &payload {
                     match f.as_str().into() {
@@ -122,17 +138,20 @@ where
                 }
             }
             chunk.push((event, payload));
+            // break out of the loop, if the GeoJSON object has been fully parsed.
             if depth == 0 {
                 break;
             }
         }
+        // check what type of GeoJSON object has been processed. If it's a non-nested feature
+        // or geometry, it must still be extracted from the buffer and sent out.
         match geo_json_type {
             GeoJsonType::Object => {
                 let end = self.parser.parsed_bytes();
-                let bytes = end - begin;
-                let raw = String::from_utf8(self.buffer.retrieve_marked(bytes + 1))?;
-                self.raw_out.send(raw).await?;
-                self.chunk_out.send(chunk).await?;
+                let count = (end - begin) + 1;
+                let raw = String::from_utf8(self.buffer.retrieve_marked(count))?;
+                self.raw_send.send(raw).await?;
+                self.chunk_send.send(chunk).await?;
                 GeoJsonType::Object
             }
             GeoJsonType::Collection => GeoJsonType::Collection,
@@ -140,6 +159,11 @@ where
         Ok(geo_json_type)
     }
 
+    /// Attempts to extract the appropriate payload from the provided string.
+    ///
+    /// # Errors
+    ///
+    /// This function will error if the string cannot be parsed into the appropriate type.
     fn extract_payload(event: JsonEvent, payload: &str) -> anyhow::Result<Payload> {
         use JsonEvent::*;
         debug_assert!(
@@ -157,6 +181,13 @@ where
         })
     }
 
+    /// Fills the parsers feeder with bytes from the buffer.
+    /// Fills the buffer from the reader, if all bytes in the buffer have been consumed.
+    ///
+    /// # Errors
+    ///
+    /// This method will error, if all the bytes in the buffer have been consumed and attempting
+    /// to retrieve more from the reader fails.
     async fn fill_feeder(&mut self) -> anyhow::Result<()> {
         if self.buffer.end() {
             // if all bytes from the buffer have been consumed, then fill the buffer
@@ -173,6 +204,15 @@ where
         Ok(())
     }
 
+    /// Attempts to advances the parser to the next `JsonEvent`, that matches one of the `JsonEvent`s specified
+    /// in `events`.
+    ///
+    /// # Errors
+    ///
+    /// This method well return an error, if a JsonEvent::Eof or JsonEvent::Error is encountered
+    /// and these are not specified in `events`.
+    /// It will also return an error, if a call to `fill_feeder` fails, if the parser requests more
+    /// bytes.
     async fn find_next(&mut self, events: &[JsonEvent]) -> Result<JsonEvent> {
         loop {
             let e = self.parser.next_event();
@@ -188,18 +228,22 @@ where
         }
     }
 
+    /// Attempts to process an array of `Feature` or `Geometry` GeoJSON objects.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if:
+    ///    + It cannot find the start of the array that is supposed to conatin the objects
+    ///    + An objects or the array is malformed
+    ///    + Parsing retrieved bytes into a valid UTF8 string fails
+    ///    + Loading additional bytes from the reader fails
+    ///    + Sending out processed `Chunk`s or the raw strings fails.
     async fn process_collection(&mut self) -> Result<()> {
         self.find_next(&[JsonEvent::StartArray]).await?;
         // tells us how many bytes have previously been parsed, before a drain happened.
         // We can then use this to determine the offset from the start of the buffer to the
         // start of the object of interest
         let mut previously_parsed = 0;
-        // 1. process the next chunk
-        // 2. retrieve the bytes from the buffer
-        //  how do we know how many bytes?
-        //    => call `parsed_bytes()` before and after getting a chunk
-        //  how does `next_chunk()` know where to set the
-        // 3. drain the buffer
         loop {
             match self
                 .find_next(&[JsonEvent::EndArray, JsonEvent::StartObject])
@@ -213,31 +257,29 @@ where
                     self.buffer.set_marker(buffer_offset - 1);
                     let chunk = self.next_chunk().await?;
                     let end = self.parser.parsed_bytes();
-                    let count = end - begin;
-
-                    // account for subtracting 1 above
-                    let bytes = self.buffer.retrieve_marked(count + 1);
-                    self.buffer.drain_marked(count + 1);
+                    // +1 to account for subtracting 1 above
+                    let count = (end - begin) + 1;
+                    let bytes = self.buffer.retrieve_marked(count);
+                    self.buffer.drain_marked(count);
 
                     let raw = String::from_utf8(bytes)?;
 
                     // send out the data
-                    self.chunk_out.send(chunk).await?;
-                    self.raw_out.send(raw).await?;
+                    self.chunk_send.send(chunk).await?;
+                    self.raw_send.send(raw).await?;
                     previously_parsed = end;
                 }
-                _ => unreachable!(),
+                _ => unreachable!("`find_next()` should have returned an error, if any other events are found here"),
             }
         }
         Ok(())
     }
 
+    /// Attempts to process the next chunk in a collection.
     async fn next_chunk(&mut self) -> anyhow::Result<Chunk> {
         use JsonEvent::*;
         let mut chunk: Chunk = vec![(StartObject, Payload::None)];
         let mut depth: u32 = 1;
-        // this function gets called, when the parser has found the start of an object,
-        // so self.parser.parsed_bytes is the start of the object
         loop {
             let event = self.parser.next_event();
             let payload = match event {
@@ -272,7 +314,11 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::{path::Path, slice::Chunks};
+    use std::{
+        collections::{HashMap, HashSet},
+        ops::Add,
+        path::Path,
+    };
     use tokio::fs::{read_to_string, File};
 
     /// Splits the geo_json into features or geometries, returns handles to the task the splitter
@@ -285,11 +331,7 @@ mod test {
         tokio::task::JoinHandle<Vec<String>>,
         tokio::task::JoinHandle<Vec<Chunk>>,
     ) {
-        let geo_json = File::open(path).await.unwrap();
-        let (chunk_send, chunk_rec) = async_channel::unbounded();
-        let (raw_send, mut raw_rec) = mpsc::channel(1024);
-        let splitter = GeoJsonSplitter::new(geo_json, chunk_send, raw_send);
-        let splitter_handle = tokio::spawn(splitter.run());
+        let (splitter_handle, chunk_rec, mut raw_rec) = setup(path).await;
         let raw_string_hanlde = tokio::spawn(async move {
             let mut raw_strings = Vec::new();
             while let Some(feature) = raw_rec.recv().await {
@@ -305,6 +347,21 @@ mod test {
             chunks
         });
         (splitter_handle, raw_string_hanlde, chuncks_handle)
+    }
+
+    async fn setup(
+        path: &Path,
+    ) -> (
+        tokio::task::JoinHandle<Result<GeoJsonType, anyhow::Error>>,
+        async_channel::Receiver<Chunk>,
+        tokio::sync::mpsc::Receiver<String>,
+    ) {
+        let geo_json = File::open(path).await.unwrap();
+        let (chunk_send, chunk_rec) = async_channel::unbounded();
+        let (raw_send, raw_rec) = mpsc::channel(1024);
+        let splitter = GeoJsonSplitter::new(geo_json, chunk_send, raw_send);
+        let splitter_handle = tokio::spawn(splitter.run());
+        (splitter_handle, chunk_rec, raw_rec)
     }
 
     #[tokio::test]
@@ -339,6 +396,61 @@ mod test {
             control_strings.remove(index);
         }
         // all control strings should have been removed from the control string collection
-        assert!(control_strings.len() == 0);
+        assert!(control_strings.is_empty());
+    }
+
+    /// parse the given file with serde_json and return the inner Json `features` or `geometries`
+    /// array as a Rust Vector
+    fn parse_with_serde(path: &Path) -> Vec<serde_json::Value> {
+        let file = std::fs::File::open(path).unwrap();
+        let reader = std::io::BufReader::new(file);
+        let mut contents: serde_json::Value = serde_json::from_reader(reader).unwrap();
+        if let Some(features) = contents.get_mut("features") {
+            if let serde_json::Value::Array(features) = std::mem::take(features) {
+                features
+            } else {
+                panic!("field `features` did not contain an array")
+            }
+        } else if let Some(geometries) = contents.get_mut("geometries") {
+            if let serde_json::Value::Array(geometries) = std::mem::take(geometries) {
+                geometries
+            } else {
+                panic!("field `features` did not contain an array")
+            }
+        } else {
+            vec![contents]
+        }
+    }
+
+    #[tokio::test]
+    async fn large_collection() {
+        let file = Path::new("test_files/large_collection_01.json");
+        let control_values = parse_with_serde(file);
+        let mut control_values_map: std::collections::HashMap<String, usize> = HashMap::new();
+        // convert values to strings and store the count of every unique string in `control_values_map`.
+        control_values
+            .iter()
+            .map(|value| serde_json::to_string(&value).unwrap())
+            .for_each(|value| {
+                control_values_map
+                    .entry(value)
+                    .and_modify(|val| *val += 1)
+                    .or_insert(1);
+            });
+        assert_eq!(
+            control_values.len(),
+            control_values_map.values().sum::<usize>()
+        );
+        let (splitter, chunks, mut raw_strings) = setup(file).await;
+        while let Some(feature) = raw_strings.recv().await {
+            // convert the feature to a serde_json::Value and back to a string. This insures the
+            // formatting is the same
+            let feature: serde_json::Value = serde_json::from_str(feature.as_str()).unwrap();
+            let feature = serde_json::to_string(&feature).unwrap();
+            control_values_map
+                .entry(feature)
+                .and_modify(|val| *val -= 1);
+        }
+        assert!(control_values_map.values().all(|val| *val == 0));
     }
 }

@@ -141,8 +141,8 @@ impl Iterator for Buffer {
 }
 
 #[cfg(test)]
-mod test {
-    use super::*;
+mod buffer_test {
+    use super::Buffer;
     #[test]
     fn retrieve_string() {
         let test_data = "xxxxTHISxxxx".as_bytes();
@@ -226,10 +226,14 @@ mod test {
     fn range_from_slices() {
         let front = [1, 2, 3];
         let back = [4, 5, 6];
+        // using serde_json in the test of the parrent module somehow breaks
+        // the assert_eq! macro here. Using an explicit value somehow fixes it.
+        let empty_control: [u8; 0] = [];
         //start and end in front
         let (first, second) = Buffer::map_range_to_slices(&front, &back, 0, 3);
         assert_eq!(first, &[1, 2, 3]);
-        assert_eq!(second, &[]);
+        assert_eq!(second, empty_control);
+        // assert_eq!(second, &[]);
 
         //start in front, end in back
         let (first, second) = Buffer::map_range_to_slices(&front, &back, 0, 5);
@@ -238,9 +242,8 @@ mod test {
 
         //start in back
         let (first_a, second_a) = Buffer::map_range_to_slices(&front, &back, 4, 2);
-        assert_eq!(first_a, &[]);
+        // assert_eq!(first_a, &[]);
+        assert_eq!(first_a, empty_control);
         assert_eq!(second_a, &[5, 6]);
-
-        //same, but attempting to take more than is contained
     }
 }

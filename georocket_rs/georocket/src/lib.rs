@@ -1,3 +1,3 @@
 // mod chunk;
 // mod index;
-mod input;
+pub mod input;
