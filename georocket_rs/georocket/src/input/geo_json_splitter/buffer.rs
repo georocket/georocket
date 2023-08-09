@@ -1,4 +1,3 @@
-use anyhow::Result;
 use std::collections::vec_deque::Iter;
 use std::collections::VecDeque;
 use std::iter::{Skip, Take};
@@ -6,7 +5,7 @@ use std::iter::{Skip, Take};
 const EXTEND: usize = 1024;
 
 /// Buffers the bytes that pass through the splitter.
-pub struct Buffer {
+pub(crate) struct Buffer {
     inner: VecDeque<u8>,
     //marks the beginning of an object of interest
     marker: usize,
@@ -14,7 +13,7 @@ pub struct Buffer {
 }
 
 impl Buffer {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             inner: VecDeque::with_capacity(EXTEND),
             marker: 0,
@@ -22,12 +21,13 @@ impl Buffer {
         }
     }
 
-    pub fn set_marker(&mut self, position: usize) {
+    /// Sets the marker to the index indicated by `position`.
+    pub(crate) fn set_marker(&mut self, position: usize) {
         self.marker = position;
     }
 
-    /// retrieves the bytes starting at the marker
-    pub fn retrieve_marked(&mut self, length: usize) -> Vec<u8> {
+    /// retrieves a copy of `length` bytes starting at the marker.
+    pub(crate) fn retrieve_marked(&mut self, length: usize) -> Vec<u8> {
         self.inner
             .iter()
             .skip(self.marker)
@@ -36,28 +36,31 @@ impl Buffer {
             .collect()
     }
 
-    /// consumes all bytes from the start of the buffer, to the marker + length
-    pub fn drain_marked(&mut self, length: usize) {
+    /// consumes all bytes from the start of the buffer, to the marker + length.
+    pub(crate) fn drain_marked(&mut self, length: usize) {
         self.inner.drain(0..self.marker + length);
         self.consumed -= self.marker + length;
         self.marker = 0;
     }
 
-    pub fn fill_bytes(&mut self, bytes: &[u8]) {
+    /// adds the `bytes` to the buffer.
+    pub(crate) fn fill_bytes(&mut self, bytes: &[u8]) {
         self.inner.extend(bytes);
     }
 
-    pub fn fill_byte(&mut self, byte: u8) {
+    pub(crate) fn fill_byte(&mut self, byte: u8) {
         self.inner.push_back(byte);
     }
 
-    pub fn get_bytes(&mut self, count: usize) -> (&[u8], &[u8]) {
+    /// Returns the next `count` bytes and consumes them from the buffer
+    pub(crate) fn get_bytes(&mut self, count: usize) -> (&[u8], &[u8]) {
         let (front, back) = self.inner.as_slices();
         let start = self.consumed;
         let count = usize::min(self.remaining(), count);
         Self::map_range_to_slices(front, back, start, count)
     }
 
+    #[inline(always)]
     fn map_range_to_slices<'a>(
         front: &'a [u8],
         back: &'a [u8],
@@ -86,15 +89,16 @@ impl Buffer {
             }
         }
     }
-    // returns an iterator over the next `count` bytes.
-    pub fn get_bytes_iter(&mut self, count: usize) -> Take<Skip<Iter<u8>>> {
+
+    /// returns an iterator over the next `count` bytes. Consumes the bytes from the buffer.
+    pub(crate) fn get_bytes_iter(&mut self, count: usize) -> Take<Skip<Iter<u8>>> {
         let iter = self.inner.iter().skip(self.consumed).take(count);
         self.consumed = self.inner.len().min(self.consumed + count);
         iter
     }
 
-    // returns the next byte, consuming it
-    pub fn get_byte(&mut self) -> Option<u8> {
+    /// returns the next byte, consuming it
+    pub(crate) fn get_byte(&mut self) -> Option<u8> {
         if self.consumed == self.inner.len() {
             None
         } else {
@@ -112,16 +116,18 @@ impl Buffer {
         self.marker = 0;
     }
 
-    // returns true, if the buffer has consumed all of its buffered bytes
-    pub fn end(&mut self) -> bool {
+    /// returns true, if the buffer has consumed all of its buffered bytes
+    pub(crate) fn end(&mut self) -> bool {
         self.inner.len() == self.consumed
     }
 
+    /// returns the amount of bytes remaining in the buffer, ignoring consumed bytes
     fn remaining(&self) -> usize {
         self.inner.len() - self.consumed
     }
 
-    pub fn consume(&mut self, count: usize) {
+    /// Consumes `count` bytes from the buffer
+    pub(crate) fn consume(&mut self, count: usize) {
         debug_assert!(
             (count <= self.remaining()),
             "Attempted to consume {} bytes, but only {} remaining",

@@ -2,7 +2,7 @@ use actson::feeder::PushJsonFeeder;
 use actson::{JsonEvent, JsonParser};
 use anyhow::{bail, Result};
 use async_channel;
-use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncReadExt, BufReader};
+use tokio::io::{AsyncBufReadExt, AsyncRead, BufReader};
 use tokio::sync::mpsc;
 
 type Chunk = Vec<(JsonEvent, Payload)>;
@@ -314,11 +314,7 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::{
-        collections::{HashMap, HashSet},
-        ops::Add,
-        path::Path,
-    };
+    use std::{collections::HashMap, path::Path};
     use tokio::fs::{read_to_string, File};
 
     /// Splits the geo_json into features or geometries, returns handles to the task the splitter
