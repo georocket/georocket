@@ -5,14 +5,17 @@ use async_channel;
 use tokio::io::{AsyncBufReadExt, AsyncRead, BufReader};
 use tokio::sync::mpsc;
 
-type Chunk = Vec<(JsonEvent, Payload)>;
+pub type GeoJsonChunk = Vec<(JsonEvent, Payload)>;
+
 const EXTEND: usize = 1024;
 
 mod buffer;
 use buffer::Buffer;
 
+use super::Chunk;
+
 #[derive(Debug, Clone)]
-enum Payload {
+pub enum Payload {
     String(String),
     Int(i64),
     Double(f64),
@@ -20,7 +23,7 @@ enum Payload {
 }
 
 #[derive(PartialEq, Debug)]
-enum GeoJsonType {
+pub enum GeoJsonType {
     Object,
     Collection,
 }
@@ -51,7 +54,7 @@ impl From<&str> for FieldNames {
 /// constituent parts. If the GeoJSON is a `FeatureCollection` or a `GeometryCollection`, it will
 /// output the individual geometries or features through the the `raw_send` and `chunk_send` channels, to
 /// be processed.
-struct GeoJsonSplitter<R> {
+pub struct GeoJsonSplitter<R> {
     reader: BufReader<R>,
     parser: JsonParser<PushJsonFeeder>,
     buffer: Buffer,
@@ -95,7 +98,7 @@ where
         self.find_next(&[StartObject]).await?;
         let begin = self.parser.parsed_bytes();
         self.buffer.set_marker(begin - 1);
-        let mut chunk: Chunk = vec![(StartObject, Payload::None)];
+        let mut chunk: GeoJsonChunk = vec![(StartObject, Payload::None)];
         let mut depth: u32 = 1;
         let mut geo_json_type = GeoJsonType::Object;
         loop {
@@ -151,7 +154,7 @@ where
                 let count = (end - begin) + 1;
                 let raw = String::from_utf8(self.buffer.retrieve_marked(count))?;
                 self.raw_send.send(raw).await?;
-                self.chunk_send.send(chunk).await?;
+                self.chunk_send.send(chunk.into()).await?;
                 GeoJsonType::Object
             }
             GeoJsonType::Collection => GeoJsonType::Collection,
@@ -265,7 +268,7 @@ where
                     let raw = String::from_utf8(bytes)?;
 
                     // send out the data
-                    self.chunk_send.send(chunk).await?;
+                    self.chunk_send.send(chunk.into()).await?;
                     self.raw_send.send(raw).await?;
                     previously_parsed = end;
                 }
@@ -276,9 +279,9 @@ where
     }
 
     /// Attempts to process the next chunk in a collection.
-    async fn next_chunk(&mut self) -> anyhow::Result<Chunk> {
+    async fn next_chunk(&mut self) -> anyhow::Result<GeoJsonChunk> {
         use JsonEvent::*;
-        let mut chunk: Chunk = vec![(StartObject, Payload::None)];
+        let mut chunk: GeoJsonChunk = vec![(StartObject, Payload::None)];
         let mut depth: u32 = 1;
         loop {
             let event = self.parser.next_event();
