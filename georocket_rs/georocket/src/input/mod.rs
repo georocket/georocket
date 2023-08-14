@@ -16,7 +16,7 @@ impl Into<Chunk> for GeoJsonChunk {
 
 pub struct SplitterChannels {
     chunk_send: async_channel::Sender<Chunk>,
-    raw_send: tokio::sync::mpsc::Sender<u8>,
+    raw_send: tokio::sync::mpsc::Sender<Vec<u8>>,
 }
 
 impl SplitterChannels {
@@ -26,7 +26,7 @@ impl SplitterChannels {
     ) -> (
         Self,
         async_channel::Receiver<Chunk>,
-        tokio::sync::mpsc::Receiver<u8>,
+        tokio::sync::mpsc::Receiver<Vec<u8>>,
     ) {
         let (chunk_send, chunk_rec) = async_channel::bounded(chunk_capacity);
         let (raw_send, raw_rec) = tokio::sync::mpsc::channel(raw_capactity);
@@ -39,11 +39,26 @@ impl SplitterChannels {
 
     fn new(
         chunk_send: async_channel::Sender<Chunk>,
-        raw_send: tokio::sync::mpsc::Sender<u8>,
+        raw_send: tokio::sync::mpsc::Sender<Vec<u8>>,
     ) -> Self {
         Self {
             chunk_send,
             raw_send,
         }
+    }
+
+    async fn send_chunk(
+        &self,
+        chunk: impl Into<Chunk>,
+    ) -> Result<(), async_channel::SendError<Chunk>> {
+        let chunk = chunk.into();
+        self.chunk_send.send(chunk).await
+    }
+
+    async fn send_raw(
+        &self,
+        raw: Vec<u8>,
+    ) -> Result<(), tokio::sync::mpsc::error::SendError<Vec<u8>>> {
+        self.raw_send.send(raw).await
     }
 }

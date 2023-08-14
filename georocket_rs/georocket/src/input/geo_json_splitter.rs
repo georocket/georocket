@@ -12,7 +12,7 @@ const EXTEND: usize = 1024;
 mod buffer;
 use buffer::Buffer;
 
-use super::Chunk;
+use super::{Chunk, SplitterChannels};
 
 #[derive(Debug, Clone)]
 pub enum Payload {
@@ -58,8 +58,7 @@ pub struct GeoJsonSplitter<R> {
     reader: BufReader<R>,
     parser: JsonParser<PushJsonFeeder>,
     buffer: Buffer,
-    chunk_send: async_channel::Sender<Chunk>,
-    raw_send: tokio::sync::mpsc::Sender<String>,
+    channels: SplitterChannels,
 }
 
 impl<R> GeoJsonSplitter<R>
@@ -70,15 +69,13 @@ where
     /// and send out the resulting chunks and features through the provided channels.  
     pub fn new(
         reader: R,
-        chunk_send: async_channel::Sender<Chunk>,
-        raw_send: mpsc::Sender<String>,
+        channels: SplitterChannels,
     ) -> Self {
         Self {
             reader: BufReader::new(reader),
             parser: JsonParser::new(PushJsonFeeder::new()),
             buffer: Buffer::new(),
-            chunk_send,
-            raw_send,
+            channels,
         }
     }
 
@@ -152,9 +149,9 @@ where
             GeoJsonType::Object => {
                 let end = self.parser.parsed_bytes();
                 let count = (end - begin) + 1;
-                let raw = String::from_utf8(self.buffer.retrieve_marked(count))?;
-                self.raw_send.send(raw).await?;
-                self.chunk_send.send(chunk.into()).await?;
+                let raw = self.buffer.retrieve_marked(count);
+                self.channels.send_raw(raw).await?;
+                self.channels.send_chunk(chunk).await?;
                 GeoJsonType::Object
             }
             GeoJsonType::Collection => GeoJsonType::Collection,
@@ -264,12 +261,10 @@ where
                     let count = (end - begin) + 1;
                     let bytes = self.buffer.retrieve_marked(count);
                     self.buffer.drain_marked(count);
-
-                    let raw = String::from_utf8(bytes)?;
-
+ 
                     // send out the data
-                    self.chunk_send.send(chunk.into()).await?;
-                    self.raw_send.send(raw).await?;
+                    self.channels.send_chunk(chunk).await?;
+                    self.channels.send_raw(bytes).await?;
                     previously_parsed = end;
                 }
                 _ => unreachable!("`find_next()` should have returned an error, if any other events are found here"),
@@ -327,7 +322,7 @@ mod test {
         path: &Path,
     ) -> (
         tokio::task::JoinHandle<Result<GeoJsonType, anyhow::Error>>,
-        tokio::task::JoinHandle<Vec<String>>,
+        tokio::task::JoinHandle<Vec<Vec<u8>>>,
         tokio::task::JoinHandle<Vec<Chunk>>,
     ) {
         let (splitter_handle, chunk_rec, mut raw_rec) = setup(path).await;
@@ -353,12 +348,12 @@ mod test {
     ) -> (
         tokio::task::JoinHandle<Result<GeoJsonType, anyhow::Error>>,
         async_channel::Receiver<Chunk>,
-        tokio::sync::mpsc::Receiver<String>,
+        tokio::sync::mpsc::Receiver<Vec<u8>>,
     ) {
         let geo_json = File::open(path).await.unwrap();
-        let (chunk_send, chunk_rec) = async_channel::unbounded();
-        let (raw_send, raw_rec) = mpsc::channel(1024);
-        let splitter = GeoJsonSplitter::new(geo_json, chunk_send, raw_send);
+
+        let (splitter_channels, chunk_rec, raw_rec) = SplitterChannels::new_with_channels(1024, 1024);
+        let splitter = GeoJsonSplitter::new(geo_json, splitter_channels);
         let splitter_handle = tokio::spawn(splitter.run());
         (splitter_handle, chunk_rec, raw_rec)
     }
@@ -375,7 +370,7 @@ mod test {
         let raw = raw_strings.await.unwrap()[0].clone();
         let control = control.await.unwrap().unwrap();
         let geo_json_type = splitter.await.unwrap().unwrap();
-        assert_eq!(raw, control);
+        assert_eq!(String::from_utf8(raw).unwrap(), control);
         assert_eq!(geo_json_type, GeoJsonType::Object);
     }
 
@@ -389,9 +384,8 @@ mod test {
             split_geo_json(Path::new("test_files/simple_collection_01.json")).await;
         let raw_strings = raw_strings.await.unwrap();
         let chunks = chunks.await.unwrap();
-        for feature in raw_strings {
+        for feature in raw_strings.into_iter().map(|raw| String::from_utf8(raw).unwrap()) {
             let index = control_strings.iter().position(|f| f == &feature).unwrap();
-            assert_eq!(control_strings[index], feature);
             control_strings.remove(index);
         }
         // all control strings should have been removed from the control string collection
@@ -441,9 +435,17 @@ mod test {
             control_values_map.values().sum::<usize>()
         );
         let (splitter, chunks, mut raw_strings) = setup(file).await;
+        // need to take the chunks out of the chunks channel, or else the splitter will block
+        // if it is full.
+        tokio::spawn(
+            async move {
+                while let Ok(chunk) = chunks.recv().await {}
+            }
+        );
         while let Some(feature) = raw_strings.recv().await {
             // convert the feature to a serde_json::Value and back to a string. This insures the
             // formatting is the same
+            let feature = String::from_utf8(feature).unwrap();
             let feature: serde_json::Value = serde_json::from_str(feature.as_str()).unwrap();
             let feature = serde_json::to_string(&feature).unwrap();
             control_values_map
@@ -451,5 +453,6 @@ mod test {
                 .and_modify(|val| *val -= 1);
         }
         assert!(control_values_map.values().all(|val| *val == 0));
+        assert!(splitter.await.unwrap().is_ok());
     }
 }
