@@ -2,6 +2,10 @@ use super::BoundingBox;
 use super::BoundingBoxError;
 use super::GeoPoint;
 
+/// A builder to create [`BoundingBox`es](BoundingBox).
+///
+/// The Builder takes x and y coordinates to specify the `BoundingBox`.
+/// It will retrung `None`, if no coordinates have been provided.
 #[derive(Debug)]
 pub struct BoundingBoxBuilder {
     inner: Inner,
@@ -123,17 +127,24 @@ impl Inner {
 }
 
 impl BoundingBoxBuilder {
+    /// Creates a new `BoundingBoxBuilder`.
     pub fn new() -> Self {
         Self {
             inner: Inner::Uninitialized,
         }
     }
-    pub fn validate(&self) -> bool {
-        self.inner.validate()
-    }
+    /// If all coordinates passed into the builder were valid, calling `build()`
+    /// returns `Ok(Some(BoundingBox))`. If no coordinates were passed into the
+    /// builder, it returns `Ok(None)`.
+    ///
+    /// # Errors
+    /// If one or more of the passed in coordinates were invalid, `build` returns
+    /// a [`BoundingBoxError::InvalidCoordinates`] error.
     pub fn build(self) -> Result<Option<BoundingBox>, BoundingBoxError> {
         self.inner.try_into()
     }
+    /// Adds a coordinate point to the builder. No validation is done in this method,
+    /// instead [`build`](build) does validation when called.
     pub fn add_point(self, x: f64, y: f64) -> Self {
         Self {
             inner: self.inner.add_point(x, y),
