@@ -1,50 +1,23 @@
-use std::error::Error;
 mod bounding_box_builder;
-pub use bounding_box_builder::BoundingBoxBuilder;
+pub use bounding_box_builder::{BoundingBoxBuilder, BoundingBoxBuilderError};
 
 use serde::{Deserialize, Serialize};
-use std::fmt::Display;
 
-#[derive(Debug, PartialEq)]
-pub enum BoundingBoxError {
-    InvalidCoordinates {
-        min_x: f64,
-        min_y: f64,
-        max_x: f64,
-        max_y: f64,
-    },
-}
-
-impl Error for BoundingBoxError {}
-
-impl Display for BoundingBoxError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            BoundingBoxError::InvalidCoordinates {
-                min_x,
-                min_y,
-                max_x,
-                max_y,
-            } => write!(
-                f,
-                "invalid bounding box [{}, {}, {}, {}]. \
-                Values outside [-180.0, -90.0, 180.0, 90.0]",
-                min_x, min_y, max_x, max_y
-            ),
-        }
-    }
-}
-
+/// A type specifying a bounding box.
+///
+/// # Construction:
+/// A `BoundingBox` can be constructed with the [`BoundingBoxBuilder`].
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy)]
 pub enum BoundingBox {
     Point(GeoPoint),
     Box([GeoPoint; 5]),
 }
 
+///
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
 pub struct GeoPoint {
-    x: f64,
-    y: f64,
+    pub x: f64,
+    pub y: f64,
 }
 
 #[cfg(test)]
@@ -65,7 +38,7 @@ mod tests {
         let bbox = BoundingBoxBuilder::new().add_point(x, y).build();
         assert_eq!(
             bbox.unwrap_err(),
-            BoundingBoxError::InvalidCoordinates {
+            BoundingBoxBuilderError::InvalidCoordinates {
                 min_x: x,
                 min_y: y,
                 max_x: x,
@@ -183,7 +156,7 @@ mod tests {
         let bbox_error = bbox_builder.build().unwrap_err();
 
         let (min_x, max_x, min_y, max_y) = get_min_and_max(&polygon);
-        let control_error = BoundingBoxError::InvalidCoordinates {
+        let control_error = BoundingBoxBuilderError::InvalidCoordinates {
             min_x,
             min_y,
             max_x,

@@ -1,5 +1,7 @@
+use std::error::Error;
+use std::fmt::Display;
+
 use super::BoundingBox;
-use super::BoundingBoxError;
 use super::GeoPoint;
 
 /// A builder to create [`BoundingBox`es](BoundingBox).
@@ -9,6 +11,32 @@ use super::GeoPoint;
 #[derive(Debug)]
 pub struct BoundingBoxBuilder {
     inner: Inner,
+}
+
+impl BoundingBoxBuilder {
+    /// Creates a new `BoundingBoxBuilder`.
+    pub fn new() -> Self {
+        Self {
+            inner: Inner::Uninitialized,
+        }
+    }
+    /// If all coordinates passed into the builder were valid, calling `build()`
+    /// returns `Ok(Some(BoundingBox))`. If no coordinates were passed into the
+    /// builder, it returns `Ok(None)`.
+    ///
+    /// # Errors
+    /// If one or more of the passed in coordinates were invalid, `build` returns
+    /// a [`BoundingBoxError::InvalidCoordinates`] error.
+    pub fn build(self) -> Result<Option<BoundingBox>, BoundingBoxBuilderError> {
+        self.inner.try_into()
+    }
+    /// Adds a coordinate point to the builder. No validation is done in this method,
+    /// instead [`build`](build) does validation when called.
+    pub fn add_point(self, x: f64, y: f64) -> Self {
+        Self {
+            inner: self.inner.add_point(x, y),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -27,7 +55,7 @@ enum Inner {
 }
 
 impl TryFrom<Inner> for Option<BoundingBox> {
-    type Error = BoundingBoxError;
+    type Error = BoundingBoxBuilderError;
 
     fn try_from(inner: Inner) -> Result<Self, Self::Error> {
         if inner.validate() {
@@ -53,7 +81,7 @@ impl TryFrom<Inner> for Option<BoundingBox> {
     }
 }
 
-impl From<Inner> for BoundingBoxError {
+impl From<Inner> for BoundingBoxBuilderError {
     fn from(bbox: Inner) -> Self {
         debug_assert!(
             !matches!(bbox, Inner::Uninitialized),
@@ -126,28 +154,35 @@ impl Inner {
     }
 }
 
-impl BoundingBoxBuilder {
-    /// Creates a new `BoundingBoxBuilder`.
-    pub fn new() -> Self {
-        Self {
-            inner: Inner::Uninitialized,
-        }
-    }
-    /// If all coordinates passed into the builder were valid, calling `build()`
-    /// returns `Ok(Some(BoundingBox))`. If no coordinates were passed into the
-    /// builder, it returns `Ok(None)`.
-    ///
-    /// # Errors
-    /// If one or more of the passed in coordinates were invalid, `build` returns
-    /// a [`BoundingBoxError::InvalidCoordinates`] error.
-    pub fn build(self) -> Result<Option<BoundingBox>, BoundingBoxError> {
-        self.inner.try_into()
-    }
-    /// Adds a coordinate point to the builder. No validation is done in this method,
-    /// instead [`build`](build) does validation when called.
-    pub fn add_point(self, x: f64, y: f64) -> Self {
-        Self {
-            inner: self.inner.add_point(x, y),
+/// An error for [`BoundingBoxBuilder`] related functionality.
+#[derive(Debug, PartialEq)]
+pub enum BoundingBoxBuilderError {
+    /// Specifies, that coordinates that have been passed to the [`BoundingBoxBuilder`]
+    /// have lead to an invalid `BoundingBox`.
+    InvalidCoordinates {
+        min_x: f64,
+        min_y: f64,
+        max_x: f64,
+        max_y: f64,
+    },
+}
+
+impl Error for BoundingBoxBuilderError {}
+
+impl Display for BoundingBoxBuilderError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            BoundingBoxBuilderError::InvalidCoordinates {
+                min_x,
+                min_y,
+                max_x,
+                max_y,
+            } => write!(
+                f,
+                "invalid bounding box [{}, {}, {}, {}]. \
+                Values outside [-180.0, -90.0, 180.0, 90.0]",
+                min_x, min_y, max_x, max_y
+            ),
         }
     }
 }
