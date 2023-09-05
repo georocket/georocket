@@ -26,12 +26,12 @@ impl BoundingBoxBuilder {
     ///
     /// # Errors
     /// If one or more of the passed in coordinates were invalid, `build` returns
-    /// a [`BoundingBoxError::InvalidCoordinates`] error.
+    /// a [`InvalidCoordinates`](BoundingBoxBuilderError::InvalidCoordinates) error.
     pub fn build(self) -> Result<Option<BoundingBox>, BoundingBoxBuilderError> {
         self.inner.try_into()
     }
     /// Adds a coordinate point to the builder. No validation is done in this method,
-    /// instead [`build`](build) does validation when called.
+    /// instead [`build`](BoundingBoxBuilder::build) does validation when called.
     pub fn add_point(self, x: f64, y: f64) -> Self {
         Self {
             inner: self.inner.add_point(x, y),

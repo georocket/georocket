@@ -1,3 +1,75 @@
+//! The `bounding_box` module contains the [`BoundingBox`], the [`BoundingBoxBuilder`]
+//! and related [errors](BoundingBoxBuilderError). Thoe `BoundingBoxBuidler` should be used
+//! when creating bounding boxes in an iterative fashion, as the it allows
+//! adding points as they become available. It will also validate the bounding box and return
+//! an error, if the resulting bounding box would be invalid, such as if it were to violate
+//! the range of longitudes and latitudes as defined by
+//! [WGS84](https://en.wikipedia.org/wiki/World_Geodetic_System).
+//!
+//! # Multiple Points
+//!
+//! ```
+//! # use indexing::bounding_box::*;
+//! let mut bbox_builder = BoundingBoxBuilder::new();
+//! bbox_builder = bbox_builder.add_point(42.0, 69.0);
+//! // calculate or retrieve further points...
+//! bbox_builder = bbox_builder.add_point(3.141, 1.618);
+//! // calculate or retrieve further points...
+//! let Ok(Some(bbox)) = bbox_builder.build() else { panic!("box wasn't okay") };
+//! assert_eq!(bbox,
+//!            BoundingBox::Box([
+//!                GeoPoint { x: 3.141, y: 1.618 },
+//!                GeoPoint { x: 42.,   y: 1.618 },
+//!                GeoPoint { x: 42.,   y: 69.0  },
+//!                GeoPoint { x: 3.141, y: 69.0  },
+//!                GeoPoint { x: 3.141, y: 1.618 },
+//!            ]));
+//! ```
+//!
+//! # Single Point
+//! If only a single point is provided, the `BoundingBoxBuilder` will
+//! return a `BoudingBox` with the `Point` variant:
+//!
+//! ```
+//! # use indexing::bounding_box::*;
+//! let mut bbox_builder = BoundingBoxBuilder::new();
+//! bbox_builder = bbox_builder.add_point(42.0, 69.0);
+//! let Ok(Some(bbox)) = bbox_builder.build() else { panic!("box wasn't okay") };
+//! assert_eq!(bbox, BoundingBox::Point(GeoPoint{x: 42., y: 69.0}));
+//! ```
+//!
+//! # No Points
+//!
+//! If no points have been provided to the `BoundingBoxBuilde`, it will return
+//! `None`:
+//!
+//! ```
+//! # use indexing::bounding_box::*;
+//! let mut bbox_builder = BoundingBoxBuilder::new();
+//! assert!(bbox_builder.build().is_ok_and(|bbox| bbox.is_none()));
+//! ```
+//!
+//! #
+//!
+//! # Errors
+//! The [`BoundingBoxBuilder::build`] method can error. It will error if
+//! one of the points provided to the `BoundingBoxBuilder` is outside of
+//! the valid coordinates.
+//!
+//! ```
+//! # use indexing::bounding_box::*;
+//! let mut bbox_builder = BoundingBoxBuilder::new().add_point(192., 98.,);
+//! assert_eq!(
+//!     bbox_builder.build().unwrap_err(),
+//!     BoundingBoxBuilderError::InvalidCoordinates {
+//!         min_x: 192.,
+//!         min_y: 98.,
+//!         max_x: 192.,
+//!         max_y: 98.,
+//!     }
+//! )
+//! ```
+
 mod bounding_box_builder;
 pub use bounding_box_builder::{BoundingBoxBuilder, BoundingBoxBuilderError};
 
