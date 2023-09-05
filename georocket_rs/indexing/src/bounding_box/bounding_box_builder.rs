@@ -7,7 +7,7 @@ use super::GeoPoint;
 /// A builder to create [`BoundingBox`es](BoundingBox).
 ///
 /// The Builder takes x and y coordinates to specify the `BoundingBox`.
-/// It will retrung `None`, if no coordinates have been provided.
+/// It will return `None`, if no coordinates have been provided.
 #[derive(Debug)]
 pub struct BoundingBoxBuilder {
     inner: Inner,

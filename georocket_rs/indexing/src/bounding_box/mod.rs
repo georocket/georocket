@@ -1,8 +1,8 @@
 //! The `bounding_box` module contains the [`BoundingBox`], the [`BoundingBoxBuilder`]
-//! and related [errors](BoundingBoxBuilderError). Thoe `BoundingBoxBuidler` should be used
+//! and related [errors](BoundingBoxBuilderError). The `BoundingBoxBuilder` should be used
 //! when creating bounding boxes in an iterative fashion, as the it allows
 //! adding points as they become available. It will also validate the bounding box and return
-//! an error, if the resulting bounding box would be invalid, such as if it were to violate
+//! an error if the resulting bounding box would be invalid, such as if it were to violate
 //! the range of longitudes and latitudes as defined by
 //! [WGS84](https://en.wikipedia.org/wiki/World_Geodetic_System).
 //!
@@ -28,7 +28,7 @@
 //!
 //! # Single Point
 //! If only a single point is provided, the `BoundingBoxBuilder` will
-//! return a `BoudingBox` with the `Point` variant:
+//! return a `BoundingBox` with the `Point` variant:
 //!
 //! ```
 //! # use indexing::bounding_box::*;
@@ -40,7 +40,7 @@
 //!
 //! # No Points
 //!
-//! If no points have been provided to the `BoundingBoxBuilde`, it will return
+//! If no points have been provided to the `BoundingBoxBuildr`, it will return
 //! `None`:
 //!
 //! ```
@@ -48,8 +48,6 @@
 //! let mut bbox_builder = BoundingBoxBuilder::new();
 //! assert!(bbox_builder.build().is_ok_and(|bbox| bbox.is_none()));
 //! ```
-//!
-//! #
 //!
 //! # Errors
 //! The [`BoundingBoxBuilder::build`] method can error. It will error if
