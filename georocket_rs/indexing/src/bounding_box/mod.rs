@@ -1,8 +1,9 @@
 use std::error::Error;
-use std::fmt::Display;
+mod bounding_box_builder;
+pub use bounding_box_builder::BoundingBoxBuilder;
 
-use serde::Deserialize;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use std::fmt::Display;
 
 #[derive(Debug, PartialEq)]
 pub enum BoundingBoxError {
@@ -34,7 +35,7 @@ impl Display for BoundingBoxError {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy)]
 pub enum BoundingBox {
     Point(GeoPoint),
     Box([GeoPoint; 5]),
@@ -44,119 +45,6 @@ pub enum BoundingBox {
 pub struct GeoPoint {
     x: f64,
     y: f64,
-}
-
-#[derive(Debug)]
-pub enum BoundingBoxBuilder {
-    Point {
-        x: f64,
-        y: f64,
-    },
-    BBoxPoints {
-        min_x: f64,
-        max_x: f64,
-        min_y: f64,
-        max_y: f64,
-    },
-    Uninitialized,
-}
-
-impl From<BoundingBoxBuilder> for BoundingBoxError {
-    fn from(bbox: BoundingBoxBuilder) -> Self {
-        debug_assert!(
-            !matches!(bbox, BoundingBoxBuilder::Uninitialized),
-            "BoundingBoxError should not be generated from `BoundingBoxBuilder::Uninitialized`"
-        );
-        match bbox {
-            BoundingBoxBuilder::Point { x, y } => Self::InvalidCoordinates {
-                min_x: x,
-                min_y: y,
-                max_x: x,
-                max_y: y,
-            },
-            BoundingBoxBuilder::BBoxPoints {
-                min_x,
-                max_x,
-                min_y,
-                max_y,
-            } => Self::InvalidCoordinates {
-                min_x,
-                min_y,
-                max_x,
-                max_y,
-            },
-            BoundingBoxBuilder::Uninitialized => unreachable!(
-                "BoundingBoxError should not be generated from `BoundingBoxBuilder::Uninitialized`"
-            ),
-        }
-    }
-}
-
-impl BoundingBoxBuilder {
-    pub fn new() -> Self {
-        Self::Uninitialized
-    }
-    pub fn validate(&self) -> bool {
-        let valid_point = |x, y| (x >= -180. && x <= 180.) && (y >= -90. && y <= 90.);
-        match *self {
-            BoundingBoxBuilder::Point { x, y } => valid_point(x, y),
-            BoundingBoxBuilder::BBoxPoints {
-                min_x,
-                max_x,
-                min_y,
-                max_y,
-            } => valid_point(min_x, min_y) && valid_point(max_x, max_y),
-            BoundingBoxBuilder::Uninitialized => true,
-        }
-    }
-    pub fn build(self) -> Result<Option<BoundingBox>, BoundingBoxError> {
-        if self.validate() {
-            Ok(match self {
-                BoundingBoxBuilder::Point { x, y } => Some(BoundingBox::Point(GeoPoint { x, y })),
-                BoundingBoxBuilder::BBoxPoints {
-                    min_x,
-                    max_x,
-                    min_y,
-                    max_y,
-                } => Some(BoundingBox::Box([
-                    GeoPoint { x: min_x, y: min_y },
-                    GeoPoint { x: max_x, y: min_y },
-                    GeoPoint { x: max_x, y: max_y },
-                    GeoPoint { x: min_x, y: max_y },
-                    GeoPoint { x: min_x, y: min_y },
-                ])),
-                BoundingBoxBuilder::Uninitialized => None,
-            })
-        } else {
-            Err(self.into())
-        }
-    }
-    pub fn add_point(self, x: f64, y: f64) -> Self {
-        match self {
-            Self::Uninitialized => Self::Point { x, y },
-            Self::Point { x: px, y: py } => {
-                let (min_x, max_x) = if x < px { (x, px) } else { (px, x) };
-                let (min_y, max_y) = if y < py { (y, py) } else { (py, y) };
-                Self::BBoxPoints {
-                    min_x,
-                    max_x,
-                    min_y,
-                    max_y,
-                }
-            }
-            Self::BBoxPoints {
-                min_x,
-                max_x,
-                min_y,
-                max_y,
-            } => Self::BBoxPoints {
-                min_x: if x < min_x { x } else { min_x },
-                min_y: if y < min_y { y } else { min_y },
-                max_y: if y > max_y { y } else { max_y },
-                max_x: if x > max_x { x } else { max_x },
-            },
-        }
-    }
 }
 
 #[cfg(test)]
