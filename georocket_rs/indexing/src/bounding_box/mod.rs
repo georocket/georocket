@@ -251,4 +251,17 @@ mod tests {
             assert_out_of_bounds_polygon(&polygon)
         }
     }
+
+    #[test]
+    fn bounding_box_builder_error_display() {
+        let bbox_error = BoundingBoxBuilder::new()
+            .add_point(-181., -91.)
+            .add_point(181., 91.)
+            .build()
+            .unwrap_err();
+        let error_display = format!("{}", bbox_error);
+        assert_eq!(error_display.as_str(), 
+                "invalid bounding box [-181, -91, 181, 91]. Values outside [-180.0, -90.0, 180.0, 90.0]",
+        )
+    }
 }
