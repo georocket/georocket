@@ -2,3 +2,5 @@
 target/
 target
 .DS_Store
+bacon.toml
+tarpaulin-report.html
