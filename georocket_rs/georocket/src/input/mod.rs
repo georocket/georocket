@@ -20,7 +20,7 @@ pub struct SplitterChannels {
 }
 
 impl SplitterChannels {
-    fn new_with_channels(
+    pub fn new_with_channels(
         chunk_capacity: usize,
         raw_capactity: usize,
     ) -> (
@@ -61,4 +61,8 @@ impl SplitterChannels {
     ) -> Result<(), tokio::sync::mpsc::error::SendError<Vec<u8>>> {
         self.raw_send.send(raw).await
     }
+}
+
+pub enum Splitter<R> {
+    GeoJson(GeoJsonSplitter<R>),
 }

@@ -9,9 +9,10 @@ edition = "2021"
 actson = {path = "/Users/lion/code/fraunhofer/actson-rs", features = ["tokio"]}
 anyhow = "1.0.71"
 async-channel = "1.8.0"
-clap = "4.3.21"
+clap = {version = "4.3.21", features = ["derive"]}
 thiserror = "1.0.40"
 tokio = {version = "1.28.2", features = ["sync", "rt", "macros", "io-util", "fs"]}
+uuid = {version = "1.4.1", features = ["v4", "fast-rng"]}
 
 [dev-dependencies]
 serde_json = "1.0.104"
