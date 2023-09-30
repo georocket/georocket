@@ -1,26 +1,17 @@
 use actson::feeder::PushJsonFeeder;
 use actson::{JsonEvent, JsonParser};
 use anyhow::{bail, Result};
-use async_channel;
 use tokio::io::{AsyncBufReadExt, AsyncRead, BufReader};
-use tokio::sync::mpsc;
-
-pub type GeoJsonChunk = Vec<(JsonEvent, Payload)>;
 
 const EXTEND: usize = 1024;
 
 mod buffer;
 use buffer::Buffer;
 
-use super::{Chunk, SplitterChannels};
+use crate::types::{GeoJsonChunk, Payload};
 
-#[derive(Debug, Clone)]
-pub enum Payload {
-    String(String),
-    Int(i64),
-    Double(f64),
-    None,
-}
+use super::SplitterChannels;
+
 
 #[derive(PartialEq, Debug)]
 pub enum GeoJsonType {
@@ -150,8 +141,7 @@ where
                 let end = self.parser.parsed_bytes();
                 let count = (end - begin) + 1;
                 let raw = self.buffer.retrieve_marked(count);
-                self.channels.send_raw(raw).await?;
-                self.channels.send_chunk(chunk).await?;
+                self.channels.send(chunk, raw).await?;
                 GeoJsonType::Object
             }
             GeoJsonType::Collection => GeoJsonType::Collection,
@@ -263,8 +253,7 @@ where
                     self.buffer.drain_marked(count);
  
                     // send out the data
-                    self.channels.send_chunk(chunk).await?;
-                    self.channels.send_raw(bytes).await?;
+                    self.channels.send(chunk, bytes).await?;
                     previously_parsed = end;
                 }
                 _ => unreachable!("`find_next()` should have returned an error, if any other events are found here"),
@@ -311,6 +300,8 @@ where
 
 #[cfg(test)]
 mod test {
+    use crate::types::{RawChunk, Chunk};
+
     use super::*;
     use std::{collections::HashMap, path::Path};
     use tokio::fs::{read_to_string, File};
@@ -322,7 +313,7 @@ mod test {
         path: &Path,
     ) -> (
         tokio::task::JoinHandle<Result<GeoJsonType, anyhow::Error>>,
-        tokio::task::JoinHandle<Vec<Vec<u8>>>,
+        tokio::task::JoinHandle<Vec<RawChunk>>,
         tokio::task::JoinHandle<Vec<Chunk>>,
     ) {
         let (splitter_handle, chunk_rec, mut raw_rec) = setup(path).await;
@@ -348,7 +339,7 @@ mod test {
     ) -> (
         tokio::task::JoinHandle<Result<GeoJsonType, anyhow::Error>>,
         async_channel::Receiver<Chunk>,
-        tokio::sync::mpsc::Receiver<Vec<u8>>,
+        tokio::sync::mpsc::Receiver<RawChunk>,
     ) {
         let geo_json = File::open(path).await.unwrap();
 
@@ -370,7 +361,7 @@ mod test {
         let raw = raw_strings.await.unwrap()[0].clone();
         let control = control.await.unwrap().unwrap();
         let geo_json_type = splitter.await.unwrap().unwrap();
-        assert_eq!(String::from_utf8(raw).unwrap(), control);
+        assert_eq!(String::from_utf8(raw.raw).unwrap(), control);
         assert_eq!(geo_json_type, GeoJsonType::Object);
     }
 
@@ -384,7 +375,7 @@ mod test {
             split_geo_json(Path::new("test_files/simple_collection_01.json")).await;
         let raw_strings = raw_strings.await.unwrap();
         let chunks = chunks.await.unwrap();
-        for feature in raw_strings.into_iter().map(|raw| String::from_utf8(raw).unwrap()) {
+        for feature in raw_strings.into_iter().map(|raw| String::from_utf8(raw.raw).unwrap()) {
             let index = control_strings.iter().position(|f| f == &feature).unwrap();
             control_strings.remove(index);
         }
@@ -445,7 +436,7 @@ mod test {
         while let Some(feature) = raw_strings.recv().await {
             // convert the feature to a serde_json::Value and back to a string. This insures the
             // formatting is the same
-            let feature = String::from_utf8(feature).unwrap();
+            let feature = String::from_utf8(feature.raw).unwrap();
             let feature: serde_json::Value = serde_json::from_str(feature.as_str()).unwrap();
             let feature = serde_json::to_string(&feature).unwrap();
             control_values_map

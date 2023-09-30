@@ -1,7 +1,9 @@
 use clap::{Args, Parser, Subcommand};
+
 use georocket::{
-    input::{GeoJsonSplitter, SplitterChannels},
-    output::FileStore,
+    importer::GeoDataImporter,
+    input::{GeoJsonSplitter, Inner, Splitter, SplitterChannels},
+    output::{FileStore, Store},
 };
 use std::{ffi::OsStr, path::PathBuf};
 
@@ -86,69 +88,14 @@ impl TryInto<FileType> for &OsStr {
     }
 }
 
-struct GeoDataImporter {
-    splitter: Splitter,
-    store: Store,
-}
-
-impl GeoDataImporter {
-    fn new(splitter: Splitter, store: Store) -> Self {
-        Self { splitter, store }
-    }
-
-    async fn run(self) -> anyhow::Result<()> {
-        let splitter_handle = tokio::spawn(self.splitter.run());
-        let store_handle = tokio::spawn(self.store.run());
-        Ok(())
-    }
-}
-
-enum Store {
-    FileStore(FileStore),
-}
-
-impl Store {
-    async fn run(self) -> anyhow::Result<()> {
-        match self {
-            Store::FileStore(file_store) => file_store.run().await?,
-        };
-        Ok(())
-    }
-}
-
-enum Inner<R> {
-    GeoJson(GeoJsonSplitter<R>),
-}
-
-enum Splitter {
-    File(Inner<tokio::fs::File>),
-}
-
-impl Splitter {
-    async fn run(self) -> anyhow::Result<()> {
-        match self {
-            Splitter::File(Inner::GeoJson(geo_json_splitter)) => {
-                geo_json_splitter.run().await?;
-            }
-        };
-        Ok(())
-    }
-}
-
-impl<R> Inner<R> {
-    fn from_geo_json_splitter(splitter: GeoJsonSplitter<R>) -> Self {
-        Self::GeoJson(splitter)
-    }
-}
-
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
-    match cli.command {
+    Ok(match cli.command {
         Commands::Import(import_args) => {
             let importer = import_args.build().await?;
-            importer.run()
+            importer.run().await?
         }
-    }
+    })
 }
