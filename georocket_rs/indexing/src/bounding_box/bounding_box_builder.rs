@@ -8,7 +8,7 @@ use super::GeoPoint;
 ///
 /// The Builder takes x and y coordinates to specify the `BoundingBox`.
 /// It will return `None`, if no coordinates have been provided.
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct BoundingBoxBuilder {
     inner: Inner,
 }
@@ -32,6 +32,7 @@ impl BoundingBoxBuilder {
     }
     /// Adds a coordinate point to the builder. No validation is done in this method,
     /// instead [`build`](BoundingBoxBuilder::build) does validation when called.
+    #[must_use]
     pub fn add_point(self, x: f64, y: f64) -> Self {
         Self {
             inner: self.inner.add_point(x, y),
@@ -39,7 +40,7 @@ impl BoundingBoxBuilder {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 enum Inner {
     Point {
         x: f64,
