@@ -63,7 +63,7 @@ impl SplitterChannels {
         chunk: impl Into<InnerChunk>,
     ) -> Result<(), async_channel::SendError<Chunk>> {
         let chunk = chunk.into();
-        let chunk = Chunk { id, chunk };
+        let chunk = Chunk { id, inner: chunk };
         self.chunk_send.send(chunk).await
     }
 

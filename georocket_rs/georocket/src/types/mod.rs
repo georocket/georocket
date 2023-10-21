@@ -25,7 +25,7 @@ pub enum Payload {
 #[derive(Clone)]
 pub struct Chunk {
     pub id: usize,
-    pub chunk: InnerChunk,
+    pub inner: InnerChunk,
 }
 
 #[derive(Clone)]
@@ -56,4 +56,10 @@ pub struct Index {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum IndexElement {
     BoundingBoxIndex(BoundingBox),
+}
+
+impl From<BoundingBox> for IndexElement {
+    fn from(value: BoundingBox) -> Self {
+        Self::BoundingBoxIndex(value)
+    }
 }
