@@ -113,24 +113,18 @@ impl Inner {
             E::StartArray | E::StartObject => self.increase_level(),
             JsonEvent::EndArray | JsonEvent::EndObject => self.decrease_level(),
             E::FieldName => {
-                if let Payload::String(value) = payload {
-                    if value.as_str() == "coordinates" {
-                        *self = Self::Processing {
-                            bounding_box_builder: BoundingBoxHelper::Init,
-                            current_level: 0,
-                        }
+                if payload.is_some_and(|val| val.as_str() == "coordinates") {
+                    *self = Self::Processing {
+                        bounding_box_builder: BoundingBoxHelper::Init,
+                        current_level: 0,
                     }
-                } else {
-                    unreachable!("Payload of JsonEven::FieldName should always be a `String`")
                 }
             }
             E::ValueInt | E::ValueDouble => {
-                let coordinate_component = match payload {
-                    Payload::Double(value) => value,
-                    Payload::Int(value) => value as f64,
-                    Payload::String(value) => value.parse::<f64>().unwrap(),
-                    _ => panic!("Unexpected payload type"),
-                };
+                let coordinate_component = payload
+                    .expect("payload of JsonEvent::{ValueInt, ValueDouble} shoud always be Some")
+                    .parse::<f64>()
+                    .unwrap();
                 self.add_coordinate_component(coordinate_component)
             }
             _ => (),

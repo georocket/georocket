@@ -88,7 +88,7 @@ impl Inner {
             _ => (),
         }
     }
-    fn add_value(&mut self, value: Payload) {
+    fn add_value(&mut self, value: String) {
         match self {
             Inner::Processing {
                 attribute_builder_helper,
@@ -108,17 +108,14 @@ impl Inner {
         match json_event {
             E::StartArray | E::StartObject => self.increase_level(),
             E::EndArray | E::EndObject => self.decrease_level(),
-            E::FieldName => {
-                if let Payload::String(field_name) = payload {
-                    self.add_key(field_name)
-                } else {
-                    unreachable!("FieldName payload must always be a String")
-                }
-            }
-            E::ValueDouble | E::ValueInt | E::ValueString => self.add_value(payload),
-            E::ValueFalse => self.add_value(Payload::String("false".to_string())),
-            E::ValueTrue => self.add_value(Payload::String("true".to_string())),
-            E::ValueNull => self.add_value(Payload::String("null".to_string())),
+            E::FieldName => self
+                .add_key(payload.expect("Payload of JsonEvent::FiledName should always be Some")),
+            E::ValueDouble | E::ValueInt | E::ValueString => self.add_value(payload.expect(
+                "Payload of JsonEvent::{ValueDouble, ValueInt, ValueDouble} should always be Some",
+            )),
+            E::ValueFalse => self.add_value("false".to_string()),
+            E::ValueTrue => self.add_value("true".to_string()),
+            E::ValueNull => self.add_value("null".to_string()),
             _ => (),
         }
     }
@@ -153,24 +150,11 @@ impl AttributesBuilderHelper {
         }
     }
     #[must_use]
-    fn add_value(self, value: Payload) -> Self {
+    fn add_value(self, value: String) -> Self {
         match self {
             AttributesBuilderHelper::WaitingForKey(_) => self,
             AttributesBuilderHelper::WaitingForValue(mut attributes_builder, key) => {
-                match value {
-                    Payload::String(value) => {
-                        attributes_builder = attributes_builder.add_attribute(key, value);
-                    }
-                    Payload::Int(value) => {
-                        attributes_builder = attributes_builder.add_attribute_integer(key, value);
-                    }
-                    Payload::Double(value) => {
-                        attributes_builder = attributes_builder.add_attribute_double(key, value);
-                    }
-                    Payload::None => {
-                        unreachable!("Payload must be a String, Int, or Double")
-                    }
-                };
+                attributes_builder = attributes_builder.add_attribute(key, value);
                 Self::WaitingForKey(attributes_builder)
             }
         }
@@ -205,21 +189,22 @@ mod tests {
             let mut helper = AttributesBuilderHelper::default();
             assert!(matches!(helper, AttributesBuilderHelper::WaitingForKey(_)));
             let key_values = [
-                ("string".to_string(), Payload::String("value".to_string())),
-                ("int".to_string(), Payload::Int(1)),
-                ("float".to_string(), Payload::Double(1.0)),
-            ]
-            .iter();
-
-            for (key, value) in key_values.clone().cloned() {
+                ("string".to_string(), "value".to_string()),
+                ("int".to_string(), "1".to_string()),
+                ("float".to_string(), "1.0".to_string()),
+            ];
+            for (key, value) in key_values.iter().cloned() {
                 helper = helper.set_key(key);
                 helper = helper.add_value(value);
             }
             let attributes = helper.into_inner().unwrap().build();
             assert_eq!(attributes.len(), 3);
-            for (key, value) in key_values {
-                assert_eq!(attributes.get(key).unwrap(), value);
-            }
+            assert_eq!(
+                attributes.get("string"),
+                Some(&Value::String("value".to_string())),
+            );
+            assert_eq!(attributes.get("int"), Some(&Value::Integer(1)));
+            assert_eq!(attributes.get("float"), Some(&Value::Double(1.0)));
         }
     }
 

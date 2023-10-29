@@ -91,10 +91,10 @@ impl Buffer {
     }
 
     /// returns an iterator over the next `count` bytes. Consumes the bytes from the buffer.
-    pub(crate) fn get_bytes_iter(&mut self, count: usize) -> Take<Skip<Iter<u8>>> {
+    pub(crate) fn get_bytes_iter(&mut self, count: usize) -> impl Iterator<Item = &u8> {
         let iter = self.inner.iter().skip(self.consumed).take(count);
         self.consumed = self.inner.len().min(self.consumed + count);
-        iter
+        Box::new(iter)
     }
 
     /// returns the next byte, consuming it

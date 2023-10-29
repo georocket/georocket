@@ -15,13 +15,7 @@ impl From<GeoJsonType> for GeoDataType {
     }
 }
 
-#[derive(Debug, Clone)]
-pub enum Payload {
-    String(String),
-    Int(i64),
-    Double(f64),
-    None,
-}
+pub type Payload = Option<String>;
 
 #[derive(Clone)]
 pub struct Chunk {

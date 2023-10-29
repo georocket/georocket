@@ -86,7 +86,7 @@ where
         self.find_next(&[StartObject]).await?;
         let begin = self.parser.parsed_bytes();
         self.buffer.set_marker(begin - 1);
-        let mut chunk: GeoJsonChunk = vec![(StartObject, Payload::None)];
+        let mut chunk: GeoJsonChunk = vec![(StartObject, None)];
         let mut depth: u32 = 1;
         let mut geo_json_type = GeoJsonType::Object;
         loop {
@@ -100,32 +100,26 @@ where
                 }
                 StartObject => {
                     depth += 1;
-                    Payload::None
+                    None
                 }
                 EndObject => {
                     depth -= 1;
-                    Payload::None
+                    None
                 }
-                FieldName | ValueString | ValueInt | ValueDouble => {
-                    Self::extract_payload(event, self.parser.current_string()?)?
-                }
-                _ => Payload::None,
+                FieldName | ValueString | ValueInt | ValueDouble => Some(self.parser.current_string()?.to_owned()),
+                _ => None,
             };
             // Check if the field name indicates that this is a `FeatureCollection` or
             // `GeometryCollection` and proceed accordingly, calling the `process_collection()`
             // method in such a case.
             if event == FieldName {
-                if let Payload::String(f) = &payload {
-                    match f.as_str().into() {
-                        FieldNames::Features | FieldNames::Geometries => {
-                            self.process_collection().await?;
-                            geo_json_type = GeoJsonType::Collection;
-                            break;
-                        }
-                        _ => (),
+                match payload.as_ref().expect("payload must be a Some, otherwise it cannot be a field name").as_str().into() {
+                    FieldNames::Features | FieldNames::Geometries => {
+                        self.process_collection().await?;
+                        geo_json_type = GeoJsonType::Collection;
+                        break;
                     }
-                } else {
-                    unreachable!("payload must be a string, otherwise it cannot be a field name")
+                    _ => (),
                 }
             }
             chunk.push((event, payload));
@@ -149,27 +143,6 @@ where
         Ok(geo_json_type)
     }
 
-    /// Attempts to extract the appropriate payload from the provided string.
-    ///
-    /// # Errors
-    ///
-    /// This function will error if the string cannot be parsed into the appropriate type.
-    fn extract_payload(event: JsonEvent, payload: &str) -> anyhow::Result<Payload> {
-        use JsonEvent::*;
-        debug_assert!(
-            (event == ValueDouble
-                || event == ValueInt
-                || event == ValueString
-                || event == FieldName),
-            "cannot extract payload from a field that is not ValueInt, ValueDouble or ValueString"
-        );
-        Ok(match event {
-            ValueString | FieldName => Payload::String(payload.into()),
-            ValueDouble => Payload::Double(payload.parse()?),
-            ValueInt => Payload::Int(payload.parse()?),
-            _ => unreachable!(),
-        })
-    }
 
     /// Fills the parsers feeder with bytes from the buffer.
     /// Fills the buffer from the reader, if all bytes in the buffer have been consumed.
@@ -265,7 +238,7 @@ where
     /// Attempts to process the next chunk in a collection.
     async fn next_chunk(&mut self) -> anyhow::Result<GeoJsonChunk> {
         use JsonEvent::*;
-        let mut chunk: GeoJsonChunk = vec![(StartObject, Payload::None)];
+        let mut chunk: GeoJsonChunk = vec![(StartObject, None)];
         let mut depth: u32 = 1;
         loop {
             let event = self.parser.next_event();
@@ -278,16 +251,16 @@ where
                 }
                 StartObject => {
                     depth += 1;
-                    Payload::None
+                    None
                 }
                 EndObject => {
                     depth -= 1;
-                    Payload::None
+                    None
                 }
                 FieldName | ValueString | ValueInt | ValueDouble => {
-                    Self::extract_payload(event, self.parser.current_string()?)?
+                    Some(self.parser.current_string()?.to_owned())
                 }
-                _ => Payload::None,
+                _ => None,
             };
             chunk.push((event, payload));
             if depth == 0 {
