@@ -3,6 +3,9 @@ use crate::types::{GeoJsonChunk, IndexElement};
 pub mod bounding_box_indexer;
 use bounding_box_indexer::BoundingBoxIndexer;
 
+pub mod attributes_indexer;
+use attributes_indexer::AttributesIndexer;
+
 pub struct GeoJsonIndexer {
     chunk: GeoJsonChunk,
     bounding_box_indexer: BoundingBoxIndexer,

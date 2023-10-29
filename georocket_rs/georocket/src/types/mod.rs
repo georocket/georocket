@@ -1,4 +1,5 @@
 use actson::JsonEvent;
+use indexing::attributes::Attributes;
 use indexing::bounding_box::BoundingBox;
 use serde::{Deserialize, Serialize};
 
@@ -56,6 +57,7 @@ pub struct Index {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum IndexElement {
     BoundingBoxIndex(BoundingBox),
+    Attributes(Attributes),
 }
 
 impl From<BoundingBox> for IndexElement {

@@ -29,47 +29,48 @@ struct ImportArgs {
 
 impl ImportArgs {
     async fn build(self) -> anyhow::Result<GeoDataImporter> {
-        let ImportArgs { file, path } = self;
-
-        if !file.is_file() {
-            if file.is_dir() {
-                anyhow::bail!(
-                    "specified path for input file is a directory, not a file: '{:?}'",
-                    file
-                );
-            } else {
-                anyhow::bail!("")
-            }
-        }
-
-        let filetype: FileType = if let Some(extension) = file.as_path().extension() {
-            extension.try_into()?
-        } else {
-            anyhow::bail!(
-                "cannot infer file type from filename: '{:?}'",
-                file.as_path().extension()
-            );
-        };
-        let file = tokio::fs::File::open(file).await?;
-
-        let (splitter_channels, chunk_rec, raw_rec) =
-            SplitterChannels::new_with_channels(1024, 1024);
-
-        let splitter = match filetype {
-            FileType::JSON => Splitter::File(Inner::GeoJson(GeoJsonSplitter::new(
-                file,
-                splitter_channels,
-            ))),
-        };
-
-        let destination = if let Some(destination) = path {
-            destination
-        } else {
-            std::env::current_dir()?
-        };
-
-        let store = Store::FileStore(FileStore::new(destination, raw_rec).await?);
-        Ok(GeoDataImporter::new(splitter, store))
+        todo!()
+        // let ImportArgs { file, path } = self;
+        //
+        // if !file.is_file() {
+        //     if file.is_dir() {
+        //         anyhow::bail!(
+        //             "specified path for input file is a directory, not a file: '{:?}'",
+        //             file
+        //         );
+        //     } else {
+        //         anyhow::bail!("")
+        //     }
+        // }
+        //
+        // let filetype: FileType = if let Some(extension) = file.as_path().extension() {
+        //     extension.try_into()?
+        // } else {
+        //     anyhow::bail!(
+        //         "cannot infer file type from filename: '{:?}'",
+        //         file.as_path().extension()
+        //     );
+        // };
+        // let file = tokio::fs::File::open(file).await?;
+        //
+        // let (splitter_channels, chunk_rec, raw_rec) =
+        //     SplitterChannels::new_with_channels(1024, 1024);
+        //
+        // let splitter = match filetype {
+        //     FileType::JSON => Splitter::File(Inner::GeoJson(GeoJsonSplitter::new(
+        //         file,
+        //         splitter_channels,
+        //     ))),
+        // };
+        //
+        // let destination = if let Some(destination) = path {
+        //     destination
+        // } else {
+        //     std::env::current_dir()?
+        // };
+        //
+        // let store = Store::FileStore(FileStore::new(destination, raw_rec).await?);
+        // Ok(GeoDataImporter::new(splitter, store))
     }
 }
 
