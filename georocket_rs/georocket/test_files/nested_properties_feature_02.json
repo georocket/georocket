@@ -1,0 +1,27 @@
+{
+  "type": "Feature",
+  "geometry": {
+    "type": "Point",
+    "coordinates": [
+      0,
+      0
+    ]
+  },
+  "properties": {
+    "base": {
+      "val0_0": null,
+      "nest1": {
+        "val1_0": 1,
+        "nest2": {
+          "val2_0": 2.0,
+          "nest3": {
+            "val3": "three"
+          },
+          "val2_1": 4.0
+        },
+        "val1_1": 5
+      },
+      "val0_1": true
+    }
+  }
+}
