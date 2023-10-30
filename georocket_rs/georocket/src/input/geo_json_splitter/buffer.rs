@@ -94,7 +94,7 @@ impl Buffer {
     pub(crate) fn get_bytes_iter(&mut self, count: usize) -> impl Iterator<Item = &u8> {
         let iter = self.inner.iter().skip(self.consumed).take(count);
         self.consumed = self.inner.len().min(self.consumed + count);
-        Box::new(iter)
+        iter
     }
 
     /// returns the next byte, consuming it
