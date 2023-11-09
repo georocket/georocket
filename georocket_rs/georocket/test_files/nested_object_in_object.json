@@ -8,6 +8,11 @@
     ]
   },
   "properties": {
-    "array": [1, [1 ,2], {"field":  5}]
+    "object1": {
+      "object2": {
+        "val_1": 1
+      },
+      "val_2": 2
+    }
   }
 }

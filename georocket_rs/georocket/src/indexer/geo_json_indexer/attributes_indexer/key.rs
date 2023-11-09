@@ -1,9 +1,13 @@
+use std::fmt::Display;
+use std::fmt::Write;
+
 pub struct Key {
     key: String,
     component_offsets: Vec<usize>,
 }
 
 impl Key {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             key: String::new(),
@@ -16,19 +20,15 @@ impl Key {
             component_offsets: Vec::new(),
         }
     }
-    #[must_use]
-    pub fn push(mut self, component: &str) -> Self {
-        if self.key.is_empty() {
-            self.key = component.into();
-        } else {
-            self.component_offsets.push(self.key.len());
+    pub fn push(&mut self, component: impl Display) -> &mut Self {
+        self.component_offsets.push(self.key.len());
+        if !self.key.is_empty() {
             self.key.push('.');
-            self.key.push_str(&component);
         }
+        write!(self.key, "{}", component).expect("component could not be written to key");
         self
     }
-    #[must_use]
-    pub fn pop(mut self) -> Self {
+    pub fn pop(&mut self) -> &mut Self {
         if let Some(offset) = self.component_offsets.pop() {
             self.key.truncate(offset);
         } else {
@@ -42,6 +42,15 @@ impl Key {
     pub fn is_empty(&self) -> bool {
         self.key.is_empty()
     }
+    pub fn clone_inner(&self) -> String {
+        self.key.clone()
+    }
+}
+
+impl AsRef<str> for Key {
+    fn as_ref(&self) -> &str {
+        self.key()
+    }
 }
 
 #[cfg(test)]
@@ -49,38 +58,45 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_pop_empty_key() {
+        let mut key = Key::new();
+        key.pop();
+        assert_eq!("", key.key);
+    }
+
+    #[test]
     fn test_push() {
         let mut key = Key::new();
-        key = key.push("base");
+        key.push("base");
         assert_eq!(key.key, "base");
-        key = key.push("component");
+        key.push("component");
         assert_eq!(key.key, "base.component");
     }
 
     #[test]
     fn test_push_component_with_dot() {
         let mut key = Key::new();
-        key = key.push("base");
+        key.push("base");
         assert_eq!(key.key, "base");
-        key = key.push("component.with.dot");
+        key.push("component.with.dot");
         assert_eq!(key.key, "base.component.with.dot");
     }
 
     #[test]
     fn test_pop() {
         let mut key = Key::new();
-        key = key.push("base").push("component").pop();
+        key.push("base").push("component").pop();
         assert_eq!(key.key, "base");
-        key = key.pop();
+        key.pop();
         assert_eq!(key.key, "");
     }
 
     #[test]
     fn test_pop_component_with_dot() {
         let mut key = Key::new();
-        key = key.push("base.component").push("component.with.dot").pop();
+        key.push("base.component").push("component.with.dot").pop();
         assert_eq!(key.key, "base.component");
-        key = key.pop();
+        key.pop();
         assert_eq!(key.key, "");
     }
 }

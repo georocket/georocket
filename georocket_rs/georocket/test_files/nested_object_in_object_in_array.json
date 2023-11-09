@@ -1,0 +1,22 @@
+{
+  "type": "Feature",
+  "properties": {
+    "array": [
+      {
+        "object1": {
+          "object2": {
+            "val_1": 1
+          },
+          "val_2": 2
+        }
+      }
+    ]
+  },
+  "geometry": {
+    "type": "Point",
+    "coordinates": [
+      125.6,
+      10.1
+    ]
+  }
+}

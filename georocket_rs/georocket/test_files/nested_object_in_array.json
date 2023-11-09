@@ -1,4 +1,7 @@
 {
+  "properties": {
+    "array": [ { "val_0": 0}, 1 ]
+  },
   "type": "Feature",
   "geometry": {
     "type": "Point",
@@ -6,8 +9,5 @@
       125.6,
       10.1
     ]
-  },
-  "properties": {
-    "array": [1, [1 ,2], {"field":  5}]
   }
 }

@@ -44,9 +44,8 @@
 //! assert_eq!(attributes.get("malformed_integer"), Some(&Value::String("4E".to_string())));
 //! ```
 
-
-use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 /// A type representing the different values an attribute can have.
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
@@ -80,14 +79,20 @@ impl AttributesBuilder {
     /// it will be stored as a `Value::Integer` or `Value::Double` respectively. Otherwise, it will
     /// be stored as a `Value::String`.
     #[must_use]
-    pub fn add_attribute(mut self, key: String, value: String) -> Self {
+    pub fn add_attribute(mut self, key: impl Into<String>, value: &str) -> Self {
+        self.add_attribute_mut(key, value);
+        self
+    }
+
+    pub fn add_attribute_mut(&mut self, key: impl Into<String>, value: &str) -> &mut Self {
+        let key = key.into();
         let value: Value = {
-            if let Ok(integer) = value.as_str().parse::<i64>() {
+            if let Ok(integer) = value.parse::<i64>() {
                 Value::Integer(integer)
-            } else if let Ok(double) = value.as_str().parse::<f64>() {
+            } else if let Ok(double) = value.parse::<f64>() {
                 Value::Double(double)
-            } else  {
-                Value::String(value)
+            } else {
+                Value::String(value.into())
             }
         };
         self.attributes.entry(key).or_insert(value);
@@ -96,6 +101,12 @@ impl AttributesBuilder {
     /// Builds the `Attributes` from the key-value pairs added to the builder.
     pub fn build(self) -> Attributes {
         self.attributes
+    }
+}
+
+impl Default for AttributesBuilder {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -108,17 +119,20 @@ mod tests {
         let attributes = AttributesBuilder::new().build();
         assert!(attributes.is_empty());
     }
-    
+
     #[test]
     fn basic_values() {
-        let attributes = AttributesBuilder::new()
-            .add_attribute("string".to_string(), "elephant".to_string())
-            .add_attribute("double".to_string(), "1.624".to_string())
-            .add_attribute("integer".to_string(), "42".to_string())
-            .build();
-        assert_eq!(attributes.get("string"), Some(&Value::String("elephant".to_string())));
+        let mut attributes = AttributesBuilder::new()
+            .add_attribute("string".to_string(), "elephant")
+            .add_attribute("double".to_string(), "1.624")
+            .add_attribute("integer".to_string(), "42");
+        attributes.add_attribute_mut("another_int".to_string(), "23");
+        let attributes = attributes.build();
+        assert_eq!(
+            attributes.get("string"),
+            Some(&Value::String("elephant".to_string()))
+        );
         assert_eq!(attributes.get("double"), Some(&Value::Double(1.624)));
         assert_eq!(attributes.get("integer"), Some(&Value::Integer(42)));
     }
-
 }

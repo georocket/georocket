@@ -1,6 +1,7 @@
 use crate::types::{IndexElement, Payload};
 use actson::JsonEvent;
 use indexing::attributes::AttributesBuilder;
+use std::fmt::{write, Display, Formatter};
 use thiserror::Error;
 
 mod key;
@@ -8,11 +9,8 @@ use key::Key;
 
 #[derive(Error, Debug)]
 pub enum AttributeIndexerError {
-    #[error(
-        "the AttributesBuilderHelper is in an invalid state to retrieve a valid Attributes value.\
-    A key was added for and the AttributesBuilderHelper is waiting for the corresponding value."
-    )]
-    InvalidHelperState,
+    #[error("AttributesIndexer needs to be in state Uninit or Done, but is in state {0}")]
+    InvalidState(State),
 }
 pub struct AttributesIndexer {
     inner: Inner,
@@ -32,166 +30,239 @@ impl AttributesIndexer {
     }
 }
 
-enum Inner {
-    Uninitialized,
-    Processing {
-        current_level: usize,
-        attribute_builder_helper: AttributesBuilderHelper,
-    },
-    Done {
-        attribute_builder: Result<AttributesBuilder, AttributeIndexerError>,
-    },
+#[derive(Copy, Clone, Debug)]
+pub enum State {
+    Uninit,
+    Start,
+    P,
+    A,
+    Done,
+}
+
+impl Display for State {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                State::Uninit => "State::Uninit",
+                State::Start => "State::Start",
+                State::P => "State::P",
+                State::A => "State::A",
+                State::Done => "State::Done",
+            }
+        )
+    }
+}
+
+enum StackAlphabet {
+    Field,
+    Array(usize),
+}
+
+use StackAlphabet as SA;
+
+struct Inner {
+    state: State,
+    key: Key,
+    stack: Vec<StackAlphabet>,
+    builder: AttributesBuilder,
 }
 
 impl Inner {
     fn new() -> Self {
-        Self::Uninitialized
-    }
-    fn increase_level(&mut self) {
-        match self {
-            Inner::Processing { current_level, .. } => {
-                *current_level += 1;
-            }
-            _ => (),
-        }
-    }
-    fn decrease_level(&mut self) {
-        match self {
-            Inner::Processing {
-                current_level,
-                attribute_builder_helper,
-            } => {
-                *current_level -= 1;
-                *attribute_builder_helper = std::mem::take(attribute_builder_helper).pop_key();
-                if *current_level == 0 {
-                    *self = Inner::Done {
-                        attribute_builder: std::mem::take(attribute_builder_helper).into_inner(),
-                    };
-                }
-            }
-            _ => (),
-        }
-    }
-    fn add_key(&mut self, key: String) {
-        match self {
-            Inner::Processing {
-                attribute_builder_helper,
-                current_level,
-            } => {
-                *attribute_builder_helper = std::mem::take(attribute_builder_helper).set_key(key);
-            }
-            Inner::Uninitialized if key.as_str() == "properties" => {
-                *self = Inner::Processing {
-                    current_level: 0,
-                    attribute_builder_helper: AttributesBuilderHelper::default(),
-                }
-            }
-            _ => (),
-        }
-    }
-    fn add_value(&mut self, value: String) {
-        match self {
-            Inner::Processing {
-                attribute_builder_helper,
-                current_level,
-            } => {
-                *attribute_builder_helper =
-                    std::mem::take(attribute_builder_helper).add_value(value);
-            }
-            _ => (),
+        Self {
+            state: State::Uninit,
+            key: Key::new(),
+            stack: Vec::new(),
+            builder: AttributesBuilder::new(),
         }
     }
     fn process_event(&mut self, event: (JsonEvent, Payload)) {
         use JsonEvent as E;
         let (json_event, payload) = event;
         match json_event {
-            E::StartObject => self.increase_level(),
-            E::EndObject => self.decrease_level(),
-            E::StartArray => self.increase_level(),
-            E::EndArray => self.decrease_level(),
-            E::FieldName => self
-                .add_key(payload.expect("Payload of JsonEvent::FiledName should always be Some")),
-            E::ValueDouble | E::ValueInt | E::ValueString => self.add_value(payload.expect(
+            E::StartObject => {
+                self.process_start_object();
+            }
+            E::EndObject => self.process_end_object(),
+            E::StartArray => self.process_start_array(),
+            E::EndArray => self.process_end_array(),
+            E::FieldName => self.process_field_name(
+                payload.expect("Payload for 'E::FieldName' should always be Some"),
+            ),
+            E::ValueDouble | E::ValueInt | E::ValueString => self.process_value(payload.expect(
                 "Payload of JsonEvent::{ValueDouble, ValueInt, ValueDouble} should always be Some",
             )),
-            E::ValueFalse => self.add_value("false".to_string()),
-            E::ValueTrue => self.add_value("true".to_string()),
-            E::ValueNull => self.add_value("null".to_string()),
+            E::ValueFalse => self.process_value("false"),
+            E::ValueTrue => self.process_value("true"),
+            E::ValueNull => self.process_value("null"),
             _ => (),
         }
     }
+    fn process_start_object(&mut self) {
+        match self.state {
+            State::Uninit => (),
+            State::Start => {
+                self.state = State::P;
+            }
+            State::P => (),
+            State::A => {
+                self.state = State::P;
+            }
+            State::Done => (),
+        }
+    }
+    fn process_end_object(&mut self) {
+        match self.state {
+            State::Uninit => (),
+            State::Start => (),
+            State::P => {
+                match self.stack.pop() {
+                    None => {
+                        self.state = State::Done;
+                    }
+                    Some(StackAlphabet::Field) => {
+                        // done with processing this Field : Value pair, pop the key component
+                        // from the key.
+                        self.state = State::P;
+                        self.key.pop();
+                        self.stack.pop().map(|val| {
+                            match val {
+                                StackAlphabet::Field => {
+                                    // object has ended, and we are still in an encompassing object.
+                                    // We need to wait for another EndObject or FieldName event.
+                                    self.state = State::P;
+                                    self.stack.push(StackAlphabet::Field);
+                                }
+                                StackAlphabet::Array(n) => {
+                                    // object has ended and we are still in an array. Increment array index
+                                    // and move back to state A
+                                    self.state = State::P;
+                                    self.stack.push(StackAlphabet::Array(n + 1));
+                                    self.key.pop().push(n + 1);
+                                }
+                            }
+                        });
+                    }
+                    Some(StackAlphabet::Array(n)) => {
+                        // object being processed at array position n is done, increment array position
+                        self.state = State::A;
+                        self.stack.push(StackAlphabet::Array(n + 1));
+                        self.key.pop().push(n + 1);
+                    }
+                }
+            }
+            State::A => unreachable!("Should not receive JsonEvent::EndObject in this state"),
+            State::Done => (),
+        }
+    }
+    fn process_start_array(&mut self) {
+        match self.state {
+            State::Uninit => (),
+            State::Start => (),
+            State::P => (),
+            State::A => {
+                self.state = State::A;
+                self.stack.push(StackAlphabet::Array(0));
+                self.key.push(0);
+            }
+            State::Done => (),
+        }
+    }
+    fn process_end_array(&mut self) {
+        match self.state {
+            State::Uninit => (),
+            State::Start => (),
+            State::P => (),
+            State::A => {
+                // pop key component representing index of current array which has ended
+                self.key.pop();
+                match self.stack.pop().expect("If we are leaving an array, there must be a StackAlphabet::Array at the top of the stack") {
+                    StackAlphabet::Array(_) => match self.stack.pop().expect("If we are leaving an array, we must either be in another array, or be the value to a corresponding field") {
+                        StackAlphabet::Array(n) => {
+                            // stay in state and increment the key component of the enclosing
+                            // array as well as the index counter on the stack
+                            self.state = State::A;
+                            self.stack.push(StackAlphabet::Array(n + 1));
+                            self.key.pop().push(n + 1);
+                        }
+                        StackAlphabet::Field => {
+                            // move to State::P and remove the key component corresponding
+                            // to the current (key, value) pair. The closed array was the value
+                            // corresponding tot he field name
+                            self.state = State::P;
+                            self.key.pop();
+                        }
+                    },
+                    StackAlphabet::Field => unreachable!("Can only end an array, if we were in one, in which case StackAlphabet::Array(_) should have been on top of the stack"),
+                }
+            }
+            State::Done => (),
+        }
+    }
+    fn process_field_name(&mut self, field_name: impl AsRef<str>) {
+        let field_name: &str = field_name.as_ref();
+        match self.state {
+            State::Uninit => {
+                if field_name == "properties" {
+                    self.state = State::Start;
+                }
+            }
+            State::Start | State::A => {
+                unreachable!("Can only receive JsonEvent::FieldName in the State::P")
+            }
+            State::P => {
+                // go to A and push the field name onto the key
+                self.state = State::A;
+                self.key.push(field_name);
+                self.stack.push(StackAlphabet::Field);
+            }
+            State::Done => (),
+        }
+    }
+    fn process_value(&mut self, value: impl AsRef<str>) {
+        let value: &str = value.as_ref();
+        match self.state {
+            State::Uninit => (),
+            State::Start => {
+                unreachable!("State::Start must always be followed by JsonEvent::StartObject")
+            }
+            State::P => unreachable!("A value must be preceded by a field name or be the element of an array, in which case we should be in State::A"),
+            State::A => {
+                match self
+                    .stack
+                    .pop()
+                    .expect("There must always be something on the stack, if we are in State::A")
+                {
+                    StackAlphabet::Field => {
+                        self.state = State::P;
+                        // add the (key, value) pair to the builder and pop the key component
+                        // corresponding to the field name from the key
+                        self.builder = std::mem::take(&mut self.builder).add_attribute(self.key.as_ref(), value.into());
+                        self.key.pop();
+                    }
+                    StackAlphabet::Array(n) => {
+                        // stay in state a and push StackAlphabet::Array(n+1) back onto the stack,
+                        // because after adding this value we are at the next array index
+                        self.state = State::A;
+                        self.stack.push(StackAlphabet::Array(n+1));
+                        self.builder.add_attribute_mut(self.key.as_ref(), value.into());// = std::mem::take(&mut self.builder).add_attribute(self.key.as_ref(), value.into());
+                        // remove the key component corresponding to the index of the value added to the builder
+                        // and replace it with the next index
+                        self.key.pop().push(n+1);
+                    }
+                }
+            }
+            State::Done => {}
+        }
+    }
     fn retrieve_index_element(self) -> Result<Option<IndexElement>, AttributeIndexerError> {
-        match self {
-            Inner::Uninitialized => Ok(None),
-            Inner::Processing {
-                attribute_builder_helper,
-                ..
-            } => {
-                todo!()
-            }
-            Inner::Done { attribute_builder } => attribute_builder
-                .map(|attribute_builder| Some(IndexElement::Attributes(attribute_builder.build()))),
+        match self.state {
+            State::Uninit => Ok(None),
+            State::Done => Ok(Some(IndexElement::Attributes(self.builder.build()))),
+            _ => Err(AttributeIndexerError::InvalidState(self.state)),
         }
-    }
-}
-
-enum AttributesBuilderHelper {
-    WaitingForKey(AttributesBuilder),
-    WaitingForValue(AttributesBuilder, Key),
-}
-
-impl AttributesBuilderHelper {
-    #[must_use]
-    fn set_key(self, key_component: String) -> Self {
-        match self {
-            Self::WaitingForKey(attribute_builder) => {
-                Self::WaitingForValue(attribute_builder, Key::new_with_root(key_component))
-            }
-            Self::WaitingForValue(attribute_builder, key) => {
-                Self::WaitingForValue(attribute_builder, key.push(&key_component))
-            }
-        }
-    }
-    #[must_use]
-    fn add_value(self, value: String) -> Self {
-        match self {
-            AttributesBuilderHelper::WaitingForKey(_) => self,
-            AttributesBuilderHelper::WaitingForValue(mut attributes_builder, mut key) => {
-                attributes_builder = attributes_builder.add_attribute(key.key().to_owned(), value);
-                key = key.pop();
-                if key.is_empty() {
-                    Self::WaitingForKey(attributes_builder)
-                } else {
-                    Self::WaitingForValue(attributes_builder, key)
-                }
-            }
-        }
-    }
-    #[must_use]
-    fn pop_key(self) -> Self {
-        match self {
-            Self::WaitingForKey(_) => self,
-            Self::WaitingForValue(mut attributes_builder, mut key) => {
-                key = key.pop();
-                if key.is_empty() {
-                    Self::WaitingForKey(attributes_builder)
-                } else {
-                    Self::WaitingForValue(attributes_builder, key)
-                }
-            }
-        }
-    }
-    fn into_inner(self) -> Result<AttributesBuilder, AttributeIndexerError> {
-        match self {
-            Self::WaitingForKey(attributes_builder) => Ok(attributes_builder),
-            Self::WaitingForValue(..) => Err(AttributeIndexerError::InvalidHelperState),
-        }
-    }
-}
-
-impl Default for AttributesBuilderHelper {
-    fn default() -> Self {
-        Self::WaitingForKey(AttributesBuilder::new())
     }
 }
 
@@ -202,83 +273,6 @@ mod tests {
     use actson::JsonEvent::ValueString;
     use indexing::attributes::Value;
     use std::path::Path;
-
-    #[test]
-    fn helper_adding_key_values() {
-        let mut helper = AttributesBuilderHelper::default();
-        assert!(matches!(helper, AttributesBuilderHelper::WaitingForKey(_)));
-        let key_values = [
-            ("string".to_string(), "value".to_string()),
-            ("int".to_string(), "1".to_string()),
-            ("float".to_string(), "1.0".to_string()),
-        ];
-        for (key, value) in key_values.iter().cloned() {
-            helper = helper.set_key(key);
-            helper = helper.add_value(value);
-        }
-        let attributes = helper.into_inner().unwrap().build();
-        assert_eq!(attributes.len(), 3);
-        assert_eq!(
-            attributes.get("string"),
-            Some(&Value::String("value".to_string())),
-        );
-        assert_eq!(attributes.get("int"), Some(&Value::Integer(1)));
-        assert_eq!(attributes.get("float"), Some(&Value::Double(1.0)));
-    }
-
-    #[test]
-    fn inner_state_transitions() {
-        use JsonEvent as E;
-        let mut inner = Inner::new();
-        assert!(matches!(inner, Inner::Uninitialized));
-        inner.process_event((E::FieldName, Some("properties".into())));
-        assert!(matches!(inner, Inner::Processing { .. }));
-        inner.process_event((E::StartObject, None));
-        inner.process_event((E::EndObject, None));
-        assert!(matches!(inner, Inner::Done { .. }))
-    }
-
-    #[test]
-    fn inner_nested_transition() {
-        use JsonEvent as E;
-        let mut inner = Inner::new();
-        inner.process_event((E::FieldName, Some("properties".into())));
-        inner.process_event((E::StartObject, None));
-        inner.process_event((E::FieldName, Some("base".into())));
-        inner.process_event((E::StartObject, None));
-        inner.process_event((E::FieldName, Some("component".into())));
-        if let Inner::Processing {
-            attribute_builder_helper,
-            current_level,
-        } = &inner
-        {
-            assert_eq!(*current_level, 2);
-            if let AttributesBuilderHelper::WaitingForValue(_, key) = attribute_builder_helper {
-                assert_eq!(key.key(), "base.component");
-            } else {
-                panic!("attribute_builder_helper should be WaitingForValue")
-            }
-        } else {
-            panic!("inner should be Inner::Processing")
-        }
-        inner.process_event((E::ValueString, Some("nested_value".into())));
-        inner.process_event((E::EndObject, None));
-        if let Inner::Processing {
-            attribute_builder_helper,
-            current_level,
-        } = &inner
-        {
-            assert_eq!(*current_level, 1);
-            if let AttributesBuilderHelper::WaitingForKey(_) = attribute_builder_helper {
-            } else {
-                panic!(
-                    "attribute_builder_helper should be WaitingForKey, as it is in the root level"
-                )
-            }
-        }
-        inner.process_event((E::EndObject, None));
-        assert!(matches!(inner, Inner::Done { .. }))
-    }
 
     #[test]
     fn inner_multiple_key_vals() {
@@ -358,12 +352,71 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn index_array() {
+        let control = vec![
+            ("array.0", Value::Integer(1)),
+            ("array.1", Value::Integer(2)),
+        ];
+        let chunks = chunks_from_file("test_files/array_as_property.json").await;
+        test_helper(vec![control], chunks);
+    }
+
+    #[tokio::test]
     async fn index_nested_properties() {
         let control = vec![
             ("prop0", Value::String("value0".into())),
             ("prop1.this", Value::String("that".into())),
         ];
         let chunks = chunks_from_file("test_files/nested_properties_feature_01.json").await;
+        test_helper(vec![control], chunks);
+    }
+
+    #[tokio::test]
+    async fn index_object_in_array() {
+        let control = vec![
+            ("array.0.val_0", Value::Integer(0)),
+            ("array.1", Value::Integer(1)),
+        ];
+        let chunks = chunks_from_file("test_files/nested_object_in_array.json").await;
+        test_helper(vec![control], chunks);
+    }
+
+    #[tokio::test]
+    async fn index_object_in_object() {
+        let control = vec![
+            ("object1.object2.val_1", Value::Integer(1)),
+            ("object1.val_2", Value::Integer(2)),
+        ];
+        let chunks = chunks_from_file("test_files/nested_object_in_object.json").await;
+        test_helper(vec![control], chunks);
+    }
+
+    #[tokio::test]
+    async fn index_object_in_object_in_array() {
+        let control = vec![
+            ("array.0.object1.object2.val_1", Value::Integer(1)),
+            ("array.0.object1.val_2", Value::Integer(2)),
+        ];
+        let chunks = chunks_from_file("test_files/nested_object_in_object_in_array.json").await;
+        test_helper(vec![control], chunks);
+    }
+    #[tokio::test]
+    async fn more_nesting() {
+        let control = vec![
+            ("array.0.val_0.0", Value::Integer(1)),
+            ("array.0.val_0.1", Value::Integer(2)),
+            ("array.0.val_0.2", Value::Integer(3)),
+            ("array.0.val_1.val_2", Value::String("true".into())),
+            ("array.1", Value::Integer(1)),
+            ("array.2", Value::Integer(2)),
+            ("array.3", Value::Integer(3)),
+            ("array.4.0", Value::Integer(1)),
+            ("array.4.1", Value::Integer(2)),
+            ("array.4.val_3.0", Value::Integer(1)),
+            ("array.4.val_3.1", Value::Integer(2)),
+            ("val_4", Value::String("null".into())),
+        ];
+        let chunks = chunks_from_file("test_files/nested_properties_feature_03.json").await;
         test_helper(vec![control], chunks);
     }
 
@@ -394,17 +447,17 @@ mod tests {
         test_helper(vec![control], chunks);
     }
 
-    // #[tokio::test]
-    // async fn array() {
-    //     let control = vec![
-    //         ("array.0", Value::Integer(1)),
-    //         ("array.1.0", Value::Integer(1)),
-    //         ("array.1.1", Value::Integer(2)),
-    //         ("array.2.field", Value::Integer(5)),
-    //     ];
-    //     let chunks = chunks_from_file("test_files/properties_array_feature_01.json").await;
-    //     test_helper(vec![control], chunks);
-    // }
+    #[tokio::test]
+    async fn array() {
+        let control = vec![
+            ("array.0", Value::Integer(1)),
+            ("array.1.0", Value::Integer(1)),
+            ("array.1.1", Value::Integer(2)),
+            ("array.2.field", Value::Integer(5)),
+        ];
+        let chunks = chunks_from_file("test_files/properties_array_feature_01.json").await;
+        test_helper(vec![control], chunks);
+    }
 
     #[tokio::test]
     async fn index_collection() {
