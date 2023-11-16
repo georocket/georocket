@@ -9,7 +9,7 @@
 //! ```
 //! # use indexing::attributes::*;
 //! let mut attributes = AttributesBuilder::new()
-//!         .add_attribute("key".to_string(), "value".to_string())
+//!         .add_attribute("key".to_string(), "value")
 //!         .build();
 //! assert_eq!(attributes.get("key"), Some(&Value::String("value".to_string())));
 //! ```
@@ -22,8 +22,8 @@
 //! ```
 //! # use indexing::attributes::*;
 //! let attributes = AttributesBuilder::new()
-//!     .add_attribute("double".to_string(), "1.624".to_string())
-//!     .add_attribute("integer".to_string(), "42".to_string())
+//!     .add_attribute("double".to_string(), "1.624")
+//!     .add_attribute("integer".to_string(), "42")
 //!     .build();
 //! assert_eq!(attributes.get("double"), Some(&Value::Double(1.624)));
 //! assert_eq!(attributes.get("integer"), Some(&Value::Integer(42)));
@@ -37,8 +37,8 @@
 //! ```
 //! # use indexing::attributes::*;
 //! let attributes = AttributesBuilder::new()
-//!     .add_attribute("malformed_double".to_string(), "1.624.42".to_string())
-//!     .add_attribute("malformed_integer".to_string(), "4E".to_string())
+//!     .add_attribute("malformed_double".to_string(), "1.624.42")
+//!     .add_attribute("malformed_integer".to_string(), "4E")
 //!     .build();
 //! assert_eq!(attributes.get("malformed_double"), Some(&Value::String("1.624.42".to_string())));
 //! assert_eq!(attributes.get("malformed_integer"), Some(&Value::String("4E".to_string())));
