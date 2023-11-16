@@ -127,23 +127,6 @@ impl Inner {
                         // from the key.
                         self.state = State::P;
                         self.key.pop();
-                        self.stack.pop().map(|val| {
-                            match val {
-                                StackAlphabet::Field => {
-                                    // object has ended, and we are still in an encompassing object.
-                                    // We need to wait for another EndObject or FieldName event.
-                                    self.state = State::P;
-                                    self.stack.push(StackAlphabet::Field);
-                                }
-                                StackAlphabet::Array(n) => {
-                                    // object has ended and we are still in an array. Increment array index
-                                    // and move back to state A
-                                    self.state = State::P;
-                                    self.stack.push(StackAlphabet::Array(n + 1));
-                                    self.key.pop().push(n + 1);
-                                }
-                            }
-                        });
                     }
                     Some(StackAlphabet::Array(n)) => {
                         // object being processed at array position n is done, increment array position
@@ -314,7 +297,13 @@ mod tests {
             if let IndexElement::Attributes(attributes) = index {
                 assert_eq!(key_vals.len(), attributes.len());
                 for (key, value) in key_vals {
-                    assert_eq!(attributes.get(key).unwrap(), &value);
+                    assert_eq!(
+                        attributes.get(key).expect(
+                            format!("key: '{}' not found in attributes: '{:?}'", key, attributes)
+                                .as_str()
+                        ),
+                        &value
+                    );
                 }
             } else {
                 unreachable!("index must be IndexElement::Attributes")
@@ -396,6 +385,7 @@ mod tests {
         let control = vec![
             ("array.0.object1.object2.val_1", Value::Integer(1)),
             ("array.0.object1.val_2", Value::Integer(2)),
+            ("array.1", Value::Integer(3)),
         ];
         let chunks = chunks_from_file("test_files/nested_object_in_object_in_array.json").await;
         test_helper(vec![control], chunks);
@@ -412,8 +402,8 @@ mod tests {
             ("array.3", Value::Integer(3)),
             ("array.4.0", Value::Integer(1)),
             ("array.4.1", Value::Integer(2)),
-            ("array.4.val_3.0", Value::Integer(1)),
-            ("array.4.val_3.1", Value::Integer(2)),
+            ("array.4.2.val_3.0", Value::Integer(1)),
+            ("array.4.2.val_3.1", Value::Integer(2)),
             ("val_4", Value::String("null".into())),
         ];
         let chunks = chunks_from_file("test_files/nested_properties_feature_03.json").await;
