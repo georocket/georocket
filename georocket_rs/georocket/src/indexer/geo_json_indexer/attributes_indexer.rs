@@ -22,8 +22,8 @@ impl AttributesIndexer {
             inner: Inner::new(),
         }
     }
-    pub fn process_event(&mut self, event: (JsonEvent, Payload)) {
-        self.inner.process_event(event);
+    pub fn process_event(&mut self, json_event: JsonEvent, payload: Option<&str>) {
+        self.inner.process_event(json_event, payload);
     }
     pub fn retrieve_index_element(self) -> Result<Option<IndexElement>, AttributeIndexerError> {
         self.inner.retrieve_index_element()
@@ -78,9 +78,8 @@ impl Inner {
             builder: AttributesBuilder::new(),
         }
     }
-    fn process_event(&mut self, event: (JsonEvent, Payload)) {
+    fn process_event(&mut self, json_event: JsonEvent, payload: Option<&str>) {
         use JsonEvent as E;
-        let (json_event, payload) = event;
         match json_event {
             E::StartObject => {
                 self.process_start_object();
@@ -261,15 +260,15 @@ mod tests {
     fn inner_multiple_key_vals() {
         use JsonEvent as E;
         let mut indexer = AttributesIndexer::new();
-        indexer.process_event((E::FieldName, Some("properties".into())));
-        indexer.process_event((E::StartObject, None));
-        indexer.process_event((E::FieldName, Some("string_key".into())));
-        indexer.process_event((E::ValueString, Some("string".into())));
-        indexer.process_event((E::FieldName, Some("int_key".into())));
-        indexer.process_event((E::ValueInt, Some("1".into())));
-        indexer.process_event((E::FieldName, Some("float_key".into())));
-        indexer.process_event((E::ValueInt, Some("1.0".into())));
-        indexer.process_event((E::EndObject, None));
+        indexer.process_event(E::FieldName, Some("properties"));
+        indexer.process_event(E::StartObject, None);
+        indexer.process_event(E::FieldName, Some("string_key"));
+        indexer.process_event(E::ValueString, Some("string".into()));
+        indexer.process_event(E::FieldName, Some("int_key"));
+        indexer.process_event(E::ValueInt, Some("1"));
+        indexer.process_event(E::FieldName, Some("float_key"));
+        indexer.process_event(E::ValueInt, Some("1.0"));
+        indexer.process_event(E::EndObject, None);
         if let IndexElement::Attributes(attributes) =
             indexer.retrieve_index_element().unwrap().unwrap()
         {
@@ -288,7 +287,8 @@ mod tests {
             let InnerChunk::GeoJson(chunk) = chunk.inner;
             let mut attributes_indexer = AttributesIndexer::new();
             for (event, payload) in chunk {
-                attributes_indexer.process_event((event, payload));
+                let payload = payload.as_ref().map(String::as_str);
+                attributes_indexer.process_event(event, payload);
             }
             let index = attributes_indexer
                 .retrieve_index_element()
