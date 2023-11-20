@@ -31,8 +31,8 @@ impl BoundingBoxIndexer {
         }
     }
     /// Process a single json event and payload pair. Transitioning the inner state of the `BoundingBoxIndexer` as necessary.
-    pub fn process_event(&mut self, event: (JsonEvent, Payload)) {
-        self.inner.process_event(event)
+    pub fn process_event(&mut self, event: JsonEvent, payload: Option<&str>) {
+        self.inner.process_event(event, payload)
     }
     /// Retrieve the calculated bounding box from the `BoundingBoxIndexer`.
     /// # Errors
@@ -106,14 +106,13 @@ impl Inner {
         }
     }
     /// Process a single json event and payload. Transitioning the inner state of `self` as necessary.
-    fn process_event(&mut self, event: (JsonEvent, Payload)) {
+    fn process_event(&mut self, json_event: JsonEvent, payload: Option<&str>) {
         use JsonEvent as E;
-        let (json_event, payload) = event;
         match json_event {
             E::StartArray | E::StartObject => self.increase_level(),
             JsonEvent::EndArray | JsonEvent::EndObject => self.decrease_level(),
             E::FieldName => {
-                if payload.is_some_and(|val| val.as_str() == "coordinates") {
+                if payload.is_some_and(|val| val == "coordinates") {
                     *self = Self::Processing {
                         bounding_box_builder: BoundingBoxHelper::Init,
                         current_level: 0,
@@ -259,8 +258,9 @@ mod tests {
         while let Ok(chunk) = chunk_receiver.recv().await {
             let mut bbox_indexer = BoundingBoxIndexer::new();
             let InnerChunk::GeoJson(chunk) = chunk.inner;
-            for event in chunk {
-                bbox_indexer.process_event(event);
+            for (json_event, payload) in chunk {
+                let payload = payload.as_ref().map(|s| s.as_str());
+                bbox_indexer.process_event(json_event, payload);
             }
             results.push(bbox_indexer.retrieve_index_element());
         }

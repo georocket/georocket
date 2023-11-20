@@ -21,8 +21,10 @@ impl GeoJsonIndexer {
         }
     }
     pub fn generate_index(mut self) -> Vec<IndexElement> {
-        for e in self.chunk {
-            self.bounding_box_indexer.process_event(e);
+        for (event, payload) in self.chunk {
+            // let payload = payload.map(|s| s.as_str());
+            let payload = payload.as_ref().map(String::as_str);
+            self.bounding_box_indexer.process_event(event, payload);
             // self.attributes_indexer.process_event(e);
         }
         let mut index_elements = Vec::new();
