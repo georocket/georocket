@@ -254,8 +254,8 @@ mod tests {
         json_feature: impl AsRef<Path>,
     ) -> Vec<Result<Option<IndexElement>, BoundingBoxIndexerError>> {
         let mut results = Vec::new();
-        let (splitter, chunk_receiver) = make_splitter_and_chunk_channel(json_feature).await;
-        tokio::spawn(splitter.run());
+        let (mut splitter, chunk_receiver) = make_splitter_and_chunk_channel(json_feature).await;
+        tokio::spawn(async move { splitter.run().await });
         while let Ok(chunk) = chunk_receiver.recv().await {
             let mut bbox_indexer = BoundingBoxIndexer::new();
             let InnerChunk::GeoJson(chunk) = chunk.inner;

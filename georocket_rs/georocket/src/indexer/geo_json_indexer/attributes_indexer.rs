@@ -472,8 +472,8 @@ mod tests {
         let (splitter_channels, chunk_receiver, _raw) =
             crate::input::SplitterChannels::new_with_channels(10, 10);
         let feature = tokio::fs::File::open(json_features).await.unwrap();
-        let splitter = crate::input::GeoJsonSplitter::new(feature, splitter_channels);
-        let handle = tokio::spawn(splitter.run());
+        let mut splitter = crate::input::GeoJsonSplitter::new(feature, splitter_channels);
+        let handle = tokio::spawn(async move { splitter.run().await });
         let geo_type = handle.await.unwrap().unwrap();
         chunk_receiver
     }

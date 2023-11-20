@@ -71,7 +71,7 @@ where
     }
 
     /// Consumes the `GeoJsonSplitter` and initiates the processing of the associated GeoJSON file.
-    pub async fn run(mut self) -> Result<GeoJsonType> {
+    pub async fn run(&mut self) -> Result<GeoJsonType> {
         self.process_top_level_object().await
     }
 
@@ -317,8 +317,8 @@ mod test {
         let geo_json = File::open(path).await.unwrap();
 
         let (splitter_channels, chunk_rec, raw_rec) = SplitterChannels::new_with_channels(1024, 1024);
-        let splitter = GeoJsonSplitter::new(geo_json, splitter_channels);
-        let splitter_handle = tokio::spawn(splitter.run());
+        let mut splitter = GeoJsonSplitter::new(geo_json, splitter_channels);
+        let splitter_handle = tokio::spawn(async move { splitter.run().await });
         (splitter_handle, chunk_rec, raw_rec)
     }
 
