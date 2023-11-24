@@ -61,9 +61,6 @@ enum StackAlphabet {
     Field,
     Array(usize),
 }
-
-use StackAlphabet as SA;
-
 struct Inner {
     state: State,
     key: Key,
@@ -89,15 +86,11 @@ impl Inner {
             E::EndObject => self.process_end_object(),
             E::StartArray => self.process_start_array(),
             E::EndArray => self.process_end_array(),
-            E::FieldName => self.process_field_name(
-                payload.expect("Payload for 'E::FieldName' should always be Some"),
-            ),
-            E::ValueDouble | E::ValueInt | E::ValueString => self.process_value(payload.expect(
-                "Payload of JsonEvent::{ValueDouble, ValueInt, ValueDouble} should always be Some",
-            )),
-            E::ValueFalse => self.process_value("false"),
-            E::ValueTrue => self.process_value("true"),
-            E::ValueNull => self.process_value("null"),
+            E::FieldName => self.process_field_name(payload),
+            E::ValueDouble | E::ValueInt | E::ValueString => self.process_value(payload),
+            E::ValueFalse => self.process_value(Some("false")),
+            E::ValueTrue => self.process_value(Some("true")),
+            E::ValueNull => self.process_value(Some("null")),
             _ => (),
         }
     }
@@ -167,31 +160,45 @@ impl Inner {
             State::A => {
                 // pop key component representing index of current array which has ended
                 self.key.pop();
-                match self.stack.pop().expect("If we are leaving an array, there must be a StackAlphabet::Array at the top of the stack") {
-                    StackAlphabet::Array(_) => match self.stack.pop().expect("If we are leaving an array, we must either be in another array, or be the value to a corresponding field") {
-                        StackAlphabet::Array(n) => {
-                            // stay in state and increment the key component of the enclosing
-                            // array as well as the index counter on the stack
-                            self.state = State::A;
-                            self.stack.push(StackAlphabet::Array(n + 1));
-                            self.key.pop().push(n + 1);
-                        }
-                        StackAlphabet::Field => {
-                            // move to State::P and remove the key component corresponding
-                            // to the current (key, value) pair. The closed array was the value
-                            // corresponding tot he field name
-                            self.state = State::P;
-                            self.key.pop();
-                        }
-                    },
-                    StackAlphabet::Field => self.state = State::Error,
+                // If we are leaving an array, there must be a StackAlphabet::Array at the top of the stack
+                let Some(top) = self.stack.pop() else {
+                    self.state = State::Error;
+                    return;
+                };
+                // An array must be the value of a field or part of an enclosing array
+                let Some(current) = self.stack.pop() else {
+                    self.state = State::Error;
+                    return;
+                };
+                match (top, current) {
+                    (StackAlphabet::Array(_), StackAlphabet::Array(n)) => {
+                        // stay in state and increment the key component of the enclosing
+                        // array as well as the index counter on the stack
+                        self.state = State::A;
+                        self.stack.push(StackAlphabet::Array(n + 1));
+                        self.key.pop().push(n + 1);
+                    }
+                    (StackAlphabet::Array(_), StackAlphabet::Field) => {
+                        // move to State::P and remove the key component corresponding
+                        // to the current (key, value) pair. The closed array was the value
+                        // corresponding tot he field name
+                        self.state = State::P;
+                        self.key.pop();
+                    }
+                    _ => {
+                        self.state = State::Error;
+                    }
                 }
             }
             State::Done => (),
             State::Error => (),
         }
     }
-    fn process_field_name(&mut self, field_name: impl AsRef<str>) {
+    fn process_field_name(&mut self, payload: Option<&str>) {
+        let Some(field_name) = payload else {
+            self.state = State::Error;
+            return;
+        };
         let field_name: &str = field_name.as_ref();
         match self.state {
             State::Uninit => {
@@ -203,7 +210,6 @@ impl Inner {
                 self.state = State::Error;
             }
             State::P => {
-                // go to A and push the field name onto the key
                 self.state = State::A;
                 self.key.push(field_name);
                 self.stack.push(StackAlphabet::Field);
@@ -212,8 +218,11 @@ impl Inner {
             State::Error => (),
         }
     }
-    fn process_value(&mut self, value: impl AsRef<str>) {
-        let value: &str = value.as_ref();
+    fn process_value(&mut self, payload: Option<&str>) {
+        let Some(value) = payload else {
+            self.state = State::Error;
+            return;
+        };
         match self.state {
             State::Uninit => (),
             State::Start => {
@@ -221,11 +230,11 @@ impl Inner {
             }
             State::P => self.state = State::Error,
             State::A => {
-                match self
-                    .stack
-                    .pop()
-                    .expect("There must always be something on the stack, if we are in State::A")
-                {
+                let Some(top) = self.stack.pop() else {
+                    self.state = State::Error;
+                    return;
+                };
+                match top {
                     StackAlphabet::Field => {
                         self.state = State::P;
                         // add the (key, value) pair to the builder and pop the key component
@@ -240,9 +249,9 @@ impl Inner {
                         self.state = State::A;
                         self.stack.push(StackAlphabet::Array(n + 1));
                         self.builder
-                            .add_attribute_mut(self.key.as_ref(), value.into()); // = std::mem::take(&mut self.builder).add_attribute(self.key.as_ref(), value.into());
-                                                                                 // remove the key component corresponding to the index of the value added to the builder
-                                                                                 // and replace it with the next index
+                            .add_attribute_mut(self.key.as_ref(), value.into());
+                        // remove the key component corresponding to the index of the value added to the builder
+                        // and replace it with the next index
                         self.key.pop().push(n + 1);
                     }
                 }
