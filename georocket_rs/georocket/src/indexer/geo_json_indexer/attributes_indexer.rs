@@ -25,7 +25,7 @@ impl AttributesIndexer {
     pub fn process_event(&mut self, json_event: JsonEvent, payload: Option<&str>) {
         self.inner.process_event(json_event, payload);
     }
-    pub fn retrieve_index_element(self) -> Result<Option<IndexElement>, AttributeIndexerError> {
+    pub fn retrieve_index_element(self) -> Option<Result<IndexElement, AttributeIndexerError>> {
         self.inner.retrieve_index_element()
     }
 }
@@ -36,6 +36,7 @@ pub enum State {
     Start,
     P,
     A,
+    Error,
     Done,
 }
 
@@ -50,6 +51,7 @@ impl Display for State {
                 State::P => "State::P",
                 State::A => "State::A",
                 State::Done => "State::Done",
+                State::Error => "State::Error",
             }
         )
     }
@@ -105,11 +107,14 @@ impl Inner {
             State::Start => {
                 self.state = State::P;
             }
-            State::P => (),
+            State::P => {
+                self.state = State::Error;
+            }
             State::A => {
                 self.state = State::P;
             }
             State::Done => (),
+            State::Error => (),
         }
     }
     fn process_end_object(&mut self) {
@@ -135,28 +140,30 @@ impl Inner {
                     }
                 }
             }
-            State::A => unreachable!("Should not receive JsonEvent::EndObject in this state"),
+            State::A => self.state = State::Error,
             State::Done => (),
+            State::Error => (),
         }
     }
     fn process_start_array(&mut self) {
         match self.state {
             State::Uninit => (),
-            State::Start => (),
-            State::P => (),
+            State::Start => self.state = State::Error,
+            State::P => self.state = State::Error,
             State::A => {
                 self.state = State::A;
                 self.stack.push(StackAlphabet::Array(0));
                 self.key.push(0);
             }
             State::Done => (),
+            State::Error => (),
         }
     }
     fn process_end_array(&mut self) {
         match self.state {
             State::Uninit => (),
-            State::Start => (),
-            State::P => (),
+            State::Start => self.state = State::Error,
+            State::P => self.state = State::Error,
             State::A => {
                 // pop key component representing index of current array which has ended
                 self.key.pop();
@@ -177,10 +184,11 @@ impl Inner {
                             self.key.pop();
                         }
                     },
-                    StackAlphabet::Field => unreachable!("Can only end an array, if we were in one, in which case StackAlphabet::Array(_) should have been on top of the stack"),
+                    StackAlphabet::Field => self.state = State::Error,
                 }
             }
             State::Done => (),
+            State::Error => (),
         }
     }
     fn process_field_name(&mut self, field_name: impl AsRef<str>) {
@@ -192,7 +200,7 @@ impl Inner {
                 }
             }
             State::Start | State::A => {
-                unreachable!("Can only receive JsonEvent::FieldName in the State::P")
+                self.state = State::Error;
             }
             State::P => {
                 // go to A and push the field name onto the key
@@ -201,6 +209,7 @@ impl Inner {
                 self.stack.push(StackAlphabet::Field);
             }
             State::Done => (),
+            State::Error => (),
         }
     }
     fn process_value(&mut self, value: impl AsRef<str>) {
@@ -208,9 +217,9 @@ impl Inner {
         match self.state {
             State::Uninit => (),
             State::Start => {
-                unreachable!("State::Start must always be followed by JsonEvent::StartObject")
+                self.state = State::Error;
             }
-            State::P => unreachable!("A value must be preceded by a field name or be the element of an array, in which case we should be in State::A"),
+            State::P => self.state = State::Error,
             State::A => {
                 match self
                     .stack
@@ -221,29 +230,32 @@ impl Inner {
                         self.state = State::P;
                         // add the (key, value) pair to the builder and pop the key component
                         // corresponding to the field name from the key
-                        self.builder = std::mem::take(&mut self.builder).add_attribute(self.key.as_ref(), value.into());
+                        self.builder = std::mem::take(&mut self.builder)
+                            .add_attribute(self.key.as_ref(), value.into());
                         self.key.pop();
                     }
                     StackAlphabet::Array(n) => {
                         // stay in state a and push StackAlphabet::Array(n+1) back onto the stack,
                         // because after adding this value we are at the next array index
                         self.state = State::A;
-                        self.stack.push(StackAlphabet::Array(n+1));
-                        self.builder.add_attribute_mut(self.key.as_ref(), value.into());// = std::mem::take(&mut self.builder).add_attribute(self.key.as_ref(), value.into());
-                        // remove the key component corresponding to the index of the value added to the builder
-                        // and replace it with the next index
-                        self.key.pop().push(n+1);
+                        self.stack.push(StackAlphabet::Array(n + 1));
+                        self.builder
+                            .add_attribute_mut(self.key.as_ref(), value.into()); // = std::mem::take(&mut self.builder).add_attribute(self.key.as_ref(), value.into());
+                                                                                 // remove the key component corresponding to the index of the value added to the builder
+                                                                                 // and replace it with the next index
+                        self.key.pop().push(n + 1);
                     }
                 }
             }
-            State::Done => {}
+            State::Done => (),
+            State::Error => (),
         }
     }
-    fn retrieve_index_element(self) -> Result<Option<IndexElement>, AttributeIndexerError> {
+    fn retrieve_index_element(self) -> Option<Result<IndexElement, AttributeIndexerError>> {
         match self.state {
-            State::Uninit => Ok(None),
-            State::Done => Ok(Some(IndexElement::Attributes(self.builder.build()))),
-            _ => Err(AttributeIndexerError::InvalidState(self.state)),
+            State::Uninit => None,
+            State::Done => Some(Ok(IndexElement::Attributes(self.builder.build()))),
+            _ => Some(Err(AttributeIndexerError::InvalidState(self.state))),
         }
     }
 }
