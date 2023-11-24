@@ -1,6 +1,6 @@
-use crate::types::{IndexElement, Payload};
+use crate::types::IndexElement;
 use actson::JsonEvent;
-use indexing::bounding_box::{BoundingBoxBuilder, BoundingBoxBuilderError};
+use indexing::bounding_box::{BoundingBox, BoundingBoxBuilder, BoundingBoxBuilderError};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -39,7 +39,7 @@ impl BoundingBoxIndexer {
     /// Returns an error if the inner state of the `BoundingBoxIndexer` is invalid, such as if it has
     /// received an x coordinate component but not the corresponding y coordinate component or if the
     /// sequence of coordinates in not valid.
-    pub fn retrieve_index_element(self) -> Result<Option<IndexElement>, BoundingBoxIndexerError> {
+    pub fn retrieve_index_element(self) -> Option<Result<IndexElement, BoundingBoxIndexerError>> {
         self.inner.retrieve_index_element()
     }
 }
@@ -134,23 +134,20 @@ impl Inner {
     /// # Errors
     /// Returns an error, if the `BoundingBoxIndexer` is still processing or if transitioning to the `Done` state
     /// failed.
-    fn retrieve_index_element(self) -> Result<Option<IndexElement>, BoundingBoxIndexerError> {
+    fn retrieve_index_element(self) -> Option<Result<IndexElement, BoundingBoxIndexerError>> {
         match self {
-            Inner::Uninitialized => Ok(None),
+            Inner::Uninitialized => None,
             Inner::Processing { current_level, .. } => {
-                Err(BoundingBoxIndexerError::InvalidIndexerState)
+                Some(Err(BoundingBoxIndexerError::InvalidIndexerState))
             }
             Inner::Done {
                 bounding_box_builder,
-            } => {
-                let bbox = bounding_box_builder?;
-                let bbox = bbox.build()?;
-                if let Some(bounding_box) = bbox {
-                    Ok(Some(IndexElement::BoundingBoxIndex(bounding_box)))
-                } else {
-                    Ok(None)
-                }
-            }
+            } => match bounding_box_builder.map(BoundingBoxBuilder::build) {
+                Ok(Ok(Some(bbox))) => Some(Ok(IndexElement::BoundingBoxIndex(bbox))),
+                Ok(Ok(None)) => None,
+                Ok(Err(err)) => Some(Err(err.into())),
+                Err(err) => Some(Err(err.into())),
+            },
         }
     }
 }
@@ -245,13 +242,13 @@ mod tests {
             index_bounding_box_helper("test_files/simple_collection_malformed_coordinates.json")
                 .await;
         for result in results {
-            assert!(result.is_err());
+            assert!(result.is_some_and(|res| res.is_err()));
         }
     }
 
     async fn index_bounding_box_helper(
         json_feature: impl AsRef<Path>,
-    ) -> Vec<Result<Option<IndexElement>, BoundingBoxIndexerError>> {
+    ) -> Vec<Option<Result<IndexElement, BoundingBoxIndexerError>>> {
         let mut results = Vec::new();
         let (mut splitter, chunk_receiver) = make_splitter_and_chunk_channel(json_feature).await;
         tokio::spawn(async move { splitter.run().await });
@@ -281,7 +278,7 @@ mod tests {
     }
 
     fn validate_results(
-        results: Vec<Result<Option<IndexElement>, BoundingBoxIndexerError>>,
+        results: Vec<Option<Result<IndexElement, BoundingBoxIndexerError>>>,
         control_bboxes: &[BoundingBox],
     ) {
         for (control, result) in control_bboxes.into_iter().zip(results.into_iter()) {
