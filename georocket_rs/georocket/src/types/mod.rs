@@ -17,7 +17,7 @@ impl From<GeoJsonType> for GeoDataType {
 
 pub type Payload = Option<String>;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Chunk {
     pub id: usize,
     pub inner: InnerChunk,
@@ -29,7 +29,7 @@ pub struct RawChunk {
     pub raw: Vec<u8>,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum InnerChunk {
     GeoJson(GeoJsonChunk),
 }
