@@ -1,14 +1,13 @@
+use crate::types::{Index, IndexElement, RawChunk};
+use serde::Deserializer;
+use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
-    io::ErrorKind,
     path::{Path, PathBuf},
 };
-use serde::Deserializer;
-use tokio::io::{AsyncWrite, AsyncWriteExt, BufWriter};
 use tokio::fs::File;
+use tokio::io::{AsyncWrite, AsyncWriteExt, BufWriter};
 use uuid::{fmt::Simple, Uuid};
-use crate::types::{Index, IndexElement, RawChunk};
-use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
 struct InternalIndex {
@@ -135,7 +134,11 @@ impl FileStore {
         if num_chunks == num_indexes {
             Ok(num_indexes)
         } else {
-            Err(anyhow::anyhow!("Number of chunks ({}) written does not match number of indexes ({}) written", num_chunks, num_indexes))
+            Err(anyhow::anyhow!(
+                "Number of chunks ({}) written does not match number of indexes ({}) written",
+                num_chunks,
+                num_indexes
+            ))
         }
     }
 
@@ -144,16 +147,22 @@ impl FileStore {
     }
 
     /// Writes chunks to disk. Generates a `Uuid` for the chunk if one does not already exist for the chunk/index pair.
-    async fn handle_chunk_helper(index_map: &mut IdIndexMap, mut directory: PathBuf, chunk: RawChunk) -> anyhow::Result<()> {
+    async fn handle_chunk_helper(
+        index_map: &mut IdIndexMap,
+        mut directory: PathBuf,
+        chunk: RawChunk,
+    ) -> anyhow::Result<()> {
         let RawChunk { id, raw } = chunk;
-        let uuid = index_map
-            .entry(id)
-            .or_insert_with(|| uuid::Uuid::new_v4());
+        let uuid = index_map.entry(id).or_insert_with(|| uuid::Uuid::new_v4());
         let (file_dir, file_name) = make_path(*uuid);
         directory.push(file_dir);
         tokio::fs::create_dir_all(&directory).await?;
         directory.push(file_name);
-        let mut file = tokio::fs::OpenOptions::new().create_new(true).write(true).open(directory).await?;
+        let mut file = tokio::fs::OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .open(directory)
+            .await?;
         file.write(&raw).await?;
         Ok(())
     }
@@ -164,11 +173,16 @@ impl FileStore {
 
     /// Writes indexes to the index file. Generates a `Uuid` for the index if one does not already exist
     /// for the chunk/index pair.
-    async fn handle_index_helper<File: AsyncWrite + Unpin>(file: &mut File, index_map:&mut HashMap<usize, Uuid>, index: Index) -> anyhow::Result<()> {
+    async fn handle_index_helper<File: AsyncWrite + Unpin>(
+        file: &mut File,
+        index_map: &mut HashMap<usize, Uuid>,
+        index: Index,
+    ) -> anyhow::Result<()> {
         let Index { id, index_elements } = index;
         let uuid: Uuid = index_map
             .entry(id)
-            .or_insert_with(|| uuid::Uuid::new_v4()).to_owned();
+            .or_insert_with(|| uuid::Uuid::new_v4())
+            .to_owned();
         let index = InternalIndex {
             uuid,
             index_elements,
@@ -181,11 +195,11 @@ impl FileStore {
 
 #[cfg(test)]
 mod test {
+    use super::*;
+    use crate::output::file_store::make_path;
+    use indexing::bounding_box::BoundingBoxBuilder;
     use std::fs::DirBuilder;
     use std::io::Cursor;
-    use indexing::bounding_box::BoundingBoxBuilder;
-    use crate::output::file_store::make_path;
-    use super::*;
 
     #[test]
     fn test_uuid_to_path() {
@@ -197,7 +211,6 @@ mod test {
         let control_file_name = PathBuf::from("0c0d0e0f");
         assert_eq!(path, control_path);
         assert_eq!(file_name, control_file_name);
-
     }
 
     #[test]
@@ -236,10 +249,13 @@ mod test {
         let mut index_map = IdIndexMap::new();
         let mut index_file = Cursor::new(Vec::new());
         for index in indexes.iter().cloned() {
-            FileStore::handle_index_helper(&mut index_file, &mut index_map, index).await.unwrap();
+            FileStore::handle_index_helper(&mut index_file, &mut index_map, index)
+                .await
+                .unwrap();
         }
         index_file.set_position(0);
-        let index_stream = serde_json::Deserializer::from_reader(index_file).into_iter::<InternalIndex>();
+        let index_stream =
+            serde_json::Deserializer::from_reader(index_file).into_iter::<InternalIndex>();
         for (index, internal_index) in indexes.iter().zip(index_stream.map(|i| i.unwrap())) {
             // check that the correct uuid was written for the index
             assert_eq!(internal_index.uuid, index_map[&index.id]);
@@ -251,25 +267,29 @@ mod test {
     #[tokio::test]
     async fn test_write_index() {
         let empty_index = [];
-        let simple_indexes = [
-            Index { id: 0, index_elements: vec![] }
-        ];
+        let simple_indexes = [Index {
+            id: 0,
+            index_elements: vec![],
+        }];
         let coordinates = (1..).map(|i| {
             let i = i as f64;
             [(-i, -i), (i, i)]
         });
-        let complex_indexes = coordinates.take(5).enumerate().map(
-            |(id, coords)|
-                {
-                    let mut bounding_box = BoundingBoxBuilder::new();
-                    for (x,y) in coords {
-                        bounding_box = bounding_box.add_point(x, y);
-                    }
-                    let bounding_box = bounding_box.build().unwrap().unwrap();
-                    Index { id, index_elements: vec![IndexElement::BoundingBoxIndex(bounding_box)] }
+        let complex_indexes = coordinates
+            .take(5)
+            .enumerate()
+            .map(|(id, coords)| {
+                let mut bounding_box = BoundingBoxBuilder::new();
+                for (x, y) in coords {
+                    bounding_box = bounding_box.add_point(x, y);
                 }
-
-        ).collect::<Vec<_>>();
+                let bounding_box = bounding_box.build().unwrap().unwrap();
+                Index {
+                    id,
+                    index_elements: vec![IndexElement::BoundingBoxIndex(bounding_box)],
+                }
+            })
+            .collect::<Vec<_>>();
         test_write_index_helper(&empty_index).await;
         test_write_index_helper(&simple_indexes).await;
         test_write_index_helper(&complex_indexes).await;
@@ -277,7 +297,11 @@ mod test {
 
     async fn test_write_chunks_helper(chunks: &[RawChunk], mut id_index_map: IdIndexMap) {
         // create a map from id to chunk, so we can look up the chunk for a given id in constant time later
-        let id_to_chunk = chunks.iter().cloned().map(|chunk| (chunk.id, chunk.raw)).collect::<HashMap<_, _>>();
+        let id_to_chunk = chunks
+            .iter()
+            .cloned()
+            .map(|chunk| (chunk.id, chunk.raw))
+            .collect::<HashMap<_, _>>();
         // create our base directory for writing the chunks
         let directory: PathBuf = {
             let mut directory = std::env::temp_dir();
@@ -286,7 +310,9 @@ mod test {
         };
         DirBuilder::new().create(&directory).unwrap();
         for chunk in chunks.iter().cloned() {
-            FileStore::handle_chunk_helper(&mut id_index_map, directory.clone(), chunk).await.unwrap();
+            FileStore::handle_chunk_helper(&mut id_index_map, directory.clone(), chunk)
+                .await
+                .unwrap();
         }
         for (id, uuid) in id_index_map {
             let path = {
@@ -305,17 +331,35 @@ mod test {
     #[tokio::test]
     async fn test_write_chunks() {
         let empty_chunks = [];
-        let simple_chunks = [
-            RawChunk { id: 0, raw: vec![] }
-        ];
+        let simple_chunks = [RawChunk { id: 0, raw: vec![] }];
         let complex_chunks = [
-            RawChunk { id: 0, raw: vec![0, 1, 2, 3, 4, 5, 6, 7] },
-            RawChunk { id: 1, raw: vec![8, 9, 10, 11, 12, 13, 14, 15] },
-            RawChunk { id: 2, raw: vec![16, 17, 18, 19, 20, 21, 22, 23] },
-            RawChunk { id: 3, raw: vec![24, 25, 26, 27, 28, 29, 30, 31] },
-            RawChunk { id: 4, raw: vec![32, 33, 34, 35, 36, 37, 38, 39] },
+            RawChunk {
+                id: 0,
+                raw: vec![0, 1, 2, 3, 4, 5, 6, 7],
+            },
+            RawChunk {
+                id: 1,
+                raw: vec![8, 9, 10, 11, 12, 13, 14, 15],
+            },
+            RawChunk {
+                id: 2,
+                raw: vec![16, 17, 18, 19, 20, 21, 22, 23],
+            },
+            RawChunk {
+                id: 3,
+                raw: vec![24, 25, 26, 27, 28, 29, 30, 31],
+            },
+            RawChunk {
+                id: 4,
+                raw: vec![32, 33, 34, 35, 36, 37, 38, 39],
+            },
         ];
-        let many_chunks = (0..10_000).map(|i| RawChunk { id: i, raw: vec![i as u8; 8] }).collect::<Vec<_>>();
+        let many_chunks = (0..10_000)
+            .map(|i| RawChunk {
+                id: i,
+                raw: vec![i as u8; 8],
+            })
+            .collect::<Vec<_>>();
 
         // test without existing ID-Uuid pairs:
         test_write_chunks_helper(&empty_chunks, IdIndexMap::new()).await;
@@ -324,11 +368,14 @@ mod test {
         test_write_chunks_helper(&many_chunks, IdIndexMap::new()).await;
         // test with existing ID-Uuid pairs:
         let simple_id_index_map: IdIndexMap = (0..1).map(|i| (i, Uuid::new_v4())).collect();
-        let complex_id_index_map: IdIndexMap = (0..complex_chunks.len()).map(|i| (i, Uuid::new_v4())).collect();
-        let many_id_index_map: IdIndexMap = (0..many_chunks.len()).map(|i| (i, Uuid::new_v4())).collect();
+        let complex_id_index_map: IdIndexMap = (0..complex_chunks.len())
+            .map(|i| (i, Uuid::new_v4()))
+            .collect();
+        let many_id_index_map: IdIndexMap = (0..many_chunks.len())
+            .map(|i| (i, Uuid::new_v4()))
+            .collect();
         test_write_chunks_helper(&simple_chunks, simple_id_index_map.clone()).await;
         test_write_chunks_helper(&complex_chunks, complex_id_index_map.clone()).await;
         test_write_chunks_helper(&many_chunks, many_id_index_map.clone()).await;
     }
-
 }

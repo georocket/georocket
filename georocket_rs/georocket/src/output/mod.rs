@@ -1,15 +1,16 @@
 pub mod file_store;
 
+use async_trait::async_trait;
 pub use file_store::FileStore;
 
-pub enum Store {
-    FileStore(FileStore),
+#[async_trait]
+pub trait Store {
+    async fn run(&self) -> anyhow::Result<usize>;
 }
 
-impl Store {
-    pub async fn run(self) -> anyhow::Result<usize> {
-        Ok(match self {
-            Store::FileStore(file_store) => file_store.run().await?,
-        })
+#[async_trait]
+impl Store for FileStore {
+    async fn run(&self) -> anyhow::Result<usize> {
+        self.run().await
     }
 }
