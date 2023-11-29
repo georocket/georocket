@@ -19,6 +19,7 @@ async-trait = "0.1.74"
 
 # Workspace Dependencies:
 indexing = {path = "../indexing"}
+tracing = "0.1.40"
 
 [dev-dependencies]
 serde_json = "1.0.104"
