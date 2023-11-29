@@ -1,35 +1,28 @@
 pub mod geo_json_splitter;
 
 pub use crate::types::{GeoDataType, GeoJsonChunk};
+use async_trait::async_trait;
 pub use geo_json_splitter::GeoJsonSplitter;
 
 mod channels;
 pub use channels::SplitterChannels;
 use tokio::io::AsyncRead;
 
-pub enum Splitter {
-    File(Inner<tokio::fs::File>),
+pub enum SplitterReturn {
+    GeoJSON(geo_json_splitter::GeoJsonType),
 }
 
-pub enum Inner<R> {
-    GeoJson(GeoJsonSplitter<R>),
+#[async_trait]
+pub trait Splitter {
+    async fn run(&mut self) -> anyhow::Result<SplitterReturn>;
 }
 
-impl<R> Inner<R>
+#[async_trait]
+impl<R> Splitter for GeoJsonSplitter<R>
 where
-    R: AsyncRead + Send,
+    R: AsyncRead + Unpin + Send,
 {
-    async fn run(self) -> anyhow::Result<GeoDataType> {
-        match self {
-            Inner::GeoJson(_) => todo!(),
-        }
-    }
-}
-
-impl Splitter {
-    pub async fn run(self) -> anyhow::Result<GeoDataType> {
-        Ok(match self {
-            Splitter::File(inner) => inner.run().await?,
-        })
+    async fn run(&mut self) -> anyhow::Result<SplitterReturn> {
+        Ok(SplitterReturn::GeoJSON(self.run().await?))
     }
 }
