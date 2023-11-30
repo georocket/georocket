@@ -8,6 +8,7 @@ mod channels;
 pub use channels::SplitterChannels;
 use tokio::io::AsyncRead;
 
+#[derive(Debug)]
 pub enum SplitterReturn {
     GeoJSON(geo_json_splitter::GeoJsonType),
 }

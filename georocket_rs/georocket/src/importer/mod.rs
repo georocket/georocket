@@ -21,24 +21,46 @@ impl GeoDataImporter {
         }
     }
 
-    pub async fn run(mut self) {
+    pub async fn run(mut self) -> anyhow::Result<()> {
         let mut splitter_handle = tokio::spawn(async move { self.splitter.run().await });
         let mut store_handle = tokio::spawn(async move { self.store.run().await });
         let mut index_handle = tokio::spawn(self.indexer.run());
-
-        loop {
-            tokio::select! {
-                splitt_res = &mut splitter_handle, if !splitter_handle.is_finished() => {
-
-                }
-                store_res = &mut store_handle, if !store_handle.is_finished() => {
-
-                }
-                index_res = &mut index_handle, if !index_handle.is_finished() => {
-
-                }
-                else => break,
+        match splitter_handle.await {
+            Ok(Ok(splitter_ret)) => {
+                println!("Splitter has finished executing!");
+                println!("Result: {:?}", splitter_ret);
+            }
+            Ok(Err(err)) => {
+                eprintln!("Splitter failed: {}", err);
+            }
+            Err(join_err) => {
+                eprintln!("Failed to join splitter task: {}", join_err);
             }
         }
+        match index_handle.await {
+            Ok(Ok(index_ret)) => {
+                println!("index has finished executing!");
+                println!("Result: {:?}", index_ret);
+            }
+            Ok(Err(err)) => {
+                eprintln!("index failed: {}", err)
+            }
+            Err(join_err) => {
+                eprintln!("Failed to join index task: {}", join_err)
+            }
+        }
+        match store_handle.await {
+            Ok(Ok(store_ret)) => {
+                println!("Store has finished executing!");
+                println!("Result: {:?}", store_ret);
+            }
+            Ok(Err(err)) => {
+                eprintln!("Store failed: {}", err)
+            }
+            Err(join_err) => {
+                eprintln!("Failed to join store task: {}", join_err)
+            }
+        }
+        return Ok(());
     }
 }

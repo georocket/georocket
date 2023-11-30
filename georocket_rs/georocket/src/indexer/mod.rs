@@ -49,7 +49,7 @@ impl MainIndexer {
                 .with_context(|| {
                     format!("Failed to send index. {} indexes processed so far.", count)
                 })
-                .with_context(format!("{} chunks indexed", count))?;
+                .with_context(|| format!("{} chunks indexed", count))?;
             count += 1;
         }
         Ok(count)

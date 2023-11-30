@@ -1,8 +1,9 @@
 use clap::{Args, Parser, Subcommand};
 
+use georocket::indexer::MainIndexer;
 use georocket::{
     importer::GeoDataImporter,
-    input::{GeoJsonSplitter, Inner, Splitter, SplitterChannels},
+    input::{GeoJsonSplitter, Splitter, SplitterChannels},
     output::{FileStore, Store},
 };
 use std::{ffi::OsStr, path::PathBuf};
@@ -25,52 +26,21 @@ struct ImportArgs {
     file: PathBuf,
     /// the destination
     path: Option<PathBuf>,
+    /// the type of the supplied file
+    file_type: Option<String>,
 }
 
 impl ImportArgs {
     async fn build(self) -> anyhow::Result<GeoDataImporter> {
-        todo!()
-        // let ImportArgs { file, path } = self;
-        //
-        // if !file.is_file() {
-        //     if file.is_dir() {
-        //         anyhow::bail!(
-        //             "specified path for input file is a directory, not a file: '{:?}'",
-        //             file
-        //         );
-        //     } else {
-        //         anyhow::bail!("")
-        //     }
-        // }
-        //
-        // let filetype: FileType = if let Some(extension) = file.as_path().extension() {
-        //     extension.try_into()?
-        // } else {
-        //     anyhow::bail!(
-        //         "cannot infer file type from filename: '{:?}'",
-        //         file.as_path().extension()
-        //     );
-        // };
-        // let file = tokio::fs::File::open(file).await?;
-        //
-        // let (splitter_channels, chunk_rec, raw_rec) =
-        //     SplitterChannels::new_with_channels(1024, 1024);
-        //
-        // let splitter = match filetype {
-        //     FileType::JSON => Splitter::File(Inner::GeoJson(GeoJsonSplitter::new(
-        //         file,
-        //         splitter_channels,
-        //     ))),
-        // };
-        //
-        // let destination = if let Some(destination) = path {
-        //     destination
-        // } else {
-        //     std::env::current_dir()?
-        // };
-        //
-        // let store = Store::FileStore(FileStore::new(destination, raw_rec).await?);
-        // Ok(GeoDataImporter::new(splitter, store))
+        let (channels, chunk_rec, raw_rec) = SplitterChannels::new_with_channels(1024, 1024);
+        let splitter = {
+            let file = tokio::fs::File::open(self.file).await?;
+            Box::new(GeoJsonSplitter::new(file, channels))
+        };
+        let (indexer, index_rec) = MainIndexer::new_with_index_receiver(1024, chunk_rec);
+        let store =
+            Box::new(FileStore::new(self.path.unwrap_or_default(), raw_rec, index_rec).await?);
+        Ok(GeoDataImporter::new(splitter, store, indexer))
     }
 }
 
@@ -89,14 +59,16 @@ impl TryInto<FileType> for &OsStr {
     }
 }
 
+async fn run_import(args: ImportArgs) -> anyhow::Result<()> {
+    let importer = args.build().await?;
+    importer.run().await
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
-    Ok(match cli.command {
-        Commands::Import(import_args) => {
-            let importer = import_args.build().await?;
-            importer.run().await?
-        }
-    })
+    match cli.command {
+        Commands::Import(import_args) => run_import(import_args).await,
+    }
 }
