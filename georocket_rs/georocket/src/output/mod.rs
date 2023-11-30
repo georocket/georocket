@@ -5,12 +5,12 @@ pub use file_store::FileStore;
 
 #[async_trait]
 pub trait Store {
-    async fn run(&self) -> anyhow::Result<usize>;
+    async fn run(&mut self) -> anyhow::Result<usize>;
 }
 
 #[async_trait]
 impl Store for FileStore {
-    async fn run(&self) -> anyhow::Result<usize> {
-        self.run().await
+    async fn run(&mut self) -> anyhow::Result<usize> {
+        FileStore::run(self).await
     }
 }

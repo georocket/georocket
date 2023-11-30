@@ -105,28 +105,21 @@ impl FileStore {
     ///
     /// # Errors
     /// If an error occurs while writing to the index file, the function aborts and returns the error.
-    pub async fn run(mut self) -> anyhow::Result<usize> {
+    pub async fn run(&mut self) -> anyhow::Result<usize> {
         let mut num_indexes = 0;
         let mut num_chunks = 0;
-        let mut is_closed_raw = false;
-        let mut is_closed_index = false;
-        while !(is_closed_index && is_closed_raw) {
+        loop {
             tokio::select! {
-                raw = self.raw_rec.recv() => {
-                    if let Some(raw_chunk) = raw {
-                        self.handle_chunk(raw_chunk).await?;
+                Some(raw) = self.raw_rec.recv() => {
+                        self.handle_chunk(raw).await?;
                         num_chunks += 1;
-                    } else {
-                        is_closed_raw = true;
-                    }
                 }
-                index = self.index_rec.recv() => {
-                    if let Some(index) = index {
-                        self.handle_index(index).await?;
-                        num_indexes += 1;
-                    } else {
-                        is_closed_index = true;
-                    }
+                Some(index) = self.index_rec.recv() => {
+                    self.handle_index(index).await?;
+                    num_indexes += 1;
+                }
+                else => {
+                    break;
                 }
             }
         }
