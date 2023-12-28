@@ -1,4 +1,5 @@
 pub mod file_store;
+pub mod postGIS_store;
 
 use async_trait::async_trait;
 pub use file_store::FileStore;
