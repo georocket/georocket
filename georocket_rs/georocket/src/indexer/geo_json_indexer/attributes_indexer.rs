@@ -1,7 +1,7 @@
-use crate::types::{IndexElement, Payload};
+use crate::types::IndexElement;
 use actson::JsonEvent;
 use indexing::attributes::AttributesBuilder;
-use std::fmt::{write, Display, Formatter};
+use std::fmt::{Display, Formatter};
 use thiserror::Error;
 
 mod key;
@@ -273,7 +273,6 @@ impl Inner {
 mod tests {
     use super::*;
     use crate::types::{Chunk, InnerChunk};
-    use actson::JsonEvent::ValueString;
     use indexing::attributes::Value;
     use std::path::Path;
 
@@ -495,7 +494,7 @@ mod tests {
         let feature = tokio::fs::File::open(json_features).await.unwrap();
         let mut splitter = crate::input::GeoJsonSplitter::new(feature, splitter_channels);
         let handle = tokio::spawn(async move { splitter.run().await });
-        let geo_type = handle.await.unwrap().unwrap();
+        let _geo_type = handle.await.unwrap().unwrap();
         chunk_receiver
     }
 

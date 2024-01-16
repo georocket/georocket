@@ -22,9 +22,9 @@ impl GeoDataImporter {
     }
 
     pub async fn run(mut self) -> anyhow::Result<()> {
-        let mut splitter_handle = tokio::spawn(async move { self.splitter.run().await });
-        let mut store_handle = tokio::spawn(async move { self.store.run().await });
-        let mut index_handle = tokio::spawn(self.indexer.run());
+        let splitter_handle = tokio::spawn(async move { self.splitter.run().await });
+        let store_handle = tokio::spawn(async move { self.store.run().await });
+        let index_handle = tokio::spawn(self.indexer.run());
         match splitter_handle.await {
             Ok(Ok(splitter_ret)) => {
                 println!("Splitter has finished executing!");

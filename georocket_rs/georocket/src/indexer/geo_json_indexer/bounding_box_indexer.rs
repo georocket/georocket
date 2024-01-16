@@ -1,6 +1,6 @@
 use crate::types::IndexElement;
 use actson::JsonEvent;
-use indexing::bounding_box::{BoundingBox, BoundingBoxBuilder, BoundingBoxBuilderError};
+use indexing::bounding_box::{BoundingBoxBuilder, BoundingBoxBuilderError};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -137,9 +137,7 @@ impl Inner {
     fn retrieve_index_element(self) -> Option<Result<IndexElement, BoundingBoxIndexerError>> {
         match self {
             Inner::Uninitialized => None,
-            Inner::Processing { current_level, .. } => {
-                Some(Err(BoundingBoxIndexerError::InvalidIndexerState))
-            }
+            Inner::Processing { .. } => Some(Err(BoundingBoxIndexerError::InvalidIndexerState)),
             Inner::Done {
                 bounding_box_builder,
             } => match bounding_box_builder.map(BoundingBoxBuilder::build) {

@@ -56,7 +56,7 @@ impl MainIndexer {
     }
     /// Process a single chunk into an index.
     /// Will log the error
-    #[instrument(levl = "debug")]
+    #[instrument(level = "debug")]
     fn process_chunk(&mut self, chunk: Chunk) -> Index {
         let Chunk { id, inner } = chunk;
         let index_elements = match inner {

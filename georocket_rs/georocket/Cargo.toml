@@ -4,6 +4,8 @@ version = "0.2.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+post_gis_store = []
 
 [dependencies]
 actson = {path = "/Users/lion/code/fraunhofer/actson-rs", features = ["tokio"]}

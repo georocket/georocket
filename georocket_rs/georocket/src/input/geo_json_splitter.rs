@@ -8,7 +8,7 @@ const EXTEND: usize = 1024;
 mod buffer;
 use buffer::Buffer;
 
-use crate::types::{GeoJsonChunk, Payload};
+use crate::types::{GeoJsonChunk};
 
 use super::SplitterChannels;
 
@@ -330,7 +330,7 @@ mod test {
         let _ = File::open("test_files/simple_feature_01.json")
             .await
             .unwrap();
-        let chunk = chunks.await.unwrap()[0].clone();
+        let _chunk = chunks.await.unwrap()[0].clone();
         let raw = raw_strings.await.unwrap()[0].clone();
         let control = control.await.unwrap().unwrap();
         let geo_json_type = splitter.await.unwrap().unwrap();
@@ -344,10 +344,10 @@ mod test {
         let c2 = r#"{ "type": "Feature", "geometry": { "type": "LineString", "coordinates": [ [ 102.0, 0.0 ], [ 103.0, 1.0 ], [ 104.0, 0.0 ], [ 105.0, 1.0 ] ] }, "properties": { "prop0": "value0", "prop1": 0.0 } }"#; //.to_string();
         let c3 = r#"{ "type": "Feature", "geometry": { "type": "Polygon", "coordinates": [ [ [ 100.0, 0.0 ], [ 101.0, 0.0 ], [ 101.0, 1.0 ], [ 100.0, 1.0 ], [ 100.0, 0.0 ] ] ] }, "properties": { "prop0": "value0", "prop1": { "this": "that" } } }"#; //.to_string();
         let mut control_strings = vec![c1, c2, c3];
-        let (splitter, raw_strings, chunks) =
+        let (_splitter, raw_strings, chunks) =
             split_geo_json(Path::new("test_files/simple_collection_01.json")).await;
         let raw_strings = raw_strings.await.unwrap();
-        let chunks = chunks.await.unwrap();
+        let _chunks = chunks.await.unwrap();
         for feature in raw_strings.into_iter().map(|raw| String::from_utf8(raw.raw).unwrap()) {
             let index = control_strings.iter().position(|f| f == &feature).unwrap();
             control_strings.remove(index);
@@ -403,7 +403,7 @@ mod test {
         // if it is full.
         tokio::spawn(
             async move {
-                while let Ok(chunk) = chunks.recv().await {}
+                while let Ok(_chunk) = chunks.recv().await {}
             }
         );
         while let Some(feature) = raw_strings.recv().await {

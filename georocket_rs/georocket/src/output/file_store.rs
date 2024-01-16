@@ -1,5 +1,4 @@
 use crate::types::{Index, IndexElement, RawChunk};
-use serde::Deserializer;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
