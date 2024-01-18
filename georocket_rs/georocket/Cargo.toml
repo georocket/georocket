@@ -8,7 +8,7 @@ edition = "2021"
 post_gis_store = []
 
 [dependencies]
-actson = {path = "/Users/lion/code/fraunhofer/actson-rs", features = ["tokio"]}
+actson = {version = "0.3.0", features = ["tokio"]}
 anyhow = "1.0.71"
 async-channel = "1.8.0"
 clap = {version = "4.3.21", features = ["derive"]}
