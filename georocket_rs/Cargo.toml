@@ -3,4 +3,5 @@
 members = [
   "georocket",
   "indexing",
+  "geo-testcontainer"
 ]
