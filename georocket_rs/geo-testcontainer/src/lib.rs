@@ -1,14 +1,5 @@
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
+#[cfg(feature = "postgis")]
+#[cfg_attr(docsrs, doc(cfg(feature = "postgis")))]
+pub mod postgis;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub use testcontainers;
