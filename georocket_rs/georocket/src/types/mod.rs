@@ -17,12 +17,21 @@ impl From<GeoJsonType> for GeoDataType {
 
 pub type Payload = Option<String>;
 
+/// Raw bytes representing features extracted from a source file.
+/// `inner`: [`InnerChunk`] containing parsed/tokenized data from the
+/// source.
+/// `id`: The internal id of the chunk. Matches the chunk to the
+/// [`RawChunk`] and [`Index`].
 #[derive(Debug, Clone)]
 pub struct Chunk {
     pub id: usize,
     pub inner: InnerChunk,
 }
 
+/// Raw bytes representing features extracted from a source file.
+/// `raw`: The raw bytes from the source file.
+/// `id`: The internal id of the chunk. Matches the raw chunk to the
+/// [`Chunk`] and [`Index`].
 #[derive(Clone)]
 pub struct RawChunk {
     pub id: usize,
