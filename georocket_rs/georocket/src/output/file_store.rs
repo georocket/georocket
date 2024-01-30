@@ -1,3 +1,4 @@
+use super::index_map::IdIndexMap;
 use crate::types::{Index, IndexElement, RawChunk};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -15,7 +16,6 @@ struct InternalIndex {
 }
 
 type ID = usize;
-type IdIndexMap = HashMap<ID, Uuid>;
 
 /// The `FileStore` receives `RawChunk`s and `Index`es and writes them to disk.
 /// The 'Index'es are written to a single index file, while the `RawChunk`s are
@@ -81,7 +81,7 @@ impl FileStore {
             raw_rec,
             index_rec,
             index_file,
-            index_map: HashMap::new(),
+            index_map: IdIndexMap::new(),
         })
     }
 
@@ -145,8 +145,8 @@ impl FileStore {
         chunk: RawChunk,
     ) -> anyhow::Result<()> {
         let RawChunk { id, raw } = chunk;
-        let uuid = index_map.entry(id).or_insert_with(|| uuid::Uuid::new_v4());
-        let (file_dir, file_name) = make_path(*uuid);
+        let uuid = index_map.get_or_create_index(id);
+        let (file_dir, file_name) = make_path(uuid);
         directory.push(file_dir);
         tokio::fs::create_dir_all(&directory).await?;
         directory.push(file_name);
@@ -167,14 +167,11 @@ impl FileStore {
     /// for the chunk/index pair.
     async fn handle_index_helper<File: AsyncWrite + Unpin>(
         file: &mut File,
-        index_map: &mut HashMap<usize, Uuid>,
+        index_map: &mut IdIndexMap,
         index: Index,
     ) -> anyhow::Result<()> {
         let Index { id, index_elements } = index;
-        let uuid: Uuid = index_map
-            .entry(id)
-            .or_insert_with(|| uuid::Uuid::new_v4())
-            .to_owned();
+        let uuid: Uuid = index_map.get_or_create_index(id);
         let index = InternalIndex {
             uuid,
             index_elements,
@@ -250,7 +247,7 @@ mod test {
             serde_json::Deserializer::from_reader(index_file).into_iter::<InternalIndex>();
         for (index, internal_index) in indexes.iter().zip(index_stream.map(|i| i.unwrap())) {
             // check that the correct uuid was written for the index
-            assert_eq!(internal_index.uuid, index_map[&index.id]);
+            assert_eq!(internal_index.uuid, index_map.inner()[&index.id]);
             // check that the index elements are the same between the original index and the deserialized index
             assert_eq!(internal_index.index_elements, index.index_elements);
         }
@@ -306,7 +303,7 @@ mod test {
                 .await
                 .unwrap();
         }
-        for (id, uuid) in id_index_map {
+        for (id, uuid) in id_index_map.into_inner() {
             let path = {
                 let mut path = directory.clone();
                 let (file_path, file_name) = make_path(uuid);
@@ -359,15 +356,20 @@ mod test {
         test_write_chunks_helper(&complex_chunks, IdIndexMap::new()).await;
         test_write_chunks_helper(&many_chunks, IdIndexMap::new()).await;
         // test with existing ID-Uuid pairs:
-        let simple_id_index_map: IdIndexMap = (0..1).map(|i| (i, Uuid::new_v4())).collect();
+        let simple_id_index_map: IdIndexMap = (0..1)
+            .map(|i| (i, Uuid::new_v4()))
+            .collect::<HashMap<_, _>>()
+            .into();
         let complex_id_index_map: IdIndexMap = (0..complex_chunks.len())
             .map(|i| (i, Uuid::new_v4()))
-            .collect();
+            .collect::<HashMap<_, _>>()
+            .into();
         let many_id_index_map: IdIndexMap = (0..many_chunks.len())
             .map(|i| (i, Uuid::new_v4()))
-            .collect();
-        test_write_chunks_helper(&simple_chunks, simple_id_index_map.clone()).await;
-        test_write_chunks_helper(&complex_chunks, complex_id_index_map.clone()).await;
-        test_write_chunks_helper(&many_chunks, many_id_index_map.clone()).await;
+            .collect::<HashMap<_, _>>()
+            .into();
+        test_write_chunks_helper(&simple_chunks, simple_id_index_map).await;
+        test_write_chunks_helper(&complex_chunks, complex_id_index_map).await;
+        test_write_chunks_helper(&many_chunks, many_id_index_map).await;
     }
 }

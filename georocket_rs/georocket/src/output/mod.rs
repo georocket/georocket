@@ -1,6 +1,8 @@
 pub mod file_store;
-#[cfg(feature = "post_gis_store")]
+// #[cfg(feature = "post_gis_store")]
 pub mod post_gis_store;
+
+mod index_map;
 
 use async_trait::async_trait;
 pub use file_store::FileStore;
