@@ -6,6 +6,7 @@ mod index_map;
 
 use async_trait::async_trait;
 pub use file_store::FileStore;
+pub use post_gis_store::PostGISStore;
 
 #[async_trait]
 pub trait Store {
@@ -16,5 +17,12 @@ pub trait Store {
 impl Store for FileStore {
     async fn run(&mut self) -> anyhow::Result<usize> {
         FileStore::run(self).await
+    }
+}
+
+#[async_trait]
+impl Store for PostGISStore {
+    async fn run(&mut self) -> anyhow::Result<usize> {
+        PostGISStore::run(self).await
     }
 }

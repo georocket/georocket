@@ -8,10 +8,9 @@ const EXTEND: usize = 1024;
 mod buffer;
 use buffer::Buffer;
 
-use crate::types::{GeoJsonChunk};
+use crate::types::GeoJsonChunk;
 
-use super::SplitterChannels;
-
+use super::{Splitter, SplitterChannels};
 
 #[derive(PartialEq, Debug)]
 pub enum GeoJsonType {
@@ -57,17 +56,23 @@ where
     R: AsyncRead + Unpin,
 {
     /// Constructs a new `GeoJsonSplitter` object that will read a GeoJSON file from the reader
-    /// and send out the resulting chunks and features through the provided channels.  
-    pub fn new(
-        reader: R,
-        channels: SplitterChannels,
-    ) -> Self {
+    /// and send out the resulting chunks and features through the provided channels.
+    pub fn new(reader: R, channels: SplitterChannels) -> Self {
         Self {
             reader: BufReader::new(reader),
             parser: JsonParser::new(PushJsonFeeder::new()),
             buffer: Buffer::new(),
             channels,
         }
+    }
+
+    pub fn construct_with_reader(
+        reader: R,
+    ) -> impl FnOnce(SplitterChannels) -> Box<dyn Splitter + Send>
+    where
+        R: Send + 'static,
+    {
+        move |channels| Box::new(Self::new(reader, channels))
     }
 
     /// Consumes the `GeoJsonSplitter` and initiates the processing of the associated GeoJSON file.
@@ -106,14 +111,21 @@ where
                     depth -= 1;
                     None
                 }
-                FieldName | ValueString | ValueInt | ValueDouble => Some(self.parser.current_string()?.to_owned()),
+                FieldName | ValueString | ValueInt | ValueDouble => {
+                    Some(self.parser.current_string()?.to_owned())
+                }
                 _ => None,
             };
             // Check if the field name indicates that this is a `FeatureCollection` or
             // `GeometryCollection` and proceed accordingly, calling the `process_collection()`
             // method in such a case.
             if event == FieldName {
-                match payload.as_ref().expect("payload must be a Some, otherwise it cannot be a field name").as_str().into() {
+                match payload
+                    .as_ref()
+                    .expect("payload must be a Some, otherwise it cannot be a field name")
+                    .as_str()
+                    .into()
+                {
                     FieldNames::Features | FieldNames::Geometries => {
                         self.process_collection().await?;
                         geo_json_type = GeoJsonType::Collection;
@@ -142,7 +154,6 @@ where
         };
         Ok(geo_json_type)
     }
-
 
     /// Fills the parsers feeder with bytes from the buffer.
     /// Fills the buffer from the reader, if all bytes in the buffer have been consumed.
@@ -224,7 +235,7 @@ where
                     let count = (end - begin) + 1;
                     let bytes = self.buffer.retrieve_marked(count);
                     self.buffer.drain_marked(count);
- 
+
                     // send out the data
                     self.channels.send(chunk, bytes).await?;
                     previously_parsed = end;
@@ -273,7 +284,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::types::{RawChunk, Chunk};
+    use crate::types::{Chunk, RawChunk};
 
     use super::*;
     use std::{collections::HashMap, path::Path};
@@ -316,7 +327,8 @@ mod test {
     ) {
         let geo_json = File::open(path).await.unwrap();
 
-        let (splitter_channels, chunk_rec, raw_rec) = SplitterChannels::new_with_channels(1024, 1024);
+        let (splitter_channels, chunk_rec, raw_rec) =
+            SplitterChannels::new_with_channels(1024, 1024);
         let mut splitter = GeoJsonSplitter::new(geo_json, splitter_channels);
         let splitter_handle = tokio::spawn(async move { splitter.run().await });
         (splitter_handle, chunk_rec, raw_rec)
@@ -348,7 +360,10 @@ mod test {
             split_geo_json(Path::new("test_files/simple_collection_01.json")).await;
         let raw_strings = raw_strings.await.unwrap();
         let _chunks = chunks.await.unwrap();
-        for feature in raw_strings.into_iter().map(|raw| String::from_utf8(raw.raw).unwrap()) {
+        for feature in raw_strings
+            .into_iter()
+            .map(|raw| String::from_utf8(raw.raw).unwrap())
+        {
             let index = control_strings.iter().position(|f| f == &feature).unwrap();
             control_strings.remove(index);
         }
@@ -401,11 +416,7 @@ mod test {
         let (splitter, chunks, mut raw_strings) = setup(file).await;
         // need to take the chunks out of the chunks channel, or else the splitter will block
         // if it is full.
-        tokio::spawn(
-            async move {
-                while let Ok(_chunk) = chunks.recv().await {}
-            }
-        );
+        tokio::spawn(async move { while let Ok(_chunk) = chunks.recv().await {} });
         while let Some(feature) = raw_strings.recv().await {
             // convert the feature to a serde_json::Value and back to a string. This insures the
             // formatting is the same

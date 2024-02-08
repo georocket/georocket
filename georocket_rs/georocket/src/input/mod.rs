@@ -21,7 +21,7 @@ pub trait Splitter {
 #[async_trait]
 impl<R> Splitter for GeoJsonSplitter<R>
 where
-    R: AsyncRead + Unpin + Send,
+    R: AsyncRead + Unpin + Send + 'static,
 {
     async fn run(&mut self) -> anyhow::Result<SplitterReturn> {
         Ok(SplitterReturn::GeoJSON(self.run().await?))

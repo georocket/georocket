@@ -13,5 +13,5 @@ CREATE TABLE georocket.bounding_box (
 CREATE TABLE georocket.property (
     id UUID,
     key TEXT,
-    VALUE TEXT
+    value TEXT
 );
