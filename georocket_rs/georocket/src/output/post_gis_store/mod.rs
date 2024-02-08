@@ -36,27 +36,27 @@ impl PostGISStore {
         migration::migrations::runner()
             .run_async(&mut client)
             .await?;
-        Ok(Self {
+        return Ok(Self {
             raw_rec,
             index_rec,
             client,
             id_index_map: IdIndexMap::new(),
-        })
+        });
     }
 
-    pub fn construct_with_client(
-        client: Client,
-    ) -> impl FnOnce(
-        mpsc::Receiver<RawChunk>,
-        mpsc::Receiver<Index>,
-    ) -> BoxFuture<'static, anyhow::Result<Box<dyn Store + Send>>> {
-        |raw_rec, idx_rex| {
-            Box::pin(async move {
-                let store = PostGISStore::new(client, raw_rec, idx_rex).await?;
-                Ok(Box::new(store) as Box<dyn Store + Send>)
-            })
-        }
-    }
+    // pub fn construct_with_client(
+    //     client: Client,
+    // ) -> impl FnOnce(
+    //     mpsc::Receiver<RawChunk>,
+    //     mpsc::Receiver<Index>,
+    // ) -> BoxFuture<'static, anyhow::Result<Box<dyn Store + Send>>> {
+    //     |raw_rec, idx_rex| {
+    //         Box::pin(async move {
+    //             let store = PostGISStore::new(client, raw_rec, idx_rex).await?;
+    //             Ok(Box::new(store) as Box<dyn Store + Send>)
+    //         })
+    //     }
+    // }
 
     pub async fn run(&mut self) -> anyhow::Result<usize> {
         let mut num_indexes = 0;
@@ -134,11 +134,12 @@ impl PostGISStore {
             }
             BoundingBox::Box([p0, p1, p2, p3, p4]) => {
                 format!(
-                    r#"{{"type:"Polygon,"coordinates":[[[{}, {}],[{}, {}],[{}, {}],[{}, {}],[{}, {}]]]"}}"#,
+                    r#"{{"type":"Polygon","coordinates":[[[{}, {}],[{}, {}],[{}, {}],[{}, {}],[{}, {}]]]}}"#,
                     p0.x, p0.y, p1.x, p1.y, p2.x, p2.y, p3.x, p3.y, p4.x, p4.y
                 )
             }
         };
+        dbg!(geometry.as_str());
         self.client
             .execute(
                 "\
@@ -180,7 +181,7 @@ mod tests {
     use crate::input::geo_json_splitter::GeoJsonSplitter;
     use crate::input::SplitterChannels;
     use geo_testcontainer::postgis::PostGIS;
-    use geo_testcontainer::testcontainers::{clients, Image};
+    use geo_testcontainer::testcontainers::clients;
     use tokio_postgres::NoTls;
 
     #[tokio::test]
@@ -191,7 +192,8 @@ mod tests {
         let port = node.get_host_port_ipv4(5432);
         let config_string = format!("host=localhost user=postgres port={}", port);
         assert_database_setup(&config_string).await;
-        assert_writing_data(&config_string).await;
+        assert_writing_simple_feature(&config_string).await;
+        assert_writing_simple_collection(&config_string).await;
     }
 
     /// Checks if the database has been set up correctly
@@ -316,7 +318,7 @@ mod tests {
 
     /// Checks if data can be written to the database and if the
     /// data is written correctly.
-    async fn assert_writing_data(config: &str) {
+    async fn assert_writing_simple_feature(config: &str) {
         write_to_db("test_files/simple_feature_01.json", config).await;
         let (test_client, test_connection) = tokio_postgres::connect(config, NoTls).await.unwrap();
         tokio::spawn(test_connection);
@@ -325,7 +327,6 @@ mod tests {
             .query("SELECT * from georocket.feature", &[])
             .await
             .unwrap();
-        // dbg!(feature.len());
         assert_eq!(feature.len(), 1);
         let feature: String = feature[0].get(1);
         assert_eq!(
@@ -364,8 +365,77 @@ mod tests {
         let (key, value): (String, String) = (properties[0].get(0), properties[0].get(1));
         assert_eq!(key, "name");
         assert_eq!(value, "Dinagat Islands");
+        test_client
+            .execute("TRUNCATE TABLE georocket.feature", &[])
+            .await
+            .unwrap();
+        test_client
+            .execute("TRUNCATE TABLE georocket.property", &[])
+            .await
+            .unwrap();
+        test_client
+            .execute("TRUNCATE TABLE georocket.bounding_box", &[])
+            .await
+            .unwrap();
     }
 
+    async fn assert_writing_simple_collection(config: &str) {
+        let feature1 = r#"{ "type": "Feature", "geometry": { "type": "Point", "coordinates": [ 102.0, 0.5 ] }, "properties": { "identity": 1, "prop0": "value0" } }"#;
+        let bbox_feature1 = r#"{"type":"Point","coordinates":[102,0.5]}"#;
+        let feature2 = r#"{ "type": "Feature", "geometry": { "type": "LineString", "coordinates": [ [ 102.0, 0.0 ], [ 103.0, 1.0 ], [ 104.0, 0.0 ], [ 105.0, 1.0 ] ] }, "properties": { "identity": 2, "prop0": "value0", "prop1": 0.0 } }"#;
+        let bbox_feature2 =
+            r#"{"type":"Polygon","coordinates":[[[102,0],[105,0],[105,1],[102,1],[102,0]]]}"#;
+        let feature3 = r#"{ "type": "Feature", "geometry": { "type": "Polygon", "coordinates": [ [ [ 100.0, 0.0 ], [ 101.0, 0.0 ], [ 101.0, 1.0 ], [ 100.0, 1.0 ], [ 100.0, 0.0 ] ] ] }, "properties": { "identity": 3, "prop0": "value0", "prop1": { "this": "that" } } }"#;
+        let bbox_feature3 =
+            r#"{"type":"Polygon","coordinates":[[[100,0],[101,0],[101,1],[100,1],[100,0]]]}"#;
+        write_to_db("test_files/simple_collection_02.json", config).await;
+        let (test_client, test_connection) = tokio_postgres::connect(config, NoTls).await.unwrap();
+        tokio::spawn(test_connection);
+        let identities = test_client
+            .query(
+                "SELECT id, key, value FROM georocket.property WHERE key = 'identity'",
+                &[],
+            )
+            .await
+            .unwrap();
+
+        for identity in identities {
+            let id: Uuid = identity.get(0);
+            let value: String = identity.get(2);
+            match value.as_str() {
+                "1" => assert_match(&test_client, id, feature1, bbox_feature1).await,
+                "2" => assert_match(&test_client, id, feature2, bbox_feature2).await,
+                "3" => assert_match(&test_client, id, feature3, bbox_feature3).await,
+                _ => panic!("unexpected identity value: {}", value),
+            }
+        }
+
+        async fn assert_match(
+            client: &Client,
+            id: Uuid,
+            control_feature: &str,
+            control_bbox: &str,
+        ) {
+            let feature: String = client
+                .query_one(
+                    "SELECT raw_feature from georocket.feature where id = $1",
+                    &[&id],
+                )
+                .await
+                .unwrap()
+                .get(0);
+            assert_eq!(feature, control_feature);
+            let bbox: String = client
+                .query_one(
+                    "SELECT st_asgeojson(bounding_box) from georocket.bounding_box where id = $1",
+                    &[&id],
+                )
+                .await
+                .unwrap()
+                .get(0);
+            assert_eq!(bbox, control_bbox);
+        }
+    }
     async fn write_to_db(file: &str, config: &str) {
         let (store_client, store_connection) =
             tokio_postgres::connect(config, NoTls).await.unwrap();
