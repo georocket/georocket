@@ -4,13 +4,9 @@ use crate::types::{Index, IndexElement, RawChunk};
 use futures::future::BoxFuture;
 use indexing::attributes::{Attributes, Value};
 use indexing::bounding_box::{BoundingBox, GeoPoint};
-use std::error::Error;
-use std::fmt::Write;
 use std::str::from_utf8;
 use tokio::sync::mpsc;
 use tokio_postgres;
-use tokio_postgres::types::private::BytesMut;
-use tokio_postgres::types::{to_sql_checked, IsNull, Type};
 use tokio_postgres::Client;
 use uuid::Uuid;
 
@@ -18,10 +14,13 @@ mod migration {
     refinery::embed_migrations!();
 }
 
+/// The `PostGISStore` receives `RawChunk`s from a Splitter and `Index`es from
+/// the `MainIndexer`. It stores these in a [PostGIS](https://postgis.net/) database.
+/// A UUID is generated, to map the raw features to their respective indexes.
 pub struct PostGISStore {
-    raw_rec: tokio::sync::mpsc::Receiver<RawChunk>,
-    index_rec: tokio::sync::mpsc::Receiver<Index>,
-    client: tokio_postgres::Client,
+    raw_rec: mpsc::Receiver<RawChunk>,
+    index_rec: mpsc::Receiver<Index>,
+    client: Client,
     id_index_map: IdIndexMap,
 }
 
@@ -34,8 +33,6 @@ impl PostGISStore {
         raw_rec: mpsc::Receiver<RawChunk>,
         index_rec: mpsc::Receiver<Index>,
     ) -> anyhow::Result<Self> {
-        // let (mut client, connection) = tokio_postgres::connect(config, tls).await?;
-        // let conn = tokio::spawn(async move { connection.await });
         migration::migrations::runner()
             .run_async(&mut client)
             .await?;
@@ -90,6 +87,9 @@ impl PostGISStore {
         }
     }
 
+    /// Stores the `RawChunk` in the database.
+    /// Creates a new `index_map::Index` or uses the existing index, if there is already
+    /// one present.
     pub async fn handle_raw(&mut self, raw: RawChunk) -> anyhow::Result<()> {
         let RawChunk { id, raw } = raw;
         let feature = from_utf8(raw.as_slice()).expect("raw chunk not valid utf-8");
@@ -102,6 +102,27 @@ impl PostGISStore {
                 &[&index, &feature],
             )
             .await?;
+        Ok(())
+    }
+
+    /// Stores the `IndexElement`s contained in the `Index` in the database.
+    /// Delegates to `handle_bounding_box` and `handle_attributes` for `IndexElement::BoundingBox`
+    /// and `IndexElement::Attributes` respectively.
+    /// Creates a new `index_map::Index` or uses the existing index, if there is already
+    /// one present.
+    async fn handle_index(&mut self, index: Index) -> anyhow::Result<()> {
+        let Index { id, index_elements } = index;
+        let uuid = self.id_index_map.get_or_create_index(id);
+        for ie in index_elements {
+            match ie {
+                IndexElement::BoundingBoxIndex(bbox) => {
+                    self.handle_bounding_box(bbox, uuid).await?
+                }
+                IndexElement::Attributes(attributes) => {
+                    self.handle_attributes(attributes, uuid).await?
+                }
+            }
+        }
         Ok(())
     }
 
@@ -118,7 +139,6 @@ impl PostGISStore {
                 )
             }
         };
-        println!("{}", &geometry);
         self.client
             .execute(
                 "\
@@ -147,22 +167,6 @@ impl PostGISStore {
                     &[&uuid, &key, &value],
                 )
                 .await?;
-        }
-        Ok(())
-    }
-
-    async fn handle_index(&mut self, index: Index) -> anyhow::Result<()> {
-        let Index { id, index_elements } = index;
-        let uuid = self.id_index_map.get_or_create_index(id);
-        for ie in index_elements {
-            match ie {
-                IndexElement::BoundingBoxIndex(bbox) => {
-                    self.handle_bounding_box(bbox, uuid).await?
-                }
-                IndexElement::Attributes(attributes) => {
-                    self.handle_attributes(attributes, uuid).await?
-                }
-            }
         }
         Ok(())
     }
