@@ -1,7 +1,5 @@
 use super::index_map::IdIndexMap;
-use super::Store;
 use crate::types::{Index, IndexElement, RawChunk};
-use futures::future::BoxFuture;
 use indexing::attributes::{Attributes, Value};
 use indexing::bounding_box::{BoundingBox, GeoPoint};
 use std::str::from_utf8;
@@ -182,6 +180,7 @@ mod tests {
     use crate::input::SplitterChannels;
     use geo_testcontainer::postgis::PostGIS;
     use geo_testcontainer::testcontainers::clients;
+    use std::collections::HashMap;
     use tokio_postgres::NoTls;
 
     #[tokio::test]
@@ -382,12 +381,19 @@ mod tests {
     async fn assert_writing_simple_collection(config: &str) {
         let feature1 = r#"{ "type": "Feature", "geometry": { "type": "Point", "coordinates": [ 102.0, 0.5 ] }, "properties": { "identity": 1, "prop0": "value0" } }"#;
         let bbox_feature1 = r#"{"type":"Point","coordinates":[102,0.5]}"#;
+        let feature1_properties = &[("identity", "1"), ("prop0", "value0")];
         let feature2 = r#"{ "type": "Feature", "geometry": { "type": "LineString", "coordinates": [ [ 102.0, 0.0 ], [ 103.0, 1.0 ], [ 104.0, 0.0 ], [ 105.0, 1.0 ] ] }, "properties": { "identity": 2, "prop0": "value0", "prop1": 0.0 } }"#;
         let bbox_feature2 =
             r#"{"type":"Polygon","coordinates":[[[102,0],[105,0],[105,1],[102,1],[102,0]]]}"#;
+        let feature2_properties = &[("identity", "2"), ("prop0", "value0"), ("prop1", "0")];
         let feature3 = r#"{ "type": "Feature", "geometry": { "type": "Polygon", "coordinates": [ [ [ 100.0, 0.0 ], [ 101.0, 0.0 ], [ 101.0, 1.0 ], [ 100.0, 1.0 ], [ 100.0, 0.0 ] ] ] }, "properties": { "identity": 3, "prop0": "value0", "prop1": { "this": "that" } } }"#;
         let bbox_feature3 =
             r#"{"type":"Polygon","coordinates":[[[100,0],[101,0],[101,1],[100,1],[100,0]]]}"#;
+        let feature3_properties = &[
+            ("identity", "3"),
+            ("prop0", "value0"),
+            ("prop1.this", "that"),
+        ];
         write_to_db("test_files/simple_collection_02.json", config).await;
         let (test_client, test_connection) = tokio_postgres::connect(config, NoTls).await.unwrap();
         tokio::spawn(test_connection);
@@ -403,9 +409,36 @@ mod tests {
             let id: Uuid = identity.get(0);
             let value: String = identity.get(2);
             match value.as_str() {
-                "1" => assert_match(&test_client, id, feature1, bbox_feature1).await,
-                "2" => assert_match(&test_client, id, feature2, bbox_feature2).await,
-                "3" => assert_match(&test_client, id, feature3, bbox_feature3).await,
+                "1" => {
+                    assert_match(
+                        &test_client,
+                        id,
+                        feature1,
+                        bbox_feature1,
+                        feature1_properties,
+                    )
+                    .await
+                }
+                "2" => {
+                    assert_match(
+                        &test_client,
+                        id,
+                        feature2,
+                        bbox_feature2,
+                        feature2_properties,
+                    )
+                    .await
+                }
+                "3" => {
+                    assert_match(
+                        &test_client,
+                        id,
+                        feature3,
+                        bbox_feature3,
+                        feature3_properties,
+                    )
+                    .await
+                }
                 _ => panic!("unexpected identity value: {}", value),
             }
         }
@@ -415,6 +448,7 @@ mod tests {
             id: Uuid,
             control_feature: &str,
             control_bbox: &str,
+            control_properties: &[(&str, &str)],
         ) {
             let feature: String = client
                 .query_one(
@@ -434,6 +468,25 @@ mod tests {
                 .unwrap()
                 .get(0);
             assert_eq!(bbox, control_bbox);
+            let properties = client
+                .query(
+                    "SELECT key, value from georocket.property where id = $1",
+                    &[&id],
+                )
+                .await
+                .unwrap()
+                .into_iter()
+                .map(|row| {
+                    let key: String = row.get(0);
+                    let value: String = row.get(1);
+                    (key, value)
+                })
+                .collect::<HashMap<_, _>>();
+            assert_eq!(properties.len(), control_properties.len());
+            dbg!(&properties);
+            for (key, value) in control_properties {
+                assert_eq!(properties.get(*key).unwrap(), value);
+            }
         }
     }
     async fn write_to_db(file: &str, config: &str) {

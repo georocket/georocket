@@ -3,8 +3,6 @@ use crate::input::{Splitter, SplitterChannels};
 use crate::output::Store;
 use crate::types::{Index, RawChunk};
 use futures::future::BoxFuture;
-use std::future::Future;
-use std::pin::{pin, Pin};
 use tokio::sync::mpsc;
 
 pub struct GeoDataImporter {
