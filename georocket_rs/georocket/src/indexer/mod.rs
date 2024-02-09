@@ -14,36 +14,52 @@ mod geo_json_indexer;
 use geo_json_indexer::GeoJsonIndexer;
 
 #[derive(Debug)]
-pub struct MainIndexer {
+pub struct IndexerChannels {
     chunk_rec: Receiver<Chunk>,
     index_send: mpsc::Sender<Index>,
 }
 
-impl MainIndexer {
-    /// Create a new `MainIndexer` with the provided channels.
+impl IndexerChannels {
     pub fn new(chunk_rec: Receiver<Chunk>, index_send: mpsc::Sender<Index>) -> Self {
         Self {
             chunk_rec,
             index_send,
         }
     }
+}
 
-    /// Create a new `MainIndexer` along with the a c receiver channel for the generated `Index`es.
-    /// `capacity` specifies the capacity of the created channel.
-    pub fn new_with_index_receiver(
-        capacity: usize,
-        chunk_rec: Receiver<Chunk>,
-    ) -> (Self, mpsc::Receiver<Index>) {
-        let (index_send, index_rec) = mpsc::channel(capacity);
-        (Self::new(chunk_rec, index_send), index_rec)
+#[derive(Debug)]
+pub struct MainIndexer {
+    channels: IndexerChannels,
+}
+
+impl MainIndexer {
+    /// Create a new `MainIndexer` with the provided channels.
+    pub fn new(indexer_channels: IndexerChannels) -> Self {
+        Self {
+            channels: indexer_channels,
+        }
     }
+
+    // /// Create a new `MainIndexer` along with the a c receiver channel for the generated `Index`es.
+    // /// `capacity` specifies the capacity of the created channel.
+    // pub fn new_with_index_receiver(
+    //     capacity: usize,
+    //     chunk_rec: Receiver<Chunk>,
+    // ) -> (Self, mpsc::Receiver<Index>) {
+    //     let (index_send, index_rec) = mpsc::channel(capacity);
+    //     (Self::new(chunk_rec, index_send), index_rec)
+    // }
+
     /// Run the `MainIndexer` until the channel is closed.
     /// Returns the amount of `Chunk`s that have been processed.
-    pub async fn run(mut self) -> anyhow::Result<usize> {
+    pub async fn run(self) -> anyhow::Result<usize> {
+        let chunk_rec = self.channels.chunk_rec;
+        let index_send = self.channels.index_send;
         let mut count = 0;
-        while let Ok(chunk) = self.chunk_rec.recv().await {
-            let index = self.process_chunk(chunk);
-            self.index_send
+        while let Ok(chunk) = chunk_rec.recv().await {
+            let index = Self::process_chunk(chunk);
+            index_send
                 .send(index)
                 .await
                 .with_context(|| {
@@ -57,7 +73,7 @@ impl MainIndexer {
     /// Process a single chunk into an index.
     /// Will log the error
     #[instrument(level = "debug")]
-    fn process_chunk(&mut self, chunk: Chunk) -> Index {
+    fn process_chunk(chunk: Chunk) -> Index {
         let Chunk { id, inner } = chunk;
         let index_elements = match inner {
             InnerChunk::GeoJson(chunk) => GeoJsonIndexer::new(chunk).generate_index(),

@@ -1,4 +1,5 @@
 use super::index_map::IdIndexMap;
+use crate::output::channels::StoreChannels;
 use crate::types::{Index, IndexElement, RawChunk};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -16,19 +17,6 @@ struct InternalIndex {
 }
 
 type ID = usize;
-
-/// The `FileStore` receives `RawChunk`s and `Index`es and writes them to disk.
-/// The 'Index'es are written to a single index file, while the `RawChunk`s are
-/// written to files in a directory structure based on randomly generated `Uuid`s, which
-/// are stored in the index file. The `FileStore` will append to an existing index file or
-/// create a new one if none exists.
-pub struct FileStore {
-    directory: PathBuf,
-    raw_rec: tokio::sync::mpsc::Receiver<RawChunk>,
-    index_rec: tokio::sync::mpsc::Receiver<Index>,
-    index_map: IdIndexMap,
-    index_file: BufWriter<File>,
-}
 
 /// Helper function to generate a path and file name for a given `Uuid`.
 fn make_path(uuid: Uuid) -> (PathBuf, PathBuf) {
@@ -68,18 +56,29 @@ impl From<UuidString> for Uuid {
     }
 }
 
+/// The `FileStore` receives `RawChunk`s and `Index`es and writes them to disk.
+/// The 'Index'es are written to a single index file, while the `RawChunk`s are
+/// written to files in a directory structure based on randomly generated `Uuid`s, which
+/// are stored in the index file. The `FileStore` will append to an existing index file or
+/// create a new one if none exists.
+pub struct FileStore {
+    directory: PathBuf,
+    store_channels: StoreChannels,
+    index_map: IdIndexMap,
+    index_file: BufWriter<File>,
+}
+
 impl FileStore {
     /// Creates a new `FileStore` object and creates an index file in the specified directory.
     pub async fn new(
-        directory: PathBuf,
-        raw_rec: tokio::sync::mpsc::Receiver<RawChunk>,
-        index_rec: tokio::sync::mpsc::Receiver<Index>,
+        directory: impl Into<PathBuf>,
+        store_channels: StoreChannels,
     ) -> anyhow::Result<Self> {
+        let directory = directory.into();
         let index_file = Self::create_index_file(&directory).await?;
         Ok(Self {
             directory,
-            raw_rec,
-            index_rec,
+            store_channels,
             index_file,
             index_map: IdIndexMap::new(),
         })
@@ -109,11 +108,11 @@ impl FileStore {
         let mut num_chunks = 0;
         loop {
             tokio::select! {
-                Some(raw) = self.raw_rec.recv() => {
+                Some(raw) = self.store_channels.raw_rec.recv() => {
                         self.handle_chunk(raw).await?;
                         num_chunks += 1;
                 }
-                Some(index) = self.index_rec.recv() => {
+                Some(index) = self.store_channels.index_rec.recv() => {
                     self.handle_index(index).await?;
                     num_indexes += 1;
                 }

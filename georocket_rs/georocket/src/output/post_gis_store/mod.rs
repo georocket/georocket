@@ -1,4 +1,5 @@
 use super::index_map::IdIndexMap;
+use crate::output::channels::StoreChannels;
 use crate::types::{Index, IndexElement, RawChunk};
 use indexing::attributes::{Attributes, Value};
 use indexing::bounding_box::{BoundingBox, GeoPoint};
@@ -16,8 +17,7 @@ mod migration {
 /// the `MainIndexer`. It stores these in a [PostGIS](https://postgis.net/) database.
 /// A UUID is generated, to map the raw features to their respective indexes.
 pub struct PostGISStore {
-    raw_rec: mpsc::Receiver<RawChunk>,
-    index_rec: mpsc::Receiver<Index>,
+    store_channels: StoreChannels,
     client: Client,
     id_index_map: IdIndexMap,
 }
@@ -26,46 +26,27 @@ impl PostGISStore {
     /// Creates a new `PostGISStore` with a connection based on the `config`.
     /// The `PostGISStore` receives chunks and indexes from `raw_rec` and `index_rec` channels and stores
     /// them in the specified database.
-    pub async fn new(
-        mut client: Client,
-        raw_rec: mpsc::Receiver<RawChunk>,
-        index_rec: mpsc::Receiver<Index>,
-    ) -> anyhow::Result<Self> {
+    pub async fn new(mut client: Client, store_channels: StoreChannels) -> anyhow::Result<Self> {
         migration::migrations::runner()
             .run_async(&mut client)
             .await?;
         return Ok(Self {
-            raw_rec,
-            index_rec,
+            store_channels,
             client,
             id_index_map: IdIndexMap::new(),
         });
     }
-
-    // pub fn construct_with_client(
-    //     client: Client,
-    // ) -> impl FnOnce(
-    //     mpsc::Receiver<RawChunk>,
-    //     mpsc::Receiver<Index>,
-    // ) -> BoxFuture<'static, anyhow::Result<Box<dyn Store + Send>>> {
-    //     |raw_rec, idx_rex| {
-    //         Box::pin(async move {
-    //             let store = PostGISStore::new(client, raw_rec, idx_rex).await?;
-    //             Ok(Box::new(store) as Box<dyn Store + Send>)
-    //         })
-    //     }
-    // }
 
     pub async fn run(&mut self) -> anyhow::Result<usize> {
         let mut num_indexes = 0;
         let mut num_chunks = 0;
         loop {
             tokio::select! {
-                Some(raw) = self.raw_rec.recv() => {
+                Some(raw) = self.store_channels.raw_rec.recv() => {
                     self.handle_raw(raw).await?;
                     num_chunks += 1;
                 }
-                Some(index) = self.index_rec.recv() => {
+                Some(index) = self.store_channels.index_rec.recv() => {
                     self.handle_index(index).await?;
                     num_indexes += 1;
                 }
@@ -174,10 +155,7 @@ impl PostGISStore {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::importer::GeoDataImporter;
-    use crate::indexer::MainIndexer;
-    use crate::input::geo_json_splitter::GeoJsonSplitter;
-    use crate::input::SplitterChannels;
+    use crate::importer::{ImporterBuilder, SourceType, StoreType};
     use geo_testcontainer::postgis::PostGIS;
     use geo_testcontainer::testcontainers::clients;
     use std::collections::HashMap;
@@ -205,11 +183,12 @@ mod tests {
         tokio::spawn(store_connection);
         let (_, raw_rec) = mpsc::channel(1024);
         let (_, idx_rec) = mpsc::channel(1024);
-        let _store = PostGISStore::new(store_client, raw_rec, idx_rec)
+        let store_channels = StoreChannels::new(raw_rec, idx_rec);
+        let _store = PostGISStore::new(store_client, store_channels)
             .await
             .unwrap();
 
-        // select select all table names in the georocket schema
+        // select all table names in the georocket schema
         let rows = test_client
             .query(
                 "SELECT table_name FROM information_schema.tables WHERE table_schema = 'georocket'",
@@ -490,20 +469,14 @@ mod tests {
         }
     }
     async fn write_to_db(file: &str, config: &str) {
-        let (store_client, store_connection) =
-            tokio_postgres::connect(config, NoTls).await.unwrap();
-        tokio::spawn(store_connection);
-        let (splitter_channels, chunk_rec, raw_rec) =
-            SplitterChannels::new_with_channels(1024, 1024);
-        let splitter = GeoJsonSplitter::new(
-            tokio::fs::File::open(file).await.unwrap(),
-            splitter_channels,
-        );
-        let (indexer, index_rec) = MainIndexer::new_with_index_receiver(1024, chunk_rec);
-        let store = PostGISStore::new(store_client, raw_rec, index_rec)
+        let importer = ImporterBuilder::new()
+            .with_store_type(StoreType::PostGIS)
+            .with_store_config(config.to_string())
+            .with_source_type(SourceType::GeoJsonFile)
+            .with_source_config(file.to_string())
+            .build()
             .await
             .unwrap();
-        let geo_data_importer = GeoDataImporter::new(Box::new(splitter), Box::new(store), indexer);
-        geo_data_importer.run().await.unwrap();
+        importer.run().await.unwrap();
     }
 }

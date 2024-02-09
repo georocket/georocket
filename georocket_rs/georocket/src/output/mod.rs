@@ -8,6 +8,8 @@ use async_trait::async_trait;
 pub use file_store::FileStore;
 pub use post_gis_store::PostGISStore;
 
+pub mod channels;
+
 #[async_trait]
 pub trait Store {
     async fn run(&mut self) -> anyhow::Result<usize>;

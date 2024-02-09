@@ -34,7 +34,7 @@ impl SplitterChannels {
         )
     }
 
-    fn new(
+    pub fn new(
         chunk_send: async_channel::Sender<Chunk>,
         raw_send: tokio::sync::mpsc::Sender<RawChunk>,
     ) -> Self {

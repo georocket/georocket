@@ -11,7 +11,7 @@ post_gis_store = []
 actson = {version = "0.3.0", features = ["tokio"]}
 anyhow = "1.0.71"
 async-channel = "2"
-clap = {version = "4.3.21", features = ["derive"]}
+clap = {version = "4.5", features = ["derive"]}
 thiserror = "1.0.40"
 tokio = {version = "1.28.2", features = ["sync", "rt", "macros", "io-util", "fs"]}
 uuid = {version = "1.4.1", features = ["v4", "fast-rng", "serde"]}
