@@ -25,6 +25,7 @@ tracing = "0.1.40"
 tokio-postgres = { version = "0.7.10", features = ["with-uuid-1"]}
 refinery = { version = "0.8.12", features = ["tokio-postgres"] }
 futures = "0.3.30"
+toml = "0.8.10"
 
 [dev-dependencies]
 serde_json = "1.0.104"
