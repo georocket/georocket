@@ -4,7 +4,7 @@ use crate::output::Store;
 
 use clap::ValueEnum;
 
-mod builder;
+pub mod builder;
 pub mod import_args;
 mod import_config;
 

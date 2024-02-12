@@ -118,7 +118,6 @@ impl PostGISStore {
                 )
             }
         };
-        dbg!(geometry.as_str());
         self.client
             .execute(
                 "\
@@ -155,7 +154,7 @@ impl PostGISStore {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::importer::{ImporterBuilder, SourceType, StoreType};
+    use crate::importer::{builder::ImporterBuilder, SourceType, StoreType};
     use geo_testcontainer::postgis::PostGIS;
     use geo_testcontainer::testcontainers::clients;
     use std::collections::HashMap;
