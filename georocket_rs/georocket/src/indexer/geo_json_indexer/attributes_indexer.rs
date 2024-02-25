@@ -87,7 +87,7 @@ impl Inner {
             E::StartArray => self.process_start_array(),
             E::EndArray => self.process_end_array(),
             E::FieldName => self.process_field_name(payload),
-            E::ValueDouble | E::ValueInt | E::ValueString => self.process_value(payload),
+            E::ValueFloat | E::ValueInt | E::ValueString => self.process_value(payload),
             E::ValueFalse => self.process_value(Some("false")),
             E::ValueTrue => self.process_value(Some("true")),
             E::ValueNull => self.process_value(Some("null")),

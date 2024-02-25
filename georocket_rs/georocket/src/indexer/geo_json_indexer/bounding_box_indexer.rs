@@ -47,7 +47,7 @@ impl BoundingBoxIndexer {
 /// The inner state of the `BoundingBoxIndexer` calculates a bounding box from incoming json events.
 /// It is implemented as a state machine with three states:
 /// - `Uninitialized`: The initial state. The indexer is waiting for a `FieldName` event with the value `coordinates`.
-/// - `Processing`: The indexer has received the specified field name and is waiting for a `ValueDouble` or `ValueInt` events.
+/// - `Processing`: The indexer has received the specified field name and is waiting for a `ValueFloat` or `ValueInt` events.
 ///     In this state, the `BoundingBoxIndexer` tracks the depth inside the sequence or nested objects of the `coordinates` field.
 /// - `Done`: The indexer has received a closing `EndArray` or `EndObject` event and is ready to return
 ///     the calculated bounding box or return an error from an invalid state.
@@ -119,9 +119,9 @@ impl Inner {
                     }
                 }
             }
-            E::ValueInt | E::ValueDouble => {
+            E::ValueInt | E::ValueFloat => {
                 let coordinate_component = payload
-                    .expect("payload of JsonEvent::{ValueInt, ValueDouble} shoud always be Some")
+                    .expect("payload of JsonEvent::{ValueInt, ValueFloat} shoud always be Some")
                     .parse::<f64>()
                     .unwrap();
                 self.add_coordinate_component(coordinate_component)

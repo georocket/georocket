@@ -97,7 +97,7 @@ where
         loop {
             let event = self.parser.next_event();
             let payload = match event {
-                Error => bail!("the jason parser has encountered an error"),
+                Error(kind) => bail!("the json parser has encountered an error: {kind:?}"),
                 Eof => bail!("unexpected EOF while parsing object"),
                 NeedMoreInput => {
                     self.fill_feeder().await?;
@@ -111,8 +111,8 @@ where
                     depth -= 1;
                     None
                 }
-                FieldName | ValueString | ValueInt | ValueDouble => {
-                    Some(self.parser.current_string()?.to_owned())
+                FieldName | ValueString | ValueInt | ValueFloat => {
+                    Some(self.parser.current_str()?.to_owned())
                 }
                 _ => None,
             };
@@ -196,7 +196,7 @@ where
                 JsonEvent::Eof => {
                     bail!("unexpected EOF encountered while searching for one of: {events:?}")
                 }
-                JsonEvent::Error => bail!("the parser has encountered an error"),
+                JsonEvent::Error(kind) => bail!("the parser has encountered an error: {kind:?}"),
                 _ => continue,
             }
         }
@@ -254,7 +254,7 @@ where
         loop {
             let event = self.parser.next_event();
             let payload = match event {
-                Error => bail!("the json parser has encountered an error"),
+                Error(kind) => bail!("the json parser has encountered an error: {kind:?}"),
                 Eof => bail!("unexpected EOF while parsing object"),
                 NeedMoreInput => {
                     self.fill_feeder().await?;
@@ -268,8 +268,8 @@ where
                     depth -= 1;
                     None
                 }
-                FieldName | ValueString | ValueInt | ValueDouble => {
-                    Some(self.parser.current_string()?.to_owned())
+                FieldName | ValueString | ValueInt | ValueFloat => {
+                    Some(self.parser.current_str()?.to_owned())
                 }
                 _ => None,
             };
