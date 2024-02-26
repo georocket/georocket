@@ -4,7 +4,6 @@ use crate::importer::{SourceType, StoreType};
 use anyhow::Context;
 use std::path::PathBuf;
 use std::str::FromStr;
-use thiserror::__private::PathAsDisplay;
 
 /// location of the config file, relative to $HOME
 const CONFIG_PATH: &str = "/.config/georocket/config.toml";
@@ -29,7 +28,7 @@ impl FileConfig {
         match self {
             FileConfig::NotLoaded(path) => {
                 let file = std::fs::read_to_string(&path).with_context(|| {
-                    format!("unable to read configuration file at {}", path.as_display())
+                    format!("unable to read configuration file at {:?}", path)
                 })?;
                 let contents = toml::from_str(&file).context("configuration malformed")?;
                 *self = Self::Loaded(contents);
