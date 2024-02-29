@@ -55,6 +55,29 @@ pub enum Value {
     Integer(i64),
 }
 
+impl From<String> for Value {
+    fn from(value: String) -> Self {
+        Value::String(value)
+    }
+}
+
+impl From<&str> for Value {
+    fn from(value: &str) -> Self {
+        Value::String(value.into())
+    }
+}
+
+impl From<i64> for Value {
+    fn from(value: i64) -> Self {
+        Value::Integer(value)
+    }
+}
+
+impl From<f64> for Value {
+    fn from(value: f64) -> Self {
+        Value::Double(value)
+    }
+}
 /// A type representing a collection of attributes as key-value pairs stored in a hashmap.
 /// The key is always a `String` and the value is of the [`Value`] type and can thus be either a
 /// String itself or a `f64` or `i64`.
