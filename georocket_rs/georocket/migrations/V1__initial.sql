@@ -13,5 +13,7 @@ CREATE TABLE georocket.bounding_box (
 CREATE TABLE georocket.property (
     id UUID,
     key TEXT,
-    value TEXT
+    value_f FLOAT8,
+    value_i INT8,
+    value_s TEXT
 );
