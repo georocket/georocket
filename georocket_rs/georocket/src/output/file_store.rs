@@ -185,7 +185,7 @@ impl FileStore {
 mod test {
     use super::*;
     use crate::output::file_store::make_path;
-    use indexing::bounding_box::BoundingBoxBuilder;
+    use indexing::bounding_box::{BoundingBoxBuilder, NoValidation};
     use std::fs::DirBuilder;
     use std::io::Cursor;
 
@@ -267,7 +267,7 @@ mod test {
             .take(5)
             .enumerate()
             .map(|(id, coords)| {
-                let mut bounding_box = BoundingBoxBuilder::new();
+                let mut bounding_box = BoundingBoxBuilder::new(NoValidation);
                 for (x, y) in coords {
                     bounding_box = bounding_box.add_point(x, y);
                 }

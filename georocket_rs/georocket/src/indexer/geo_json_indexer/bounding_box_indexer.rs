@@ -1,6 +1,6 @@
 use crate::types::IndexElement;
 use actson::JsonEvent;
-use indexing::bounding_box::{BoundingBoxBuilder, BoundingBoxBuilderError};
+use indexing::bounding_box::{BoundingBoxBuilder, NoValidation};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -13,8 +13,6 @@ pub enum BoundingBoxIndexerError {
     Must either be in the `Uninitialized` or `Done` state."
     )]
     InvalidIndexerState,
-    #[error(transparent)]
-    BoundingBoxBuilderError(#[from] BoundingBoxBuilderError),
 }
 
 /// The `BoundingBoxIndexer` calculates a bounding box from incoming json events.
@@ -59,7 +57,7 @@ enum Inner {
         current_level: usize,
     },
     Done {
-        bounding_box_builder: Result<BoundingBoxBuilder, BoundingBoxIndexerError>,
+        bounding_box_builder: Result<BoundingBoxBuilder<NoValidation>, BoundingBoxIndexerError>,
     },
 }
 
@@ -143,7 +141,9 @@ impl Inner {
             } => match bounding_box_builder.map(BoundingBoxBuilder::build) {
                 Ok(Ok(Some(bbox))) => Some(Ok(IndexElement::BoundingBoxIndex(bbox))),
                 Ok(Ok(None)) => None,
-                Ok(Err(err)) => Some(Err(err.into())),
+                Ok(Err(_)) => {
+                    unreachable!("BoundingBoxBuilder::build should never return an error")
+                }
                 Err(err) => Some(Err(err.into())),
             },
         }
@@ -153,16 +153,18 @@ impl Inner {
 #[derive(Clone, Copy, Debug)]
 enum BoundingBoxHelper {
     Init,
-    WaitingForXCoordinate(BoundingBoxBuilder),
-    WaitingForYCoordinate(BoundingBoxBuilder, f64),
+    WaitingForXCoordinate(BoundingBoxBuilder<NoValidation>),
+    WaitingForYCoordinate(BoundingBoxBuilder<NoValidation>, f64),
 }
 
 impl BoundingBoxHelper {
     fn add_coordinate_component(&mut self, component: f64) {
         match self {
             BoundingBoxHelper::Init => {
-                *self =
-                    BoundingBoxHelper::WaitingForYCoordinate(BoundingBoxBuilder::new(), component)
+                *self = BoundingBoxHelper::WaitingForYCoordinate(
+                    BoundingBoxBuilder::new(NoValidation).set_srid(4326),
+                    component,
+                )
             }
             BoundingBoxHelper::WaitingForXCoordinate(inner) => {
                 *self = BoundingBoxHelper::WaitingForYCoordinate(*inner, component)
@@ -174,9 +176,9 @@ impl BoundingBoxHelper {
             }
         }
     }
-    fn into_inner(self) -> Result<BoundingBoxBuilder, BoundingBoxIndexerError> {
+    fn into_inner(self) -> Result<BoundingBoxBuilder<NoValidation>, BoundingBoxIndexerError> {
         match self {
-            BoundingBoxHelper::Init => Ok(BoundingBoxBuilder::new()),
+            BoundingBoxHelper::Init => Ok(BoundingBoxBuilder::new(NoValidation)),
             BoundingBoxHelper::WaitingForXCoordinate(inner) => Ok(inner),
             BoundingBoxHelper::WaitingForYCoordinate(..) => {
                 Err(BoundingBoxIndexerError::InvalidHelperState)
@@ -189,13 +191,14 @@ impl BoundingBoxHelper {
 mod tests {
     use super::*;
     use crate::types::InnerChunk;
-    use indexing::bounding_box::BoundingBox;
+    use georocket_types::BoundingBox;
     use std::path::Path;
 
     #[tokio::test]
     async fn index_basic_bounding_box() {
-        let control_bbox = BoundingBoxBuilder::new()
+        let control_bbox = BoundingBoxBuilder::new(NoValidation)
             .add_point(125.6, 10.1)
+            .set_srid(4326)
             .build()
             .unwrap()
             .unwrap();
@@ -206,12 +209,14 @@ mod tests {
     #[tokio::test]
     async fn index_bounding_box() {
         let control_bboxes = [
-            BoundingBoxBuilder::new()
+            BoundingBoxBuilder::new(NoValidation)
+                .set_srid(4326)
                 .add_point(102.0, 0.5)
                 .build()
                 .unwrap()
                 .unwrap(),
-            BoundingBoxBuilder::new()
+            BoundingBoxBuilder::new(NoValidation)
+                .set_srid(4326)
                 .add_point(102.0, 0.0)
                 .add_point(103.0, 1.0)
                 .add_point(104.0, 0.0)
@@ -219,7 +224,8 @@ mod tests {
                 .build()
                 .unwrap()
                 .unwrap(),
-            BoundingBoxBuilder::new()
+            BoundingBoxBuilder::new(NoValidation)
+                .set_srid(4326)
                 .add_point(100.0, 0.0)
                 .add_point(101.0, 0.0)
                 .add_point(101.0, 1.0)

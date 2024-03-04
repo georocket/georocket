@@ -1,8 +1,8 @@
 use super::index_map::IdIndexMap;
 use crate::output::channels::StoreChannels;
 use crate::types::{Index, IndexElement, RawChunk};
+use georocket_types::BoundingBox;
 use indexing::attributes::{Attributes, Value};
-use indexing::bounding_box::{BoundingBox, GeoPoint};
 use std::str::from_utf8;
 use tokio::sync::mpsc;
 use tokio_postgres;
@@ -106,27 +106,43 @@ impl PostGISStore {
     }
 
     async fn handle_bounding_box(&self, bbox: BoundingBox, uuid: Uuid) -> anyhow::Result<()> {
-        let geometry = match bbox {
-            BoundingBox::Point(point) => {
-                let GeoPoint { x, y } = point;
-                format!(r#"{{"type":"Point","coordinates":[{},{}]}}"#, x, y)
-            }
-            BoundingBox::Box([p0, p1, p2, p3, p4]) => {
-                format!(
-                    r#"{{"type":"Polygon","coordinates":[[[{}, {}],[{}, {}],[{}, {}],[{}, {}],[{}, {}]]]}}"#,
-                    p0.x, p0.y, p1.x, p1.y, p2.x, p2.y, p3.x, p3.y, p4.x, p4.y
+        let BoundingBox {
+            srid,
+            lower_left,
+            upper_right,
+        } = bbox;
+        if lower_left == upper_right {
+            self.client
+                .execute(
+                    "\
+                INSERT INTO georocket.bounding_box (id, bounding_box)\
+                VALUES ($1, ST_Point($2, $3, $4))",
+                    &[
+                        &uuid,
+                        &lower_left.x,
+                        &lower_left.y,
+                        &(srid.unwrap_or(0) as i32),
+                    ],
                 )
-            }
-        };
-        self.client
-            .execute(
-                "\
+                .await?;
+        } else {
+            self.client
+                .execute(
+                    "\
                     INSERT INTO georocket.bounding_box (id, bounding_box)\
-                    VALUES ($1, ST_GeomFromGeoJSON($2))
+                    VALUES ($1, ST_MakeEnvelope($2, $3, $4, $5, $6))
                     ",
-                &[&uuid, &geometry],
-            )
-            .await?;
+                    &[
+                        &uuid,
+                        &lower_left.x,
+                        &lower_left.y,
+                        &upper_right.x,
+                        &upper_right.y,
+                        &(srid.unwrap_or(0) as i32),
+                    ],
+                )
+                .await?;
+        }
         Ok(())
     }
 
@@ -375,7 +391,7 @@ mod tests {
         let feature1_properties = &[("identity", 1.into()), ("prop0", "value0".into())];
         let feature2 = r#"{ "type": "Feature", "geometry": { "type": "LineString", "coordinates": [ [ 102.0, 0.0 ], [ 103.0, 1.0 ], [ 104.0, 0.0 ], [ 105.0, 1.0 ] ] }, "properties": { "identity": 2, "prop0": "value0", "prop1": 0.0 } }"#;
         let bbox_feature2 =
-            r#"{"type":"Polygon","coordinates":[[[102,0],[105,0],[105,1],[102,1],[102,0]]]}"#;
+            r#"{"type":"Polygon","coordinates":[[[102,0],[102,1],[105,1],[105,0],[102,0]]]}"#;
         let feature2_properties = &[
             ("identity", 2.into()),
             ("prop0", "value0".into()),
@@ -383,7 +399,7 @@ mod tests {
         ];
         let feature3 = r#"{ "type": "Feature", "geometry": { "type": "Polygon", "coordinates": [ [ [ 100.0, 0.0 ], [ 101.0, 0.0 ], [ 101.0, 1.0 ], [ 100.0, 1.0 ], [ 100.0, 0.0 ] ] ] }, "properties": { "identity": 3, "prop0": "value0", "prop1": { "this": "that" } } }"#;
         let bbox_feature3 =
-            r#"{"type":"Polygon","coordinates":[[[100,0],[101,0],[101,1],[100,1],[100,0]]]}"#;
+            r#"{"type":"Polygon","coordinates":[[[100,0],[100,1],[101,1],[101,0],[100,0]]]}"#;
         let feature3_properties = &[
             ("identity", 3.into()),
             ("prop0", "value0".into()),

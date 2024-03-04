@@ -1,30 +1,6 @@
+use georocket_types::BoundingBox;
+use indexing::attributes::Value;
 use std::fmt::{Display, Formatter};
-
-/// Specifies a bounding box.
-#[derive(Debug)]
-pub(super) struct BoundingBox(pub(super) [f64; 4]);
-
-impl BoundingBox {
-    pub(super) fn to_geo_json(&self) -> String {
-        let left = self.0[0];
-        let right = self.0[2];
-        let bottom = self.0[1];
-        let top = self.0[3];
-        format!(
-            r#"{{"type":"Polygon","coordinates":[[[{}, {}],[{}, {}],[{}, {}],[{}, {}],[{}, {}]]]}}"#,
-            left, bottom, right, bottom, right, top, left, top, left, bottom
-        )
-    }
-}
-
-/// Specifies primitive values which may be part of a key:value search in
-/// the properties of the features.
-#[derive(Debug)]
-pub enum Value {
-    Integer(u64),
-    Float(f64),
-    String(String),
-}
 
 /// Specifies primitive which may be queried for directly.
 #[derive(Debug)]
