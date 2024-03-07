@@ -4,5 +4,6 @@ members = [
   "georocket",
   "indexing",
   "geo-testcontainer",
-  "georocket-types"
+  "georocket-types",
+  "georocket-import"
 ]

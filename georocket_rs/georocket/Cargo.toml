@@ -27,6 +27,7 @@ toml = "0.8.10"
 # Workspace Dependencies:
 indexing = {path = "../indexing"}
 georocket-types = {path = "../georocket-types"}
+georocket-import = {path = "../georocket-import"}
 
 [dev-dependencies]
 serde_json = "1.0.104"

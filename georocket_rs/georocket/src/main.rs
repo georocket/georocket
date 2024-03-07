@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use georocket::importer::import_args::{run_import, ImportArgs};
+use georocket_import::import_args::{run_import, ImportArgs};
 
 #[derive(Parser, Debug)]
 #[command(author, version)]
