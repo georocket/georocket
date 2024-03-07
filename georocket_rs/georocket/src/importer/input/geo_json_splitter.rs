@@ -8,7 +8,7 @@ const EXTEND: usize = 1024;
 mod buffer;
 use buffer::Buffer;
 
-use crate::types::{GeoJsonChunk, Payload};
+use crate::importer::types::{GeoJsonChunk, Payload};
 
 use super::{Splitter, SplitterChannels};
 
@@ -284,7 +284,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::types::{Chunk, RawChunk};
+    use crate::importer::types::{Chunk, RawChunk};
 
     use super::*;
     use std::{collections::HashMap, path::Path};

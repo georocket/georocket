@@ -1,6 +1,6 @@
 use super::index_map::IdIndexMap;
 use crate::importer::output::channels::StoreChannels;
-use crate::types::{Index, IndexElement, RawChunk};
+use crate::importer::types::{Index, IndexElement, RawChunk};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,

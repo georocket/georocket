@@ -1,4 +1,4 @@
-use crate::types::{Index, RawChunk};
+use crate::importer::types::{Index, RawChunk};
 use tokio::sync::mpsc;
 
 pub struct StoreChannels {

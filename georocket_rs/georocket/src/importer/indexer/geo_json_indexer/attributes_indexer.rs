@@ -1,4 +1,4 @@
-use crate::types::{IndexElement, Payload};
+use crate::importer::types::{IndexElement, Payload};
 use actson::JsonEvent;
 use georocket_types::Value;
 use indexing::attributes::AttributesBuilder;
@@ -274,7 +274,7 @@ impl Inner {
 mod tests {
     use super::*;
     use crate::importer::input::{GeoJsonSplitter, SplitterChannels};
-    use crate::types::{Chunk, InnerChunk};
+    use crate::importer::types::{Chunk, InnerChunk};
     use georocket_types::Value;
     use std::path::Path;
 
@@ -490,7 +490,7 @@ mod tests {
 
     async fn run_splitter_and_get_chunk_channel(
         json_features: impl AsRef<Path>,
-    ) -> async_channel::Receiver<crate::types::Chunk> {
+    ) -> async_channel::Receiver<crate::importer::types::Chunk> {
         let (splitter_channels, chunk_receiver, _raw) = SplitterChannels::new_with_channels(10, 10);
         let feature = tokio::fs::File::open(json_features).await.unwrap();
         let mut splitter = GeoJsonSplitter::new(feature, splitter_channels);
@@ -499,7 +499,9 @@ mod tests {
         chunk_receiver
     }
 
-    async fn get_chunks(receiver: async_channel::Receiver<crate::types::Chunk>) -> Vec<Chunk> {
+    async fn get_chunks(
+        receiver: async_channel::Receiver<crate::importer::types::Chunk>,
+    ) -> Vec<Chunk> {
         let mut chunks = Vec::new();
         while let Ok(chunk) = receiver.recv().await {
             chunks.push(chunk)

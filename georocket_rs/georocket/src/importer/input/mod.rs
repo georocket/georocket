@@ -1,6 +1,6 @@
 pub mod geo_json_splitter;
 
-pub use crate::types::{GeoDataType, GeoJsonChunk};
+pub use crate::importer::types::{GeoDataType, GeoJsonChunk};
 use async_trait::async_trait;
 pub use geo_json_splitter::GeoJsonSplitter;
 

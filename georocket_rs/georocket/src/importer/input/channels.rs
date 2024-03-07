@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::types::{Chunk, InnerChunk, RawChunk};
+use crate::importer::types::{Chunk, InnerChunk, RawChunk};
 
 #[derive(Error, Debug)]
 pub enum SplitterChannelError {

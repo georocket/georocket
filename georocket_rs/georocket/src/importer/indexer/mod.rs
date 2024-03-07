@@ -1,10 +1,10 @@
-//! The indexer takes [`Chunk`s](crate::types::Chunk) from a channel and processes them into
-//! [`Index`es](crate::types::Index).
+//! The indexer takes [`Chunk`s](crate::importer::types::Chunk) from a channel and processes them into
+//! [`Index`es](crate::importer::types::Index).
 //! A [`MainIndexer`] receives chunks from a [`Splitter`](crate::input::splitter::Splitter) and
 //! spins up concrete indexers for type of index that needs to be created.
-//! These are based on the [`InnerChunk`](crate::types::InnerChunk) type. of the received chunk.
+//! These are based on the [`InnerChunk`](crate::importer::types::InnerChunk) type. of the received chunk.
 
-use crate::types::{Chunk, Index, InnerChunk};
+use crate::importer::types::{Chunk, Index, InnerChunk};
 use anyhow::Context;
 use async_channel::Receiver;
 use tokio::sync::mpsc;

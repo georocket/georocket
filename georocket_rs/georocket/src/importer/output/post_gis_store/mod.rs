@@ -1,6 +1,6 @@
 use super::index_map::IdIndexMap;
 use crate::importer::output::channels::StoreChannels;
-use crate::types::{Index, IndexElement, RawChunk};
+use crate::importer::types::{Index, IndexElement, RawChunk};
 use georocket_types::{BoundingBox, Value};
 use indexing::attributes::Attributes;
 use std::str::from_utf8;

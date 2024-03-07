@@ -1,4 +1,4 @@
-use crate::types::{GeoJsonChunk, IndexElement};
+use crate::importer::types::{GeoJsonChunk, IndexElement};
 
 pub mod bounding_box_indexer;
 use bounding_box_indexer::BoundingBoxIndexer;
