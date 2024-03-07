@@ -513,25 +513,10 @@ dependencies = [
 name = "georocket"
 version = "0.2.0"
 dependencies = [
- "actson",
  "anyhow",
- "async-channel",
- "async-trait",
  "clap",
- "futures",
- "geo-testcontainer",
  "georocket-import",
- "georocket-types",
- "indexing",
- "refinery",
- "serde",
- "serde_json",
- "thiserror",
  "tokio",
- "tokio-postgres",
- "toml",
- "tracing",
- "uuid",
 ]
 
 [[package]]
