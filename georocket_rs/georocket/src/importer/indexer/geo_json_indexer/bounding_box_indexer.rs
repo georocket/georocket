@@ -194,6 +194,7 @@ impl BoundingBoxHelper {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::importer::input::{GeoJsonSplitter, SplitterChannels};
     use crate::types::InnerChunk;
     use georocket_types::BoundingBox;
     use std::path::Path;
@@ -275,13 +276,12 @@ mod tests {
     async fn make_splitter_and_chunk_channel(
         json_features: impl AsRef<Path>,
     ) -> (
-        crate::input::GeoJsonSplitter<tokio::fs::File>,
+        GeoJsonSplitter<tokio::fs::File>,
         async_channel::Receiver<crate::types::Chunk>,
     ) {
-        let (splitter_channels, chunk_receiver, _) =
-            crate::input::SplitterChannels::new_with_channels(1, 1);
+        let (splitter_channels, chunk_receiver, _) = SplitterChannels::new_with_channels(1, 1);
         let feature = tokio::fs::File::open(json_features).await.unwrap();
-        let splitter = crate::input::GeoJsonSplitter::new(feature, splitter_channels);
+        let splitter = GeoJsonSplitter::new(feature, splitter_channels);
         (splitter, chunk_receiver)
     }
 

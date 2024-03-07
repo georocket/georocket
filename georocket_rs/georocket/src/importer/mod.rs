@@ -1,4 +1,3 @@
-use crate::indexer::MainIndexer;
 use crate::input::Splitter;
 use crate::output::Store;
 
@@ -7,6 +6,8 @@ use clap::ValueEnum;
 pub mod builder;
 pub mod import_args;
 mod import_config;
+mod indexer;
+use indexer::MainIndexer;
 
 pub struct GeoDataImporter {
     splitter: Box<dyn Splitter + Send>,

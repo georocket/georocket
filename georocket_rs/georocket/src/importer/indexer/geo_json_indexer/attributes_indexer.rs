@@ -273,6 +273,7 @@ impl Inner {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::importer::input::{GeoJsonSplitter, SplitterChannels};
     use crate::types::{Chunk, InnerChunk};
     use georocket_types::Value;
     use std::path::Path;
@@ -490,10 +491,9 @@ mod tests {
     async fn run_splitter_and_get_chunk_channel(
         json_features: impl AsRef<Path>,
     ) -> async_channel::Receiver<crate::types::Chunk> {
-        let (splitter_channels, chunk_receiver, _raw) =
-            crate::input::SplitterChannels::new_with_channels(10, 10);
+        let (splitter_channels, chunk_receiver, _raw) = SplitterChannels::new_with_channels(10, 10);
         let feature = tokio::fs::File::open(json_features).await.unwrap();
-        let mut splitter = crate::input::GeoJsonSplitter::new(feature, splitter_channels);
+        let mut splitter = GeoJsonSplitter::new(feature, splitter_channels);
         let handle = tokio::spawn(async move { splitter.run().await });
         let _geo_type = handle.await.unwrap().unwrap();
         chunk_receiver
