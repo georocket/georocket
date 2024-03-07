@@ -1,4 +1,4 @@
-use crate::types::IndexElement;
+use crate::types::{IndexElement, Payload};
 use actson::JsonEvent;
 use georocket_types::Value;
 use indexing::attributes::AttributesBuilder;
@@ -23,7 +23,7 @@ impl AttributesIndexer {
             inner: Inner::new(),
         }
     }
-    pub fn process_event(&mut self, json_event: JsonEvent, payload: Option<&Value>) {
+    pub fn process_event(&mut self, json_event: JsonEvent, payload: &Payload) {
         self.inner.process_event(json_event, payload);
     }
     pub fn retrieve_index_element(self) -> Option<Result<IndexElement, AttributeIndexerError>> {
@@ -78,7 +78,7 @@ impl Inner {
             builder: AttributesBuilder::new(),
         }
     }
-    fn process_event(&mut self, json_event: JsonEvent, payload: Option<&Value>) {
+    fn process_event(&mut self, json_event: JsonEvent, payload: &Payload) {
         use JsonEvent as E;
         match json_event {
             E::StartObject => {
@@ -89,9 +89,9 @@ impl Inner {
             E::EndArray => self.process_end_array(),
             E::FieldName => self.process_field_name(payload),
             E::ValueFloat | E::ValueInt | E::ValueString => self.process_value(payload),
-            E::ValueFalse => self.process_value(Some(&Value::String("false".into()))),
-            E::ValueTrue => self.process_value(Some(&Value::String("true".into()))),
-            E::ValueNull => self.process_value(Some(&Value::String("null".into()))),
+            E::ValueFalse => self.process_value(&Some(Value::String("false".into()))),
+            E::ValueTrue => self.process_value(&Some(Value::String("true".into()))),
+            E::ValueNull => self.process_value(&Some(Value::String("null".into()))),
             _ => (),
         }
     }
@@ -195,7 +195,7 @@ impl Inner {
             State::Error => (),
         }
     }
-    fn process_field_name(&mut self, payload: Option<&Value>) {
+    fn process_field_name(&mut self, payload: &Payload) {
         let Some(field_name) = payload else {
             self.state = State::Error;
             return;
@@ -219,7 +219,7 @@ impl Inner {
             State::Error => (),
         }
     }
-    fn process_value(&mut self, payload: Option<&Value>) {
+    fn process_value(&mut self, payload: &Payload) {
         let Some(value) = payload else {
             self.state = State::Error;
             return;
@@ -281,15 +281,15 @@ mod tests {
     fn inner_multiple_key_vals() {
         use JsonEvent as E;
         let mut indexer = AttributesIndexer::new();
-        indexer.process_event(E::FieldName, Some(&Value::String("properties".into())));
-        indexer.process_event(E::StartObject, None);
-        indexer.process_event(E::FieldName, Some(&"string_key".into()));
-        indexer.process_event(E::ValueString, Some(&"string".into()));
-        indexer.process_event(E::FieldName, Some(&"int_key".into()));
-        indexer.process_event(E::ValueInt, Some(&1.into()));
-        indexer.process_event(E::FieldName, Some(&"float_key".into()));
-        indexer.process_event(E::ValueInt, Some(&1.0.into()));
-        indexer.process_event(E::EndObject, None);
+        indexer.process_event(E::FieldName, &Some(Value::String("properties".into())));
+        indexer.process_event(E::StartObject, &None);
+        indexer.process_event(E::FieldName, &Some("string_key".into()));
+        indexer.process_event(E::ValueString, &Some("string".into()));
+        indexer.process_event(E::FieldName, &Some("int_key".into()));
+        indexer.process_event(E::ValueInt, &Some(1.into()));
+        indexer.process_event(E::FieldName, &Some("float_key".into()));
+        indexer.process_event(E::ValueInt, &Some(1.0.into()));
+        indexer.process_event(E::EndObject, &None);
         if let IndexElement::Attributes(attributes) =
             indexer.retrieve_index_element().unwrap().unwrap()
         {
@@ -308,8 +308,8 @@ mod tests {
             let InnerChunk::GeoJson(chunk) = chunk.inner;
             let mut attributes_indexer = AttributesIndexer::new();
             for (event, payload) in chunk {
-                let payload = payload.as_ref();
-                attributes_indexer.process_event(event, payload);
+                let payload = payload;
+                attributes_indexer.process_event(event, &payload);
             }
             let index = attributes_indexer
                 .retrieve_index_element()

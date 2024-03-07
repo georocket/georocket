@@ -1,4 +1,4 @@
-use crate::types::IndexElement;
+use crate::types::{IndexElement, Payload};
 use actson::JsonEvent;
 use georocket_types::Value;
 use indexing::bounding_box::{BoundingBoxBuilder, NoValidation};
@@ -30,7 +30,7 @@ impl BoundingBoxIndexer {
         }
     }
     /// Process a single json event and payload pair. Transitioning the inner state of the `BoundingBoxIndexer` as necessary.
-    pub fn process_event(&mut self, event: JsonEvent, payload: Option<&Value>) {
+    pub fn process_event(&mut self, event: JsonEvent, payload: &Payload) {
         self.inner.process_event(event, payload)
     }
     /// Retrieve the calculated bounding box from the `BoundingBoxIndexer`.
@@ -105,13 +105,16 @@ impl Inner {
         }
     }
     /// Process a single json event and payload. Transitioning the inner state of `self` as necessary.
-    fn process_event(&mut self, json_event: JsonEvent, payload: Option<&Value>) {
+    fn process_event(&mut self, json_event: JsonEvent, payload: &Payload) {
         use JsonEvent as E;
         match json_event {
             E::StartArray | E::StartObject => self.increase_level(),
             JsonEvent::EndArray | JsonEvent::EndObject => self.decrease_level(),
             E::FieldName => {
-                if payload.is_some_and(|val| val.unwrap_str() == "coordinates") {
+                if payload
+                    .as_ref()
+                    .is_some_and(|val| val.unwrap_str() == "coordinates")
+                {
                     *self = Self::Processing {
                         bounding_box_builder: BoundingBoxHelper::Init,
                         current_level: 0,
@@ -120,6 +123,7 @@ impl Inner {
             }
             E::ValueInt | E::ValueFloat => {
                 let coordinate_component = payload
+                    .as_ref()
                     .expect("payload of JsonEvent::{ValueInt, ValueFloat} should always be Some")
                     .unwrap_float();
                 self.add_coordinate_component(coordinate_component)
@@ -259,9 +263,9 @@ mod tests {
         while let Ok(chunk) = chunk_receiver.recv().await {
             let mut bbox_indexer = BoundingBoxIndexer::new();
             let InnerChunk::GeoJson(chunk) = chunk.inner;
-            for (json_event, payload) in chunk {
-                let payload = payload.as_ref();
-                bbox_indexer.process_event(json_event, payload);
+            for (json_event, payload) in &chunk {
+                let payload = payload;
+                bbox_indexer.process_event(*json_event, payload);
             }
             results.push(bbox_indexer.retrieve_index_element());
         }
