@@ -1,9 +1,8 @@
+use crate::importer::input::geo_json_splitter::GeoJsonType;
 use actson::JsonEvent;
 use georocket_types::{BoundingBox, Value};
 use indexing::attributes::Attributes;
 use serde::{Deserialize, Serialize};
-
-use crate::input::geo_json_splitter::GeoJsonType;
 
 pub enum GeoDataType {
     GeoJson(GeoJsonType),
