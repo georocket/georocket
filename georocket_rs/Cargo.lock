@@ -558,6 +558,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "georocket-query"
+version = "0.1.0"
+dependencies = [
+ "georocket-types",
+]
+
+[[package]]
 name = "georocket-types"
 version = "0.1.0"
 dependencies = [
