@@ -2,8 +2,8 @@ use crate::types::{Index, RawChunk};
 use tokio::sync::mpsc;
 
 pub struct StoreChannels {
-    pub(super) raw_rec: mpsc::Receiver<RawChunk>,
-    pub(super) index_rec: mpsc::Receiver<Index>,
+    pub(crate) raw_rec: mpsc::Receiver<RawChunk>,
+    pub(crate) index_rec: mpsc::Receiver<Index>,
 }
 
 impl StoreChannels {

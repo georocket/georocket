@@ -1,5 +1,5 @@
 use super::index_map::IdIndexMap;
-use crate::output::channels::StoreChannels;
+use crate::importer::output::channels::StoreChannels;
 use crate::types::{Index, IndexElement, RawChunk};
 use georocket_types::{BoundingBox, Value};
 use indexing::attributes::Attributes;

@@ -1,5 +1,5 @@
 use super::index_map::IdIndexMap;
-use crate::output::channels::StoreChannels;
+use crate::importer::output::channels::StoreChannels;
 use crate::types::{Index, IndexElement, RawChunk};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -184,7 +184,6 @@ impl FileStore {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::output::file_store::make_path;
     use indexing::bounding_box::{BoundingBoxBuilder, NoValidation};
     use std::fs::DirBuilder;
     use std::io::Cursor;

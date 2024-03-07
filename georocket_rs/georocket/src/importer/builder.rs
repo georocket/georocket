@@ -1,8 +1,8 @@
 use super::indexer::{IndexerChannels, MainIndexer};
 use super::input::{GeoJsonSplitter, Splitter, SplitterChannels};
+use crate::importer::output::channels::StoreChannels;
+use crate::importer::output::{FileStore, PostGISStore, Store};
 use crate::importer::{GeoDataImporter, SourceType, StoreType};
-use crate::output::channels::StoreChannels;
-use crate::output::{FileStore, PostGISStore, Store};
 use anyhow::Context;
 use tokio::sync::mpsc;
 use tokio_postgres::NoTls;

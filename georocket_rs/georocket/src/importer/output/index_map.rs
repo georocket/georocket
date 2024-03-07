@@ -4,7 +4,7 @@ use uuid::Uuid;
 type Index = Uuid;
 type Inner = HashMap<usize, Index>;
 
-pub(super) struct IdIndexMap(pub(crate) Inner);
+pub(crate) struct IdIndexMap(pub(crate) Inner);
 
 impl IdIndexMap {
     pub fn new() -> Self {

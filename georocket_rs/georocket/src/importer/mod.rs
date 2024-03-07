@@ -1,5 +1,3 @@
-use crate::output::Store;
-
 use clap::ValueEnum;
 
 pub mod builder;
@@ -7,7 +5,9 @@ pub mod import_args;
 mod import_config;
 mod indexer;
 pub mod input;
+pub mod output;
 
+use crate::importer::output::Store;
 use indexer::MainIndexer;
 use input::Splitter;
 
