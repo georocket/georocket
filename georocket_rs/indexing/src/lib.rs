@@ -1,6 +1,6 @@
 use georocket_types::BoundingBox;
 /// `types` contains the types necessary for indexing functionality across
-/// georocket crates.
+/// georocket-cli crates.
 use serde::Deserialize;
 use serde::Serialize;
 

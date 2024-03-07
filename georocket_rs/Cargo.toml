@@ -1,9 +1,10 @@
 [workspace]
 
 members = [
-  "georocket",
+  "georocket-cli",
   "indexing",
   "geo-testcontainer",
   "georocket-types",
-  "georocket-import"
+  "georocket-import",
+  "georocket-query"
 ]

@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 /// location of the config file, relative to $HOME
-const CONFIG_PATH: &str = "/.config/georocket/config.toml";
+const CONFIG_PATH: &str = "/.config/georocket-cli/config.toml";
 /// name of the tables in the config file
 const STORE_TABLE: &str = "store";
 const STORE_TYPE: &str = "type";
@@ -95,7 +95,7 @@ pub struct ImportConfig {
 
 impl ImportConfig {
     /// Attempts to create `ImportConfig` from `import_args`.
-    /// Falls back to environment variables and the config file at $HOME/.config/georocket/config.toml
+    /// Falls back to environment variables and the config file at $HOME/.config/georocket-cli/config.toml
     /// if fields are missing.
     ///
     /// # Errors
