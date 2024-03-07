@@ -1,8 +1,8 @@
 use super::index_map::IdIndexMap;
 use crate::output::channels::StoreChannels;
 use crate::types::{Index, IndexElement, RawChunk};
-use georocket_types::BoundingBox;
-use indexing::attributes::{Attributes, Value};
+use georocket_types::{BoundingBox, Value};
+use indexing::attributes::Attributes;
 use std::str::from_utf8;
 use tokio::sync::mpsc;
 use tokio_postgres;
@@ -159,7 +159,7 @@ impl PostGISStore {
                         )
                         .await
                 }
-                Value::Double(d_val) => {
+                Value::Float(d_val) => {
                     self.client
                         .execute(
                             "\
@@ -504,7 +504,7 @@ mod tests {
                     Value::String(s) => {
                         assert_eq!(property.unwrap().2.as_ref().unwrap(), s);
                     }
-                    Value::Double(f) => {
+                    Value::Float(f) => {
                         assert_eq!(property.unwrap().0.unwrap(), *f);
                     }
                     Value::Integer(i) => {

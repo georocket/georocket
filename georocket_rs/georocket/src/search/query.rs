@@ -1,5 +1,4 @@
-use georocket_types::BoundingBox;
-use indexing::attributes::Value;
+use georocket_types::{BoundingBox, Value};
 use std::fmt::{Display, Formatter};
 
 /// Specifies primitive which may be queried for directly.

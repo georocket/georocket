@@ -1,5 +1,6 @@
 use crate::types::IndexElement;
 use actson::JsonEvent;
+use georocket_types::Value;
 use indexing::attributes::AttributesBuilder;
 use std::fmt::{Display, Formatter};
 use thiserror::Error;
@@ -22,7 +23,7 @@ impl AttributesIndexer {
             inner: Inner::new(),
         }
     }
-    pub fn process_event(&mut self, json_event: JsonEvent, payload: Option<&str>) {
+    pub fn process_event(&mut self, json_event: JsonEvent, payload: Option<&Value>) {
         self.inner.process_event(json_event, payload);
     }
     pub fn retrieve_index_element(self) -> Option<Result<IndexElement, AttributeIndexerError>> {
@@ -77,7 +78,7 @@ impl Inner {
             builder: AttributesBuilder::new(),
         }
     }
-    fn process_event(&mut self, json_event: JsonEvent, payload: Option<&str>) {
+    fn process_event(&mut self, json_event: JsonEvent, payload: Option<&Value>) {
         use JsonEvent as E;
         match json_event {
             E::StartObject => {
@@ -88,9 +89,9 @@ impl Inner {
             E::EndArray => self.process_end_array(),
             E::FieldName => self.process_field_name(payload),
             E::ValueFloat | E::ValueInt | E::ValueString => self.process_value(payload),
-            E::ValueFalse => self.process_value(Some("false")),
-            E::ValueTrue => self.process_value(Some("true")),
-            E::ValueNull => self.process_value(Some("null")),
+            E::ValueFalse => self.process_value(Some(&Value::String("false".into()))),
+            E::ValueTrue => self.process_value(Some(&Value::String("true".into()))),
+            E::ValueNull => self.process_value(Some(&Value::String("null".into()))),
             _ => (),
         }
     }
@@ -194,12 +195,12 @@ impl Inner {
             State::Error => (),
         }
     }
-    fn process_field_name(&mut self, payload: Option<&str>) {
+    fn process_field_name(&mut self, payload: Option<&Value>) {
         let Some(field_name) = payload else {
             self.state = State::Error;
             return;
         };
-        let field_name: &str = field_name.as_ref();
+        let field_name: &str = field_name.unwrap_str();
         match self.state {
             State::Uninit => {
                 if field_name == "properties" {
@@ -218,7 +219,7 @@ impl Inner {
             State::Error => (),
         }
     }
-    fn process_value(&mut self, payload: Option<&str>) {
+    fn process_value(&mut self, payload: Option<&Value>) {
         let Some(value) = payload else {
             self.state = State::Error;
             return;
@@ -239,8 +240,8 @@ impl Inner {
                         self.state = State::P;
                         // add the (key, value) pair to the builder and pop the key component
                         // corresponding to the field name from the key
-                        self.builder = std::mem::take(&mut self.builder)
-                            .add_attribute(self.key.as_ref(), value.into());
+                        self.builder
+                            .add_attribute_mut(self.key.as_ref(), value.clone());
                         self.key.pop();
                     }
                     StackAlphabet::Array(n) => {
@@ -249,7 +250,7 @@ impl Inner {
                         self.state = State::A;
                         self.stack.push(StackAlphabet::Array(n + 1));
                         self.builder
-                            .add_attribute_mut(self.key.as_ref(), value.into());
+                            .add_attribute_mut(self.key.as_ref(), value.clone());
                         // remove the key component corresponding to the index of the value added to the builder
                         // and replace it with the next index
                         self.key.pop().push(n + 1);
@@ -273,21 +274,21 @@ impl Inner {
 mod tests {
     use super::*;
     use crate::types::{Chunk, InnerChunk};
-    use indexing::attributes::Value;
+    use georocket_types::Value;
     use std::path::Path;
 
     #[test]
     fn inner_multiple_key_vals() {
         use JsonEvent as E;
         let mut indexer = AttributesIndexer::new();
-        indexer.process_event(E::FieldName, Some("properties"));
+        indexer.process_event(E::FieldName, Some(&Value::String("properties".into())));
         indexer.process_event(E::StartObject, None);
-        indexer.process_event(E::FieldName, Some("string_key"));
-        indexer.process_event(E::ValueString, Some("string".into()));
-        indexer.process_event(E::FieldName, Some("int_key"));
-        indexer.process_event(E::ValueInt, Some("1"));
-        indexer.process_event(E::FieldName, Some("float_key"));
-        indexer.process_event(E::ValueInt, Some("1.0"));
+        indexer.process_event(E::FieldName, Some(&"string_key".into()));
+        indexer.process_event(E::ValueString, Some(&"string".into()));
+        indexer.process_event(E::FieldName, Some(&"int_key".into()));
+        indexer.process_event(E::ValueInt, Some(&1.into()));
+        indexer.process_event(E::FieldName, Some(&"float_key".into()));
+        indexer.process_event(E::ValueInt, Some(&1.0.into()));
         indexer.process_event(E::EndObject, None);
         if let IndexElement::Attributes(attributes) =
             indexer.retrieve_index_element().unwrap().unwrap()
@@ -298,7 +299,7 @@ mod tests {
                 &Value::String("string".into())
             );
             assert_eq!(attributes.get("int_key").unwrap(), &Value::Integer(1));
-            assert_eq!(attributes.get("float_key").unwrap(), &Value::Double(1.0));
+            assert_eq!(attributes.get("float_key").unwrap(), &Value::Float(1.0));
         }
     }
 
@@ -307,7 +308,7 @@ mod tests {
             let InnerChunk::GeoJson(chunk) = chunk.inner;
             let mut attributes_indexer = AttributesIndexer::new();
             for (event, payload) in chunk {
-                let payload = payload.as_ref().map(String::as_str);
+                let payload = payload.as_ref();
                 attributes_indexer.process_event(event, payload);
             }
             let index = attributes_indexer
@@ -343,7 +344,7 @@ mod tests {
         let control = vec![
             ("name", Value::String("Dinagat Islands".into())),
             ("population", Value::Integer(32873)),
-            ("ratio", Value::Double(0.51)),
+            ("ratio", Value::Float(0.51)),
         ];
         let chunks = chunks_from_file("test_files/simple_feature_02.json").await;
         test_helper(vec![control], chunks);
@@ -435,9 +436,9 @@ mod tests {
         let control = vec![
             ("base.val0_0", Value::String("null".into())),
             ("base.nest1.val1_0", Value::Integer(1)),
-            ("base.nest1.nest2.val2_0", Value::Double(2.0)),
+            ("base.nest1.nest2.val2_0", Value::Float(2.0)),
             ("base.nest1.nest2.nest3.val3", Value::String("three".into())),
-            ("base.nest1.nest2.val2_1", Value::Double(4.0)),
+            ("base.nest1.nest2.val2_1", Value::Float(4.0)),
             ("base.nest1.val1_1", Value::Integer(5)),
             ("base.val0_1", Value::String("true".into())),
         ];
@@ -475,7 +476,7 @@ mod tests {
             vec![("prop0", Value::String("value0".into()))],
             vec![
                 ("prop0", Value::String("value0".into())),
-                ("prop1", Value::Double(0.0)),
+                ("prop1", Value::Float(0.0)),
             ],
             vec![
                 ("prop0", Value::String("value0".into())),

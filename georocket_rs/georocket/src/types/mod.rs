@@ -1,5 +1,5 @@
 use actson::JsonEvent;
-use georocket_types::BoundingBox;
+use georocket_types::{BoundingBox, Value};
 use indexing::attributes::Attributes;
 use serde::{Deserialize, Serialize};
 
@@ -15,7 +15,7 @@ impl From<GeoJsonType> for GeoDataType {
     }
 }
 
-pub type Payload = Option<String>;
+pub type Payload = Option<Value>;
 
 /// Raw bytes representing features extracted from a source file.
 /// `inner`: [`InnerChunk`] containing parsed/tokenized data from the
@@ -66,30 +66,5 @@ pub enum IndexElement {
 impl From<BoundingBox> for IndexElement {
     fn from(value: BoundingBox) -> Self {
         Self::BoundingBoxIndex(value)
-    }
-}
-
-// Represents the possible values of keys-value pairs stored by GeoRocket.
-pub enum Value {
-    Integer(i64),
-    Float(f64),
-    String(String),
-}
-
-impl From<i64> for Value {
-    fn from(value: i64) -> Self {
-        Self::Integer(value)
-    }
-}
-
-impl From<String> for Value {
-    fn from(value: String) -> Self {
-        Self::String(value)
-    }
-}
-
-impl From<f64> for Value {
-    fn from(value: f64) -> Self {
-        Self::Float(value)
     }
 }

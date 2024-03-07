@@ -1,5 +1,6 @@
 use crate::types::IndexElement;
 use actson::JsonEvent;
+use georocket_types::Value;
 use indexing::bounding_box::{BoundingBoxBuilder, NoValidation};
 use thiserror::Error;
 
@@ -29,7 +30,7 @@ impl BoundingBoxIndexer {
         }
     }
     /// Process a single json event and payload pair. Transitioning the inner state of the `BoundingBoxIndexer` as necessary.
-    pub fn process_event(&mut self, event: JsonEvent, payload: Option<&str>) {
+    pub fn process_event(&mut self, event: JsonEvent, payload: Option<&Value>) {
         self.inner.process_event(event, payload)
     }
     /// Retrieve the calculated bounding box from the `BoundingBoxIndexer`.
@@ -104,13 +105,13 @@ impl Inner {
         }
     }
     /// Process a single json event and payload. Transitioning the inner state of `self` as necessary.
-    fn process_event(&mut self, json_event: JsonEvent, payload: Option<&str>) {
+    fn process_event(&mut self, json_event: JsonEvent, payload: Option<&Value>) {
         use JsonEvent as E;
         match json_event {
             E::StartArray | E::StartObject => self.increase_level(),
             JsonEvent::EndArray | JsonEvent::EndObject => self.decrease_level(),
             E::FieldName => {
-                if payload.is_some_and(|val| val == "coordinates") {
+                if payload.is_some_and(|val| val.unwrap_str() == "coordinates") {
                     *self = Self::Processing {
                         bounding_box_builder: BoundingBoxHelper::Init,
                         current_level: 0,
@@ -119,9 +120,8 @@ impl Inner {
             }
             E::ValueInt | E::ValueFloat => {
                 let coordinate_component = payload
-                    .expect("payload of JsonEvent::{ValueInt, ValueFloat} shoud always be Some")
-                    .parse::<f64>()
-                    .unwrap();
+                    .expect("payload of JsonEvent::{ValueInt, ValueFloat} should always be Some")
+                    .unwrap_float();
                 self.add_coordinate_component(coordinate_component)
             }
             _ => (),
@@ -260,7 +260,7 @@ mod tests {
             let mut bbox_indexer = BoundingBoxIndexer::new();
             let InnerChunk::GeoJson(chunk) = chunk.inner;
             for (json_event, payload) in chunk {
-                let payload = payload.as_ref().map(|s| s.as_str());
+                let payload = payload.as_ref();
                 bbox_indexer.process_event(json_event, payload);
             }
             results.push(bbox_indexer.retrieve_index_element());

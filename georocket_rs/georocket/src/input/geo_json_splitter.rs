@@ -8,7 +8,7 @@ const EXTEND: usize = 1024;
 mod buffer;
 use buffer::Buffer;
 
-use crate::types::GeoJsonChunk;
+use crate::types::{GeoJsonChunk, Payload};
 
 use super::{Splitter, SplitterChannels};
 
@@ -96,7 +96,7 @@ where
         let mut geo_json_type = GeoJsonType::Object;
         loop {
             let event = self.parser.next_event();
-            let payload = match event {
+            let payload: Payload = match event {
                 Error(kind) => bail!("the json parser has encountered an error: {kind:?}"),
                 Eof => bail!("unexpected EOF while parsing object"),
                 NeedMoreInput => {
@@ -111,9 +111,9 @@ where
                     depth -= 1;
                     None
                 }
-                FieldName | ValueString | ValueInt | ValueFloat => {
-                    Some(self.parser.current_str()?.to_owned())
-                }
+                FieldName | ValueString => Some(self.parser.current_str()?.into()),
+                ValueInt => Some(self.parser.current_int::<i64>()?.into()),
+                ValueFloat => Some(self.parser.current_float()?.into()),
                 _ => None,
             };
             // Check if the field name indicates that this is a `FeatureCollection` or
@@ -123,7 +123,7 @@ where
                 match payload
                     .as_ref()
                     .expect("payload must be a Some, otherwise it cannot be a field name")
-                    .as_str()
+                    .unwrap_str()
                     .into()
                 {
                     FieldNames::Features | FieldNames::Geometries => {
@@ -268,9 +268,9 @@ where
                     depth -= 1;
                     None
                 }
-                FieldName | ValueString | ValueInt | ValueFloat => {
-                    Some(self.parser.current_str()?.to_owned())
-                }
+                FieldName | ValueString => Some(self.parser.current_str()?.into()),
+                ValueInt => Some(self.parser.current_int::<i64>()?.into()),
+                ValueFloat => Some(self.parser.current_float()?.into()),
                 _ => None,
             };
             chunk.push((event, payload));
