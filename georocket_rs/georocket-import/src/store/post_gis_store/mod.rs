@@ -1,5 +1,5 @@
 use super::index_map::IdIndexMap;
-use crate::output::channels::StoreChannels;
+use crate::store::channels::StoreChannels;
 use crate::types::{Index, IndexElement, RawChunk};
 use georocket_types::{BoundingBox, Value};
 use indexing::attributes::Attributes;
@@ -75,7 +75,7 @@ impl PostGISStore {
         self.client
             .execute(
                 "\
-        INSERT INTO georocket-cli.feature (id, raw_feature)\
+        INSERT INTO georocket.feature (id, raw_feature)\
         VALUES ($1, $2)",
                 &[&index, &feature],
             )
@@ -114,7 +114,7 @@ impl PostGISStore {
             self.client
                 .execute(
                     "\
-                INSERT INTO georocket-cli.bounding_box (id, bounding_box)\
+                INSERT INTO georocket.bounding_box (id, bounding_box)\
                 VALUES ($1, ST_Point($2, $3, $4))",
                     &[
                         &uuid,
@@ -128,7 +128,7 @@ impl PostGISStore {
             self.client
                 .execute(
                     "\
-                    INSERT INTO georocket-cli.bounding_box (id, bounding_box)\
+                    INSERT INTO georocket.bounding_box (id, bounding_box)\
                     VALUES ($1, ST_MakeEnvelope($2, $3, $4, $5, $6))
                     ",
                     &[
@@ -152,7 +152,7 @@ impl PostGISStore {
                     self.client
                         .execute(
                             "\
-                    INSERT INTO georocket-cli.property (id, key, value_s)\
+                    INSERT INTO georocket.property (id, key, value_s)\
                     VALUES ($1, $2, $3)",
                             &[&uuid, &key, &val],
                         )
@@ -162,7 +162,7 @@ impl PostGISStore {
                     self.client
                         .execute(
                             "\
-                    INSERT INTO georocket-cli.property (id, key, value_f)\
+                    INSERT INTO georocket.property (id, key, value_f)\
                     VALUES ($1, $2, $3)",
                             &[&uuid, &key, &d_val],
                         )
@@ -172,7 +172,7 @@ impl PostGISStore {
                     self.client
                         .execute(
                             "\
-                    INSERT INTO georocket-cli.property (id, key, value_i)\
+                    INSERT INTO georocket.property (id, key, value_i)\
                     VALUES ($1, $2, $3)",
                             &[&uuid, &key, &i_val],
                         )
@@ -222,10 +222,10 @@ mod tests {
             .await
             .unwrap();
 
-        // select all table names in the georocket-cli schema
+        // select all table names in the georocket schema
         let rows = test_client
             .query(
-                "SELECT table_name FROM information_schema.tables WHERE table_schema = 'georocket-cli'",
+                "SELECT table_name FROM information_schema.tables WHERE table_schema = 'georocket'",
                 &[],
             )
             .await
@@ -249,7 +249,7 @@ mod tests {
             .prepare(
                 "\
         SELECT column_name, data_type FROM information_schema.columns \
-        WHERE table_schema = 'georocket-cli' \
+        WHERE table_schema = 'georocket' \
             AND \
                table_name = $1::TEXT",
             )
@@ -311,7 +311,7 @@ mod tests {
         let bounding_box_type = test_client
             .query_one(
                 "SELECT udt_name from information_schema.columns \
-                where table_schema = 'georocket-cli' \
+                where table_schema = 'georocket' \
                 AND \
                       table_name = 'bounding_box' \
                 AND \
@@ -331,7 +331,7 @@ mod tests {
         tokio::spawn(test_connection);
 
         let feature = test_client
-            .query("SELECT * from georocket-cli.feature", &[])
+            .query("SELECT * from georocket.feature", &[])
             .await
             .unwrap();
         assert_eq!(feature.len(), 1);
@@ -352,7 +352,7 @@ mod tests {
 
         let bounding_box = test_client
             .query(
-                "SELECT st_asgeojson(bounding_box) from georocket-cli.bounding_box",
+                "SELECT st_asgeojson(bounding_box) from georocket.bounding_box",
                 &[],
             )
             .await
@@ -365,7 +365,7 @@ mod tests {
         );
 
         let properties = test_client
-            .query("SELECT key, value_s from georocket-cli.property", &[])
+            .query("SELECT key, value_s from georocket.property", &[])
             .await
             .unwrap();
         assert_eq!(properties.len(), 1);
@@ -373,15 +373,15 @@ mod tests {
         assert_eq!(key, "name");
         assert_eq!(value, "Dinagat Islands");
         test_client
-            .execute("TRUNCATE TABLE georocket-cli.feature", &[])
+            .execute("TRUNCATE TABLE georocket.feature", &[])
             .await
             .unwrap();
         test_client
-            .execute("TRUNCATE TABLE georocket-cli.property", &[])
+            .execute("TRUNCATE TABLE georocket.property", &[])
             .await
             .unwrap();
         test_client
-            .execute("TRUNCATE TABLE georocket-cli.bounding_box", &[])
+            .execute("TRUNCATE TABLE georocket.bounding_box", &[])
             .await
             .unwrap();
     }
@@ -411,7 +411,7 @@ mod tests {
         tokio::spawn(test_connection);
         let identities = test_client
             .query(
-                "SELECT id, key, value_i FROM georocket-cli.property WHERE key = 'identity'",
+                "SELECT id, key, value_i FROM georocket.property WHERE key = 'identity'",
                 &[],
             )
             .await
@@ -465,7 +465,7 @@ mod tests {
         ) {
             let feature: String = client
                 .query_one(
-                    "SELECT raw_feature from georocket-cli.feature where id = $1",
+                    "SELECT raw_feature from georocket.feature where id = $1",
                     &[&id],
                 )
                 .await
@@ -474,7 +474,7 @@ mod tests {
             assert_eq!(feature, control_feature);
             let bbox: String = client
                 .query_one(
-                    "SELECT st_asgeojson(bounding_box) from georocket-cli.bounding_box where id = $1",
+                    "SELECT st_asgeojson(bounding_box) from georocket.bounding_box where id = $1",
                     &[&id],
                 )
                 .await
@@ -483,7 +483,7 @@ mod tests {
             assert_eq!(bbox, control_bbox);
             let properties = client
                 .query(
-                    "SELECT key, value_f, value_i, value_s from georocket-cli.property where id = $1",
+                    "SELECT key, value_f, value_i, value_s from georocket.property where id = $1",
                     &[&id],
                 )
                 .await

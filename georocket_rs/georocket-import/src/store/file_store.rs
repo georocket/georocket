@@ -1,5 +1,5 @@
 use super::index_map::IdIndexMap;
-use crate::output::channels::StoreChannels;
+use crate::store::channels::StoreChannels;
 use crate::types::{Index, IndexElement, RawChunk};
 use serde::{Deserialize, Serialize};
 use std::{

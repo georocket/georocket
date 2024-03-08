@@ -41,7 +41,7 @@ impl From<&str> for FieldNames {
 
 /// The `GeoJsonSplitter` takes GeoJSON from an asynchronous splitter and attemtps to split it into its
 /// constituent parts. If the GeoJSON is a `FeatureCollection` or a `GeometryCollection`, it will
-/// output the individual geometries or features through the the `raw_send` and `chunk_send` channels, to
+/// store the individual geometries or features through the the `raw_send` and `chunk_send` channels, to
 /// be processed.
 pub struct GeoJsonSplitter<R> {
     reader: BufReader<R>,

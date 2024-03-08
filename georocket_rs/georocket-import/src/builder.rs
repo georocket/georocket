@@ -1,7 +1,7 @@
 use super::indexer::{IndexerChannels, MainIndexer};
 use super::splitter::{GeoJsonSplitter, Splitter, SplitterChannels};
-use crate::output::channels::StoreChannels;
-use crate::output::{FileStore, PostGISStore, Store};
+use crate::store::channels::StoreChannels;
+use crate::store::{FileStore, PostGISStore, Store};
 use crate::{GeoDataImporter, SourceType, StoreType};
 use anyhow::Context;
 use tokio::sync::mpsc;
