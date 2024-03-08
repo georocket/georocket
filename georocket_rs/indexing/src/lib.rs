@@ -1,8 +1,9 @@
-use georocket_types::BoundingBox;
 /// `types` contains the types necessary for indexing functionality across
-/// georocket-cli crates.
+/// georocket crates.
 use serde::Deserialize;
 use serde::Serialize;
+
+use georocket_types::BoundingBox;
 
 pub mod attributes;
 pub mod bounding_box;
