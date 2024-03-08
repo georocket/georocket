@@ -5,13 +5,13 @@ pub mod builder;
 pub mod import_args;
 mod import_config;
 mod indexer;
-pub mod input;
 pub mod output;
+pub mod splitter;
 pub mod types;
 
 use indexer::MainIndexer;
-use input::Splitter;
 use output::Store;
+use splitter::Splitter;
 
 pub struct GeoDataImporter {
     splitter: Box<dyn Splitter + Send>,

@@ -273,7 +273,7 @@ impl Inner {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::input::{GeoJsonSplitter, SplitterChannels};
+    use crate::splitter::{GeoJsonSplitter, SplitterChannels};
     use crate::types::{Chunk, InnerChunk};
     use georocket_types::Value;
     use std::path::Path;

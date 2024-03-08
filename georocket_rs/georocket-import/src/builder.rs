@@ -1,5 +1,5 @@
 use super::indexer::{IndexerChannels, MainIndexer};
-use super::input::{GeoJsonSplitter, Splitter, SplitterChannels};
+use super::splitter::{GeoJsonSplitter, Splitter, SplitterChannels};
 use crate::output::channels::StoreChannels;
 use crate::output::{FileStore, PostGISStore, Store};
 use crate::{GeoDataImporter, SourceType, StoreType};

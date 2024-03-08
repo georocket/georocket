@@ -39,7 +39,7 @@ impl From<&str> for FieldNames {
     }
 }
 
-/// The `GeoJsonSplitter` takes GeoJSON from an asynchronous input and attemtps to split it into its
+/// The `GeoJsonSplitter` takes GeoJSON from an asynchronous splitter and attemtps to split it into its
 /// constituent parts. If the GeoJSON is a `FeatureCollection` or a `GeometryCollection`, it will
 /// output the individual geometries or features through the the `raw_send` and `chunk_send` channels, to
 /// be processed.
@@ -285,8 +285,8 @@ where
 mod test {
     mod test {
         use super::*;
-        use crate::input::geo_json_splitter::GeoJsonType;
-        use crate::input::{GeoJsonSplitter, SplitterChannels};
+        use crate::splitter::geo_json_splitter::GeoJsonType;
+        use crate::splitter::{GeoJsonSplitter, SplitterChannels};
         use crate::types::{Chunk, RawChunk};
         use std::{collections::HashMap, path::Path};
         use tokio::fs::{read_to_string, File};

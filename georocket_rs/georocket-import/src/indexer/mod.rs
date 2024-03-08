@@ -1,6 +1,6 @@
 //! The indexer takes [`Chunk`s](crate::importer::types::Chunk) from a channel and processes them into
 //! [`Index`es](crate::importer::types::Index).
-//! A [`MainIndexer`] receives chunks from a [`Splitter`](crate::input::splitter::Splitter) and
+//! A [`MainIndexer`] receives chunks from a [`Splitter`](crate::splitter::splitter::Splitter) and
 //! spins up concrete indexers for type of index that needs to be created.
 //! These are based on the [`InnerChunk`](crate::importer::types::InnerChunk) type. of the received chunk.
 

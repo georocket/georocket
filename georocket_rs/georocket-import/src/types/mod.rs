@@ -1,4 +1,4 @@
-use crate::input::geo_json_splitter::GeoJsonType;
+use crate::splitter::geo_json_splitter::GeoJsonType;
 use actson::JsonEvent;
 use georocket_types::{BoundingBox, Value};
 use indexing::attributes::Attributes;
