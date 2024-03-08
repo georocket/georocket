@@ -14,12 +14,6 @@ impl IdIndexMap {
         let index = *self.0.entry(id).or_insert_with(|| Index::new_v4());
         index
     }
-    pub fn into_inner(self) -> Inner {
-        self.0
-    }
-    pub fn inner(&self) -> &Inner {
-        &self.0
-    }
 }
 
 impl From<HashMap<usize, Index>> for IdIndexMap {

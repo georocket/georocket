@@ -2,10 +2,7 @@ use super::index_map::IdIndexMap;
 use crate::store::channels::StoreChannels;
 use crate::types::{Index, IndexElement, RawChunk};
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::HashMap,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 use tokio::fs::File;
 use tokio::io::{AsyncWrite, AsyncWriteExt, BufWriter};
 use uuid::{fmt::Simple, Uuid};
@@ -15,8 +12,6 @@ struct InternalIndex {
     uuid: Uuid,
     index_elements: Vec<IndexElement>,
 }
-
-type ID = usize;
 
 /// Helper function to generate a path and file name for a given `Uuid`.
 fn make_path(uuid: Uuid) -> (PathBuf, PathBuf) {
@@ -185,6 +180,7 @@ impl FileStore {
 mod test {
     use super::*;
     use indexing::bounding_box::{BoundingBoxBuilder, NoValidation};
+    use std::collections::HashMap;
     use std::fs::DirBuilder;
     use std::io::Cursor;
 
@@ -245,7 +241,7 @@ mod test {
             serde_json::Deserializer::from_reader(index_file).into_iter::<InternalIndex>();
         for (index, internal_index) in indexes.iter().zip(index_stream.map(|i| i.unwrap())) {
             // check that the correct uuid was written for the index
-            assert_eq!(internal_index.uuid, index_map.inner()[&index.id]);
+            assert_eq!(internal_index.uuid, index_map.0[&index.id]);
             // check that the index elements are the same between the original index and the deserialized index
             assert_eq!(internal_index.index_elements, index.index_elements);
         }
@@ -301,7 +297,7 @@ mod test {
                 .await
                 .unwrap();
         }
-        for (id, uuid) in id_index_map.into_inner() {
+        for (id, uuid) in id_index_map.0 {
             let path = {
                 let mut path = directory.clone();
                 let (file_path, file_name) = make_path(uuid);
