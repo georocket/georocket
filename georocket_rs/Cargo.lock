@@ -546,7 +546,10 @@ dependencies = [
 name = "georocket-query"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "georocket-types",
+ "tokio",
+ "tokio-postgres",
 ]
 
 [[package]]
