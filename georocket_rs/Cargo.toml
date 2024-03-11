@@ -1,10 +1,11 @@
 [workspace]
+resolver = "2"
 
 members = [
-  "georocket-cli",
-  "indexing",
-  "geo-testcontainer",
-  "georocket-types",
-  "georocket-import",
-  "georocket-query"
+    "georocket-cli",
+    "indexing",
+    "geo-testcontainer",
+    "georocket-types",
+    "georocket-import",
+    "georocket-query"
 ]
