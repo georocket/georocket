@@ -1,2 +1,2 @@
-// mod post_gis_search;
+mod post_gis;
 mod query;
