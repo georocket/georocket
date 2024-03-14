@@ -4,9 +4,9 @@ version = 3
 
 [[package]]
 name = "actson"
-version = "0.5.0"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "adb597edc5b1e7997726177fa812dc329386c9803642dfc8aebe24f1b45d688f"
+checksum = "1c502564222a5cc149ef808582d8386549325f48358266b16241665d7ddd89d3"
 dependencies = [
  "btoi",
  "num-traits",
@@ -546,10 +546,7 @@ dependencies = [
 name = "georocket-query"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "georocket-types",
- "tokio",
- "tokio-postgres",
 ]
 
 [[package]]

@@ -15,7 +15,7 @@ serde_json = "1.0.104"
 async-channel = "2"
 toml = "0.8.10"
 tokio-postgres = { version = "0.7", features = ["with-uuid-1"] }
-actson = { version = "0.5.0", features = ["tokio"] }
+actson = { version = "1.0.0", features = ["tokio"] }
 refinery = { version = "0.8.12", features = ["tokio-postgres"] }
 thiserror = "1.0.40"
 tracing = "0.1.40"

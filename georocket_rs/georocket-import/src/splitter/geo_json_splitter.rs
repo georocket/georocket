@@ -94,10 +94,11 @@ where
         let mut depth: u32 = 1;
         let mut geo_json_type = GeoJsonType::Object;
         loop {
-            let event = self.parser.next_event();
+            let Some(event) = self.parser.next_event()? else {
+                bail!("unexpected EOF while parsing object");
+            };
+
             let payload: Payload = match event {
-                Error(kind) => bail!("the json parser has encountered an error: {kind:?}"),
-                Eof => bail!("unexpected EOF while parsing object"),
                 NeedMoreInput => {
                     self.fill_feeder().await?;
                     continue;
@@ -177,28 +178,25 @@ where
         Ok(())
     }
 
-    /// Attempts to advances the parser to the next `JsonEvent`, that matches one of the `JsonEvent`s specified
-    /// in `events`.
+    /// Attempts to advances the parser to the next `JsonEvent`, that matches
+    /// one of the `JsonEvent`s specified in `events`.
     ///
     /// # Errors
     ///
-    /// This method well return an error, if a JsonEvent::Eof or JsonEvent::Error is encountered
-    /// and these are not specified in `events`.
-    /// It will also return an error, if a call to `fill_feeder` fails, if the parser requests more
-    /// bytes.
+    /// This method well return an error, if the parser errors or if the end of
+    /// the JSON text has been reached before any of the given `events` was
+    /// found. It will also return an error, if the parser requests more bytes
+    /// and the call to `fill_feeder` fails.
     async fn find_next(&mut self, events: &[JsonEvent]) -> Result<JsonEvent> {
-        loop {
-            let e = self.parser.next_event();
-            match e {
-                event if events.contains(&event) => return Ok(event),
-                JsonEvent::NeedMoreInput => self.fill_feeder().await?,
-                JsonEvent::Eof => {
-                    bail!("unexpected EOF encountered while searching for one of: {events:?}")
-                }
-                JsonEvent::Error(kind) => bail!("the parser has encountered an error: {kind:?}"),
-                _ => continue,
+        while let Some(e) = self.parser.next_event()? {
+            if events.contains(&e) {
+                return Ok(e);
+            }
+            if e == JsonEvent::NeedMoreInput {
+                self.fill_feeder().await?;
             }
         }
+        bail!("unexpected EOF encountered while searching for one of: {events:?}");
     }
 
     /// Attempts to process an array of `Feature` or `Geometry` GeoJSON objects.
@@ -206,13 +204,14 @@ where
     /// # Errors
     ///
     /// This method will return an error if:
-    ///    + It cannot find the start of the array that is supposed to conatin the objects
-    ///    + An objects or the array is malformed
-    ///    + Parsing retrieved bytes into a valid UTF8 string fails
-    ///    + Loading additional bytes from the reader fails
-    ///    + Sending out processed `Chunk`s or the raw strings fails.
+    /// * It cannot find the start of the array that is supposed to contain the objects
+    /// * An object or the array is malformed
+    /// * Parsing retrieved bytes into a valid UTF8 string fails
+    /// * Loading additional bytes from the reader fails
+    /// * Sending out processed `Chunk`s or the raw strings fails.
     async fn process_collection(&mut self) -> Result<()> {
         self.find_next(&[JsonEvent::StartArray]).await?;
+
         // tells us how many bytes have previously been parsed, before a drain happened.
         // We can then use this to determine the offset from the start of the buffer to the
         // start of the object of interest
@@ -248,13 +247,12 @@ where
     /// Attempts to process the next chunk in a collection.
     async fn next_chunk(&mut self) -> anyhow::Result<GeoJsonChunk> {
         use JsonEvent::*;
+
         let mut chunk: GeoJsonChunk = vec![(StartObject, None)];
         let mut depth: u32 = 1;
-        loop {
-            let event = self.parser.next_event();
+
+        while let Some(event) = self.parser.next_event()? {
             let payload = match event {
-                Error(kind) => bail!("the json parser has encountered an error: {kind:?}"),
-                Eof => bail!("unexpected EOF while parsing object"),
                 NeedMoreInput => {
                     self.fill_feeder().await?;
                     continue;
@@ -272,19 +270,21 @@ where
                 ValueFloat => Some(self.parser.current_float()?.into()),
                 _ => None,
             };
+
             chunk.push((event, payload));
+
             if depth == 0 {
-                break;
+                return Ok(chunk);
             }
         }
-        Ok(chunk)
+
+        bail!("unexpected EOF while parsing object");
     }
 }
 
 #[cfg(test)]
 mod test {
     mod test {
-        use super::*;
         use crate::splitter::geo_json_splitter::GeoJsonType;
         use crate::splitter::{GeoJsonSplitter, SplitterChannels};
         use crate::types::{Chunk, RawChunk};
