@@ -31,7 +31,8 @@ impl ImporterBuilder {
         self
     }
 
-    pub fn with_store_config(mut self, config: String) -> Self {
+    pub fn with_store_config(mut self, config: impl Into<String>) -> Self {
+        let config = config.into();
         self.store_config = Some(config);
         self
     }
@@ -41,8 +42,9 @@ impl ImporterBuilder {
         self
     }
 
-    pub fn with_source_config(mut self, source_config: String) -> Self {
-        self.source_config = Some(source_config);
+    pub fn with_source_config(mut self, config: impl Into<String>) -> Self {
+        let config = config.into();
+        self.source_config = Some(config);
         self
     }
 
