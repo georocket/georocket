@@ -14,3 +14,4 @@ postgres = "0.19.7"
 [features]
 default = []
 postgis = []
+postgis-experimental-arm64 = ["postgis"]

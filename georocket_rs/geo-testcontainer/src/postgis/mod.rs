@@ -4,7 +4,12 @@ use testcontainers::Image;
 use std::collections::HashMap;
 
 /// name of the official postgis image on DockerHub
-const NAME: &str = "postgis/postgis";
+const NAME: &str = if cfg!(feature = "postgis-experimental-arm64") {
+    "imresamu/postgis"
+} else {
+    "postgis/postgis"
+};
+
 /// Alpine version for minimal testing image
 const TAG: &str = "16-3.4-alpine";
 /// Default environment variables for the image
