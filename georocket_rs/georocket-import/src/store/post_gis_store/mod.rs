@@ -1,16 +1,12 @@
 use super::index_map::IdIndexMap;
 use crate::store::channels::StoreChannels;
 use crate::types::{Index, IndexElement, RawChunk};
+use georocket_migrations::postgis::migrations as postgis_migration;
 use georocket_types::{BoundingBox, Value};
 use indexing::attributes::Attributes;
 use std::str::from_utf8;
-use tokio_postgres;
 use tokio_postgres::Client;
 use uuid::Uuid;
-
-mod migration {
-    refinery::embed_migrations!("../migrations/postgis");
-}
 
 /// The `PostGISStore` receives `RawChunk`s from a Splitter and `Index`es from
 /// the `MainIndexer`. It stores these in a [PostGIS](https://postgis.net/) database.
@@ -26,9 +22,7 @@ impl PostGISStore {
     /// The `PostGISStore` receives chunks and indexes from `raw_rec` and `index_rec` channels and stores
     /// them in the specified database.
     pub async fn new(mut client: Client, store_channels: StoreChannels) -> anyhow::Result<Self> {
-        migration::migrations::runner()
-            .run_async(&mut client)
-            .await?;
+        postgis_migration::runner().run_async(&mut client).await?;
         return Ok(Self {
             store_channels,
             client,

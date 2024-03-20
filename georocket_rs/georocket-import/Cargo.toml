@@ -16,7 +16,6 @@ async-channel = "2"
 toml = "0.8.10"
 tokio-postgres = { version = "0.7", features = ["with-uuid-1"] }
 actson = { version = "1.0.0", features = ["tokio"] }
-refinery = { version = "0.8.12", features = ["tokio-postgres"] }
 thiserror = "1.0.40"
 tracing = "0.1.40"
 uuid = { version = "1.4.1", features = ["v4", "fast-rng", "serde"] }
@@ -25,6 +24,7 @@ uuid = { version = "1.4.1", features = ["v4", "fast-rng", "serde"] }
 # Workspace Dependencies
 indexing = { path = "../indexing" }
 georocket-types = { path = "../georocket-types" }
+georocket-migrations = { path = "../georocket-migrations", features = ["postgis", "tokio-postgres"] }
 
 [dev-dependencies]
 serde_json = "1.0.104"

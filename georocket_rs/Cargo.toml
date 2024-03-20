@@ -7,5 +7,6 @@ members = [
     "geo-testcontainer",
     "georocket-types",
     "georocket-import",
-    "georocket-query"
+    "georocket-query",
+    "georocket-migrations"
 ]
