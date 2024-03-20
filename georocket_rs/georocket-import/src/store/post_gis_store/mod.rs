@@ -9,7 +9,7 @@ use tokio_postgres::Client;
 use uuid::Uuid;
 
 mod migration {
-    refinery::embed_migrations!();
+    refinery::embed_migrations!("../migrations/postgis");
 }
 
 /// The `PostGISStore` receives `RawChunk`s from a Splitter and `Index`es from
