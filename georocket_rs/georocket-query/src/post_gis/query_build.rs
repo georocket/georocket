@@ -126,7 +126,7 @@ fn queryfy_primative(primitive: &Primitive) -> (String, QueryTables) {
             QueryTables::property(),
         ),
         Primitive::BoundingBox(bbox) => (
-            format!("(ST_Intersects(b.bounding_box, {})", bbox_envelope(bbox)),
+            format!("(ST_Intersects(b.bounding_box, {}))", bbox_envelope(bbox)),
             QueryTables::bbox(),
         ),
     }
@@ -175,7 +175,7 @@ mod tests {
         let query = build_query(query);
         assert_eq!(
             query,
-            "SELECT DISTINCT raw_feature FROM georocket.feature f, georocket.bounding_box b WHERE f.id = b.id AND ((ST_Intersects(b.bounding_box, ST_MakeEnvelope(0, 0, 1, 1, 4326)))"
+            "SELECT DISTINCT raw_feature FROM georocket.feature f, georocket.bounding_box b WHERE f.id = b.id AND ((ST_Intersects(b.bounding_box, ST_MakeEnvelope(0, 0, 1, 1, 4326))))"
         );
     }
 
@@ -201,7 +201,7 @@ mod tests {
         };
         let query = build_query(query);
         assert_eq!(query,
-                   "SELECT DISTINCT raw_feature FROM georocket.feature f, georocket.property p, georocket.bounding_box b WHERE f.id = p.id AND f.id = b.id AND ((p.key like '%test%' OR cast(p.value as text) like '%test%') OR (ST_Intersects(b.bounding_box, ST_MakeEnvelope(0, 0, 1, 1, 4326)))");
+                   "SELECT DISTINCT raw_feature FROM georocket.feature f, georocket.property p, georocket.bounding_box b WHERE f.id = p.id AND f.id = b.id AND ((p.key like '%test%' OR cast(p.value as text) like '%test%') OR (ST_Intersects(b.bounding_box, ST_MakeEnvelope(0, 0, 1, 1, 4326))))");
     }
 
     #[test]
@@ -226,6 +226,6 @@ mod tests {
         };
         let query = build_query(query);
         assert_eq!(query,
-                   "SELECT DISTINCT raw_feature FROM georocket.feature f, georocket.property p, georocket.bounding_box b WHERE f.id = p.id AND f.id = b.id AND (((p.key like '%test%' OR cast(p.value as text) like '%test%') AND (ST_Intersects(b.bounding_box, ST_MakeEnvelope(0, 0, 1, 1, 4326))))");
+                   "SELECT DISTINCT raw_feature FROM georocket.feature f, georocket.property p, georocket.bounding_box b WHERE f.id = p.id AND f.id = b.id AND (((p.key like '%test%' OR cast(p.value as text) like '%test%') AND (ST_Intersects(b.bounding_box, ST_MakeEnvelope(0, 0, 1, 1, 4326)))))");
     }
 }
