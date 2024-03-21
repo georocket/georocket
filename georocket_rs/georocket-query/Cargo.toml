@@ -16,3 +16,6 @@ uuid = { version = "1.4.1", features = ["v4"] }
 [dev-dependencies]
 tokio = { version = "1.36.0", features = ["rt", "macros", "fs"] }
 uuid = { version = "1.7.0", features = ["v4"] }
+geo-testcontainer = { path = "../geo-testcontainer", features = ["postgis-experimental-arm64"] }
+georocket-migrations = { path = "../georocket-migrations", features = ["postgis", "tokio-postgres"] }
+once_cell = { version = "1.19.0" }
