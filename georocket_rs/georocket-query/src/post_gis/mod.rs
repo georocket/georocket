@@ -33,7 +33,7 @@ pub async fn query_client(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::query::Logic;
+    use crate::query::{Comparison, Logic, QueryComponent};
     use futures_util::TryStreamExt;
     use geo_testcontainer::postgis::PostGIS as PostGISContainer;
     use geo_testcontainer::testcontainers::clients::Cli;
@@ -219,5 +219,75 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(chunks.len(), 3);
+    }
+
+    #[tokio::test]
+    async fn simple_comparison_equal() {
+        let (_container, client) = setup("test_files/simple_comparison_postgis.sql").await;
+        let qc: QueryComponent = (Comparison::Eq, "key", 2).into();
+        let query = Query {
+            components: vec![qc],
+        };
+        let chunks: Vec<String> = query_client(&client, query)
+            .await
+            .unwrap()
+            .try_collect()
+            .await
+            .unwrap();
+        assert_eq!(chunks.len(), 1);
+        assert!(chunks.contains(&"feature_b".to_string()));
+    }
+
+    #[tokio::test]
+    async fn simple_comparison_less_than() {
+        let (_container, client) = setup("test_files/simple_comparison_postgis.sql").await;
+        let qc: QueryComponent = (Comparison::Lt, "key", 2).into();
+        let query = Query {
+            components: vec![qc],
+        };
+        let chunks: Vec<String> = query_client(&client, query)
+            .await
+            .unwrap()
+            .try_collect()
+            .await
+            .unwrap();
+        assert_eq!(chunks.len(), 1);
+        assert!(chunks.contains(&"feature_a".to_string()));
+    }
+
+    #[tokio::test]
+    async fn simple_comparison_less_than_equal() {
+        let (_container, client) = setup("test_files/simple_comparison_postgis.sql").await;
+        let qc: QueryComponent = (Comparison::Lte, "key", 2).into();
+        let query = Query {
+            components: vec![qc],
+        };
+        let chunks: Vec<String> = query_client(&client, query)
+            .await
+            .unwrap()
+            .try_collect()
+            .await
+            .unwrap();
+        assert_eq!(chunks.len(), 2);
+        assert!(chunks.contains(&"feature_a".to_string()));
+        assert!(chunks.contains(&"feature_b".to_string()));
+    }
+
+    #[tokio::test]
+    async fn simple_comparison_not_equal() {
+        let (_container, client) = setup("test_files/simple_comparison_postgis.sql").await;
+        let qc: QueryComponent = (Comparison::Neq, "key", 2).into();
+        let query = Query {
+            components: vec![qc],
+        };
+        let chunks: Vec<String> = query_client(&client, query)
+            .await
+            .unwrap()
+            .try_collect()
+            .await
+            .unwrap();
+        assert_eq!(chunks.len(), 2);
+        assert!(chunks.contains(&"feature_a".to_string()));
+        assert!(chunks.contains(&"feature_c".to_string()));
     }
 }
