@@ -8,12 +8,36 @@ pub enum Primitive {
     BoundingBox(BoundingBox),
 }
 
+impl From<BoundingBox> for Primitive {
+    fn from(bounding_box: BoundingBox) -> Self {
+        Primitive::BoundingBox(bounding_box)
+    }
+}
+
+impl From<String> for Primitive {
+    fn from(value: String) -> Self {
+        Primitive::String(value.into())
+    }
+}
+
+impl From<&str> for Primitive {
+    fn from(value: &str) -> Self {
+        Primitive::String(value.into())
+    }
+}
+
 /// Specifies the logical combinator to be to combine the list of `QueryComponent`s.
 #[derive(Debug)]
 pub enum Logic {
     Or(Vec<QueryComponent>),
     And(Vec<QueryComponent>),
     Not(Box<QueryComponent>),
+}
+
+impl Logic {
+    pub fn not(qc: impl Into<QueryComponent>) -> Self {
+        Self::Not(Box::new(qc.into()))
+    }
 }
 
 /// Specifies the comparison to be applied in the `QueryComponent::Comparison` variant.
@@ -48,6 +72,31 @@ pub enum QueryComponent {
         key: String,
         value: Value,
     },
+}
+
+impl<P> From<P> for QueryComponent
+where
+    P: Into<Primitive>,
+{
+    fn from(primitive: P) -> Self {
+        QueryComponent::Primitive(primitive.into())
+    }
+}
+
+impl From<Logic> for QueryComponent {
+    fn from(logic: Logic) -> Self {
+        QueryComponent::Logical(logic)
+    }
+}
+
+impl From<(Comparison, String, Value)> for QueryComponent {
+    fn from((operator, key, value): (Comparison, String, Value)) -> Self {
+        QueryComponent::Comparison {
+            operator,
+            key,
+            value,
+        }
+    }
 }
 
 #[derive(Debug)]
