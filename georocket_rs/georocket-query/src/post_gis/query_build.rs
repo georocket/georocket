@@ -89,15 +89,9 @@ fn queryfy_with_combinator(
 
 fn queryfy_comparison(operator: Comparison, key: &str, value: &Value) -> (String, QueryTables) {
     let s = match value {
-        Value::Integer(i) => format!(
-            "(p.key = '{}' AND cast(p.value as integer) {} {})",
-            key, operator, i
-        ),
-        Value::Float(f) => format!(
-            "(p.key = '{}' AND cast(p.value as float) {} {})",
-            key, operator, f
-        ),
-        Value::String(s) => format!("(p.key = '{}' AND p.value {} '{}')", key, operator, s),
+        Value::Integer(i) => format!("(p.key = '{}' AND p.value_i {} {})", key, operator, i),
+        Value::Float(f) => format!("(p.key = '{}' AND p.value_f {} {})", key, operator, f),
+        Value::String(s) => format!("(p.key = '{}' AND p.value_s {} '{}')", key, operator, s),
     };
     (s, QueryTables::property())
 }
@@ -148,6 +142,7 @@ fn bbox_envelope(bbox: &BoundingBox) -> String {
 mod tests {
     use super::*;
     use georocket_types::GeoPoint;
+
     const WSG84_SRID: u32 = 4326;
     const BASIC_BBOX: BoundingBox = BoundingBox {
         srid: Some(WSG84_SRID),
@@ -227,5 +222,39 @@ mod tests {
         let query = build_query(query);
         assert_eq!(query,
                    "SELECT DISTINCT raw_feature FROM georocket.feature f, georocket.property p, georocket.bounding_box b WHERE f.id = p.id AND f.id = b.id AND (((p.key like '%test%' OR p.value_s like '%test%' OR cast(p.value_i as text) like '%test%' OR cast(p.value_f as text) like '%test%') AND (ST_Intersects(b.bounding_box, ST_MakeEnvelope(0, 0, 1, 1, 4326)))))");
+    }
+
+    #[test]
+    fn query_comparison_fn_int() {
+        let s = queryfy_comparison(Comparison::Eq, "key", &1.into());
+        assert_eq!(s.0, "(p.key = 'key' AND p.value_i = 1)");
+        assert!(s.1.property);
+        assert!(!s.1.bounding_box);
+    }
+
+    #[test]
+    fn query_comparison_fn_float() {
+        let s = queryfy_comparison(Comparison::Eq, "key", &1.3.into());
+        assert_eq!(s.0, "(p.key = 'key' AND p.value_f = 1.3)");
+        assert!(s.1.property);
+        assert!(!s.1.bounding_box);
+    }
+
+    #[test]
+    fn query_comparison_fn_string() {
+        let s = queryfy_comparison(Comparison::Eq, "key", &"text".into());
+        assert_eq!(s.0, "(p.key = 'key' AND p.value_s = 'text')");
+        assert!(s.1.property);
+        assert!(!s.1.bounding_box);
+    }
+
+    #[test]
+    fn query_comparison() {
+        let query = Query {
+            components: vec![(Comparison::Eq, "key", 1).into()],
+        };
+        let query = build_query(query);
+        assert_eq!(query,
+                   "SELECT DISTINCT raw_feature FROM georocket.feature f, georocket.property p WHERE f.id = p.id AND ((p.key = 'key' AND p.value_i = 1))");
     }
 }
