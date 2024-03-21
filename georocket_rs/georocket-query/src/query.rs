@@ -44,6 +44,7 @@ impl Logic {
 #[derive(Copy, Clone, Debug)]
 pub enum Comparison {
     Eq,
+    Neq,
     Lt,
     Gt,
     Lte,
@@ -54,6 +55,7 @@ impl Display for Comparison {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Comparison::Eq => write!(f, "="),
+            Comparison::Neq => write!(f, "!="),
             Comparison::Lt => write!(f, "<"),
             Comparison::Gt => write!(f, ">"),
             Comparison::Lte => write!(f, "<="),
@@ -89,8 +91,14 @@ impl From<Logic> for QueryComponent {
     }
 }
 
-impl From<(Comparison, String, Value)> for QueryComponent {
-    fn from((operator, key, value): (Comparison, String, Value)) -> Self {
+impl<K, V> From<(Comparison, K, V)> for QueryComponent
+where
+    K: Into<String>,
+    V: Into<Value>,
+{
+    fn from((operator, key, value): (Comparison, K, V)) -> Self {
+        let key = key.into();
+        let value = value.into();
         QueryComponent::Comparison {
             operator,
             key,
