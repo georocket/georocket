@@ -122,7 +122,7 @@ fn queryfy_logical(logical: &Logic) -> (String, QueryTables) {
 fn queryfy_primative(primitive: &Primitive) -> (String, QueryTables) {
     match primitive {
         Primitive::String(s) => (
-            format!("(p.key like '%{s}%' OR cast(p.value as text) like '%{s}%')"),
+            format!("(p.key like '%{s}%' OR p.value_s like '%{s}%' OR cast(p.value_i as text) like '%{s}%' OR cast(p.value_f as text) like '%{s}%')"),
             QueryTables::property(),
         ),
         Primitive::BoundingBox(bbox) => (
@@ -188,7 +188,7 @@ mod tests {
         };
         let query = build_query(query);
         assert_eq!(query,
-                   "SELECT DISTINCT raw_feature FROM georocket.feature f, georocket.property p WHERE f.id = p.id AND ((p.key like '%test%' OR cast(p.value as text) like '%test%'))");
+                   "SELECT DISTINCT raw_feature FROM georocket.feature f, georocket.property p WHERE f.id = p.id AND ((p.key like '%test%' OR p.value_s like '%test%' OR cast(p.value_i as text) like '%test%' OR cast(p.value_f as text) like '%test%'))");
     }
 
     #[test]
@@ -201,7 +201,7 @@ mod tests {
         };
         let query = build_query(query);
         assert_eq!(query,
-                   "SELECT DISTINCT raw_feature FROM georocket.feature f, georocket.property p, georocket.bounding_box b WHERE f.id = p.id AND f.id = b.id AND ((p.key like '%test%' OR cast(p.value as text) like '%test%') OR (ST_Intersects(b.bounding_box, ST_MakeEnvelope(0, 0, 1, 1, 4326))))");
+                   "SELECT DISTINCT raw_feature FROM georocket.feature f, georocket.property p, georocket.bounding_box b WHERE f.id = p.id AND f.id = b.id AND ((p.key like '%test%' OR p.value_s like '%test%' OR cast(p.value_i as text) like '%test%' OR cast(p.value_f as text) like '%test%') OR (ST_Intersects(b.bounding_box, ST_MakeEnvelope(0, 0, 1, 1, 4326))))");
     }
 
     #[test]
@@ -213,7 +213,7 @@ mod tests {
         };
         let query = build_query(query);
         assert_eq!(query,
-                   "SELECT DISTINCT raw_feature FROM georocket.feature f, georocket.property p WHERE f.id = p.id AND (NOT ((p.key like '%test%' OR cast(p.value as text) like '%test%')))");
+                   "SELECT DISTINCT raw_feature FROM georocket.feature f, georocket.property p WHERE f.id = p.id AND (NOT ((p.key like '%test%' OR p.value_s like '%test%' OR cast(p.value_i as text) like '%test%' OR cast(p.value_f as text) like '%test%')))");
     }
 
     #[test]
@@ -226,6 +226,6 @@ mod tests {
         };
         let query = build_query(query);
         assert_eq!(query,
-                   "SELECT DISTINCT raw_feature FROM georocket.feature f, georocket.property p, georocket.bounding_box b WHERE f.id = p.id AND f.id = b.id AND (((p.key like '%test%' OR cast(p.value as text) like '%test%') AND (ST_Intersects(b.bounding_box, ST_MakeEnvelope(0, 0, 1, 1, 4326)))))");
+                   "SELECT DISTINCT raw_feature FROM georocket.feature f, georocket.property p, georocket.bounding_box b WHERE f.id = p.id AND f.id = b.id AND (((p.key like '%test%' OR p.value_s like '%test%' OR cast(p.value_i as text) like '%test%' OR cast(p.value_f as text) like '%test%') AND (ST_Intersects(b.bounding_box, ST_MakeEnvelope(0, 0, 1, 1, 4326)))))");
     }
 }
