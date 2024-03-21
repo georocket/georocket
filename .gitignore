@@ -5,3 +5,4 @@ target
 bacon.toml
 tarpaulin-report.html
 .env
+refinery.toml
