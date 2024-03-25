@@ -1,3 +1,4 @@
+mod buffer;
 pub mod geo_json_splitter;
 
 pub use crate::types::{GeoDataType, GeoJsonChunk};
