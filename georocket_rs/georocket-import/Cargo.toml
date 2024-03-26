@@ -25,6 +25,7 @@ uuid = { version = "1.4.1", features = ["v4", "fast-rng", "serde"] }
 indexing = { path = "../indexing" }
 georocket-types = { path = "../georocket-types" }
 georocket-migrations = { path = "../georocket-migrations", features = ["postgis", "tokio-postgres"] }
+pin-project = "1.1.5"
 
 [dev-dependencies]
 serde_json = "1.0.104"

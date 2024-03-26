@@ -75,6 +75,25 @@ impl WindowBuffer {
         let amount = range.end - range.start;
         Ok(self.inner.iter().skip(begin).take(amount))
     }
+    /// Retrieves all bytes contained within the window, starting from the specified position.
+    /// # Errors:
+    /// Returns `WindowBufferError::BytesOutOfRange` error, if the starting position
+    /// falls outside the range of bytes buffered by the window.
+    pub fn get_bytes_from<'w>(
+        &self,
+        start: usize,
+    ) -> Result<impl ExactSizeIterator<Item = &u8>, WindowBufferError> {
+        let window_end = self.offset + self.inner.len();
+        if start < self.offset || start > window_end {
+            return Err(WindowBufferError::BytesOutOfRange);
+        }
+        let begin = start - self.offset;
+        Ok(self.inner.iter().skip(begin))
+    }
+    /// Retrieves all bytes contained within the window.
+    pub fn get_bytes_all<'w>(&self) -> impl ExactSizeIterator<Item = &u8> {
+        self.inner.iter()
+    }
     /// Drains all bytes up to `idx` out of the window, where `idx` is an absolute position
     /// in the byte stream, effectively moving the window forward over the byte-stream.
     /// Does nothing if `idx` is smaller than the current offset of the window to the beginning
@@ -128,6 +147,44 @@ mod tests {
 
     #[test]
     fn simple_slide() {
+        let bytes: Vec<u8> = (0..=u8::MAX).collect();
+        let mut buffer = WindowBuffer::new();
+        // fill some bytes into the window and then advance the window
+        buffer.fill_bytes(&bytes[0..20]);
+        buffer.move_window(5).unwrap();
+        // accessing bytes within the current active window should work as if slicing into the
+        // original byte-stream.
+        // Current range in window: 5..20
+        assert_eq!(buffer.active_range(), 5..20);
+        let range = 8..18;
+        let slice = &bytes[range.clone()];
+        let retrieved: Vec<u8> = buffer.get_bytes(range).unwrap().cloned().collect();
+        assert_eq!(slice, retrieved);
+
+        let range = 5..20;
+        let slice = &bytes[range.clone()];
+        let retrieved: Vec<u8> = buffer.get_bytes(range).unwrap().cloned().collect();
+        assert_eq!(slice, retrieved);
+
+        // accessing range outside the active range should error
+        let range = 4..20;
+        assert!(buffer.get_bytes(range).is_err());
+        let range = 4..21;
+        assert!(buffer.get_bytes(range).is_err());
+
+        // fill some more bytes into the window
+        buffer.fill_bytes(&bytes[20..40]);
+        // Current range in window: 5..40
+        assert_eq!(buffer.active_range(), 5..40);
+
+        let range = 5..40;
+        let slice = &bytes[range.clone()];
+        let retrieved: Vec<u8> = buffer.get_bytes(range).unwrap().cloned().collect();
+        assert_eq!(slice, retrieved);
+    }
+
+    #[test]
+    fn get_bytes_from() {
         let bytes: Vec<u8> = (0..=u8::MAX).collect();
         let mut buffer = WindowBuffer::new();
         // fill some bytes into the window and then advance the window
