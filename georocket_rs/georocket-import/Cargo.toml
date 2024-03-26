@@ -25,6 +25,7 @@ uuid = { version = "1.4.1", features = ["v4", "fast-rng", "serde"] }
 indexing = { path = "../indexing" }
 georocket-types = { path = "../georocket-types" }
 georocket-migrations = { path = "../georocket-migrations", features = ["postgis", "tokio-postgres"] }
+quick-xml = { version = "0.31.0", features = ["async-tokio"] }
 pin-project = "1.1.5"
 
 [dev-dependencies]
