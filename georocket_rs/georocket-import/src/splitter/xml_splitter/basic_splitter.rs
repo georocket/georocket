@@ -1,6 +1,6 @@
 use quick_xml::events::Event;
 use quick_xml::name::QName;
-use quick_xml::Reader;
+use quick_xml::NsReader;
 use std::ops::Range;
 use thiserror::Error;
 use tokio::io::{AsyncRead, BufReader};
@@ -21,7 +21,7 @@ type Chunk = Vec<Event<'static>>;
 
 /// Splitter for XML documents.
 pub struct BasicSplitter<R> {
-    parser: Reader<BufReader<R>>,
+    parser: NsReader<BufReader<R>>,
     current_event: Option<Event<'static>>,
     buffer: Vec<u8>,
 }
@@ -32,7 +32,7 @@ impl<R: AsyncRead + Unpin> BasicSplitter<R> {
     pub fn new(reader: R) -> BasicSplitter<R> {
         let buff_reader = BufReader::new(reader);
         Self {
-            parser: Reader::from_reader(buff_reader),
+            parser: NsReader::from_reader(buff_reader),
             current_event: None,
             buffer: Vec::new(),
         }
