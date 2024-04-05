@@ -78,21 +78,15 @@ impl<R: AsyncRead + Unpin> BasicSplitter<R> {
     }
     /// Advances the splitter to the next `Event`, returning a reference to it.
     pub async fn advance(&mut self) -> Result<&Event, Error> {
-        // The current event is still set, so it either isn't a start event, in which
-        // case we ignore it, or it is a start event, in which case we need to add it
-        // to the list of current parents.
-        if self.current_event.as_ref().is_some_and(|e| match e {
-            Event::Start(_) => true,
-            _ => false,
-        }) {
-            let event = self
-                .current_event
-                .take()
-                .expect("we just checked that this should be Some");
-            let Event::Start(s) = event else {
-                panic!("we just checked that this should be `Event::Start`")
-            };
-            self.parents.push(s);
+        // push or pop from parents before every advance.
+        if let Some(event) = self.current_event.as_ref() {
+            match event {
+                Event::Start(start) => self.parents.push(start.clone()),
+                Event::End(_) => {
+                    self.parents.pop();
+                }
+                _ => (),
+            }
         }
         let event = self.parser.read_event_into_async(&mut self.buffer).await?;
         self.current_event = Some(event.into_owned());
@@ -104,7 +98,9 @@ impl<R: AsyncRead + Unpin> BasicSplitter<R> {
     /// Also returns the range of bytes that contain the events.
     /// # Errors
     /// Will error if the last event returned by [`advance`] wasn't `Event::Start`.
-    pub async fn extract_current(&mut self) -> Result<(Chunk, Range<usize>), Error> {
+    pub async fn extract_current(
+        &mut self,
+    ) -> Result<(Chunk, &[BytesStart<'static>], Range<usize>), Error> {
         let Some(event) = self.current_event.take() else {
             return Err(Error::NoCurrentEvent);
         };
@@ -138,7 +134,7 @@ impl<R: AsyncRead + Unpin> BasicSplitter<R> {
             };
         };
 
-        Ok((events, start_position..end_position))
+        Ok((events, &self.parents, start_position..end_position))
     }
 }
 
@@ -191,7 +187,7 @@ mod tests {
         let scratch_reader = ScratchReader::new(SIMPLE_XML.as_bytes());
         let mut basic_splitter = BasicSplitter::new(scratch_reader);
         basic_splitter.find_opening("CD").await.unwrap();
-        let (_, span) = basic_splitter.extract_current().await.unwrap();
+        let (_, _, span) = basic_splitter.extract_current().await.unwrap();
         let raw_chunk: Vec<_> = basic_splitter
             .reader()
             .get_ref()
@@ -202,7 +198,7 @@ mod tests {
             .collect();
         assert_eq!(raw_chunk, FIST_ITEM.as_bytes());
         basic_splitter.find_opening("CD").await.unwrap();
-        let (_, span) = basic_splitter.extract_current().await.unwrap();
+        let (_, _, span) = basic_splitter.extract_current().await.unwrap();
         let raw_chunk: Vec<_> = basic_splitter
             .reader()
             .get_ref()
@@ -212,5 +208,57 @@ mod tests {
             .cloned()
             .collect();
         assert_eq!(raw_chunk, SECOND_ITEM.as_bytes());
+    }
+
+    #[tokio::test]
+    async fn test_extract_parents_single() {
+        let xml = "<root><object>Some Text</object></root>";
+        let scratch_reader = ScratchReader::new(xml.as_bytes());
+        let mut basic_splitter = BasicSplitter::new(scratch_reader);
+        basic_splitter.find_opening("object").await.unwrap();
+        let (_, parents, _) = basic_splitter.extract_current().await.unwrap();
+        assert_eq!(parents.len(), 1);
+        assert_eq!(parents[0].name().0, "root".as_bytes())
+    }
+
+    #[tokio::test]
+    async fn test_extract_parents_multiple() {
+        let xml = "<root1><root2><root3><object>Some Text</object></roo3></root2></root1>";
+        let scratch_reader = ScratchReader::new(xml.as_bytes());
+        let mut basic_splitter = BasicSplitter::new(scratch_reader);
+        basic_splitter.find_opening("object").await.unwrap();
+        let (_, parents, _) = basic_splitter.extract_current().await.unwrap();
+        assert_eq!(parents.len(), 3);
+        assert_eq!(parents[0].name().0, "root1".as_bytes());
+        assert_eq!(parents[1].name().0, "root2".as_bytes());
+        assert_eq!(parents[2].name().0, "root3".as_bytes());
+    }
+
+    #[tokio::test]
+    async fn test_extract_neighbors() {
+        let xml = "<root1>\
+            <root2_1>\
+                <object>Some Text</object>\
+            </root2_1>\
+            <root2_2>\
+                <object>Some Text</object>\
+            <root2_2>\
+        </root1>";
+        let scratch_reader = ScratchReader::new(xml.as_bytes());
+        let mut basic_splitter = BasicSplitter::new(scratch_reader);
+
+        // first object should have the parents <root1> and <root2_1>
+        basic_splitter.find_opening("object").await.unwrap();
+        let (_, parents, _) = basic_splitter.extract_current().await.unwrap();
+        assert_eq!(parents.len(), 2);
+        assert_eq!(parents[0].name().0, "root1".as_bytes());
+        assert_eq!(parents[1].name().0, "root2_1".as_bytes());
+
+        // second object should have the parents <root1> and <root2_2>
+        basic_splitter.find_opening("object").await.unwrap();
+        let (_, parents, _) = basic_splitter.extract_current().await.unwrap();
+        assert_eq!(parents.len(), 2);
+        assert_eq!(parents[0].name().0, "root1".as_bytes());
+        assert_eq!(parents[1].name().0, "root2_2".as_bytes());
     }
 }
