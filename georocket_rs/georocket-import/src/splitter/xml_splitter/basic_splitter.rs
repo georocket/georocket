@@ -61,7 +61,7 @@ impl<R: AsyncRead + Unpin> BasicSplitter<R> {
     pub async fn find_next_opening(&mut self) -> Result<Option<&Event>, Error> {
         loop {
             match self.advance().await? {
-                Event::Eof => break Err(Error::StartEventNotFound),
+                Event::Eof => break Ok(None),
                 Event::Start(_) => {
                     break Ok(Some(
                         self.current_event.as_ref().expect("we just found an event"),
@@ -213,8 +213,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_extract() {
-        let scratch_reader = ScratchReader::new(SIMPLE_XML.as_bytes());
-        let mut basic_splitter = BasicSplitter::new(scratch_reader);
+        let mut basic_splitter = BasicSplitter::new(SIMPLE_XML.as_bytes());
         basic_splitter.find_opening("CD").await.unwrap();
         let (_, _, bytes) = basic_splitter.extract_current().await.unwrap();
         assert_eq!(bytes, FIST_ITEM.as_bytes());
@@ -226,8 +225,7 @@ mod tests {
     #[tokio::test]
     async fn test_extract_parents_single() {
         let xml = "<root><object>Some Text</object></root>";
-        let scratch_reader = ScratchReader::new(xml.as_bytes());
-        let mut basic_splitter = BasicSplitter::new(scratch_reader);
+        let mut basic_splitter = BasicSplitter::new(xml.as_bytes());
         basic_splitter.find_opening("object").await.unwrap();
         let (_, parents, _) = basic_splitter.extract_current().await.unwrap();
         assert_eq!(parents.len(), 1);
@@ -237,8 +235,7 @@ mod tests {
     #[tokio::test]
     async fn test_extract_header() {
         let xml_header = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>";
-        let scratch_reader = ScratchReader::new(xml_header.as_bytes());
-        let mut basic_splitter = BasicSplitter::new(scratch_reader);
+        let mut basic_splitter = BasicSplitter::new(xml_header.as_bytes());
         basic_splitter.advance().await.unwrap();
         assert_eq!(
             str::from_utf8(&basic_splitter.header.unwrap()).unwrap(),
@@ -249,8 +246,7 @@ mod tests {
     #[tokio::test]
     async fn test_extract_parents_multiple() {
         let xml = "<root1><root2><root3><object>Some Text</object></roo3></root2></root1>";
-        let scratch_reader = ScratchReader::new(xml.as_bytes());
-        let mut basic_splitter = BasicSplitter::new(scratch_reader);
+        let mut basic_splitter = BasicSplitter::new(xml.as_bytes());
         basic_splitter.find_opening("object").await.unwrap();
         let (_, parents, _) = basic_splitter.extract_current().await.unwrap();
         assert_eq!(parents.len(), 3);
@@ -269,8 +265,7 @@ mod tests {
                 <object>Some Text</object>\
             <root2_2>\
         </root1>";
-        let scratch_reader = ScratchReader::new(xml.as_bytes());
-        let mut basic_splitter = BasicSplitter::new(scratch_reader);
+        let mut basic_splitter = BasicSplitter::new(xml.as_bytes());
 
         // first object should have the parents <root1> and <root2_1>
         basic_splitter.find_opening("object").await.unwrap();
@@ -285,5 +280,15 @@ mod tests {
         assert_eq!(parents.len(), 2);
         assert_eq!(parents[0].local_name, "root1".as_bytes());
         assert_eq!(parents[1].local_name, "root2_2".as_bytes());
+    }
+
+    #[tokio::test]
+    async fn find_next_opening() {
+        let xml = "<open_1><open_2><open_3></open_3></open_2></open_1>";
+        let mut basic_splitter = BasicSplitter::new(xml.as_bytes());
+        assert!(basic_splitter.find_next_opening().await.unwrap().is_some());
+        assert!(basic_splitter.find_next_opening().await.unwrap().is_some());
+        assert!(basic_splitter.find_next_opening().await.unwrap().is_some());
+        assert!(basic_splitter.find_next_opening().await.unwrap().is_none());
     }
 }
