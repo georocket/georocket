@@ -49,7 +49,7 @@ mod tests {
 
     async fn split_chunk(xml: String) -> (Vec<Chunk>, Vec<RawChunk>) {
         let (channels, chunks_rec, mut raw_rec) = SplitterChannels::new_with_channels(1024, 1024);
-        tokio::spawn(async move {
+        let splitter_task = tokio::spawn(async move {
             let reader = ScratchReader::new(xml.as_bytes());
             let splitter = FirstLevelSplitter::new(reader, channels);
             splitter.run().await
@@ -62,6 +62,7 @@ mod tests {
         while let Some(raw) = raw_rec.recv().await {
             raws.push(raw);
         }
+        splitter_task.await.unwrap().unwrap();
         (chunks, raws)
     }
 
@@ -95,5 +96,27 @@ mod tests {
         let contents_1 = str::from_utf8(&chunk_1.raw).unwrap();
         assert_eq!(contents_1, CONTENTS);
         assert_eq!(chunk_1.meta, Some(meta));
+    }
+
+    #[tokio::test]
+    async fn two_chunks() {
+        const CONTENTS_1: &str = "<object><child></child></object>";
+        const CONTENTS_2: &str = "<object><child2></child2></object>";
+        let meta = Some(ChunkMetaInformation::XML(XMLChunkMeta {
+            header: Some(XMLHEADER.into()),
+            parents: vec![XMLStartElement::from_local_name("root".as_bytes())],
+        }));
+        let xml = make_xml(XMLHEADER, &[PREFIX], &[CONTENTS_1, CONTENTS_2]);
+        let (chunks, raw_chunks) = split_chunk(xml).await;
+        assert_eq!(chunks.len(), 2);
+        assert_eq!(raw_chunks.len(), 2);
+        let chunk_1 = &raw_chunks[0];
+        let chunk_2 = &raw_chunks[1];
+        let contents_1 = str::from_utf8(&chunk_1.raw).unwrap();
+        let contents_2 = str::from_utf8(&chunk_2.raw).unwrap();
+        assert_eq!(contents_1, CONTENTS_1);
+        assert_eq!(contents_2, CONTENTS_2);
+        assert_eq!(chunk_1.meta, meta);
+        assert_eq!(chunk_2.meta, meta);
     }
 }
