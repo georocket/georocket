@@ -75,6 +75,14 @@ impl WindowBuffer {
         let amount = range.end - range.start;
         Ok(self.inner.iter().skip(begin).take(amount))
     }
+    /// Retrieves the specified range of bytes as a `Vec<u8>`.
+    /// # Errors:
+    ///
+    /// Returns `WindowBufferError::BytesOutOfRange` error, if the specified range
+    /// falls outside the range of bytes buffered by the window.
+    pub fn get_bytes_vec(&self, range: Range<usize>) -> Result<Vec<u8>, WindowBufferError> {
+        Ok(self.get_bytes(range)?.cloned().collect())
+    }
     /// Retrieves all bytes contained within the window, starting from the specified position.
     /// # Errors:
     /// Returns `WindowBufferError::BytesOutOfRange` error, if the starting position
