@@ -149,7 +149,7 @@ impl FileStore {
             .write(true)
             .open(directory)
             .await?;
-        file.write(&raw).await?;
+        file.write_all(&raw).await?;
         Ok(())
     }
 
@@ -171,7 +171,7 @@ impl FileStore {
             index_elements,
         };
         let json_index = serde_json::to_string(&index)?;
-        file.write(json_index.as_bytes()).await?;
+        file.write_all(json_index.as_bytes()).await?;
         Ok(())
     }
 }

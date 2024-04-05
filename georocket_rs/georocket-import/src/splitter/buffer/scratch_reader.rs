@@ -37,9 +37,13 @@ impl<R> ScratchReader<R> {
             buffer: WindowBuffer::new(),
         }
     }
-    /// Returns a reference to the window for extracting bytes.
-    pub fn window(&mut self) -> &mut WindowBuffer {
+    /// Returns a mutable reference to the window for extracting bytes.
+    pub fn window_mut(&mut self) -> &mut WindowBuffer {
         &mut self.buffer
+    }
+    /// Returns a reference to the window for extracting bytes.
+    pub fn window(&self) -> &WindowBuffer {
+        &self.buffer
     }
 }
 
@@ -64,9 +68,10 @@ mod tests {
             .unwrap();
         let mut string_control = String::new();
         for i in 0..1_000_000 {
-            write!(&mut string_control, "{}\n", i);
+            write!(&mut string_control, "{}\n", i).unwrap();
         }
-        file.write(string_control.as_bytes());
+        file.write_all(string_control.as_bytes()).await.unwrap();
+        file.flush().await.unwrap();
         let file = tokio::fs::File::open(&tmp_file).await.unwrap();
         let mut scratch_reader = ScratchReader::new(file);
         let mut file_contents = Vec::new();
@@ -80,7 +85,7 @@ mod tests {
             .cloned()
             .collect::<Vec<u8>>();
         // contents of file are identical to the
-        assert_eq!(string_control.as_bytes(), file_contents);
+        assert_eq!(file_contents, string_control.as_bytes());
         assert_eq!(string_control.as_bytes(), scratch_contents);
     }
 }
