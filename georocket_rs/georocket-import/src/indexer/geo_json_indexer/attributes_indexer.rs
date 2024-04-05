@@ -306,7 +306,9 @@ mod tests {
 
     fn test_helper(control: Vec<Vec<(&str, Value)>>, chunks: Vec<Chunk>) {
         for (chunk, key_vals) in chunks.into_iter().zip(control) {
-            let InnerChunk::GeoJson(chunk) = chunk.inner;
+            let InnerChunk::GeoJson(chunk) = chunk.inner else {
+                unreachable!("should be geojson, since we are testing geojson")
+            };
             let mut attributes_indexer = AttributesIndexer::new();
             for (event, payload) in chunk {
                 let payload = payload;

@@ -262,7 +262,9 @@ mod tests {
         tokio::spawn(async move { splitter.run().await });
         while let Ok(chunk) = chunk_receiver.recv().await {
             let mut bbox_indexer = BoundingBoxIndexer::new();
-            let InnerChunk::GeoJson(chunk) = chunk.inner;
+            let InnerChunk::GeoJson(chunk) = chunk.inner else {
+                unreachable!("we are testing geojson, this should always be geojson")
+            };
             for (json_event, payload) in &chunk {
                 let payload = payload;
                 bbox_indexer.process_event(*json_event, payload);

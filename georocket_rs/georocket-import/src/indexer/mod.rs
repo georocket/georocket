@@ -77,6 +77,7 @@ impl MainIndexer {
         let Chunk { id, inner } = chunk;
         let index_elements = match inner {
             InnerChunk::GeoJson(chunk) => GeoJsonIndexer::new(chunk).generate_index(),
+            InnerChunk::XML(chunk) => unimplemented!("xml indexer is not yet implemented"),
         }
         .into_iter()
         .filter_map(|index| {

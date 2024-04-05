@@ -2,6 +2,7 @@ use crate::splitter::geo_json_splitter::GeoJsonType;
 use actson::JsonEvent;
 use georocket_types::{BoundingBox, Value};
 use indexing::attributes::Attributes;
+use quick_xml::events::Event;
 use serde::{Deserialize, Serialize};
 
 pub enum GeoDataType {
@@ -40,13 +41,21 @@ pub struct RawChunk {
 #[derive(Debug, Clone)]
 pub enum InnerChunk {
     GeoJson(GeoJsonChunk),
+    XML(XMLChunk),
 }
 
 pub type GeoJsonChunk = Vec<(JsonEvent, Payload)>;
+pub type XMLChunk = Vec<Event<'static>>;
 
 impl From<GeoJsonChunk> for InnerChunk {
     fn from(value: GeoJsonChunk) -> Self {
         Self::GeoJson(value)
+    }
+}
+
+impl From<XMLChunk> for InnerChunk {
+    fn from(value: XMLChunk) -> Self {
+        Self::XML(value)
     }
 }
 
