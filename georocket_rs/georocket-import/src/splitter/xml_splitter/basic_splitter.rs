@@ -1,10 +1,9 @@
 use crate::splitter::buffer::scratch_reader::ScratchReader;
 use crate::splitter::buffer::window_buffer::{WindowBuffer, WindowBufferError};
 use crate::types::XMLStartElement;
-use quick_xml::events::{BytesStart, Event};
+use quick_xml::events::Event;
 use quick_xml::name::QName;
 use quick_xml::NsReader;
-use std::ops::Range;
 use thiserror::Error;
 use tokio::io::{AsyncRead, BufReader};
 
@@ -30,6 +29,7 @@ pub struct BasicSplitter<R> {
     current_event: Option<Event<'static>>,
     buffer: Vec<u8>,
     parents: Vec<XMLStartElement>,
+    pub(super) header: Option<Vec<u8>>,
 }
 
 impl<R: AsyncRead + Unpin> BasicSplitter<R> {
@@ -42,6 +42,7 @@ impl<R: AsyncRead + Unpin> BasicSplitter<R> {
             current_event: None,
             buffer: Vec::new(),
             parents: Vec::new(),
+            header: None,
         }
     }
     /// Finds the next opening `Event::Start` tag with the specified name.
@@ -97,9 +98,22 @@ impl<R: AsyncRead + Unpin> BasicSplitter<R> {
         }
         let event = self.parser.read_event_into_async(&mut self.buffer).await?;
         self.current_event = Some(event.into_owned());
+        if let Event::Decl(decl) = self
+            .current_event
+            .as_ref()
+            .expect("we just put something here")
+        {
+            let pos = self.parser.buffer_position();
+            // -4 because `<?` and `?>` are not included in the length
+            let start = pos - 4 - decl.len();
+            self.header = Some(self.window().get_bytes_vec(start..pos)?);
+            self.window().move_window(pos)?;
+        }
         self.buffer.clear();
-        // we just put something into the Option, we can unwrap it safely.
-        Ok(self.current_event.as_ref().unwrap())
+        Ok(self
+            .current_event
+            .as_ref()
+            .expect("we just put an event in here"))
     }
     /// Extracts all `Events` from the current opening tag to the corresponding closing tag.
     /// Also returns the bytes corresponding to the extracted tag.
@@ -156,6 +170,7 @@ impl<R: AsyncRead + Unpin> BasicSplitter<R> {
 mod tests {
     use super::*;
     use crate::splitter::buffer::scratch_reader::ScratchReader;
+    use std::str;
 
     const SIMPLE_XML: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
 <CATALOG>
@@ -217,6 +232,18 @@ mod tests {
         let (_, parents, _) = basic_splitter.extract_current().await.unwrap();
         assert_eq!(parents.len(), 1);
         assert_eq!(parents[0].local_name, "root".as_bytes())
+    }
+
+    #[tokio::test]
+    async fn test_extract_header() {
+        let xml_header = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>";
+        let scratch_reader = ScratchReader::new(xml_header.as_bytes());
+        let mut basic_splitter = BasicSplitter::new(scratch_reader);
+        basic_splitter.advance().await.unwrap();
+        assert_eq!(
+            str::from_utf8(&basic_splitter.header.unwrap()).unwrap(),
+            xml_header
+        );
     }
 
     #[tokio::test]
