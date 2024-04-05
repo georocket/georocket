@@ -40,12 +40,12 @@ impl<R: AsyncRead + Unpin> FirstLevelSplitter<R> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{Chunk, RawChunk};
+    use crate::types::{Chunk, RawChunk, XMLStartElement};
+    use std::fmt::Write;
     use std::str;
 
     const XMLHEADER: &str = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>";
-    const PREFIX: &str = "<root>";
-    const SUFFIX: &str = "</root>";
+    const PREFIX: &str = "root";
 
     async fn split_chunk(xml: String) -> (Vec<Chunk>, Vec<RawChunk>) {
         let (channels, chunks_rec, mut raw_rec) = SplitterChannels::new_with_channels(1024, 1024);
@@ -65,22 +65,35 @@ mod tests {
         (chunks, raws)
     }
 
+    fn make_xml(header: &str, parents: &[&str], contents: &[&str]) -> String {
+        let mut s = String::new();
+        write!(s, "{header}").unwrap();
+        for parent in parents {
+            write!(s, "<{parent}>").unwrap();
+        }
+        for content in contents {
+            write!(s, "{content}").unwrap();
+        }
+        for parent in parents.iter().rev() {
+            write!(s, "</{parent}>").unwrap();
+        }
+        s
+    }
+
     #[tokio::test]
     async fn one_chunk() {
         const CONTENTS: &str = "<object><child></child></object>";
-        let (chunks, raw_chunks) =
-            split_chunk(format!("{XMLHEADER}{PREFIX}{CONTENTS}{SUFFIX}")).await;
+        let xml = make_xml(XMLHEADER, &[PREFIX], &[CONTENTS]);
+        let (chunks, raw_chunks) = split_chunk(xml).await;
+        let meta = ChunkMetaInformation::XML(XMLChunkMeta {
+            header: Some(XMLHEADER.into()),
+            parents: vec![XMLStartElement::from_local_name("root".as_bytes())],
+        });
         assert_eq!(chunks.len(), 1);
         assert_eq!(raw_chunks.len(), 1);
-        let chunk_1 = raw_chunks[0].clone();
-        assert_eq!(chunk_1.raw, CONTENTS.as_bytes());
-        let Some(ChunkMetaInformation::XML(meta)) = chunk_1.meta else {
-            unreachable!("we are testing xml, meta should always be xml")
-        };
-        let header = String::from_utf8(meta.header.unwrap()).unwrap();
-        assert_eq!(header, XMLHEADER);
-        assert_eq!(meta.parents.len(), 1);
-        let parent = str::from_utf8(&meta.parents[0].raw).unwrap();
-        assert_eq!(parent, PREFIX);
+        let chunk_1 = &raw_chunks[0];
+        let contents_1 = str::from_utf8(&chunk_1.raw).unwrap();
+        assert_eq!(contents_1, CONTENTS);
+        assert_eq!(chunk_1.meta, Some(meta));
     }
 }
