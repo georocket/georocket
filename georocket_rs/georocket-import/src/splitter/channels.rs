@@ -1,4 +1,4 @@
-use crate::types::{Chunk, InnerChunk, RawChunk};
+use crate::types::{Chunk, ChunkMetaInformation, InnerChunk, RawChunk};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -48,11 +48,12 @@ impl SplitterChannels {
         &mut self,
         chunk: impl Into<InnerChunk>,
         raw: Vec<u8>,
+        meta: Option<impl Into<ChunkMetaInformation>>,
     ) -> Result<(), SplitterChannelError> {
         let id = self.counter;
         self.counter += 1;
         self.send_chunk(id, chunk).await?;
-        self.send_raw(id, raw).await?;
+        self.send_raw(id, raw, meta).await?;
         Ok(())
     }
 
@@ -70,8 +71,13 @@ impl SplitterChannels {
         &self,
         id: usize,
         raw: Vec<u8>,
+        meta: Option<impl Into<ChunkMetaInformation>>,
     ) -> Result<(), tokio::sync::mpsc::error::SendError<RawChunk>> {
-        let raw = RawChunk { id, raw };
+        let raw = RawChunk {
+            id,
+            raw,
+            meta: meta.map(|m| m.into()),
+        };
         self.raw_send.send(raw).await
     }
 }

@@ -6,7 +6,7 @@ use tokio::io::{AsyncBufReadExt, AsyncRead, BufReader};
 const EXTEND: usize = 1024;
 
 mod buffer;
-use crate::types::{GeoJsonChunk, Payload};
+use crate::types::{GeoJsonChunk, GeoJsonMeta, Payload};
 use buffer::Buffer;
 
 use super::{Splitter, SplitterChannels};
@@ -147,7 +147,7 @@ where
                 let end = self.parser.parsed_bytes();
                 let count = (end - begin) + 1;
                 let raw = self.buffer.retrieve_marked(count);
-                self.channels.send(chunk, raw).await?;
+                self.channels.send(chunk, raw, Some(GeoJsonMeta)).await?;
                 GeoJsonType::Object
             }
             GeoJsonType::Collection => GeoJsonType::Collection,
@@ -235,7 +235,7 @@ where
                     self.buffer.drain_marked(count);
 
                     // send out the data
-                    self.channels.send(chunk, bytes).await?;
+                    self.channels.send(chunk, bytes, Some(GeoJsonMeta)).await?;
                     previously_parsed = end;
                 }
                 _ => unreachable!("`find_next()` should have returned an error, if any other events are found here"),

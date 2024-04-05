@@ -36,6 +36,40 @@ pub struct Chunk {
 pub struct RawChunk {
     pub id: usize,
     pub raw: Vec<u8>,
+    pub meta: Option<ChunkMetaInformation>,
+}
+
+#[derive(Clone, Debug)]
+pub enum ChunkMetaInformation {
+    GeoJson(GeoJsonMeta),
+    XML(XMLChunkMeta),
+}
+
+impl From<XMLChunkMeta> for ChunkMetaInformation {
+    fn from(xml_meta: XMLChunkMeta) -> Self {
+        ChunkMetaInformation::XML(xml_meta)
+    }
+}
+
+impl From<GeoJsonMeta> for ChunkMetaInformation {
+    fn from(geo_json_meta: GeoJsonMeta) -> Self {
+        ChunkMetaInformation::GeoJson(geo_json_meta)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct GeoJsonMeta;
+
+#[derive(Clone, Debug)]
+pub struct XMLChunkMeta {
+    pub header: Option<Vec<u8>>,
+    pub parents: Vec<XMLStartElement>,
+}
+
+#[derive(Clone, Debug)]
+pub struct XMLStartElement {
+    pub(crate) raw: Vec<u8>,
+    pub(crate) local_name: Vec<u8>,
 }
 
 #[derive(Debug, Clone)]

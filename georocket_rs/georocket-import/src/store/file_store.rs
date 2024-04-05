@@ -138,7 +138,7 @@ impl FileStore {
         mut directory: PathBuf,
         chunk: RawChunk,
     ) -> anyhow::Result<()> {
-        let RawChunk { id, raw } = chunk;
+        let RawChunk { id, raw, meta } = chunk;
         let uuid = index_map.get_or_create_index(id);
         let (file_dir, file_name) = make_path(uuid);
         directory.push(file_dir);
@@ -314,33 +314,43 @@ mod test {
     #[tokio::test]
     async fn test_write_chunks() {
         let empty_chunks = [];
-        let simple_chunks = [RawChunk { id: 0, raw: vec![] }];
+        let simple_chunks = [RawChunk {
+            id: 0,
+            raw: vec![],
+            meta: None,
+        }];
         let complex_chunks = [
             RawChunk {
                 id: 0,
                 raw: vec![0, 1, 2, 3, 4, 5, 6, 7],
+                meta: None,
             },
             RawChunk {
                 id: 1,
                 raw: vec![8, 9, 10, 11, 12, 13, 14, 15],
+                meta: None,
             },
             RawChunk {
                 id: 2,
                 raw: vec![16, 17, 18, 19, 20, 21, 22, 23],
+                meta: None,
             },
             RawChunk {
                 id: 3,
                 raw: vec![24, 25, 26, 27, 28, 29, 30, 31],
+                meta: None,
             },
             RawChunk {
                 id: 4,
                 raw: vec![32, 33, 34, 35, 36, 37, 38, 39],
+                meta: None,
             },
         ];
         let many_chunks = (0..10_000)
             .map(|i| RawChunk {
                 id: i,
                 raw: vec![i as u8; 8],
+                meta: None,
             })
             .collect::<Vec<_>>();
 

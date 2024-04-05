@@ -63,7 +63,7 @@ impl PostGISStore {
     /// Creates a new `index_map::Index` or uses the existing index, if there is already
     /// one present.
     pub async fn handle_raw(&mut self, raw: RawChunk) -> anyhow::Result<()> {
-        let RawChunk { id, raw } = raw;
+        let RawChunk { id, raw, meta } = raw;
         let feature = from_utf8(raw.as_slice()).expect("raw chunk not valid utf-8");
         let index = self.id_index_map.get_or_create_index(id);
         self.client
