@@ -155,7 +155,7 @@ mod tests {
         let (_, span) = basic_splitter.extract_current().await.unwrap();
         let raw_chunk: Vec<_> = basic_splitter
             .reader()
-            .get_mut()
+            .get_ref()
             .window()
             .get_bytes(span)
             .unwrap()
@@ -166,7 +166,7 @@ mod tests {
         let (_, span) = basic_splitter.extract_current().await.unwrap();
         let raw_chunk: Vec<_> = basic_splitter
             .reader()
-            .get_mut()
+            .get_ref()
             .window()
             .get_bytes(span)
             .unwrap()
