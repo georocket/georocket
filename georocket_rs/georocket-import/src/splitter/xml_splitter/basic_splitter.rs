@@ -1,4 +1,4 @@
-use quick_xml::events::Event;
+use quick_xml::events::{BytesStart, Event};
 use quick_xml::name::QName;
 use quick_xml::NsReader;
 use std::ops::Range;
@@ -21,9 +21,10 @@ type Chunk = Vec<Event<'static>>;
 
 /// Splitter for XML documents.
 pub struct BasicSplitter<R> {
-    parser: NsReader<BufReader<R>>,
+    pub(super) parser: NsReader<BufReader<R>>,
     current_event: Option<Event<'static>>,
     buffer: Vec<u8>,
+    parents: Vec<BytesStart<'static>>,
 }
 
 impl<R: AsyncRead + Unpin> BasicSplitter<R> {
@@ -35,26 +36,64 @@ impl<R: AsyncRead + Unpin> BasicSplitter<R> {
             parser: NsReader::from_reader(buff_reader),
             current_event: None,
             buffer: Vec::new(),
+            parents: Vec::new(),
         }
     }
     /// Return a reference to the internal `BufReader`.
-    pub fn reader(&mut self) -> &mut BufReader<R> {
+    pub fn reader(&self) -> &BufReader<R> {
+        self.parser.get_ref()
+    }
+    /// Return a mutable reference to the internal `BufReader`.
+    pub fn reader_mut(&mut self) -> &mut BufReader<R> {
         self.parser.get_mut()
     }
     /// Finds the next opening `Event::Start` tag with the specified name.
-    pub async fn find_opening(&mut self, name: &str) -> Result<(), Error> {
+    pub async fn find_opening(&mut self, name: &str) -> Result<&Event, Error> {
         let start = QName(name.as_bytes());
         loop {
-            self.buffer.clear();
             match self.advance().await? {
                 Event::Eof => break Err(Error::StartEventNotFound),
-                Event::Start(s) if s.name() == start => break Ok(()),
+                Event::Start(s) if s.name() == start => {
+                    break Ok(self.current_event.as_ref().expect("we just found an event"))
+                }
                 _ => {}
             }
         }
     }
+    pub async fn find_next_opening(&mut self) -> Result<Option<&Event>, Error> {
+        loop {
+            match self.advance().await? {
+                Event::Eof => break Err(Error::StartEventNotFound),
+                Event::Start(_) => {
+                    break Ok(Some(
+                        self.current_event.as_ref().expect("we just found an event"),
+                    ))
+                }
+                _ => {}
+            }
+        }
+    }
+    pub fn current_event(&self) -> Option<&Event> {
+        self.current_event.as_ref()
+    }
     /// Advances the splitter to the next `Event`, returning a reference to it.
     pub async fn advance(&mut self) -> Result<&Event, Error> {
+        // The current event is still set, so it either isn't a start event, in which
+        // case we ignore it, or it is a start event, in which case we need to add it
+        // to the list of current parents.
+        if self.current_event.as_ref().is_some_and(|e| match e {
+            Event::Start(_) => true,
+            _ => false,
+        }) {
+            let event = self
+                .current_event
+                .take()
+                .expect("we just checked that this should be Some");
+            let Event::Start(s) = event else {
+                panic!("we just checked that this should be `Event::Start`")
+            };
+            self.parents.push(s);
+        }
         let event = self.parser.read_event_into_async(&mut self.buffer).await?;
         self.current_event = Some(event.into_owned());
         self.buffer.clear();
