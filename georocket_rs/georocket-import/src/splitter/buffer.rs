@@ -1,2 +1,2 @@
 pub mod scratch_reader;
-mod window_buffer;
+pub(super) mod window_buffer;
