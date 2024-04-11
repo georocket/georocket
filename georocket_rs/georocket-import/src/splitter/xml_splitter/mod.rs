@@ -37,7 +37,9 @@ impl<R: AsyncRead + Unpin> FirstLevelSplitter<R> {
 mod tests {
     use super::*;
     use crate::splitter::buffer::scratch_reader::ScratchReader;
-    use crate::types::{Chunk, ChunkMetaInformation, RawChunk, XMLNamespace, XMLStartElement};
+    use crate::types::{
+        Chunk, ChunkMetaInformation, RawChunk, XMLAttribute, XMLNamespace, XMLStartElement,
+    };
     use std::fmt::Write;
     use std::str;
 
@@ -142,6 +144,7 @@ mod tests {
                         uri: "http://example.com".into(),
                     },
                 ],
+                attributes: vec![],
             }],
         }));
         let xml = make_xml(
@@ -153,16 +156,41 @@ mod tests {
         let (chunks, raw_chunks) = split_chunk(xml).await;
         assert_eq!(chunks.len(), 2);
         assert_eq!(raw_chunks.len(), 2);
-        let RawChunk {
-            raw: raw_1,
-            meta: meta_1,
-            ..
-        } = &raw_chunks[0];
-        let RawChunk {
-            raw: raw_2,
-            meta: meta_2,
-            ..
-        } = &raw_chunks[1];
+        let RawChunk { meta: meta_1, .. } = &raw_chunks[0];
+        let RawChunk { meta: meta_2, .. } = &raw_chunks[1];
+        assert_eq!(*meta_1, meta);
+        assert_eq!(*meta_2, meta);
+    }
+
+    #[tokio::test]
+    async fn attributes() {
+        const CONTENTS1: &str = "<object ok=\"ov\"><child></child></object>";
+        const CONTENTS2: &str = "<object><child2></child2></object>";
+        const ROOT: &str = "root key=\"value\" key2=\"value2\"";
+        let xml = make_xml(XMLHEADER, &[ROOT], &[CONTENTS1, CONTENTS2], Some(&["root"]));
+        let meta = Some(ChunkMetaInformation::XML(XMLChunkMeta {
+            header: Some(XMLHEADER.into()),
+            parents: vec![XMLStartElement {
+                raw: format!("<{ROOT}>").into(),
+                local_name: "root".into(),
+                namespaces: vec![],
+                attributes: vec![
+                    XMLAttribute {
+                        key: "key".into(),
+                        value: "value".into(),
+                    },
+                    XMLAttribute {
+                        key: "key2".into(),
+                        value: "value2".into(),
+                    },
+                ],
+            }],
+        }));
+        let (chunks, raw_chunks) = split_chunk(xml).await;
+        assert_eq!(chunks.len(), 2);
+        assert_eq!(raw_chunks.len(), 2);
+        let RawChunk { meta: meta_1, .. } = &raw_chunks[0];
+        let RawChunk { meta: meta_2, .. } = &raw_chunks[1];
         assert_eq!(*meta_1, meta);
         assert_eq!(*meta_2, meta);
     }
