@@ -194,4 +194,58 @@ mod tests {
         assert_eq!(*meta_1, meta);
         assert_eq!(*meta_2, meta);
     }
+
+    #[tokio::test]
+    async fn full() {
+        const CONTENTS1: &str = "<p:object ok=\"ov\"><p:child></p:child></p:object>";
+        const CONTENTS2: &str = "<p:object><child2></child2></p:object>";
+        const ROOT: &str = "root xmlns=\"http://example.com\" xmlns:p=\"http://example.com\" key=\"value\" key2=\"value2\"";
+        let xml = make_xml(XMLHEADER, &[ROOT], &[CONTENTS1, CONTENTS2], Some(&["root"]));
+        let meta = Some(ChunkMetaInformation::XML(XMLChunkMeta {
+            header: Some(XMLHEADER.into()),
+            parents: vec![XMLStartElement {
+                raw: format!("<{ROOT}>").into(),
+                local_name: "root".into(),
+                namespaces: vec![
+                    XMLNamespace {
+                        prefix: None,
+                        uri: "http://example.com".into(),
+                    },
+                    XMLNamespace {
+                        prefix: Some("p".into()),
+                        uri: "http://example.com".into(),
+                    },
+                ],
+                attributes: vec![
+                    XMLAttribute {
+                        key: "key".into(),
+                        value: "value".into(),
+                    },
+                    XMLAttribute {
+                        key: "key2".into(),
+                        value: "value2".into(),
+                    },
+                ],
+            }],
+        }));
+        let (chunks, raw_chunks) = split_chunk(xml).await;
+        assert_eq!(chunks.len(), 2);
+        assert_eq!(raw_chunks.len(), 2);
+        let RawChunk { meta: meta_1, .. } = &raw_chunks[0];
+        let RawChunk { meta: meta_2, .. } = &raw_chunks[1];
+        assert_eq!(*meta_1, meta);
+        assert_eq!(*meta_2, meta);
+    }
+
+    #[tokio::test]
+    async fn utf8() {
+        const CONTENT: &str = "<object><child name=\"\u{2248}\"></child></object>";
+        let xml = make_xml(XMLHEADER, &[PREFIX], &[CONTENT], None);
+        let (chunks, raw_chunks) = split_chunk(xml).await;
+        assert_eq!(chunks.len(), 1);
+        assert_eq!(raw_chunks.len(), 1);
+        let chunk_1 = &raw_chunks[0];
+        let contents_1 = str::from_utf8(&chunk_1.raw).unwrap();
+        assert_eq!(contents_1, CONTENT);
+    }
 }
