@@ -12,6 +12,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: ./kotlin
+
     steps:
       - uses: actions/checkout@v3
       - name: Set up JDK 11
@@ -55,6 +59,10 @@ jobs:
   integration-tests:
     needs: build
     runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./kotlin
 
     strategy:
       fail-fast: true
