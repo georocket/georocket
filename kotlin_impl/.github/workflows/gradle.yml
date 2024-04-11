@@ -1,0 +1,123 @@
+name: Java CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up JDK 11
+        uses: actions/setup-java@v3
+        with:
+          distribution: zulu
+          java-version: 11
+
+      - name: Run tests and install
+        run: ./gradlew check installDist
+
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build and export Docker image
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          tags: georocket/georocket:unstable
+          outputs: type=docker,dest=/tmp/georocket-docker-image.tar
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Upload Docker image as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: georocket-docker-image
+          path: /tmp/georocket-docker-image.tar
+          retention-days: 1
+
+      - name: Upload junit test reports on failure
+        uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: test-results
+          path: build/reports/tests/test
+
+  integration-tests:
+    needs: build
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: true
+      matrix:
+        server-integration-test-var: [ 'standalone', 'h2', 'mongo', 'postgresql', 'postgresql-full', 's3' ]
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: Download Docker image artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: georocket-docker-image
+          path: /tmp
+
+      - name: Load image
+        run: |
+          docker load --input /tmp/georocket-docker-image.tar
+          docker tag georocket/georocket:unstable georocket/georocket
+          docker image ls -a
+
+      - name: Install dependencies
+        run: |
+          cd integration-tests
+          npm ci
+
+      - name: Run integration tests
+        run: |
+          cd integration-tests
+          npm run test-${{ matrix.server-integration-test-var }}
+
+  publish-docker-image:
+    needs: [build, integration-tests]
+    runs-on: ubuntu-latest
+    if: github.repository == 'georocket/georocket' && github.event_name == 'push'
+
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Download Docker image artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: georocket-docker-image
+          path: /tmp
+
+      - name: Load image
+        run: |
+          docker load --input /tmp/georocket-docker-image.tar
+          docker image ls -a
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2 
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Push Docker image
+        run: |
+          docker push georocket/georocket:unstable

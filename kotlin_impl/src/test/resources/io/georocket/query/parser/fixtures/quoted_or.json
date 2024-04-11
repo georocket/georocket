@@ -1,0 +1,10 @@
+{
+  "query": "\"OR(foo)\"",
+  "expected": {
+    "type": "query",
+    "children": [{
+      "type": "string",
+      "text": "OR(foo)"
+    }]
+  }
+}

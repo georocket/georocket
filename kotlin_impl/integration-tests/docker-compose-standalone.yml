@@ -1,0 +1,9 @@
+version: "3"
+services:
+  georocket:
+    image: georocket/georocket
+    command: server
+    volumes:
+      - ./conf/georocket_standalone:/usr/local/georocket/conf
+    ports:
+      - 63020

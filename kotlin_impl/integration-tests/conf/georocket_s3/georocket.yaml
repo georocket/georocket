@@ -1,0 +1,15 @@
+georocket:
+  host: 0.0.0.0
+  storage:
+    driver: s3
+    s3:
+      accessKey: minioadmin
+      secretKey: minioadmin
+      endpoint: http://s3:9000
+      region: us-west-1
+      bucket: georocket
+      pathStyleAccess: true
+      requestExpirySeconds: 600
+  index:
+    mongodb:
+      connectionString: mongodb://mongo:27017/georocket

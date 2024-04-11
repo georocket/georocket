@@ -1,0 +1,50 @@
+{
+  "query": "NOT(foo bar)",
+  "expected": {
+    "$not": {
+      "$or": [
+        {
+          "$or": [
+            {
+              "tags": "foo"
+            },
+            {
+              "props.value": "foo"
+            }
+          ]
+        },
+        {
+          "$or": [
+            {
+              "tags": "bar"
+            },
+            {
+              "props.value": "bar"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "expectedPg": {
+    "where": "NOT ((data->'tags' @> $1 OR data->'props' @> $2) OR (data->'tags' @> $3 OR data->'props' @> $4))",
+    "params": [
+      [
+        "foo"
+      ],
+      [
+        {
+          "value": "foo"
+        }
+      ],
+      [
+        "bar"
+      ],
+      [
+        {
+          "value": "bar"
+        }
+      ]
+    ]
+  }
+}

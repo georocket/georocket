@@ -1,0 +1,53 @@
+{
+  "query": "Main",
+  "queryCompilers": [
+    "io.georocket.index.xml.XalAddressIndexerFactory"
+  ],
+  "expected": {
+    "$or": [
+      {
+        "$or": [
+          {
+            "address.Country": "Main"
+          },
+          {
+            "address.Locality": "Main"
+          },
+          {
+            "address.Street": "Main"
+          },
+          {
+            "address.Number": "Main"
+          }
+        ]
+      },
+      {
+        "$or": [
+          {
+            "tags": "Main"
+          },
+          {
+            "props.value": "Main"
+          }
+        ]
+      }
+    ]
+  },
+  "expectedPg": {
+    "where": "((data->'address'->'Country' = $1 OR data->'address'->'Locality' = $2 OR data->'address'->'Street' = $3 OR data->'address'->'Number' = $4) OR (data->'tags' @> $5 OR data->'props' @> $6))",
+    "params": [
+      "Main",
+      "Main",
+      "Main",
+      "Main",
+      [
+        "Main"
+      ],
+      [
+        {
+          "value": "Main"
+        }
+      ]
+    ]
+  }
+}

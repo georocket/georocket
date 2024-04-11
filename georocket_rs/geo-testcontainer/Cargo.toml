@@ -1,0 +1,17 @@
+[package]
+name = "geo-testcontainer"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+testcontainers = "0.15.0"
+
+[dev-dependencies]
+postgres = "0.19.7"
+
+[features]
+default = []
+postgis = []
+postgis-experimental-arm64 = ["postgis"]

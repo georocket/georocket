@@ -1,0 +1,19 @@
+{
+  "query": "EQ(foo bar)",
+  "expected": {
+    "type": "query",
+    "children": [{
+      "type": "eq",
+      "children": [{
+        "type": "keyvalue",
+        "children": [{
+          "type": "string",
+          "text": "foo"
+        }, {
+          "type": "string",
+          "text": "bar"
+        }]
+      }]
+    }]
+  }
+}

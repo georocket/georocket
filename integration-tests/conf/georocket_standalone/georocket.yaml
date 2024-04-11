@@ -1,8 +1,0 @@
-georocket:
-  host: 0.0.0.0
-  storage:
-    driver: file
-    file:
-      path: $GEOROCKET_HOME/storage
-  embeddedMongoDB:
-    storagePath: $GEOROCKET_HOME/storage/mongodb

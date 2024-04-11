@@ -1,0 +1,10 @@
+{
+  "query": "13",
+  "expected": {
+    "type": "query",
+    "children": [{
+      "type": "number",
+      "text": "13"
+    }]
+  }
+}

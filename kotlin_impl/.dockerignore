@@ -1,0 +1,8 @@
+# first exclude everything
+**
+
+# then include GeoRocket distribution (built with `./gradlew installDist`)
+!build/install/georocket
+
+# and exclude GeoRocket storage
+build/install/georocket/storage

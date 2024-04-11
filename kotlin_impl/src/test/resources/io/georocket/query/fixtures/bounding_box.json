@@ -1,0 +1,33 @@
+{
+  "query": "1,2,3,4",
+  "queryCompilers": ["io.georocket.index.generic.BoundingBoxIndexerFactory"],
+  "expected": {
+    "bbox": {
+      "$geoIntersects": {
+        "$geometry": {
+          "type": "Polygon",
+          "coordinates": [[
+            [1.0, 2.0],
+            [3.0, 2.0],
+            [3.0, 4.0],
+            [1.0, 4.0],
+            [1.0, 2.0]
+          ]]
+        }
+      }
+    }
+  },
+  "expectedPg": {
+    "where": "ST_Intersects(ST_GeomFromGeoJSON(data->'bbox'), ST_GeomFromGeoJSON($1::jsonb))",
+    "params": [{
+      "type": "Polygon",
+      "coordinates": [[
+        [1.0, 2.0],
+        [3.0, 2.0],
+        [3.0, 4.0],
+        [1.0, 4.0],
+        [1.0, 2.0]
+      ]]
+    }]
+  }
+}
