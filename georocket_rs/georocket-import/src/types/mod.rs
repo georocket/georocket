@@ -67,12 +67,20 @@ pub struct XMLChunkMeta {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct XMLNamespace {
+    pub(crate) prefix: Option<Vec<u8>>,
+    pub(crate) uri: Vec<u8>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct XMLStartElement {
     pub(crate) raw: Vec<u8>,
     pub(crate) local_name: Vec<u8>,
+    pub(crate) namespaces: Vec<XMLNamespace>,
 }
 
 impl XMLStartElement {
+    /// Creates an `XMLStartElement` from the local name.
     pub(crate) fn from_local_name(local_name: &[u8]) -> Self {
         let mut raw = Vec::new();
         raw.push(b'<');
@@ -81,6 +89,7 @@ impl XMLStartElement {
         Self {
             raw,
             local_name: local_name.into(),
+            namespaces: Vec::new(),
         }
     }
 }

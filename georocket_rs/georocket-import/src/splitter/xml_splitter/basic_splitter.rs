@@ -1,9 +1,10 @@
 use crate::splitter::buffer::scratch_reader::ScratchReader;
 use crate::splitter::buffer::window_buffer::{WindowBuffer, WindowBufferError};
-use crate::types::XMLStartElement;
-use quick_xml::events::Event;
-use quick_xml::name::QName;
-use quick_xml::NsReader;
+use crate::types::{XMLNamespace, XMLStartElement};
+use quick_xml::events::attributes::AttrError;
+use quick_xml::events::{BytesStart, Event};
+use quick_xml::name::{PrefixDeclaration, QName};
+use quick_xml::Reader;
 use thiserror::Error;
 use tokio::io::{AsyncRead, BufReader};
 
@@ -19,17 +20,20 @@ pub enum Error {
     StartEventNotFound,
     #[error("failed to extract bytes: {0}")]
     ExtractBytesError(#[from] WindowBufferError),
+    #[error("error while parsing attributes")]
+    ParseAttributeError(#[from] AttrError),
 }
 
 type Chunk = Vec<Event<'static>>;
 
 /// Splitter for XML documents.
 pub struct BasicSplitter<R> {
-    pub(super) parser: NsReader<BufReader<ScratchReader<R>>>,
+    pub(super) parser: Reader<BufReader<ScratchReader<R>>>,
     current_event: Option<Event<'static>>,
     buffer: Vec<u8>,
     parents: Vec<XMLStartElement>,
     pub(super) header: Option<Vec<u8>>,
+    namespaces: Vec<Vec<XMLNamespace>>,
 }
 
 impl<R: AsyncRead + Unpin> BasicSplitter<R> {
@@ -38,11 +42,12 @@ impl<R: AsyncRead + Unpin> BasicSplitter<R> {
     pub fn new(reader: R) -> BasicSplitter<R> {
         let buff_reader = BufReader::new(ScratchReader::new(reader));
         Self {
-            parser: NsReader::from_reader(buff_reader),
+            parser: Reader::from_reader(buff_reader),
             current_event: None,
             buffer: Vec::new(),
             parents: Vec::new(),
             header: None,
+            namespaces: Vec::new(),
         }
     }
     /// Finds the next opening `Event::Start` tag with the specified name.
@@ -80,6 +85,7 @@ impl<R: AsyncRead + Unpin> BasicSplitter<R> {
         if let Some(event) = self.current_event.as_ref() {
             match event {
                 Event::Start(start) => {
+                    self.namespaces.push(get_namespaces(start)?);
                     let local_name = start.local_name().into_inner().to_vec();
                     let raw = {
                         let pos = self.parser.buffer_position();
@@ -88,10 +94,15 @@ impl<R: AsyncRead + Unpin> BasicSplitter<R> {
                         self.window().move_window(pos)?;
                         bytes
                     };
-                    self.parents.push(XMLStartElement { raw, local_name })
+                    self.parents.push(XMLStartElement {
+                        raw,
+                        local_name,
+                        namespaces: self.namespaces.iter().flatten().cloned().collect(),
+                    })
                 }
                 Event::End(_) => {
                     self.parents.pop();
+                    self.namespaces.pop();
                 }
                 _ => (),
             }
@@ -164,6 +175,23 @@ impl<R: AsyncRead + Unpin> BasicSplitter<R> {
     fn window(&mut self) -> &mut WindowBuffer {
         self.parser.get_mut().get_mut().window_mut()
     }
+}
+
+fn get_namespaces(start: &BytesStart) -> Result<Vec<XMLNamespace>, AttrError> {
+    let mut namespaces = Vec::new();
+    for attribute in start.attributes() {
+        let attribute = attribute?;
+        let prefix = match attribute.key.as_namespace_binding() {
+            Some(PrefixDeclaration::Default) => None,
+            Some(PrefixDeclaration::Named(name)) => Some(name.to_vec()),
+            None => continue,
+        };
+        namespaces.push(XMLNamespace {
+            prefix,
+            uri: attribute.value.to_vec(),
+        });
+    }
+    Ok(namespaces)
 }
 
 #[cfg(test)]
