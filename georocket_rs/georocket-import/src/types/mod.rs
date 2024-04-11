@@ -73,10 +73,17 @@ pub(crate) struct XMLNamespace {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct XMLAttribute {
+    pub(crate) key: Vec<u8>,
+    pub(crate) value: Vec<u8>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct XMLStartElement {
     pub(crate) raw: Vec<u8>,
     pub(crate) local_name: Vec<u8>,
     pub(crate) namespaces: Vec<XMLNamespace>,
+    pub(crate) attributes: Vec<XMLAttribute>,
 }
 
 impl XMLStartElement {
@@ -90,6 +97,7 @@ impl XMLStartElement {
             raw,
             local_name: local_name.into(),
             namespaces: Vec::new(),
+            attributes: Vec::new(),
         }
     }
 }

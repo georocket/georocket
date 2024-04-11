@@ -1,6 +1,6 @@
 use crate::splitter::buffer::scratch_reader::ScratchReader;
 use crate::splitter::buffer::window_buffer::{WindowBuffer, WindowBufferError};
-use crate::types::{XMLNamespace, XMLStartElement};
+use crate::types::{XMLAttribute, XMLNamespace, XMLStartElement};
 use quick_xml::events::attributes::AttrError;
 use quick_xml::events::{BytesStart, Event};
 use quick_xml::name::{PrefixDeclaration, QName};
@@ -34,6 +34,7 @@ pub struct BasicSplitter<R> {
     parents: Vec<XMLStartElement>,
     pub(super) header: Option<Vec<u8>>,
     namespaces: Vec<Vec<XMLNamespace>>,
+    attributes: Vec<Vec<XMLAttribute>>,
 }
 
 impl<R: AsyncRead + Unpin> BasicSplitter<R> {
@@ -48,6 +49,7 @@ impl<R: AsyncRead + Unpin> BasicSplitter<R> {
             parents: Vec::new(),
             header: None,
             namespaces: Vec::new(),
+            attributes: Vec::new(),
         }
     }
     /// Finds the next opening `Event::Start` tag with the specified name.
@@ -85,7 +87,9 @@ impl<R: AsyncRead + Unpin> BasicSplitter<R> {
         if let Some(event) = self.current_event.as_ref() {
             match event {
                 Event::Start(start) => {
-                    self.namespaces.push(get_namespaces(start)?);
+                    let (namespaces, attributes) = get_namespaces_and_attributes(start)?;
+                    self.namespaces.push(namespaces);
+                    self.attributes.push(attributes);
                     let local_name = start.local_name().into_inner().to_vec();
                     let raw = {
                         let pos = self.parser.buffer_position();
@@ -98,11 +102,13 @@ impl<R: AsyncRead + Unpin> BasicSplitter<R> {
                         raw,
                         local_name,
                         namespaces: self.namespaces.iter().flatten().cloned().collect(),
+                        attributes: self.attributes.iter().flatten().cloned().collect(),
                     })
                 }
                 Event::End(_) => {
                     self.parents.pop();
                     self.namespaces.pop();
+                    self.attributes.pop();
                 }
                 _ => (),
             }
@@ -177,21 +183,29 @@ impl<R: AsyncRead + Unpin> BasicSplitter<R> {
     }
 }
 
-fn get_namespaces(start: &BytesStart) -> Result<Vec<XMLNamespace>, AttrError> {
+fn get_namespaces_and_attributes(
+    start: &BytesStart,
+) -> Result<(Vec<XMLNamespace>, Vec<XMLAttribute>), AttrError> {
     let mut namespaces = Vec::new();
+    let mut attributes = Vec::new();
     for attribute in start.attributes() {
         let attribute = attribute?;
         let prefix = match attribute.key.as_namespace_binding() {
-            Some(PrefixDeclaration::Default) => None,
-            Some(PrefixDeclaration::Named(name)) => Some(name.to_vec()),
-            None => continue,
+            Some(PrefixDeclaration::Default) => namespaces.push(XMLNamespace {
+                prefix: None,
+                uri: attribute.value.to_vec(),
+            }),
+            Some(PrefixDeclaration::Named(name)) => namespaces.push(XMLNamespace {
+                prefix: Some(name.into()),
+                uri: attribute.value.to_vec(),
+            }),
+            None => attributes.push(XMLAttribute {
+                key: attribute.key.into_inner().into(),
+                value: attribute.value.into(),
+            }),
         };
-        namespaces.push(XMLNamespace {
-            prefix,
-            uri: attribute.value.to_vec(),
-        });
     }
-    Ok(namespaces)
+    Ok((namespaces, attributes))
 }
 
 #[cfg(test)]
