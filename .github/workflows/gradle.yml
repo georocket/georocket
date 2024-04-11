@@ -36,7 +36,7 @@ jobs:
       - name: Build and export Docker image
         uses: docker/build-push-action@v3
         with:
-          context: .
+          context: kotlin
           tags: georocket/georocket:unstable
           outputs: type=docker,dest=/tmp/georocket-docker-image.tar
           cache-from: type=gha
