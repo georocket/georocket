@@ -2,13 +2,13 @@
 # - Build GeoRocket with `./gradlew installDist`
 # - Run `docker build -t georocket .`
 
-FROM ubuntu:21.10
+FROM ubuntu:22.04
 MAINTAINER Michel Kraemer <michel.kraemer@igd.fraunhofer.de>
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends openjdk-11-jre-headless \
     # install required libraries for embedded MongoDB
-    libcurl4 libssl1.1 \
+    libcurl4 libssl3 \
   && rm -rf /var/lib/apt/lists/*
 
 # add GeoRocket user
