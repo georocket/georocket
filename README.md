@@ -15,7 +15,6 @@ GeoRocket can store geospatial files such as *3D city models (CityGML)*, *GML*
 and *GeoJSON* files. Any file saved in GeoRocket can be completely restored
 later. No information is lost.
 
-Powered by popular Open-Source framework [Elasticsearch](https://www.elastic.co/),
 GeoRocket offers a wide range of *high-speed search features*. You can perform
 spatial queries and search for attributes, layers and tags.
 
@@ -32,9 +31,13 @@ visit the official website:
 
 ## Building
 
+> [!NOTE]
+> We are in the process of rewriting GeoRocket in Rust to improve performance and reduce memory footprint. You can still access the Kotlin implementation in the `kotlin` directory. The instructions below apply to the Kotlin implementation.
+
 GeoRocket requires Java 8 or higher. Run the following command to build
 all subprojects:
 
+    cd kotlin
     ./gradlew build
 
 The script automatically downloads the correct Gradle version, so you won't
