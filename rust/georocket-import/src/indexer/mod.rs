@@ -10,6 +10,8 @@ use tokio::sync::mpsc;
 use tracing::{event, instrument, Level};
 
 mod geo_json_indexer;
+mod gml_indexer;
+
 use crate::types::{Chunk, Index, InnerChunk};
 use geo_json_indexer::GeoJsonIndexer;
 
