@@ -85,6 +85,11 @@ where
             ..self
         }
     }
+
+    /// Adds a coordinate point to the builder. Works as [`add_point`], but through a mutable reference.
+    pub fn add_point_mut(&mut self, x: f64, y: f64) {
+        self.inner = self.inner.add_point(x, y)
+    }
     /// Adds a SRID to the builder.
     #[must_use]
     pub fn set_srid(self, srid: u32) -> Self {
@@ -92,6 +97,10 @@ where
             srid: Some(srid),
             ..self
         }
+    }
+    /// Adds a SRID to the builder.
+    pub fn set_srid_mut(&mut self, srid: u32) {
+        self.srid = Some(srid)
     }
 }
 

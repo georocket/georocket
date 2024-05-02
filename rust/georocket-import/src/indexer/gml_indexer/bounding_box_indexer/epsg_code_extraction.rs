@@ -1,17 +1,18 @@
-use std::num::ParseIntError;
 use regex::Regex;
+use std::num::ParseIntError;
 use std::ops::RangeInclusive;
 use thiserror::Error;
-use crate::indexer::gml_indexer::epsg_code_extraction::ParseEPSGError::PatternNotFound;
 
 /// The errors which can occur when attempting to retrieve the EPSG code from a supplied string.
 #[derive(Debug, Error)]
-pub(super) enum ParseEPSGError {
+pub(in crate::indexer::gml_indexer) enum ParseEPSGError {
     /// Indicates that the patters (see [`EPSG_CODE_REGEX`]) was not found in the supplied string.
     #[error("the pattern was not found in the supplied string: {0}")]
     PatternNotFound(String),
     /// Indicates that the code in the supplied string falls outside the range of valid EPSG codes.
-    #[error("invalid EPSG code in supplied string: {0}. EPSG codes must be in the range [1024, 32766]")]
+    #[error(
+        "invalid EPSG code in supplied string: {0}. EPSG codes must be in the range [1024, 32766]"
+    )]
     CodeOutOfRange(String),
     /// Indicates that there was an issue with parsing the code captured from the supplied string.
     #[error("an error occurred parsing the epsg code in the supplied string: {1}")]
@@ -44,21 +45,30 @@ fn get_epsg_code_regex() -> Regex {
 ///
 /// # Errors
 /// See [`ParseEPSGError`] for details.
-pub(super) fn get_epsg_code(srs_name: &str) -> Result<u16, ParseEPSGError> {
+pub(in crate::indexer::gml_indexer) fn get_epsg_code(
+    srs_name: &str,
+) -> Result<u16, ParseEPSGError> {
     use self::ParseEPSGError::{CodeOutOfRange, InternalParseError, PatternNotFound};
     let regex = get_epsg_code_regex();
-    let captures = regex.captures(srs_name).ok_or(PatternNotFound(srs_name.to_owned()))?;
+    let captures = regex
+        .captures(srs_name)
+        .ok_or(PatternNotFound(srs_name.to_owned()))?;
     /// # Panic Safety:
     /// We have asserted in a unit test, that the capture group is valid for the regex. If unwrapping would lead
     /// to an error, the unit test `epsg_code_regex_capture_group_1_is_valid` would have failed.
-    let code = captures.get(1).expect("the capture group should be valid").as_str();
+    let code = captures
+        .get(1)
+        .expect("the capture group should be valid")
+        .as_str();
     // reject codes with more than five digits
     if code.len() > 5 {
         return Err(CodeOutOfRange(srs_name.to_owned()));
     }
     // parse to an u32, as all numbers with five or fewer decimal digits will always parse to a valid u32, which
     // is not true for u16.
-    let code: u32 = code.parse().map_err(|err| InternalParseError(err, code.to_owned()))?;
+    let code: u32 = code
+        .parse()
+        .map_err(|err| InternalParseError(err, code.to_owned()))?;
     if EPSG_CODE_RANGE.contains(&code) {
         // we can safely narrow down to 16 bits
         Ok(code as u16)
@@ -84,7 +94,7 @@ mod tests {
     fn epsg_code_regex_capture_group_1_is_valid() {
         let regex = get_epsg_code_regex();
         let captures = regex.captures("EPSG:89223").unwrap();
-        captures.get(1).unwrap();
+        assert!(captures.get(1).is_some());
     }
 
     /// Tests if four and five-digit codes can be extracted from a simple string
@@ -119,7 +129,10 @@ mod tests {
         assert!(matches!(out_of_range, ParseEPSGError::CodeOutOfRange(_)));
         let out_of_range = get_epsg_code("EPSG:782345").unwrap_err();
         assert!(matches!(out_of_range, ParseEPSGError::CodeOutOfRange(_)));
-        let out_of_range = get_epsg_code("EPSG:675987645345324536987867567546736809787565345234253759709809809786456").unwrap_err();
+        let out_of_range = get_epsg_code(
+            "EPSG:675987645345324536987867567546736809787565345234253759709809809786456",
+        )
+        .unwrap_err();
         assert!(matches!(out_of_range, ParseEPSGError::CodeOutOfRange(_)));
     }
 
