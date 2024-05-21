@@ -72,7 +72,7 @@ impl GeoDataImporter {
                 eprintln!("Failed to join store task: {}", join_err)
             }
         }
-        return Ok(());
+        Ok(())
     }
 }
 

@@ -28,10 +28,12 @@ impl BoundingBoxIndexer {
             inner: Inner::new(),
         }
     }
+
     /// Process a single json event and payload pair. Transitioning the inner state of the `BoundingBoxIndexer` as necessary.
     pub fn process_event(&mut self, event: JsonEvent, payload: &Payload) {
         self.inner.process_event(event, payload)
     }
+
     /// Retrieve the calculated bounding box from the `BoundingBoxIndexer`.
     /// # Errors
     /// Returns an error if the inner state of the `BoundingBoxIndexer` is invalid, such as if it has
@@ -65,44 +67,43 @@ impl Inner {
     fn new() -> Self {
         Self::Uninitialized
     }
+
     /// Increases the `current_level` of the `BoundingBoxIndexer` by one, if it is in the `Processing` state.
     fn increase_level(&mut self) {
-        match self {
-            Inner::Processing { current_level, .. } => {
-                *current_level += 1;
-            }
-            _ => (),
+        if let Inner::Processing { current_level, .. } = self {
+            *current_level += 1;
         }
     }
+
     /// Decreases the `current_level` of the `BoundingBoxIndexer` by one, if it is in the `Processing` state.
     /// If the `current_level` reaches zero, the `BoundingBoxIndexer` transitions to the `Done` state, extracting
     /// the inner `BoundingBoxBuilder` from the `BoundingBoxHelper`.
     fn decrease_level(&mut self) {
-        match self {
-            Inner::Processing {
-                current_level,
-                bounding_box_builder,
-            } => {
-                *current_level -= 1;
-                if *current_level == 0 {
-                    *self = Self::Done {
-                        bounding_box_builder: bounding_box_builder.into_inner(),
-                    }
+        if let Inner::Processing {
+            current_level,
+            bounding_box_builder,
+        } = self
+        {
+            *current_level -= 1;
+            if *current_level == 0 {
+                *self = Self::Done {
+                    bounding_box_builder: bounding_box_builder.into_inner(),
                 }
             }
-            _ => (),
         }
     }
+
     /// Adds a coordinate component to the `BoundingBoxIndexer`, if it is in the `Processing` state.
     fn add_coordinate_component(&mut self, component: f64) {
-        match self {
-            Inner::Processing {
-                bounding_box_builder,
-                ..
-            } => bounding_box_builder.add_coordinate_component(component),
-            _ => (),
+        if let Inner::Processing {
+            bounding_box_builder,
+            ..
+        } = self
+        {
+            bounding_box_builder.add_coordinate_component(component)
         }
     }
+
     /// Process a single json event and payload. Transitioning the inner state of `self` as necessary.
     fn process_event(&mut self, json_event: JsonEvent, payload: &Payload) {
         use JsonEvent as E;
@@ -130,6 +131,7 @@ impl Inner {
             _ => (),
         };
     }
+
     /// Retrieve the calculated bounding box from the `BoundingBoxIndexer` as an `IndexElement`.
     ///
     /// # Errors
@@ -147,7 +149,7 @@ impl Inner {
                 Ok(Err(_)) => {
                     unreachable!("BoundingBoxBuilder::build should never return an error")
                 }
-                Err(err) => Some(Err(err.into())),
+                Err(err) => Some(Err(err)),
             },
         }
     }
@@ -266,7 +268,6 @@ mod tests {
                 unreachable!("we are testing geojson, this should always be geojson")
             };
             for (json_event, payload) in &chunk {
-                let payload = payload;
                 bbox_indexer.process_event(*json_event, payload);
             }
             results.push(bbox_indexer.retrieve_index_element());
@@ -290,9 +291,9 @@ mod tests {
         results: Vec<Option<Result<IndexElement, BoundingBoxIndexerError>>>,
         control_bboxes: &[BoundingBox],
     ) {
-        for (control, result) in control_bboxes.into_iter().zip(results.into_iter()) {
+        for (control, result) in control_bboxes.iter().zip(results.into_iter()) {
             let result = result.unwrap().unwrap();
-            assert_eq!(IndexElement::BoundingBoxIndex(control.clone()), result);
+            assert_eq!(IndexElement::BoundingBoxIndex(*control), result);
         }
     }
 }

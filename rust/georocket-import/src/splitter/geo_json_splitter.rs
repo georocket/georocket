@@ -284,152 +284,150 @@ where
 
 #[cfg(test)]
 mod test {
-    mod test {
-        use crate::splitter::geo_json_splitter::GeoJsonType;
-        use crate::splitter::{GeoJsonSplitter, SplitterChannels};
-        use crate::types::{Chunk, RawChunk};
-        use std::{collections::HashMap, path::Path};
-        use tokio::fs::{read_to_string, File};
+    use crate::splitter::geo_json_splitter::GeoJsonType;
+    use crate::splitter::{GeoJsonSplitter, SplitterChannels};
+    use crate::types::{Chunk, RawChunk};
+    use std::{collections::HashMap, path::Path};
+    use tokio::fs::{read_to_string, File};
 
-        /// Splits the geo_json into features or geometries, returns handles to the task the splitter
-        /// is running on, as well as handles for the tasks that collect the results the splitter is
-        /// sending out through it's channels.
-        async fn split_geo_json(
-            path: &Path,
-        ) -> (
-            tokio::task::JoinHandle<Result<GeoJsonType, anyhow::Error>>,
-            tokio::task::JoinHandle<Vec<RawChunk>>,
-            tokio::task::JoinHandle<Vec<Chunk>>,
-        ) {
-            let (splitter_handle, chunk_rec, mut raw_rec) = setup(path).await;
-            let raw_string_hanlde = tokio::spawn(async move {
-                let mut raw_strings = Vec::new();
-                while let Some(feature) = raw_rec.recv().await {
-                    raw_strings.push(feature);
-                }
-                raw_strings
-            });
-            let chuncks_handle = tokio::spawn(async move {
-                let mut chunks = Vec::new();
-                while let Ok(chunk) = chunk_rec.recv().await {
-                    chunks.push(chunk);
-                }
-                chunks
-            });
-            (splitter_handle, raw_string_hanlde, chuncks_handle)
-        }
-
-        async fn setup(
-            path: &Path,
-        ) -> (
-            tokio::task::JoinHandle<Result<GeoJsonType, anyhow::Error>>,
-            async_channel::Receiver<Chunk>,
-            tokio::sync::mpsc::Receiver<RawChunk>,
-        ) {
-            let geo_json = File::open(path).await.unwrap();
-
-            let (splitter_channels, chunk_rec, raw_rec) =
-                SplitterChannels::new_with_channels(1024, 1024);
-            let mut splitter = GeoJsonSplitter::new(geo_json, splitter_channels);
-            let splitter_handle = tokio::spawn(async move { splitter.run().await });
-            (splitter_handle, chunk_rec, raw_rec)
-        }
-
-        #[tokio::test]
-        async fn simple_feature() {
-            let control = tokio::spawn(read_to_string("test_files/simple_feature_01.json"));
-            let (splitter, raw_strings, chunks) =
-                split_geo_json(Path::new("test_files/simple_feature_01.json")).await;
-            let _ = File::open("test_files/simple_feature_01.json")
-                .await
-                .unwrap();
-            let _chunk = chunks.await.unwrap()[0].clone();
-            let raw = raw_strings.await.unwrap()[0].clone();
-            let control = control.await.unwrap().unwrap();
-            let geo_json_type = splitter.await.unwrap().unwrap();
-            assert_eq!(String::from_utf8(raw.raw).unwrap(), control);
-            assert_eq!(geo_json_type, GeoJsonType::Object);
-        }
-
-        #[tokio::test]
-        async fn simple_collection() {
-            let c1 = r#"{ "type": "Feature", "geometry": { "type": "Point", "coordinates": [ 102.0, 0.5 ] }, "properties": { "prop0": "value0" } }"#; //.to_string();
-            let c2 = r#"{ "type": "Feature", "geometry": { "type": "LineString", "coordinates": [ [ 102.0, 0.0 ], [ 103.0, 1.0 ], [ 104.0, 0.0 ], [ 105.0, 1.0 ] ] }, "properties": { "prop0": "value0", "prop1": 0.0 } }"#; //.to_string();
-            let c3 = r#"{ "type": "Feature", "geometry": { "type": "Polygon", "coordinates": [ [ [ 100.0, 0.0 ], [ 101.0, 0.0 ], [ 101.0, 1.0 ], [ 100.0, 1.0 ], [ 100.0, 0.0 ] ] ] }, "properties": { "prop0": "value0", "prop1": { "this": "that" } } }"#; //.to_string();
-            let mut control_strings = vec![c1, c2, c3];
-            let (_splitter, raw_strings, chunks) =
-                split_geo_json(Path::new("test_files/simple_collection_01.json")).await;
-            let raw_strings = raw_strings.await.unwrap();
-            let _chunks = chunks.await.unwrap();
-            for feature in raw_strings
-                .into_iter()
-                .map(|raw| String::from_utf8(raw.raw).unwrap())
-            {
-                let index = control_strings.iter().position(|f| f == &feature).unwrap();
-                control_strings.remove(index);
+    /// Splits the geo_json into features or geometries, returns handles to the task the splitter
+    /// is running on, as well as handles for the tasks that collect the results the splitter is
+    /// sending out through it's channels.
+    async fn split_geo_json(
+        path: &Path,
+    ) -> (
+        tokio::task::JoinHandle<Result<GeoJsonType, anyhow::Error>>,
+        tokio::task::JoinHandle<Vec<RawChunk>>,
+        tokio::task::JoinHandle<Vec<Chunk>>,
+    ) {
+        let (splitter_handle, chunk_rec, mut raw_rec) = setup(path).await;
+        let raw_string_hanlde = tokio::spawn(async move {
+            let mut raw_strings = Vec::new();
+            while let Some(feature) = raw_rec.recv().await {
+                raw_strings.push(feature);
             }
-            // all control strings should have been removed from the control string collection
-            assert!(control_strings.is_empty());
-        }
+            raw_strings
+        });
+        let chuncks_handle = tokio::spawn(async move {
+            let mut chunks = Vec::new();
+            while let Ok(chunk) = chunk_rec.recv().await {
+                chunks.push(chunk);
+            }
+            chunks
+        });
+        (splitter_handle, raw_string_hanlde, chuncks_handle)
+    }
 
-        /// parse the given file with serde_json and return the inner Json `features` or `geometries`
-        /// array as a Rust Vector
-        fn parse_with_serde(path: &Path) -> Vec<serde_json::Value> {
-            let file = std::fs::File::open(path).unwrap();
-            let reader = std::io::BufReader::new(file);
-            let mut contents: serde_json::Value = serde_json::from_reader(reader).unwrap();
-            if let Some(features) = contents.get_mut("features") {
-                if let serde_json::Value::Array(features) = std::mem::take(features) {
-                    features
-                } else {
-                    panic!("field `features` did not contain an array")
-                }
-            } else if let Some(geometries) = contents.get_mut("geometries") {
-                if let serde_json::Value::Array(geometries) = std::mem::take(geometries) {
-                    geometries
-                } else {
-                    panic!("field `features` did not contain an array")
-                }
+    async fn setup(
+        path: &Path,
+    ) -> (
+        tokio::task::JoinHandle<Result<GeoJsonType, anyhow::Error>>,
+        async_channel::Receiver<Chunk>,
+        tokio::sync::mpsc::Receiver<RawChunk>,
+    ) {
+        let geo_json = File::open(path).await.unwrap();
+
+        let (splitter_channels, chunk_rec, raw_rec) =
+            SplitterChannels::new_with_channels(1024, 1024);
+        let mut splitter = GeoJsonSplitter::new(geo_json, splitter_channels);
+        let splitter_handle = tokio::spawn(async move { splitter.run().await });
+        (splitter_handle, chunk_rec, raw_rec)
+    }
+
+    #[tokio::test]
+    async fn simple_feature() {
+        let control = tokio::spawn(read_to_string("test_files/simple_feature_01.json"));
+        let (splitter, raw_strings, chunks) =
+            split_geo_json(Path::new("test_files/simple_feature_01.json")).await;
+        let _ = File::open("test_files/simple_feature_01.json")
+            .await
+            .unwrap();
+        let _chunk = chunks.await.unwrap()[0].clone();
+        let raw = raw_strings.await.unwrap()[0].clone();
+        let control = control.await.unwrap().unwrap();
+        let geo_json_type = splitter.await.unwrap().unwrap();
+        assert_eq!(String::from_utf8(raw.raw).unwrap(), control);
+        assert_eq!(geo_json_type, GeoJsonType::Object);
+    }
+
+    #[tokio::test]
+    async fn simple_collection() {
+        let c1 = r#"{ "type": "Feature", "geometry": { "type": "Point", "coordinates": [ 102.0, 0.5 ] }, "properties": { "prop0": "value0" } }"#; //.to_string();
+        let c2 = r#"{ "type": "Feature", "geometry": { "type": "LineString", "coordinates": [ [ 102.0, 0.0 ], [ 103.0, 1.0 ], [ 104.0, 0.0 ], [ 105.0, 1.0 ] ] }, "properties": { "prop0": "value0", "prop1": 0.0 } }"#; //.to_string();
+        let c3 = r#"{ "type": "Feature", "geometry": { "type": "Polygon", "coordinates": [ [ [ 100.0, 0.0 ], [ 101.0, 0.0 ], [ 101.0, 1.0 ], [ 100.0, 1.0 ], [ 100.0, 0.0 ] ] ] }, "properties": { "prop0": "value0", "prop1": { "this": "that" } } }"#; //.to_string();
+        let mut control_strings = vec![c1, c2, c3];
+        let (_splitter, raw_strings, chunks) =
+            split_geo_json(Path::new("test_files/simple_collection_01.json")).await;
+        let raw_strings = raw_strings.await.unwrap();
+        let _chunks = chunks.await.unwrap();
+        for feature in raw_strings
+            .into_iter()
+            .map(|raw| String::from_utf8(raw.raw).unwrap())
+        {
+            let index = control_strings.iter().position(|f| f == &feature).unwrap();
+            control_strings.remove(index);
+        }
+        // all control strings should have been removed from the control string collection
+        assert!(control_strings.is_empty());
+    }
+
+    /// parse the given file with serde_json and return the inner Json `features` or `geometries`
+    /// array as a Rust Vector
+    fn parse_with_serde(path: &Path) -> Vec<serde_json::Value> {
+        let file = std::fs::File::open(path).unwrap();
+        let reader = std::io::BufReader::new(file);
+        let mut contents: serde_json::Value = serde_json::from_reader(reader).unwrap();
+        if let Some(features) = contents.get_mut("features") {
+            if let serde_json::Value::Array(features) = std::mem::take(features) {
+                features
             } else {
-                vec![contents]
+                panic!("field `features` did not contain an array")
             }
+        } else if let Some(geometries) = contents.get_mut("geometries") {
+            if let serde_json::Value::Array(geometries) = std::mem::take(geometries) {
+                geometries
+            } else {
+                panic!("field `features` did not contain an array")
+            }
+        } else {
+            vec![contents]
         }
+    }
 
-        #[tokio::test]
-        async fn large_collection() {
-            let file = Path::new("test_files/large_collection_01.json");
-            let control_values = parse_with_serde(file);
-            let mut control_values_map: std::collections::HashMap<String, usize> = HashMap::new();
-            // convert values to strings and store the count of every unique string in `control_values_map`.
-            control_values
-                .iter()
-                .map(|value| serde_json::to_string(&value).unwrap())
-                .for_each(|value| {
-                    control_values_map
-                        .entry(value)
-                        .and_modify(|val| *val += 1)
-                        .or_insert(1);
-                });
-            assert_eq!(
-                control_values.len(),
-                control_values_map.values().sum::<usize>()
-            );
-            let (splitter, chunks, mut raw_strings) = setup(file).await;
-            // need to take the chunks out of the chunks channel, or else the splitter will block
-            // if it is full.
-            tokio::spawn(async move { while let Ok(_chunk) = chunks.recv().await {} });
-            while let Some(feature) = raw_strings.recv().await {
-                // convert the feature to a serde_json::Value and back to a string. This insures the
-                // formatting is the same
-                let feature = String::from_utf8(feature.raw).unwrap();
-                let feature: serde_json::Value = serde_json::from_str(feature.as_str()).unwrap();
-                let feature = serde_json::to_string(&feature).unwrap();
+    #[tokio::test]
+    async fn large_collection() {
+        let file = Path::new("test_files/large_collection_01.json");
+        let control_values = parse_with_serde(file);
+        let mut control_values_map: std::collections::HashMap<String, usize> = HashMap::new();
+        // convert values to strings and store the count of every unique string in `control_values_map`.
+        control_values
+            .iter()
+            .map(|value| serde_json::to_string(&value).unwrap())
+            .for_each(|value| {
                 control_values_map
-                    .entry(feature)
-                    .and_modify(|val| *val -= 1);
-            }
-            assert!(control_values_map.values().all(|val| *val == 0));
-            assert!(splitter.await.unwrap().is_ok());
+                    .entry(value)
+                    .and_modify(|val| *val += 1)
+                    .or_insert(1);
+            });
+        assert_eq!(
+            control_values.len(),
+            control_values_map.values().sum::<usize>()
+        );
+        let (splitter, chunks, mut raw_strings) = setup(file).await;
+        // need to take the chunks out of the chunks channel, or else the splitter will block
+        // if it is full.
+        tokio::spawn(async move { while let Ok(_chunk) = chunks.recv().await {} });
+        while let Some(feature) = raw_strings.recv().await {
+            // convert the feature to a serde_json::Value and back to a string. This insures the
+            // formatting is the same
+            let feature = String::from_utf8(feature.raw).unwrap();
+            let feature: serde_json::Value = serde_json::from_str(feature.as_str()).unwrap();
+            let feature = serde_json::to_string(&feature).unwrap();
+            control_values_map
+                .entry(feature)
+                .and_modify(|val| *val -= 1);
         }
+        assert!(control_values_map.values().all(|val| *val == 0));
+        assert!(splitter.await.unwrap().is_ok());
     }
 }

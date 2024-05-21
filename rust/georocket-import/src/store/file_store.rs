@@ -80,8 +80,8 @@ impl FileStore {
     }
 
     /// Create the index file in or open it for appending.
-    async fn create_index_file(directory: &PathBuf) -> anyhow::Result<BufWriter<File>> {
-        let index_path = Path::join(&directory, "index.geo");
+    async fn create_index_file(directory: &Path) -> anyhow::Result<BufWriter<File>> {
+        let index_path = Path::join(directory, "index.geo");
         let index_file = tokio::fs::OpenOptions::new()
             .create(true)
             .append(true)
@@ -138,7 +138,7 @@ impl FileStore {
         mut directory: PathBuf,
         chunk: RawChunk,
     ) -> anyhow::Result<()> {
-        let RawChunk { id, raw, meta } = chunk;
+        let RawChunk { id, raw, .. } = chunk;
         let uuid = index_map.get_or_create_index(id);
         let (file_dir, file_name) = make_path(uuid);
         directory.push(file_dir);

@@ -39,8 +39,7 @@ impl FromStr for Dimensions {
 
 fn get_dimensions(payload: Option<&Attribute>) -> anyhow::Result<Dimensions> {
     if let Some(dim) = payload.map(|p| p.value.as_ref()) {
-        let dim =
-            std::str::from_utf8(&dim).context("dimension attribute contained invalid utf8")?;
+        let dim = std::str::from_utf8(dim).context("dimension attribute contained invalid utf8")?;
         Ok(dim
             .parse::<Dimensions>()
             .context("failed to parse provided attribute value into Dimension")?)
@@ -199,7 +198,7 @@ mod tests {
     async fn get_chunks(gml_file: impl AsRef<Path>) -> Vec<XMLChunk> {
         let (splitter_channels, chunk_receiver, _raw) = SplitterChannels::new_with_channels(10, 10);
         let feature = tokio::fs::File::open(gml_file).await.unwrap();
-        let mut splitter = FirstLevelSplitter::new(feature, splitter_channels);
+        let splitter = FirstLevelSplitter::new(feature, splitter_channels);
         let handle = tokio::spawn(async move { splitter.run().await });
         let mut chunks = Vec::new();
         while let Ok(chunk) = chunk_receiver.recv().await {

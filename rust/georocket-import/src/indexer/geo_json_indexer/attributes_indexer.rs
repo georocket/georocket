@@ -311,7 +311,6 @@ mod tests {
             };
             let mut attributes_indexer = AttributesIndexer::new();
             for (event, payload) in chunk {
-                let payload = payload;
                 attributes_indexer.process_event(event, &payload);
             }
             let index = attributes_indexer
