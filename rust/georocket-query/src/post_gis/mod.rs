@@ -31,7 +31,7 @@ pub async fn query_client(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::query::{eq, lt, lte, query, Comparison, Logic, QueryComponent};
+    use crate::query::{eq, lt, lte, query, Logic, QueryComponent};
     use futures_util::TryStreamExt;
     use geo_testcontainer::postgis::PostGIS as PostGISContainer;
     use geo_testcontainer::testcontainers::clients::Cli;

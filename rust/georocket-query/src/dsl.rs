@@ -1,4 +1,4 @@
-use crate::query::{Comparison, Logic, Primitive, Query, QueryComponent};
+use crate::query::{Comparison, Logic, Query, QueryComponent};
 use chumsky::{prelude::*, text::whitespace};
 use georocket_types::Value;
 
@@ -47,7 +47,8 @@ fn parser<'a>() -> impl Parser<'a, &'a str, Query, extra::Err<Rich<'a, char>>> {
         // the number is followed by a whitespace, a closing parenthesis,
         // or that it's the last element
         let number_value = number
-            .then_ignore(choice((whitespace().exactly(1), just(')').ignored(), end())).rewind());
+            .then_ignore(choice((whitespace().exactly(1), just(')').ignored(), end())).rewind())
+            .to_slice();
 
         let and = just("AND").ignore_then(whitespace()).ignore_then(
             query_components
@@ -75,7 +76,7 @@ fn parser<'a>() -> impl Parser<'a, &'a str, Query, extra::Err<Rich<'a, char>>> {
             .then(choice((
                 double_quoted_string.map(|a: String| a.into()),
                 single_quoted_string.map(|a: String| a.into()),
-                number_value.to_slice().map(|a: &str| {
+                number_value.map(|a: &str| {
                     a.parse::<i64>()
                         .map(|i| i.into())
                         .unwrap_or_else(|_| a.parse::<f64>().unwrap().into())
@@ -143,12 +144,10 @@ fn parser<'a>() -> impl Parser<'a, &'a str, Query, extra::Err<Rich<'a, char>>> {
             gte,
             lt,
             lte,
-            double_quoted_string.map(|s| QueryComponent::Primitive(Primitive::String(s))),
-            single_quoted_string.map(|s| QueryComponent::Primitive(Primitive::String(s))),
-            number_value
-                .to_slice()
-                .map(|n: &str| QueryComponent::Primitive(Primitive::Number(n.parse().unwrap()))),
-            string.map(|s| QueryComponent::Primitive(Primitive::String(s))),
+            double_quoted_string.map(Into::into),
+            single_quoted_string.map(Into::into),
+            number_value.map(|n: &str| n.parse::<f64>().unwrap().into()),
+            string.map(Into::into),
         ))
         .separated_by(whitespace().at_least(1))
         .collect()
