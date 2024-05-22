@@ -11,18 +11,21 @@ impl QueryTables {
         self.property |= other.property;
         self.bounding_box |= other.bounding_box;
     }
+
     fn new() -> Self {
         Self {
             property: false,
             bounding_box: false,
         }
     }
+
     fn property() -> Self {
         Self {
             property: true,
             bounding_box: false,
         }
     }
+
     fn bbox() -> Self {
         Self {
             property: false,
@@ -107,7 +110,7 @@ fn queryfy_logical(logical: &Logic) -> (String, QueryTables) {
             (format!("({})", s), query_tables)
         }
         Logic::Not(query_component) => {
-            let (s, query_tables) = queryfy(query_component);
+            let (s, query_tables) = queryfy_with_combinator(query_component, "OR");
             (format!("NOT ({})", s), query_tables)
         }
     }
@@ -117,6 +120,10 @@ fn queryfy_primative(primitive: &Primitive) -> (String, QueryTables) {
     match primitive {
         Primitive::String(s) => (
             format!("(p.key like '%{s}%' OR p.value_s like '%{s}%' OR cast(p.value_i as text) like '%{s}%' OR cast(p.value_f as text) like '%{s}%')"),
+            QueryTables::property(),
+        ),
+        Primitive::Number(n) => (
+            format!("(p.key={n} OR p.value_s={n}::text OR p.value_i={n} OR p.value_f={n})"),
             QueryTables::property(),
         ),
         Primitive::BoundingBox(bbox) => (
@@ -141,6 +148,7 @@ fn bbox_envelope(bbox: &BoundingBox) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::query::{and, eq, not, query};
     use georocket_types::GeoPoint;
 
     const WSG84_SRID: u32 = 4326;
@@ -162,12 +170,7 @@ mod tests {
 
     #[test]
     fn query_primitive_bbox() {
-        let query = Query {
-            components: vec![QueryComponent::Primitive(Primitive::BoundingBox(
-                BASIC_BBOX,
-            ))],
-        };
-        let query = build_query(query);
+        let query = build_query(query![BASIC_BBOX]);
         assert_eq!(
             query,
             "SELECT DISTINCT raw_feature FROM georocket.feature f, georocket.bounding_box b WHERE f.id = b.id AND ((ST_Intersects(b.bounding_box, ST_MakeEnvelope(0, 0, 1, 1, 4326))))"
@@ -176,36 +179,21 @@ mod tests {
 
     #[test]
     fn query_primitive_string() {
-        let query = Query {
-            components: vec![QueryComponent::Primitive(Primitive::String(
-                "test".to_string(),
-            ))],
-        };
-        let query = build_query(query);
+        let query = build_query(query!["test"]);
         assert_eq!(query,
                    "SELECT DISTINCT raw_feature FROM georocket.feature f, georocket.property p WHERE f.id = p.id AND ((p.key like '%test%' OR p.value_s like '%test%' OR cast(p.value_i as text) like '%test%' OR cast(p.value_f as text) like '%test%'))");
     }
 
     #[test]
     fn query_primitives_string_and_bbox() {
-        let query = Query {
-            components: vec![
-                QueryComponent::Primitive(Primitive::String("test".to_string())),
-                QueryComponent::Primitive(Primitive::BoundingBox(BASIC_BBOX)),
-            ],
-        };
-        let query = build_query(query);
+        let query = build_query(query!["test", BASIC_BBOX]);
         assert_eq!(query,
                    "SELECT DISTINCT raw_feature FROM georocket.feature f, georocket.property p, georocket.bounding_box b WHERE f.id = p.id AND f.id = b.id AND ((p.key like '%test%' OR p.value_s like '%test%' OR cast(p.value_i as text) like '%test%' OR cast(p.value_f as text) like '%test%') OR (ST_Intersects(b.bounding_box, ST_MakeEnvelope(0, 0, 1, 1, 4326))))");
     }
 
     #[test]
     fn query_logical_not() {
-        let query = Query {
-            components: vec![QueryComponent::Logical(Logic::Not(Box::new(
-                QueryComponent::Primitive(Primitive::String("test".to_string())),
-            )))],
-        };
+        let query = query![not!["test"]];
         let query = build_query(query);
         assert_eq!(query,
                    "SELECT DISTINCT raw_feature FROM georocket.feature f, georocket.property p WHERE f.id = p.id AND (NOT ((p.key like '%test%' OR p.value_s like '%test%' OR cast(p.value_i as text) like '%test%' OR cast(p.value_f as text) like '%test%')))");
@@ -213,12 +201,7 @@ mod tests {
 
     #[test]
     fn query_with_combinator() {
-        let query = Query {
-            components: vec![QueryComponent::Logical(Logic::And(vec![
-                QueryComponent::Primitive(Primitive::String("test".to_string())),
-                QueryComponent::Primitive(Primitive::BoundingBox(BASIC_BBOX)),
-            ]))],
-        };
+        let query = query![and!["test", BASIC_BBOX]];
         let query = build_query(query);
         assert_eq!(query,
                    "SELECT DISTINCT raw_feature FROM georocket.feature f, georocket.property p, georocket.bounding_box b WHERE f.id = p.id AND f.id = b.id AND (((p.key like '%test%' OR p.value_s like '%test%' OR cast(p.value_i as text) like '%test%' OR cast(p.value_f as text) like '%test%') AND (ST_Intersects(b.bounding_box, ST_MakeEnvelope(0, 0, 1, 1, 4326)))))");
@@ -250,9 +233,7 @@ mod tests {
 
     #[test]
     fn query_comparison() {
-        let query = Query {
-            components: vec![(Comparison::Eq, "key", 1).into()],
-        };
+        let query = query![eq!["key", 1]];
         let query = build_query(query);
         assert_eq!(query,
                    "SELECT DISTINCT raw_feature FROM georocket.feature f, georocket.property p WHERE f.id = p.id AND ((p.key = 'key' AND p.value_i = 1))");

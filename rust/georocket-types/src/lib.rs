@@ -63,7 +63,7 @@ impl BoundingBox {
         debug_assert!(min_x <= max_x, "min_x was larger than max_x");
         debug_assert!(min_y <= max_y, "min_y was larger than max_y");
         Self {
-            srid: srid,
+            srid,
             lower_left: GeoPoint::new(min_x, min_y),
             upper_right: GeoPoint::new(max_x, max_y),
         }
@@ -122,6 +122,12 @@ impl Value {
 impl From<&str> for Value {
     fn from(value: &str) -> Self {
         Value::String(value.into())
+    }
+}
+
+impl From<String> for Value {
+    fn from(value: String) -> Self {
+        Value::String(value)
     }
 }
 

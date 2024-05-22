@@ -2,9 +2,10 @@ use georocket_types::{BoundingBox, Value};
 use std::fmt::{Display, Formatter};
 
 /// Specifies primitive which may be queried for directly.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Primitive {
     String(String),
+    Number(f64),
     BoundingBox(BoundingBox),
 }
 
@@ -16,7 +17,7 @@ impl From<BoundingBox> for Primitive {
 
 impl From<String> for Primitive {
     fn from(value: String) -> Self {
-        Primitive::String(value.into())
+        Primitive::String(value)
     }
 }
 
@@ -26,36 +27,45 @@ impl From<&str> for Primitive {
     }
 }
 
-/// Specifies the logical combinator to be to combine the list of `QueryComponent`s.
-#[derive(Debug)]
-pub enum Logic {
-    Or(Vec<QueryComponent>),
-    And(Vec<QueryComponent>),
-    Not(Box<QueryComponent>),
-}
-
-impl Logic {
-    pub fn not(qc: impl Into<QueryComponent>) -> Self {
-        Self::Not(Box::new(qc.into()))
+impl From<f64> for Primitive {
+    fn from(value: f64) -> Self {
+        Primitive::Number(value)
     }
 }
 
-/// Specifies the comparison to be applied in the `QueryComponent::Comparison` variant.
-#[derive(Copy, Clone, Debug)]
+/// Specifies the logical combinator to be to combine the list of `QueryComponent`s.
+#[derive(Debug, PartialEq)]
+pub enum Logic {
+    Or(Vec<QueryComponent>),
+    And(Vec<QueryComponent>),
+    Not(Vec<QueryComponent>),
+}
+
+/// Specifies how two key-value pairs should be compared to each other
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Comparison {
+    /// The values must equal
     Eq,
-    Neq,
-    Lt,
+
+    /// The value of this key-value pair must be greater than the other one
     Gt,
-    Lte,
+
+    /// The value of this key-value pair must be greater than or equal to the
+    /// other one
     Gte,
+
+    /// The value of this key-value pair must be less than the other one
+    Lt,
+
+    /// The value of this key-value pair must be less than or equal to the
+    /// other one
+    Lte,
 }
 
 impl Display for Comparison {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Comparison::Eq => write!(f, "="),
-            Comparison::Neq => write!(f, "!="),
             Comparison::Lt => write!(f, "<"),
             Comparison::Gt => write!(f, ">"),
             Comparison::Lte => write!(f, "<="),
@@ -64,8 +74,8 @@ impl Display for Comparison {
     }
 }
 
-/// The top level components of a `Query` which are
-#[derive(Debug)]
+/// The top level components of a `Query`
+#[derive(Debug, PartialEq)]
 pub enum QueryComponent {
     Primitive(Primitive),
     Logical(Logic),
@@ -91,23 +101,107 @@ impl From<Logic> for QueryComponent {
     }
 }
 
-impl<K, V> From<(Comparison, K, V)> for QueryComponent
-where
-    K: Into<String>,
-    V: Into<Value>,
-{
-    fn from((operator, key, value): (Comparison, K, V)) -> Self {
-        let key = key.into();
-        let value = value.into();
-        QueryComponent::Comparison {
-            operator,
-            key,
-            value,
-        }
-    }
-}
-
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Query {
     pub components: Vec<QueryComponent>,
 }
+
+impl From<Vec<QueryComponent>> for Query {
+    fn from(components: Vec<QueryComponent>) -> Self {
+        Query { components }
+    }
+}
+
+macro_rules! query {
+    ($($x:expr),* $(,)?) => {
+        Query { components: vec![$($x.into(),)*] }
+    };
+}
+
+macro_rules! and {
+    ($($x:expr),* $(,)?) => {
+        QueryComponent::Logical(Logic::And(vec![$($x.into(),)*]))
+    };
+}
+
+macro_rules! or {
+    ($($x:expr),* $(,)?) => {
+        QueryComponent::Logical(Logic::Or(vec![$($x.into(),)*]))
+    };
+}
+
+macro_rules! not {
+    ($($x:expr),* $(,)?) => {
+        QueryComponent::Logical(Logic::Not(vec![$($x.into(),)*]))
+    };
+}
+
+macro_rules! eq {
+    ($key:expr, $value:expr) => {{
+        let key = $key.into();
+        let value = $value.into();
+        QueryComponent::Comparison {
+            operator: crate::query::Comparison::Eq,
+            key,
+            value,
+        }
+    }};
+}
+
+macro_rules! gt {
+    ($key:expr, $value:expr) => {{
+        let key = $key.into();
+        let value = $value.into();
+        QueryComponent::Comparison {
+            operator: crate::query::Comparison::Gt,
+            key,
+            value,
+        }
+    }};
+}
+
+macro_rules! gte {
+    ($key:expr, $value:expr) => {{
+        let key = $key.into();
+        let value = $value.into();
+        QueryComponent::Comparison {
+            operator: crate::query::Comparison::Gte,
+            key,
+            value,
+        }
+    }};
+}
+
+macro_rules! lt {
+    ($key:expr, $value:expr) => {{
+        let key = $key.into();
+        let value = $value.into();
+        QueryComponent::Comparison {
+            operator: crate::query::Comparison::Lt,
+            key,
+            value,
+        }
+    }};
+}
+
+macro_rules! lte {
+    ($key:expr, $value:expr) => {{
+        let key = $key.into();
+        let value = $value.into();
+        QueryComponent::Comparison {
+            operator: crate::query::Comparison::Lte,
+            key,
+            value,
+        }
+    }};
+}
+
+pub(crate) use and;
+pub(crate) use eq;
+pub(crate) use gt;
+pub(crate) use gte;
+pub(crate) use lt;
+pub(crate) use lte;
+pub(crate) use not;
+pub(crate) use or;
+pub(crate) use query;

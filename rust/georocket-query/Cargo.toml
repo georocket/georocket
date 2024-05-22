@@ -12,6 +12,7 @@ anyhow = "1.0.80"
 tokio = { version = "1.36.0", features = ["rt"] }
 futures-util = "0.3.30"
 uuid = { version = "1.4.1", features = ["v4"] }
+chumsky = { version = "1.0.0-alpha.7" }
 
 [dev-dependencies]
 tokio = { version = "1.36.0", features = ["rt", "macros", "fs"] }

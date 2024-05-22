@@ -100,6 +100,7 @@ mod tests {
             let mut dest = tokio::fs::OpenOptions::new()
                 .write(true)
                 .create(true)
+                .truncate(true)
                 .open(&tmp)
                 .await
                 .expect("unable to create file in temp directory: {}");

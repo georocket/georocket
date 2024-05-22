@@ -1,8 +1,6 @@
 use crate::query::Query;
-use anyhow::Context;
 use futures_util::{Stream, StreamExt};
 use std::iter::empty;
-use tokio::io::{AsyncWrite, AsyncWriteExt, BufWriter};
 use tokio_postgres::types::ToSql;
 use tokio_postgres::{Client, Error, NoTls};
 
@@ -33,7 +31,7 @@ pub async fn query_client(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::query::{Comparison, Logic, QueryComponent};
+    use crate::query::{eq, lt, lte, query, Comparison, Logic, QueryComponent};
     use futures_util::TryStreamExt;
     use geo_testcontainer::postgis::PostGIS as PostGISContainer;
     use geo_testcontainer::testcontainers::clients::Cli;
@@ -42,7 +40,7 @@ mod tests {
     use once_cell::sync::Lazy;
     use std::path::Path;
 
-    static TEST_CONT_CLI: Lazy<Cli> = Lazy::new(|| Cli::default());
+    static TEST_CONT_CLI: Lazy<Cli> = Lazy::new(Cli::default);
 
     async fn setup(
         test_features: impl AsRef<Path>,
@@ -65,7 +63,7 @@ mod tests {
     #[tokio::test]
     async fn simple_features_no_query_specifier() {
         let (_container, client) = setup("test_files/simple_features_postgis.sql").await;
-        let query = Query { components: vec![] };
+        let query = query![];
         let chunks: Vec<String> = query_client(&client, query)
             .await
             .unwrap()
@@ -80,9 +78,7 @@ mod tests {
         let (_container, client) = setup("test_files/simple_features_postgis.sql").await;
         let bounding_box =
             georocket_types::BoundingBox::from_tuple((0.0, 0.0, 10.0, 10.0, Some(4326)));
-        let query = Query {
-            components: vec![bounding_box.into()],
-        };
+        let query = query![bounding_box];
         let chunks: Vec<String> = query_client(&client, query)
             .await
             .unwrap()
@@ -97,10 +93,8 @@ mod tests {
         let (_container, client) = setup("test_files/simple_features_postgis.sql").await;
         let bounding_box =
             georocket_types::BoundingBox::from_tuple((0.0, 0.0, 10.0, 10.0, Some(4326)));
-        let not_bounding_box = Logic::not(bounding_box);
-        let query = Query {
-            components: vec![not_bounding_box.into()],
-        };
+        let not_bounding_box = Logic::Not(vec![bounding_box.into()]);
+        let query = query![not_bounding_box];
         let chunks: Vec<String> = query_client(&client, query)
             .await
             .unwrap()
@@ -115,9 +109,7 @@ mod tests {
         let (_container, client) = setup("test_files/simple_features_postgis.sql").await;
         let bounding_box =
             georocket_types::BoundingBox::from_tuple((0.0, 0.0, 5.0, 8.0, Some(4326)));
-        let query = Query {
-            components: vec![bounding_box.into()],
-        };
+        let query = query![bounding_box];
         let chunks: Vec<String> = query_client(&client, query)
             .await
             .unwrap()
@@ -134,10 +126,8 @@ mod tests {
         let (_container, client) = setup("test_files/simple_features_postgis.sql").await;
         let bounding_box =
             georocket_types::BoundingBox::from_tuple((0.0, 0.0, 5.0, 8.0, Some(4326)));
-        let not_bounding_box = Logic::not(bounding_box);
-        let query = Query {
-            components: vec![not_bounding_box.into()],
-        };
+        let not_bounding_box = Logic::Not(vec![bounding_box.into()]);
+        let query = query![not_bounding_box];
         let chunks: Vec<String> = query_client(&client, query)
             .await
             .unwrap()
@@ -156,9 +146,7 @@ mod tests {
         let bounding_box_b =
             georocket_types::BoundingBox::from_tuple((4.0, 3.0, 9.9, 9.0, Some(4326)));
         let and_bounding_boxes = Logic::And(vec![bounding_box_a.into(), bounding_box_b.into()]);
-        let query = Query {
-            components: vec![and_bounding_boxes.into()],
-        };
+        let query = query![and_bounding_boxes];
         let chunks: Vec<String> = query_client(&client, query)
             .await
             .unwrap()
@@ -177,9 +165,7 @@ mod tests {
         let bounding_box_b =
             georocket_types::BoundingBox::from_tuple((4.0, 3.0, 9.9, 9.0, Some(4326)));
         let and_bounding_boxes = Logic::Or(vec![bounding_box_a.into(), bounding_box_b.into()]);
-        let query = Query {
-            components: vec![and_bounding_boxes.into()],
-        };
+        let query = query![and_bounding_boxes];
         let chunks: Vec<String> = query_client(&client, query)
             .await
             .unwrap()
@@ -192,11 +178,7 @@ mod tests {
     #[tokio::test]
     async fn simple_feature_select_primitive_string() {
         let (_container, client) = setup("test_files/simple_features_postgis.sql").await;
-        let s = "key".to_string();
-        let query = Query {
-            components: vec![s.into()],
-        };
-        let chunks: Vec<String> = query_client(&client, query)
+        let chunks: Vec<String> = query_client(&client, query!["key"])
             .await
             .unwrap()
             .try_collect()
@@ -208,11 +190,7 @@ mod tests {
     #[tokio::test]
     async fn simple_feature_select_primitive_number() {
         let (_container, client) = setup("test_files/simple_features_postgis.sql").await;
-        let s = "1".to_string();
-        let query = Query {
-            components: vec![s.into()],
-        };
-        let chunks: Vec<String> = query_client(&client, query)
+        let chunks: Vec<String> = query_client(&client, query!["1"])
             .await
             .unwrap()
             .try_collect()
@@ -224,10 +202,7 @@ mod tests {
     #[tokio::test]
     async fn simple_comparison_equal() {
         let (_container, client) = setup("test_files/simple_comparison_postgis.sql").await;
-        let qc: QueryComponent = (Comparison::Eq, "key", 2).into();
-        let query = Query {
-            components: vec![qc],
-        };
+        let query = query![eq!["key", 2]];
         let chunks: Vec<String> = query_client(&client, query)
             .await
             .unwrap()
@@ -241,10 +216,7 @@ mod tests {
     #[tokio::test]
     async fn simple_comparison_less_than() {
         let (_container, client) = setup("test_files/simple_comparison_postgis.sql").await;
-        let qc: QueryComponent = (Comparison::Lt, "key", 2).into();
-        let query = Query {
-            components: vec![qc],
-        };
+        let query = query![lt!["key", 2]];
         let chunks: Vec<String> = query_client(&client, query)
             .await
             .unwrap()
@@ -258,10 +230,7 @@ mod tests {
     #[tokio::test]
     async fn simple_comparison_less_than_equal() {
         let (_container, client) = setup("test_files/simple_comparison_postgis.sql").await;
-        let qc: QueryComponent = (Comparison::Lte, "key", 2).into();
-        let query = Query {
-            components: vec![qc],
-        };
+        let query = query![lte!["key", 2]];
         let chunks: Vec<String> = query_client(&client, query)
             .await
             .unwrap()
@@ -271,23 +240,5 @@ mod tests {
         assert_eq!(chunks.len(), 2);
         assert!(chunks.contains(&"feature_a".to_string()));
         assert!(chunks.contains(&"feature_b".to_string()));
-    }
-
-    #[tokio::test]
-    async fn simple_comparison_not_equal() {
-        let (_container, client) = setup("test_files/simple_comparison_postgis.sql").await;
-        let qc: QueryComponent = (Comparison::Neq, "key", 2).into();
-        let query = Query {
-            components: vec![qc],
-        };
-        let chunks: Vec<String> = query_client(&client, query)
-            .await
-            .unwrap()
-            .try_collect()
-            .await
-            .unwrap();
-        assert_eq!(chunks.len(), 2);
-        assert!(chunks.contains(&"feature_a".to_string()));
-        assert!(chunks.contains(&"feature_c".to_string()));
     }
 }
