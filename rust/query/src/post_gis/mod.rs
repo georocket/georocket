@@ -33,22 +33,18 @@ mod tests {
     use super::*;
     use crate::query::{eq, lt, lte, query, Logic, QueryComponent};
     use futures_util::TryStreamExt;
-    use geo_testcontainer::postgis::PostGIS as PostGISContainer;
-    use geo_testcontainer::testcontainers::clients::Cli;
-    use geo_testcontainer::testcontainers::Container;
     use migrations::postgis::migrations as postgis_migrations;
-    use once_cell::sync::Lazy;
     use std::path::Path;
+    use testsupport::{
+        postgis::PostGIS as PostGISContainer,
+        testcontainers::{runners::AsyncRunner, ContainerAsync},
+    };
     use types::BoundingBox;
 
-    static TEST_CONT_CLI: Lazy<Cli> = Lazy::new(Cli::default);
-
-    async fn setup(
-        test_features: impl AsRef<Path>,
-    ) -> (Container<'static, PostGISContainer>, Client) {
-        let image = PostGISContainer::new().with_host_auth();
-        let container = TEST_CONT_CLI.run(image);
-        let port = container.get_host_port_ipv4(5432);
+    async fn setup(test_features: impl AsRef<Path>) -> (ContainerAsync<PostGISContainer>, Client) {
+        let image = PostGISContainer::default().with_host_auth();
+        let container = image.start().await;
+        let port = container.get_host_port_ipv4(5432).await;
         let config = format!("host=localhost port={} user=postgres", port);
         let (mut client, connection) = tokio_postgres::connect(&config, NoTls).await.unwrap();
         tokio::spawn(connection);

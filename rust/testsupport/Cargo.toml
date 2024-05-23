@@ -1,10 +1,11 @@
 [package]
-name = "geo-testcontainer"
+name = "testsupport"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-testcontainers = "0.15.0"
+testcontainers = "0.16.3"
+testcontainers-modules = { version = "0.4.3", features = ["postgres"] }
 
 [dev-dependencies]
 postgres = "0.19.7"
@@ -12,4 +13,3 @@ postgres = "0.19.7"
 [features]
 default = []
 postgis = []
-postgis-experimental-arm64 = ["postgis"]

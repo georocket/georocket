@@ -13,10 +13,8 @@ types.workspace = true
 uuid = { version = "1.4.1", features = ["v4"] }
 
 [dev-dependencies]
-geo-testcontainer = { path = "../geo-testcontainer", features = [
-  "postgis-experimental-arm64",
-] }
 migrations.workspace = true
 once_cell = { version = "1.19.0" }
+testsupport.workspace = true
 tokio = { version = "1.36.0", features = ["rt", "macros", "fs"] }
 uuid = { version = "1.7.0", features = ["v4"] }

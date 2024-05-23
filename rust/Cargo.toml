@@ -3,16 +3,17 @@ resolver = "2"
 
 members = [
     "georocket",
-    "indexing",
-    "geo-testcontainer",
-    "types",
     "import",
-    "query",
+    "indexing",
     "migrations",
+    "query",
+    "testsupport",
+    "types",
 ]
 
 [workspace.dependencies]
 import = { path = "import" }
 indexing = { path = "indexing" }
-types = { path = "types" }
 migrations = { path = "migrations", features = ["postgis", "tokio-postgres"] }
+testsupport = { path = "testsupport", features = ["postgis"] }
+types = { path = "types" }

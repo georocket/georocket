@@ -32,6 +32,4 @@ uuid = { version = "1.4.1", features = ["v4", "fast-rng", "serde"] }
 
 [dev-dependencies]
 serde_json = "1.0.104"
-geo-testcontainer = { path = "../geo-testcontainer", features = [
-  "postgis-experimental-arm64",
-] }
+testsupport.workspace = true

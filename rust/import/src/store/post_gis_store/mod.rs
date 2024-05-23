@@ -23,11 +23,11 @@ impl PostGISStore {
     /// them in the specified database.
     pub async fn new(mut client: Client, store_channels: StoreChannels) -> anyhow::Result<Self> {
         postgis_migration::runner().run_async(&mut client).await?;
-        return Ok(Self {
+        Ok(Self {
             store_channels,
             client,
             id_index_map: IdIndexMap::new(),
-        });
+        })
     }
 
     pub async fn run(&mut self) -> anyhow::Result<usize> {
@@ -183,18 +183,17 @@ mod tests {
     use super::*;
     use crate::builder::ImporterBuilder;
     use crate::{SourceType, StoreType};
-    use geo_testcontainer::postgis::PostGIS;
-    use geo_testcontainer::testcontainers::clients;
     use std::collections::HashMap;
+    use testsupport::postgis::PostGIS;
+    use testsupport::testcontainers::runners::AsyncRunner;
     use tokio::sync::mpsc;
     use tokio_postgres::NoTls;
 
     #[tokio::test]
     async fn postgis_store_main_test() {
-        let docker = clients::Cli::default();
         let postgis_image = PostGIS::default().with_host_auth();
-        let node = docker.run(postgis_image);
-        let port = node.get_host_port_ipv4(5432);
+        let node = postgis_image.start().await;
+        let port = node.get_host_port_ipv4(5432).await;
         let config_string = format!("host=localhost user=postgres port={}", port);
         assert_database_setup(&config_string).await;
         assert_writing_simple_feature(&config_string).await;
