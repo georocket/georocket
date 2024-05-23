@@ -2,11 +2,17 @@
 resolver = "2"
 
 members = [
-    "georocket-cli",
+    "georocket",
     "indexing",
     "geo-testcontainer",
-    "georocket-types",
-    "georocket-import",
-    "georocket-query",
-    "georocket-migrations"
+    "types",
+    "import",
+    "query",
+    "migrations",
 ]
+
+[workspace.dependencies]
+import = { path = "import" }
+indexing = { path = "indexing" }
+types = { path = "types" }
+migrations = { path = "migrations", features = ["postgis", "tokio-postgres"] }

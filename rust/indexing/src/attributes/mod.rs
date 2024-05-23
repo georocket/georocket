@@ -7,8 +7,8 @@
 //! Adding a string to the `AttributesBuilder` will result in an entry with the `Value::String`
 //! variant:
 //! ```
-//! # use georocket_types::Value;
 //! # use indexing::attributes::*;
+//! # use types::Value;
 //! let mut attributes = AttributesBuilder::new()
 //!         .add_attribute("key".to_string(), "value")
 //!         .build();
@@ -21,8 +21,8 @@
 //! `Value::Double` or `Value::Integer` variant respectively:
 //!
 //! ```
-//! # use georocket_types::Value;
 //! # use indexing::attributes::*;
+//! # use types::Value;
 //! let attributes = AttributesBuilder::new()
 //!     .add_attribute("double".to_string(), 1.624)
 //!     .add_attribute("integer".to_string(), 42)
@@ -31,8 +31,8 @@
 //! assert_eq!(attributes.get("integer"), Some(&Value::Integer(42)));
 //! ```
 
-use georocket_types::Value;
 use std::collections::HashMap;
+use types::Value;
 
 /// A type representing a collection of attributes as key-value pairs stored in a hashmap.
 /// The key is always a `String` and the value is of the [`Value`] type.

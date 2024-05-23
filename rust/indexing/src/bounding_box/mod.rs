@@ -10,7 +10,7 @@
 //! ```
 //! # use indexing::bounding_box::*;
 //! # use indexing::bounding_box::NoValidation;
-//! # use georocket_types::{BoundingBox, GeoPoint};
+//! # use types::{BoundingBox, GeoPoint};
 //! let mut bbox_builder = BoundingBoxBuilder::new(NoValidation);
 //! bbox_builder = bbox_builder.set_srid(4326);
 //! bbox_builder = bbox_builder.add_point(42.0, 1.618);
@@ -70,8 +70,8 @@
 //! )
 //! ```
 
-use georocket_types::BoundingBox;
-use georocket_types::GeoPoint;
+use types::BoundingBox;
+use types::GeoPoint;
 
 mod bounding_box_builder;
 pub mod wgs84_validator;

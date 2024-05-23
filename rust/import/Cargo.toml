@@ -1,0 +1,37 @@
+[package]
+name = "import"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+actson = { version = "1.0.0", features = ["tokio"] }
+anyhow = "1"
+async-channel = "2"
+async-trait = "0.1.77"
+clap = { version = "4.5", features = ["derive"] }
+indexing.workspace = true
+migrations.workspace = true
+pin-project = "1.1.5"
+quick-xml = { version = "0.31.0", features = ["async-tokio"] }
+regex = "1.10.4"
+serde = { version = "1.0.188", features = ["derive"] }
+serde_json = "1.0.104"
+thiserror = "1.0.40"
+tokio = { version = "1.36", features = [
+  "sync",
+  "rt-multi-thread",
+  "macros",
+  "io-util",
+  "fs",
+] }
+tokio-postgres = { version = "0.7", features = ["with-uuid-1"] }
+toml = "0.8.10"
+tracing = "0.1.40"
+types.workspace = true
+uuid = { version = "1.4.1", features = ["v4", "fast-rng", "serde"] }
+
+[dev-dependencies]
+serde_json = "1.0.104"
+geo-testcontainer = { path = "../geo-testcontainer", features = [
+  "postgis-experimental-arm64",
+] }

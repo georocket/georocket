@@ -106,9 +106,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.80"
+version = "1.0.86"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ad32ce52e4161730f7098c077cd2ed6229b5804ccf99e5366be1ab72a98b4e1"
+checksum = "b3d1d046238990b9cf5bcde22a3fb3584ee5cf65fb2765f454ed428c7a0063da"
 
 [[package]]
 name = "async-channel"
@@ -546,64 +546,8 @@ version = "0.2.0"
 dependencies = [
  "anyhow",
  "clap",
- "georocket-import",
+ "import",
  "tokio",
-]
-
-[[package]]
-name = "georocket-import"
-version = "0.1.0"
-dependencies = [
- "actson",
- "anyhow",
- "async-channel",
- "async-trait",
- "clap",
- "geo-testcontainer",
- "georocket-migrations",
- "georocket-types",
- "indexing",
- "pin-project",
- "quick-xml",
- "regex",
- "serde",
- "serde_json",
- "thiserror",
- "tokio",
- "tokio-postgres",
- "toml",
- "tracing",
- "uuid",
-]
-
-[[package]]
-name = "georocket-migrations"
-version = "0.1.0"
-dependencies = [
- "refinery",
-]
-
-[[package]]
-name = "georocket-query"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "chumsky",
- "futures-util",
- "geo-testcontainer",
- "georocket-migrations",
- "georocket-types",
- "once_cell",
- "tokio",
- "tokio-postgres",
- "uuid",
-]
-
-[[package]]
-name = "georocket-types"
-version = "0.1.0"
-dependencies = [
- "serde",
 ]
 
 [[package]]
@@ -677,11 +621,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "import"
+version = "0.1.0"
+dependencies = [
+ "actson",
+ "anyhow",
+ "async-channel",
+ "async-trait",
+ "clap",
+ "geo-testcontainer",
+ "indexing",
+ "migrations",
+ "pin-project",
+ "quick-xml",
+ "regex",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tokio-postgres",
+ "toml",
+ "tracing",
+ "types",
+ "uuid",
+]
+
+[[package]]
 name = "indexing"
 version = "0.1.0"
 dependencies = [
- "georocket-types",
  "serde",
+ "types",
 ]
 
 [[package]]
@@ -746,6 +716,13 @@ name = "memchr"
 version = "2.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c8640c5d730cb13ebd907d8d04b52f55ac9a2eec55b440c8892f40d56c76c1d"
+
+[[package]]
+name = "migrations"
+version = "0.1.0"
+dependencies = [
+ "refinery",
+]
 
 [[package]]
 name = "miniz_oxide"
@@ -964,6 +941,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5787f7cda34e3033a72192c018bc5883100330f362ef279a8cbccfce8bb4e874"
 dependencies = [
  "cc",
+]
+
+[[package]]
+name = "query"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chumsky",
+ "futures-util",
+ "geo-testcontainer",
+ "migrations",
+ "once_cell",
+ "tokio",
+ "tokio-postgres",
+ "types",
+ "uuid",
 ]
 
 [[package]]
@@ -1536,6 +1529,13 @@ name = "typenum"
 version = "1.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "42ff0bf0c66b8238c6f3b578df37d0b7848e55df8577b3f74f92a69acceeb825"
+
+[[package]]
+name = "types"
+version = "0.1.0"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "unicode-bidi"

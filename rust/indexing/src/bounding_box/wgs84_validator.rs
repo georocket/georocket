@@ -1,7 +1,7 @@
 use crate::bounding_box::bounding_box_builder::Validator;
-use georocket_types::GeoPoint;
 use std::error::Error;
 use std::fmt::Display;
+use types::GeoPoint;
 
 /// A validator for WGS84 coordinates.
 /// Validation will return an error if the coordinates are outside the valid range
@@ -66,7 +66,7 @@ impl Display for WGS84BuilderError {
 mod tests {
     use super::*;
     use crate::bounding_box::BoundingBoxBuilder;
-    use georocket_types::BoundingBox;
+    use types::BoundingBox;
 
     fn assert_valid_point(x: f64, y: f64) {
         let bbox = BoundingBoxBuilder::new(WGS84Validator)
