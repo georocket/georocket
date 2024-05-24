@@ -1,5 +1,9 @@
 use clap::{Parser, Subcommand};
-use import::import_args::{run_import, ImportArgs};
+use commands::import::{run_import, ImportArgs};
+
+mod commands;
+mod input;
+mod util;
 
 #[derive(Parser, Debug)]
 #[command(author, version)]
@@ -17,6 +21,6 @@ enum Commands {
 async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     match cli.command {
-        Commands::Import(import_args) => run_import(import_args).await,
+        Commands::Import(args) => run_import(args).await,
     }
 }

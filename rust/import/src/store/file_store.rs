@@ -104,8 +104,8 @@ impl FileStore {
         loop {
             tokio::select! {
                 Some(raw) = self.store_channels.raw_rec.recv() => {
-                        self.handle_chunk(raw).await?;
-                        num_chunks += 1;
+                    self.handle_chunk(raw).await?;
+                    num_chunks += 1;
                 }
                 Some(index) = self.store_channels.index_rec.recv() => {
                     self.handle_index(index).await?;
