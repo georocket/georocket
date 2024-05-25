@@ -3,6 +3,7 @@ use commands::import::{run_import, ImportArgs};
 
 mod commands;
 mod input;
+mod storage;
 mod util;
 
 #[derive(Parser, Debug)]

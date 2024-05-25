@@ -1,10 +1,11 @@
-use std::ops::Range;
+use std::{ops::Range, rc::Rc};
 
 use anyhow::Result;
 use quick_xml::events::{BytesStart, Event};
 
 use crate::{
     input::{Splitter, SplitterResult},
+    storage::chunk_meta::{ChunkMeta, XMLChunkMeta},
     util::window::Window,
 };
 
@@ -20,7 +21,7 @@ pub struct FirstLevelSplitter {
 
     /// The opening tag data of the XML document's root element. [`None`] if
     /// the root has not been found yet.
-    root: Option<BytesStart<'static>>,
+    root: Option<Rc<BytesStart<'static>>>,
 }
 
 impl<'a> Splitter<Event<'a>> for FirstLevelSplitter {
@@ -36,19 +37,22 @@ impl<'a> Splitter<Event<'a>> for FirstLevelSplitter {
             Event::Start(s) => {
                 if self.depth == 0 {
                     // save root element
-                    self.root = Some(s.to_owned());
+                    self.root = Some(Rc::new(s.to_owned()));
                 } else if self.depth == 1 {
                     self.mark = pos.start;
                 }
                 self.depth += 1;
             }
 
-            Event::End(e) => {
+            Event::End(_) => {
                 self.depth -= 1;
                 if self.depth == 1 {
                     let chunk = window.get_bytes(self.mark..pos.end)?;
                     window.advance_to(pos.end)?;
-                    result = Some(SplitterResult { chunk });
+                    let meta = ChunkMeta::Xml(XMLChunkMeta {
+                        root: Rc::clone(self.root.as_ref().unwrap()),
+                    });
+                    result = Some(SplitterResult { chunk, meta });
                 }
             }
 
