@@ -1,6 +1,4 @@
 use std::{
-    collections::{vec_deque::Drain, VecDeque},
-    ops::RangeBounds,
     pin::Pin,
     task::{Context, Poll},
 };
@@ -8,13 +6,15 @@ use std::{
 use pin_project::pin_project;
 use tokio::io::{AsyncRead, ReadBuf};
 
+use super::window::Window;
+
 /// Wrapper around an `AsyncRead` object. Buffers all bytes read in an internal
 /// buffer enabling the extraction of relevant bytes
 #[pin_project]
 pub struct WindowRead<R> {
     #[pin]
     inner: R,
-    buf: VecDeque<u8>,
+    window: Window,
 }
 
 impl<R: AsyncRead> AsyncRead for WindowRead<R> {
@@ -27,7 +27,7 @@ impl<R: AsyncRead> AsyncRead for WindowRead<R> {
         let old_length = buf.filled().len();
         let result = this.inner.poll_read(cx, buf);
         let new_length = buf.filled().len();
-        this.buf.extend(&buf.filled()[old_length..new_length]);
+        this.window.extend(&buf.filled()[old_length..new_length]);
         result
     }
 }
@@ -36,17 +36,16 @@ impl<R> WindowRead<R> {
     pub fn new(inner: R) -> Self {
         Self {
             inner,
-            buf: VecDeque::new(),
+            window: Default::default(),
         }
     }
 
-    /// Removes the specified range of bytes from the inner buffer and returns
-    /// all removed bytes as an iterator.
-    fn drain<B>(&mut self, range: B) -> Drain<u8>
-    where
-        B: RangeBounds<usize>,
-    {
-        self.buf.drain(range)
+    pub fn window(&self) -> &Window {
+        &self.window
+    }
+
+    pub fn window_mut(&mut self) -> &mut Window {
+        &mut self.window
     }
 }
 
@@ -56,8 +55,9 @@ mod tests {
     use std::io::Cursor;
     use tokio::io::AsyncReadExt;
 
+    /// Read from a cursor and compare the full contents of the window
     #[tokio::test]
-    async fn simple() {
+    async fn full() {
         // wrap WindowRead around a Cursor
         let data = "Hello world!".to_string();
         let cursor = Cursor::new(data);
@@ -68,30 +68,35 @@ mod tests {
         wr.read_to_end(&mut buf).await.unwrap();
 
         // compare contents
-        let window_buf = wr.drain(..).collect::<Vec<_>>();
+        let window_buf = wr.window_mut().get_bytes(0..buf.len()).unwrap();
         assert_eq!(window_buf, buf);
     }
 
+    /// Compare a range of bytes
     #[tokio::test]
-    async fn drain_range() {
+    async fn range() {
         // wrap WindowRead around a Cursor
         let data = "Hello world!".to_string();
         let cursor = Cursor::new(data);
         let mut wr = WindowRead::new(cursor);
 
-        // read the full contents from the cursor
+        // Read the full contents from the cursor. This will also fill the window.
         let mut buf = Vec::new();
         wr.read_to_end(&mut buf).await.unwrap();
 
-        // skip the first 6 bytes
-        wr.drain(0..6);
+        // Advance the window to the absolute position 6. This will remove the
+        // first 6 bytes from the window.
+        wr.window_mut().advance_to(6).unwrap();
 
-        // read the next 5 bytes
-        let window_buf = wr.drain(0..5).collect::<Vec<_>>();
+        // Anything from before the start of the window cannot be accessed any more
+        assert!(wr.window().get_bytes(0..4).is_err());
+
+        // Read the next 5 bytes. Positions are still absolute!
+        let window_buf = wr.window().get_bytes(6..11).unwrap();
         assert_eq!(window_buf, "world".as_bytes());
 
         // read the remainder
-        let window_buf = wr.drain(..).collect::<Vec<_>>();
+        let window_buf = wr.window().get_bytes(11..12).unwrap();
         assert_eq!(window_buf, "!".as_bytes());
     }
 }

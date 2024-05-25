@@ -1,58 +1,60 @@
-use quick_xml::events::Event;
+use std::ops::Range;
+
+use anyhow::Result;
+use quick_xml::events::{BytesStart, Event};
 
 use crate::{
     input::{Splitter, SplitterResult},
-    util::window_read::WindowRead,
+    util::window::Window,
 };
-
-use super::xml_splitter::XmlSplitter;
 
 /// Splits incoming XML tokens whenever a token in the first level (i.e. a
 /// child of the XML document's root node) is encountered
-pub struct FirstLevelSplitter<R> {
+#[derive(Default)]
+pub struct FirstLevelSplitter {
+    /// The current depth in the XML DOM
     depth: usize,
-    xml_splitter: XmlSplitter,
-    window: WindowRead<R>,
+
+    /// The byte position of the current chunk's opening tag
+    mark: usize,
+
+    /// The opening tag data of the XML document's root element. [`None`] if
+    /// the root has not been found yet.
+    root: Option<BytesStart<'static>>,
 }
 
-impl<R> FirstLevelSplitter<R> {
-    pub fn new(window: WindowRead<R>) -> Self {
-        Self {
-            depth: 0,
-            xml_splitter: XmlSplitter::default(),
-            window,
-        }
-    }
-}
-
-impl<'a, R> Splitter<Event<'a>> for FirstLevelSplitter<R> {
-    fn on_event(&mut self, e: &Event, pos: usize) -> Option<SplitterResult> {
+impl<'a> Splitter<Event<'a>> for FirstLevelSplitter {
+    fn on_event(
+        &mut self,
+        e: &Event,
+        pos: Range<usize>,
+        window: &mut Window,
+    ) -> Result<Option<SplitterResult>> {
         let mut result = None;
 
-        // create new chunk if we're just after the end of a first-level element
-        if self.depth == 1 {
-            if let Some(_) = self.xml_splitter.mark {
-                result = self.xml_splitter.make_result(pos)
-            }
-        }
-
         match e {
-            Event::Start(_) => {
-                if self.depth == 1 {
-                    self.xml_splitter.mark = Some(pos);
+            Event::Start(s) => {
+                if self.depth == 0 {
+                    // save root element
+                    self.root = Some(s.to_owned());
+                } else if self.depth == 1 {
+                    self.mark = pos.start;
                 }
                 self.depth += 1;
             }
 
-            Event::End(_) => {
+            Event::End(e) => {
                 self.depth -= 1;
+                if self.depth == 1 {
+                    let chunk = window.get_bytes(self.mark..pos.end)?;
+                    window.advance_to(pos.end)?;
+                    result = Some(SplitterResult { chunk });
+                }
             }
 
             _ => {}
         }
 
-        self.xml_splitter.on_event(e);
-
-        result
+        Ok(result)
     }
 }

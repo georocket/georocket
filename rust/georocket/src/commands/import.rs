@@ -65,16 +65,25 @@ async fn import_xml(path: String) -> Result<()> {
     let mut reader = Reader::from_reader(bufreader);
 
     let mut buf = Vec::new();
-    let mut splitter = FirstLevelSplitter::new(window);
+    let mut splitter = FirstLevelSplitter::default();
+    let mut count = 0;
     loop {
+        let start_pos = reader.buffer_position();
         let e = reader.read_event_into_async(&mut buf).await?;
-        if let Some(r) = splitter.on_event(&e, reader.buffer_position()) {
+        let end_pos = reader.buffer_position();
+        let window = reader.get_mut().get_mut().window_mut();
+        if let Some(r) = splitter.on_event(&e, start_pos..end_pos, window)? {
             // todo
-            println!("{:?}", r);
+            // println!("---------");
+            // println!("{}", String::from_utf8(r.chunk).unwrap());
+            // println!("---------");
+            count += 1;
         }
         if e == Event::Eof {
+            println!("{}", count);
             break;
         }
+        buf.clear();
     }
 
     Ok(())
