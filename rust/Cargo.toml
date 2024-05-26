@@ -12,8 +12,6 @@ members = [
 ]
 
 [workspace.dependencies]
-# import = { path = "import" }
-indexing = { path = "indexing" }
 migrations = { path = "migrations", features = ["postgis", "tokio-postgres"] }
 testsupport = { path = "testsupport", features = ["postgis"] }
 types = { path = "types" }

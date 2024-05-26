@@ -10,4 +10,6 @@ clap = { version = "4.5", features = ["derive"] }
 mime_guess = "2.0.4"
 pin-project = "1.1.5"
 quick-xml = { version = "0.31.0", features = ["async-tokio"] }
+rocksdb = { version = "0.22.0", default-features = false, features = ["lz4"] }
 tokio = { version = "1.36", features = ["full"] }
+ulid = "1.1.2"

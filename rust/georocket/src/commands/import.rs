@@ -2,9 +2,11 @@ use anyhow::{bail, Result};
 use clap::Args;
 use quick_xml::{events::Event, Reader};
 use tokio::{fs::File, io::BufReader};
+use ulid::Ulid;
 
 use crate::{
     input::{xml::FirstLevelSplitter, Splitter},
+    storage::{rocksdb::RocksDBStore, Store},
     util::window_read::WindowRead,
 };
 
@@ -59,6 +61,8 @@ pub async fn run_import(args: ImportArgs) -> Result<()> {
 
 /// Import an XML file
 async fn import_xml(path: String) -> Result<()> {
+    let mut store = RocksDBStore::new("store")?;
+
     let file = File::open(path).await?;
     let window = WindowRead::new(file);
     let bufreader = BufReader::new(window);
@@ -66,25 +70,21 @@ async fn import_xml(path: String) -> Result<()> {
 
     let mut buf = Vec::new();
     let mut splitter = FirstLevelSplitter::default();
-    let mut count = 0;
     loop {
         let start_pos = reader.buffer_position();
         let e = reader.read_event_into_async(&mut buf).await?;
         let end_pos = reader.buffer_position();
         let window = reader.get_mut().get_mut().window_mut();
         if let Some(r) = splitter.on_event(&e, start_pos..end_pos, window)? {
-            // todo
-            // println!("---------");
-            // println!("{}", String::from_utf8(r.chunk).unwrap());
-            // println!("---------");
-            count += 1;
+            store.add(Ulid::new(), r.chunk).await?;
         }
         if e == Event::Eof {
-            println!("{}", count);
             break;
         }
         buf.clear();
     }
+
+    store.commit().await?;
 
     Ok(())
 }
