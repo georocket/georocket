@@ -5,6 +5,10 @@ use tokio::{fs::File, io::BufReader};
 use ulid::Ulid;
 
 use crate::{
+    index::{
+        gml::generic_attribute_indexer::{self, GenericAttributeIndexer},
+        Indexer,
+    },
     input::{xml::FirstLevelSplitter, Splitter},
     storage::{rocksdb::RocksDBStore, Store},
     util::window_read::WindowRead,
@@ -70,6 +74,8 @@ async fn import_xml(path: String) -> Result<()> {
     let bufreader = BufReader::with_capacity(1024 * 128, window);
     let mut reader = Reader::from_reader(bufreader);
 
+    let mut generic_attribute_indexer = GenericAttributeIndexer::default();
+
     let mut buf = Vec::new();
     let mut splitter = FirstLevelSplitter::default();
     loop {
@@ -77,12 +83,19 @@ async fn import_xml(path: String) -> Result<()> {
         let e = reader.read_event_into_async(&mut buf).await?;
         let end_pos = reader.buffer_position();
         let window = reader.get_mut().get_mut().window_mut();
+
+        generic_attribute_indexer.on_event(&e)?;
+
         if let Some(r) = splitter.on_event(&e, start_pos..end_pos, window)? {
             store.add(Ulid::new(), r.chunk).await?;
+
+            let indexer_result = generic_attribute_indexer.make_result();
         }
+
         if e == Event::Eof {
             break;
         }
+
         buf.clear();
     }
 

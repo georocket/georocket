@@ -4,14 +4,14 @@ resolver = "2"
 members = [
     "georocket",
     # "import",
-    "indexing",
-    "migrations",
-    "query",
-    "testsupport",
-    "types",
+    # "indexing",
+    # "migrations",
+    # "query",
+    # "testsupport",
+    # "types",
 ]
 
 [workspace.dependencies]
-migrations = { path = "migrations", features = ["postgis", "tokio-postgres"] }
-testsupport = { path = "testsupport", features = ["postgis"] }
-types = { path = "types" }
+# migrations = { path = "migrations", features = ["postgis", "tokio-postgres"] }
+# testsupport = { path = "testsupport", features = ["postgis"] }
+# types = { path = "types" }

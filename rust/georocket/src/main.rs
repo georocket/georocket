@@ -2,6 +2,7 @@ use clap::{Parser, Subcommand};
 use commands::import::{run_import, ImportArgs};
 
 mod commands;
+mod index;
 mod input;
 mod storage;
 mod util;
