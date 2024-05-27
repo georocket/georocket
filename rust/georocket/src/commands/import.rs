@@ -65,7 +65,9 @@ async fn import_xml(path: String) -> Result<()> {
 
     let file = File::open(path).await?;
     let window = WindowRead::new(file);
-    let bufreader = BufReader::new(window);
+
+    // use larger buffer to reduce number of asynchronous I/O calls
+    let bufreader = BufReader::with_capacity(1024 * 128, window);
     let mut reader = Reader::from_reader(bufreader);
 
     let mut buf = Vec::new();
