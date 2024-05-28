@@ -2,6 +2,8 @@ use anyhow::Result;
 use std::collections::HashMap;
 use ulid::Ulid;
 
+use crate::query::Query;
+
 pub use self::value::Value;
 
 pub mod gml;
@@ -33,4 +35,7 @@ pub trait Index {
 
     /// Persists changes
     async fn commit(&mut self) -> Result<()>;
+
+    /// Queries the index and returns a list of chunk IDs matching the query
+    async fn search(&self, query: Query) -> Result<Vec<Ulid>>;
 }

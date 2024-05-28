@@ -1,11 +1,15 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use std::{collections::BTreeMap, fs};
 use tantivy::{
+    collector::DocSetCollector,
     directory::MmapDirectory,
-    schema::{Field, OwnedValue, Schema, STORED, TEXT},
+    query::AllQuery,
+    schema::{Field, OwnedValue, Schema, Value, STORED, TEXT},
     IndexBuilder, IndexReader, IndexWriter, TantivyDocument,
 };
 use ulid::Ulid;
+
+use crate::query::Query;
 
 use super::{Index, IndexedValue};
 
@@ -91,6 +95,37 @@ impl Index for TantivyIndex {
         self.reader.reload()?;
         Ok(())
     }
+
+    async fn search(&self, query: Query) -> Result<Vec<Ulid>> {
+        let searcher = self.reader.searcher();
+
+        let tantivy_query = if query.components.is_empty() {
+            AllQuery
+        } else {
+            todo!()
+        };
+        let doc_addresses = searcher.search(&tantivy_query, &DocSetCollector)?;
+
+        // fetch matching documents and collect IDs
+        let mut result = Vec::new();
+        for doc_address in doc_addresses {
+            let doc: TantivyDocument = searcher.doc(doc_address)?;
+
+            let doc_id = doc
+                .get_first(self.id_field)
+                .context("Unable to retrieve ID field from document")?;
+            let doc_id_bytes = doc_id
+                .as_bytes()
+                .context("ID field does not contain bytes")?;
+            let mut bytes = [0u8; 16];
+            bytes.copy_from_slice(&doc_id_bytes[..16]);
+            let id = Ulid::from_bytes(bytes);
+
+            result.push(id);
+        }
+
+        Ok(result)
+    }
 }
 
 #[cfg(test)]
@@ -98,7 +133,10 @@ mod tests {
     use tempdir::TempDir;
     use ulid::Ulid;
 
-    use crate::index::{Index, IndexedValue, Value};
+    use crate::{
+        index::{Index, IndexedValue, Value},
+        query::query,
+    };
 
     use super::TantivyIndex;
 
@@ -106,7 +144,7 @@ mod tests {
     async fn add_and_get() {
         let dir = TempDir::new("georocket_tantivy").unwrap();
 
-        let index = TantivyIndex::new(dir.path().to_str().unwrap()).unwrap();
+        let mut index = TantivyIndex::new(dir.path().to_str().unwrap()).unwrap();
 
         let id = Ulid::new();
 
@@ -115,7 +153,10 @@ mod tests {
         )];
 
         index.add(id, indexer_result).await.unwrap();
+        index.commit().await.unwrap();
 
-        todo!("Query added document");
+        let retrieved_ids = index.search(query![]).await.unwrap();
+
+        assert_eq!(vec![id], retrieved_ids);
     }
 }
