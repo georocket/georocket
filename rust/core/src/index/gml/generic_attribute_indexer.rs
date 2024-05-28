@@ -3,7 +3,7 @@ use std::{collections::HashMap, mem, str::from_utf8};
 use anyhow::Result;
 use quick_xml::events::{attributes::Attribute, BytesStart, Event};
 
-use crate::index::{Indexer, Value};
+use crate::index::{IndexedValue, Indexer, Value};
 
 /// Indexer for CityGML generic attributes
 #[derive(Default)]
@@ -67,13 +67,10 @@ impl<'a> Indexer<Event<'a>> for GenericAttributeIndexer {
         Ok(())
     }
 
-    fn make_result(&mut self) -> std::collections::HashMap<String, crate::index::Value> {
+    fn make_result(&mut self) -> Vec<IndexedValue> {
         let mut new_result = HashMap::new();
         mem::swap(&mut self.result, &mut new_result);
-
-        let mut r = HashMap::new();
-        r.insert("genAttrs".to_string(), Value::Object(new_result));
-        r
+        vec![IndexedValue::GenericAttributes(new_result)]
     }
 }
 
@@ -121,7 +118,7 @@ mod tests {
 
     use quick_xml::events::{BytesCData, BytesEnd, BytesStart, BytesText, Event};
 
-    use crate::index::{Indexer, Value};
+    use crate::index::{IndexedValue, Indexer};
 
     use super::GenericAttributeIndexer;
 
@@ -130,7 +127,7 @@ mod tests {
         let mut i = GenericAttributeIndexer::default();
         assert_eq!(
             i.make_result(),
-            [("genAttrs".to_string(), Value::Object(HashMap::new()))].into()
+            vec![IndexedValue::GenericAttributes(HashMap::new())]
         );
     }
 
@@ -142,7 +139,7 @@ mod tests {
         i.on_event(&Event::End(BytesEnd::new("object"))).unwrap();
         assert_eq!(
             i.make_result(),
-            [("genAttrs".to_string(), Value::Object(HashMap::new()))].into()
+            vec![IndexedValue::GenericAttributes(HashMap::new())]
         );
     }
 
@@ -158,7 +155,7 @@ mod tests {
         i.on_event(&Event::End(BytesEnd::new("object"))).unwrap();
         assert_eq!(
             i.make_result(),
-            [("genAttrs".to_string(), Value::Object(HashMap::new()))].into()
+            vec![IndexedValue::GenericAttributes(HashMap::new())]
         );
     }
 
@@ -177,7 +174,7 @@ mod tests {
         i.on_event(&Event::End(BytesEnd::new("object"))).unwrap();
         assert_eq!(
             i.make_result(),
-            [("genAttrs".to_string(), Value::Object(HashMap::new()))].into()
+            vec![IndexedValue::GenericAttributes(HashMap::new())]
         );
     }
 
@@ -198,7 +195,7 @@ mod tests {
         i.on_event(&Event::End(BytesEnd::new("object"))).unwrap();
         assert_eq!(
             i.make_result(),
-            [("genAttrs".to_string(), Value::Object(HashMap::new()))].into()
+            vec![IndexedValue::GenericAttributes(HashMap::new())]
         );
     }
 
@@ -220,11 +217,9 @@ mod tests {
         i.on_event(&Event::End(BytesEnd::new("object"))).unwrap();
         assert_eq!(
             i.make_result(),
-            [(
-                "genAttrs".to_string(),
-                Value::Object([("foo".to_string(), "bar".into())].into())
+            vec![IndexedValue::GenericAttributes(
+                [("foo".to_string(), "bar".into())].into()
             )]
-            .into()
         );
     }
 
@@ -246,11 +241,9 @@ mod tests {
         i.on_event(&Event::End(BytesEnd::new("object"))).unwrap();
         assert_eq!(
             i.make_result(),
-            [(
-                "genAttrs".to_string(),
-                Value::Object([("foo".to_string(), "bar".into())].into())
+            vec![IndexedValue::GenericAttributes(
+                [("foo".to_string(), "bar".into())].into()
             )]
-            .into()
         );
     }
 
@@ -285,17 +278,13 @@ mod tests {
         i.on_event(&Event::End(BytesEnd::new("object"))).unwrap();
         assert_eq!(
             i.make_result(),
-            [(
-                "genAttrs".to_string(),
-                Value::Object(
-                    [
-                        ("height".to_string(), 5.into()),
-                        ("foo".to_string(), "bar".into())
-                    ]
-                    .into()
-                )
+            vec![IndexedValue::GenericAttributes(
+                [
+                    ("height".to_string(), 5.into()),
+                    ("foo".to_string(), "bar".into())
+                ]
+                .into()
             )]
-            .into()
         );
     }
 }

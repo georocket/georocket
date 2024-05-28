@@ -7,7 +7,7 @@ use tantivy::{
 };
 use ulid::Ulid;
 
-use super::Index;
+use super::{Index, IndexedValue};
 
 /// An implementation of the [`Index`] trait backed by Tantivy
 pub struct TantivyIndex {
@@ -55,18 +55,14 @@ impl TantivyIndex {
 }
 
 impl Index for TantivyIndex {
-    async fn add(
-        &self,
-        id: Ulid,
-        mut indexer_result: std::collections::HashMap<String, super::Value>,
-    ) -> anyhow::Result<()> {
+    async fn add(&self, id: Ulid, indexer_result: Vec<IndexedValue>) -> anyhow::Result<()> {
         let mut doc = TantivyDocument::new();
         doc.add_bytes(self.id_field, id.0.to_be_bytes());
 
         let mut gen_attrs = BTreeMap::new();
-        if let Some(rga) = indexer_result.remove("genAttrs") {
-            match rga {
-                crate::index::Value::Object(m) => {
+        for r in indexer_result {
+            match r {
+                IndexedValue::GenericAttributes(m) => {
                     for (k, v) in m {
                         match v {
                             crate::index::Value::String(s) => {
@@ -78,11 +74,9 @@ impl Index for TantivyIndex {
                             crate::index::Value::Integer(i) => {
                                 gen_attrs.insert(k, OwnedValue::I64(i));
                             }
-                            crate::index::Value::Object(_) => todo!(),
                         }
                     }
                 }
-                _ => todo!(),
             }
         }
         doc.add_object(self.gen_attrs_field, gen_attrs);
@@ -104,7 +98,7 @@ mod tests {
     use tempdir::TempDir;
     use ulid::Ulid;
 
-    use crate::index::{Index, Value};
+    use crate::index::{Index, IndexedValue, Value};
 
     use super::TantivyIndex;
 
@@ -116,11 +110,9 @@ mod tests {
 
         let id = Ulid::new();
 
-        let indexer_result = [(
-            "genAttrs".to_string(),
-            Value::Object([("name".to_string(), Value::String("Elvis".to_string()))].into()),
-        )]
-        .into();
+        let indexer_result = vec![IndexedValue::GenericAttributes(
+            [("name".to_string(), Value::String("Elvis".to_string()))].into(),
+        )];
 
         index.add(id, indexer_result).await.unwrap();
 
