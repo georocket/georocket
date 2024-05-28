@@ -48,4 +48,35 @@ impl Store for RocksDBStore {
             Ok(())
         }
     }
+
+    async fn get(&self, id: Ulid) -> Result<Option<Vec<u8>>> {
+        Ok(self.db.get(id.0.to_be_bytes())?)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::storage::Store;
+
+    use super::RocksDBStore;
+
+    use tempdir::TempDir;
+    use ulid::Ulid;
+
+    #[tokio::test]
+    async fn add_and_get() {
+        let dir = TempDir::new("georocket_rocksdb").unwrap();
+
+        let mut store = RocksDBStore::new(dir.path().to_str().unwrap()).unwrap();
+
+        let id = Ulid::new();
+        let chunk = b"hello world".to_vec();
+
+        store.add(id, chunk.clone()).await.unwrap();
+        store.commit().await.unwrap();
+
+        let new_chunk = store.get(id).await.unwrap();
+
+        assert_eq!(new_chunk, Some(chunk));
+    }
 }

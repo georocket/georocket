@@ -13,4 +13,7 @@ pub trait Store {
 
     /// Call this method after adding one or more chunks via [`add`]
     async fn commit(&mut self) -> Result<()>;
+
+    /// Retrieve a chunk by ID from the store
+    async fn get(&self, id: Ulid) -> Result<Option<Vec<u8>>>;
 }

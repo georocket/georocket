@@ -73,7 +73,7 @@ mod tests {
     #[test]
     fn empty() {
         let mut w = Window::default();
-        assert_eq!(w.get_bytes(0..0).unwrap(), &[]);
+        assert_eq!(w.get_bytes(0..0).unwrap(), b"");
         assert!(w.get_bytes(0..1).is_err());
         assert!(w.get_bytes(1..2).is_err());
         assert!(w.advance_to(10).is_err());
@@ -96,11 +96,11 @@ mod tests {
         let mut w = Window::default();
         w.extend(data);
 
-        assert_eq!(w.get_bytes(0..0).unwrap(), &[]);
-        assert_eq!(w.get_bytes(1..1).unwrap(), &[]);
+        assert_eq!(w.get_bytes(0..0).unwrap(), b"");
+        assert_eq!(w.get_bytes(1..1).unwrap(), b"");
 
-        assert_eq!(w.get_bytes(1..2).unwrap(), &[b'e']);
-        assert_eq!(w.get_bytes(2..4).unwrap(), &[b'l', b'l']);
+        assert_eq!(w.get_bytes(1..2).unwrap(), b"e");
+        assert_eq!(w.get_bytes(2..4).unwrap(), b"ll");
 
         assert!(w.get_bytes(6..10).is_err());
         assert!(w.advance_to(10).is_err());
@@ -113,9 +113,9 @@ mod tests {
 
         w.advance_to(3).unwrap();
 
-        assert_eq!(w.get_bytes(3..4).unwrap(), &[b'l']);
-        assert_eq!(w.get_bytes(4..5).unwrap(), &[b'o']);
-        assert_eq!(w.get_bytes(3..5).unwrap(), &[b'l', b'o']);
+        assert_eq!(w.get_bytes(3..4).unwrap(), b"l");
+        assert_eq!(w.get_bytes(4..5).unwrap(), b"o");
+        assert_eq!(w.get_bytes(3..5).unwrap(), b"lo");
         assert!(w.get_bytes(0..1).is_err());
         assert!(w.get_bytes(0..2).is_err());
         assert!(w.get_bytes(2..3).is_err());
