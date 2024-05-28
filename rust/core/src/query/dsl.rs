@@ -1,8 +1,10 @@
-use crate::query::{Comparison, Logic, Query, QueryComponent};
 use chumsky::{prelude::*, text::whitespace};
-use types::Value;
 
-fn compile_query(query: &str) -> Result<Query, Vec<Rich<'_, char>>> {
+use crate::index::Value;
+
+use super::{Comparison, Logic, Query, QueryComponent};
+
+pub fn compile_query(query: &str) -> Result<Query, Vec<Rich<'_, char>>> {
     let p = parser();
     p.parse(query).into_result()
 }
@@ -162,7 +164,7 @@ fn parser<'a>() -> impl Parser<'a, &'a str, Query, extra::Err<Rich<'a, char>>> {
 #[cfg(test)]
 mod tests {
     use super::compile_query;
-    use crate::query::{and, eq, gt, gte, lt, lte, not, or, query, Logic, Query, QueryComponent};
+    use crate::query::{and, eq, gt, gte, lt, lte, not, or, query};
 
     #[test]
     fn string() {

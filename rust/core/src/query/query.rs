@@ -1,18 +1,12 @@
 use std::fmt::{Display, Formatter};
-use types::{BoundingBox, Value};
+
+use crate::index::Value;
 
 /// Specifies primitive which may be queried for directly.
 #[derive(Debug, PartialEq)]
 pub enum Primitive {
     String(String),
     Number(f64),
-    BoundingBox(BoundingBox),
-}
-
-impl From<BoundingBox> for Primitive {
-    fn from(bounding_box: BoundingBox) -> Self {
-        Primitive::BoundingBox(bounding_box)
-    }
 }
 
 impl From<String> for Primitive {
@@ -114,25 +108,28 @@ impl From<Vec<QueryComponent>> for Query {
 
 macro_rules! query {
     ($($x:expr),* $(,)?) => {
-        Query { components: vec![$($x.into(),)*] }
+        $crate::query::query::Query { components: vec![$($x.into(),)*] }
     };
 }
 
 macro_rules! and {
     ($($x:expr),* $(,)?) => {
-        QueryComponent::Logical(Logic::And(vec![$($x.into(),)*]))
+        $crate::query::query::QueryComponent::Logical(
+            $crate::query::query::Logic::And(vec![$($x.into(),)*]))
     };
 }
 
 macro_rules! or {
     ($($x:expr),* $(,)?) => {
-        QueryComponent::Logical(Logic::Or(vec![$($x.into(),)*]))
+        $crate::query::query::QueryComponent::Logical(
+            $crate::query::query::Logic::Or(vec![$($x.into(),)*]))
     };
 }
 
 macro_rules! not {
     ($($x:expr),* $(,)?) => {
-        QueryComponent::Logical(Logic::Not(vec![$($x.into(),)*]))
+        $crate::query::query::QueryComponent::Logical(
+            $crate::query::query::Logic::Not(vec![$($x.into(),)*]))
     };
 }
 
@@ -140,8 +137,8 @@ macro_rules! eq {
     ($key:expr, $value:expr) => {{
         let key = $key.into();
         let value = $value.into();
-        QueryComponent::Comparison {
-            operator: crate::query::Comparison::Eq,
+        $crate::query::query::QueryComponent::Comparison {
+            operator: $crate::query::query::Comparison::Eq,
             key,
             value,
         }
@@ -152,8 +149,8 @@ macro_rules! gt {
     ($key:expr, $value:expr) => {{
         let key = $key.into();
         let value = $value.into();
-        QueryComponent::Comparison {
-            operator: crate::query::Comparison::Gt,
+        $crate::query::query::QueryComponent::Comparison {
+            operator: $crate::query::query::Comparison::Gt,
             key,
             value,
         }
@@ -164,8 +161,8 @@ macro_rules! gte {
     ($key:expr, $value:expr) => {{
         let key = $key.into();
         let value = $value.into();
-        QueryComponent::Comparison {
-            operator: crate::query::Comparison::Gte,
+        $crate::query::query::QueryComponent::Comparison {
+            operator: $crate::query::query::Comparison::Gte,
             key,
             value,
         }
@@ -176,8 +173,8 @@ macro_rules! lt {
     ($key:expr, $value:expr) => {{
         let key = $key.into();
         let value = $value.into();
-        QueryComponent::Comparison {
-            operator: crate::query::Comparison::Lt,
+        $crate::query::query::QueryComponent::Comparison {
+            operator: $crate::query::query::Comparison::Lt,
             key,
             value,
         }
@@ -188,8 +185,8 @@ macro_rules! lte {
     ($key:expr, $value:expr) => {{
         let key = $key.into();
         let value = $value.into();
-        QueryComponent::Comparison {
-            operator: crate::query::Comparison::Lte,
+        $crate::query::query::QueryComponent::Comparison {
+            operator: $crate::query::query::Comparison::Lte,
             key,
             value,
         }
