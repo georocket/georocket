@@ -1,0 +1,12 @@
+[package]
+name = "georocket"
+version = "0.2.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+core.workspace = true
+mime_guess.workspace = true
+tokio.workspace = true

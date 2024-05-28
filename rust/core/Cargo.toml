@@ -1,0 +1,17 @@
+[package]
+name = "core"
+version = "0.2.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+anyhow.workspace = true
+pin-project.workspace = true
+quick-xml.workspace = true
+rocksdb.workspace = true
+tantivy.workspace = true
+tokio.workspace = true
+ulid.workspace = true
+
+[dev-dependencies]
+tempdir.workspace = true

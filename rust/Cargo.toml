@@ -2,16 +2,20 @@
 resolver = "2"
 
 members = [
-    "georocket",
-    # "import",
-    # "indexing",
-    # "migrations",
-    # "query",
-    # "testsupport",
-    # "types",
+    "core",
+    "cli",
 ]
 
 [workspace.dependencies]
-# migrations = { path = "migrations", features = ["postgis", "tokio-postgres"] }
-# testsupport = { path = "testsupport", features = ["postgis"] }
-# types = { path = "types" }
+anyhow = "1.0"
+core = { path = "core" }
+clap = { version = "4.5", features = ["derive"] }
+cli = { path = "cli" }
+mime_guess = "2.0.4"
+pin-project = "1.1.5"
+quick-xml = { version = "0.31.0", features = ["async-tokio"] }
+rocksdb = { version = "0.22.0", default-features = false, features = ["lz4"] }
+tantivy = "0.22.0"
+tempdir = "0.3.7"
+tokio = { version = "1.36", features = ["full"] }
+ulid = "1.1.2"
