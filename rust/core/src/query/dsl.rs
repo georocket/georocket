@@ -2,7 +2,7 @@ use chumsky::{prelude::*, text::whitespace};
 
 use crate::index::Value;
 
-use super::{Comparison, Logic, Query, QueryComponent};
+use super::{Logic, Operator, Query, QueryPart};
 
 pub fn compile_query(query: &str) -> Result<Query, Vec<Rich<'_, char>>> {
     let p = parser();
@@ -10,7 +10,7 @@ pub fn compile_query(query: &str) -> Result<Query, Vec<Rich<'_, char>>> {
 }
 
 fn parser<'a>() -> impl Parser<'a, &'a str, Query, extra::Err<Rich<'a, char>>> {
-    recursive(|query_components| {
+    recursive(|query_parts| {
         let string = any()
             .filter(|c: &char| !c.is_whitespace() && *c != ')')
             .repeated()
@@ -53,24 +53,24 @@ fn parser<'a>() -> impl Parser<'a, &'a str, Query, extra::Err<Rich<'a, char>>> {
             .to_slice();
 
         let and = just("AND").ignore_then(whitespace()).ignore_then(
-            query_components
+            query_parts
                 .clone()
                 .delimited_by(just('('), just(')'))
-                .map(|a| QueryComponent::Logical(Logic::And(a))),
+                .map(|a| QueryPart::Logical(Logic::And(a))),
         );
 
         let or = just("OR").ignore_then(whitespace()).ignore_then(
-            query_components
+            query_parts
                 .clone()
                 .delimited_by(just('('), just(')'))
-                .map(|a| QueryComponent::Logical(Logic::Or(a))),
+                .map(|a| QueryPart::Logical(Logic::Or(a))),
         );
 
         let not = just("NOT").ignore_then(whitespace()).ignore_then(
-            query_components
+            query_parts
                 .clone()
                 .delimited_by(just('('), just(')'))
-                .map(|a| QueryComponent::Logical(Logic::Not(a))),
+                .map(|a| QueryPart::Logical(Logic::Not(a))),
         );
 
         let key_value = choice((double_quoted_string, single_quoted_string, string))
@@ -90,8 +90,8 @@ fn parser<'a>() -> impl Parser<'a, &'a str, Query, extra::Err<Rich<'a, char>>> {
         let eq = just("EQ").ignore_then(whitespace()).ignore_then(
             key_value
                 .delimited_by(just('('), just(')'))
-                .map(|(key, value): (String, Value)| QueryComponent::Comparison {
-                    operator: Comparison::Eq,
+                .map(|(key, value): (String, Value)| QueryPart::Comparison {
+                    operator: Operator::Eq,
                     key,
                     value,
                 }),
@@ -100,8 +100,8 @@ fn parser<'a>() -> impl Parser<'a, &'a str, Query, extra::Err<Rich<'a, char>>> {
         let gt = just("GT").ignore_then(whitespace()).ignore_then(
             key_value
                 .delimited_by(just('('), just(')'))
-                .map(|(key, value): (String, Value)| QueryComponent::Comparison {
-                    operator: Comparison::Gt,
+                .map(|(key, value): (String, Value)| QueryPart::Comparison {
+                    operator: Operator::Gt,
                     key,
                     value,
                 }),
@@ -110,8 +110,8 @@ fn parser<'a>() -> impl Parser<'a, &'a str, Query, extra::Err<Rich<'a, char>>> {
         let gte = just("GTE").ignore_then(whitespace()).ignore_then(
             key_value
                 .delimited_by(just('('), just(')'))
-                .map(|(key, value): (String, Value)| QueryComponent::Comparison {
-                    operator: Comparison::Gte,
+                .map(|(key, value): (String, Value)| QueryPart::Comparison {
+                    operator: Operator::Gte,
                     key,
                     value,
                 }),
@@ -120,8 +120,8 @@ fn parser<'a>() -> impl Parser<'a, &'a str, Query, extra::Err<Rich<'a, char>>> {
         let lt = just("LT").ignore_then(whitespace()).ignore_then(
             key_value
                 .delimited_by(just('('), just(')'))
-                .map(|(key, value): (String, Value)| QueryComponent::Comparison {
-                    operator: Comparison::Lt,
+                .map(|(key, value): (String, Value)| QueryPart::Comparison {
+                    operator: Operator::Lt,
                     key,
                     value,
                 }),
@@ -130,8 +130,8 @@ fn parser<'a>() -> impl Parser<'a, &'a str, Query, extra::Err<Rich<'a, char>>> {
         let lte = just("LTE").ignore_then(whitespace()).ignore_then(
             key_value
                 .delimited_by(just('('), just(')'))
-                .map(|(key, value): (String, Value)| QueryComponent::Comparison {
-                    operator: Comparison::Lte,
+                .map(|(key, value): (String, Value)| QueryPart::Comparison {
+                    operator: Operator::Lte,
                     key,
                     value,
                 }),
@@ -158,7 +158,7 @@ fn parser<'a>() -> impl Parser<'a, &'a str, Query, extra::Err<Rich<'a, char>>> {
         query
     })
     .then_ignore(end())
-    .map(Vec::<QueryComponent>::into)
+    .map(Vec::<QueryPart>::into)
 }
 
 #[cfg(test)]

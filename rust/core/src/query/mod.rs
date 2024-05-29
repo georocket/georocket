@@ -29,17 +29,17 @@ impl From<f64> for Primitive {
     }
 }
 
-/// Specifies the logical combinator to be to combine the list of `QueryComponent`s.
+/// Specifies the logical combinator to be to combine the list of `QueryPart`s.
 #[derive(Debug, PartialEq)]
 pub enum Logic {
-    Or(Vec<QueryComponent>),
-    And(Vec<QueryComponent>),
-    Not(Vec<QueryComponent>),
+    Or(Vec<QueryPart>),
+    And(Vec<QueryPart>),
+    Not(Vec<QueryPart>),
 }
 
 /// Specifies how two key-value pairs should be compared to each other
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum Comparison {
+pub enum Operator {
     /// The values must equal
     Eq,
 
@@ -58,79 +58,79 @@ pub enum Comparison {
     Lte,
 }
 
-impl Display for Comparison {
+impl Display for Operator {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Comparison::Eq => write!(f, "="),
-            Comparison::Lt => write!(f, "<"),
-            Comparison::Gt => write!(f, ">"),
-            Comparison::Lte => write!(f, "<="),
-            Comparison::Gte => write!(f, ">="),
+            Operator::Eq => write!(f, "="),
+            Operator::Lt => write!(f, "<"),
+            Operator::Gt => write!(f, ">"),
+            Operator::Lte => write!(f, "<="),
+            Operator::Gte => write!(f, ">="),
         }
     }
 }
 
-/// The top level components of a `Query`
+/// The top level parts of a `Query`
 #[derive(Debug, PartialEq)]
-pub enum QueryComponent {
+pub enum QueryPart {
     Primitive(Primitive),
     Logical(Logic),
     Comparison {
-        operator: Comparison,
+        operator: Operator,
         key: String,
         value: Value,
     },
 }
 
-impl<P> From<P> for QueryComponent
+impl<P> From<P> for QueryPart
 where
     P: Into<Primitive>,
 {
     fn from(primitive: P) -> Self {
-        QueryComponent::Primitive(primitive.into())
+        QueryPart::Primitive(primitive.into())
     }
 }
 
-impl From<Logic> for QueryComponent {
+impl From<Logic> for QueryPart {
     fn from(logic: Logic) -> Self {
-        QueryComponent::Logical(logic)
+        QueryPart::Logical(logic)
     }
 }
 
 #[derive(Debug, PartialEq)]
 pub struct Query {
-    pub components: Vec<QueryComponent>,
+    pub parts: Vec<QueryPart>,
 }
 
-impl From<Vec<QueryComponent>> for Query {
-    fn from(components: Vec<QueryComponent>) -> Self {
-        Query { components }
+impl From<Vec<QueryPart>> for Query {
+    fn from(parts: Vec<QueryPart>) -> Self {
+        Query { parts }
     }
 }
 
 macro_rules! query {
     ($($x:expr),* $(,)?) => {
-        $crate::query::Query { components: vec![$($x.into(),)*] }
+        $crate::query::Query { parts: vec![$($x.into(),)*] }
     };
 }
 
 macro_rules! and {
     ($($x:expr),* $(,)?) => {
-        $crate::query::QueryComponent::Logical(
+        $crate::query::QueryPart::Logical(
             $crate::query::Logic::And(vec![$($x.into(),)*]))
     };
 }
 
 macro_rules! or {
     ($($x:expr),* $(,)?) => {
-        $crate::query::QueryComponent::Logical(
+        $crate::query::QueryPart::Logical(
             $crate::query::Logic::Or(vec![$($x.into(),)*]))
     };
 }
 
 macro_rules! not {
     ($($x:expr),* $(,)?) => {
-        $crate::query::QueryComponent::Logical(
+        $crate::query::QueryPart::Logical(
             $crate::query::Logic::Not(vec![$($x.into(),)*]))
     };
 }
@@ -139,8 +139,8 @@ macro_rules! eq {
     ($key:expr, $value:expr) => {{
         let key = $key.into();
         let value = $value.into();
-        $crate::query::QueryComponent::Comparison {
-            operator: $crate::query::Comparison::Eq,
+        $crate::query::QueryPart::Comparison {
+            operator: $crate::query::Operator::Eq,
             key,
             value,
         }
@@ -151,8 +151,8 @@ macro_rules! gt {
     ($key:expr, $value:expr) => {{
         let key = $key.into();
         let value = $value.into();
-        $crate::query::QueryComponent::Comparison {
-            operator: $crate::query::Comparison::Gt,
+        $crate::query::QueryPart::Comparison {
+            operator: $crate::query::Operator::Gt,
             key,
             value,
         }
@@ -163,8 +163,8 @@ macro_rules! gte {
     ($key:expr, $value:expr) => {{
         let key = $key.into();
         let value = $value.into();
-        $crate::query::QueryComponent::Comparison {
-            operator: $crate::query::Comparison::Gte,
+        $crate::query::QueryPart::Comparison {
+            operator: $crate::query::Operator::Gte,
             key,
             value,
         }
@@ -175,8 +175,8 @@ macro_rules! lt {
     ($key:expr, $value:expr) => {{
         let key = $key.into();
         let value = $value.into();
-        $crate::query::QueryComponent::Comparison {
-            operator: $crate::query::Comparison::Lt,
+        $crate::query::QueryPart::Comparison {
+            operator: $crate::query::Operator::Lt,
             key,
             value,
         }
@@ -187,8 +187,8 @@ macro_rules! lte {
     ($key:expr, $value:expr) => {{
         let key = $key.into();
         let value = $value.into();
-        $crate::query::QueryComponent::Comparison {
-            operator: $crate::query::Comparison::Lte,
+        $crate::query::QueryPart::Comparison {
+            operator: $crate::query::Operator::Lte,
             key,
             value,
         }
