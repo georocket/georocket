@@ -15,7 +15,7 @@ pub struct SearchArgs {
 }
 
 /// Run the `search` command
-pub async fn run_search(args: SearchArgs) -> Result<()> {
+pub fn run_search(args: SearchArgs) -> Result<()> {
     // initialize store
     let store = RocksDBStore::new("store")?;
 
@@ -25,14 +25,13 @@ pub async fn run_search(args: SearchArgs) -> Result<()> {
     let compiler_result = compile_query(&args.query);
     match compiler_result {
         Ok(query) => {
-            let ids = index.search(query).await?;
+            let ids = index.search(query)?;
 
             // TODO remove this
             println!("Found {} chunks", ids.len());
             for id in ids {
                 let chunk = store
-                    .get(id)
-                    .await?
+                    .get(id)?
                     .with_context(|| format!("Unable to find chunk with ID `{id}'"))?;
 
                 // TODO implement merger

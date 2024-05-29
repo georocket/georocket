@@ -9,11 +9,11 @@ pub trait Store {
     /// Add a chunk with given ID to the store. Depending on the actual
     /// implementation, this operation might be asynchronous. Call [`commit`]
     /// to wait for all operations to finish.
-    async fn add(&mut self, id: Ulid, chunk: Vec<u8>) -> Result<()>;
+    fn add(&mut self, id: Ulid, chunk: Vec<u8>) -> Result<()>;
 
     /// Call this method after adding one or more chunks via [`add`]
-    async fn commit(&mut self) -> Result<()>;
+    fn commit(&mut self) -> Result<()>;
 
     /// Retrieve a chunk by ID from the store
-    async fn get(&self, id: Ulid) -> Result<Option<Vec<u8>>>;
+    fn get(&self, id: Ulid) -> Result<Option<Vec<u8>>>;
 }

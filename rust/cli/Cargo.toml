@@ -9,4 +9,3 @@ anyhow.workspace = true
 clap.workspace = true
 core.workspace = true
 mime_guess.workspace = true
-tokio.workspace = true

@@ -31,11 +31,11 @@ pub trait Indexer<E> {
 /// used to perform queries.
 pub trait Index {
     /// Add the results of indexing a chunk with the given `id` to the index
-    async fn add(&self, id: Ulid, indexer_result: Vec<IndexedValue>) -> Result<()>;
+    fn add(&self, id: Ulid, indexer_result: Vec<IndexedValue>) -> Result<()>;
 
     /// Persists changes
-    async fn commit(&mut self) -> Result<()>;
+    fn commit(&mut self) -> Result<()>;
 
     /// Queries the index and returns a list of chunk IDs matching the query
-    async fn search(&self, query: Query) -> Result<Vec<Ulid>>;
+    fn search(&self, query: Query) -> Result<Vec<Ulid>>;
 }

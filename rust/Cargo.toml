@@ -13,11 +13,9 @@ clap = { version = "4.5", features = ["derive"] }
 cli = { path = "cli" }
 core = { path = "core" }
 mime_guess = "2.0.4"
-pin-project = "1.1.5"
-quick-xml = { version = "0.31.0", features = ["async-tokio"] }
+quick-xml = "0.31.0"
 rocksdb = { version = "0.22.0", default-features = false, features = ["lz4"] }
 # tantivy = "0.22.0"
 tantivy = { git = "https://github.com/quickwit-oss/tantivy.git", rev = "b806122c817f19598c85369fe5c6e6788f81139d" }
 tempdir = "0.3.7"
-tokio = { version = "1.36", features = ["full"] }
 ulid = "1.1.2"

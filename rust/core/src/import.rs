@@ -1,12 +1,13 @@
-use anyhow::Result;
+use std::{fs::File, io::BufReader, sync::mpsc, thread::spawn};
+
+use anyhow::{bail, Ok, Result};
 use quick_xml::{events::Event, Reader};
-use tokio::{fs::File, io::BufReader};
 use ulid::Ulid;
 
 use crate::{
     index::{
         gml::generic_attribute_indexer::GenericAttributeIndexer, tantivy::TantivyIndex, Index,
-        Indexer,
+        IndexedValue, Indexer,
     },
     input::{xml::FirstLevelSplitter, Splitter},
     storage::{rocksdb::RocksDBStore, Store},
@@ -14,19 +15,38 @@ use crate::{
 };
 
 /// Import an XML file
-pub async fn import_xml(path: String) -> Result<()> {
+pub fn import_xml(path: String) -> Result<()> {
     // initialize store
     let mut store = RocksDBStore::new("store")?;
 
     // initialize index
     let mut index = TantivyIndex::new("index")?;
 
+    // run separate thread for store
+    let (store_send, store_recv) = mpsc::sync_channel::<(Ulid, Vec<u8>)>(16);
+    let store_thread = spawn(move || {
+        for (id, chunk) in store_recv {
+            store.add(id, chunk)?;
+        }
+        store.commit()?;
+        Ok(())
+    });
+
+    // run separate thread for index
+    let (index_send, index_recv) = mpsc::sync_channel::<(Ulid, Vec<IndexedValue>)>(16);
+    let index_thread = spawn(move || {
+        for (id, indexer_result) in index_recv {
+            index.add(id, indexer_result)?;
+        }
+        index.commit()?;
+        Ok(())
+    });
+
     // open file to import
-    let file = File::open(path).await?;
+    let file = File::open(path)?;
     let window = WindowRead::new(file);
 
-    // use larger buffer to reduce number of asynchronous I/O calls
-    let bufreader = BufReader::with_capacity(1024 * 128, window);
+    let bufreader = BufReader::new(window);
     let mut reader = Reader::from_reader(bufreader);
 
     let mut generic_attribute_indexer = GenericAttributeIndexer::default();
@@ -35,7 +55,7 @@ pub async fn import_xml(path: String) -> Result<()> {
     let mut splitter = FirstLevelSplitter::default();
     loop {
         let start_pos = reader.buffer_position();
-        let e = reader.read_event_into_async(&mut buf).await?;
+        let e = reader.read_event_into(&mut buf)?;
         let end_pos = reader.buffer_position();
         let window = reader.get_mut().get_mut().window_mut();
 
@@ -43,10 +63,10 @@ pub async fn import_xml(path: String) -> Result<()> {
 
         if let Some(r) = splitter.on_event(&e, start_pos..end_pos, window)? {
             let id = Ulid::new();
-            store.add(id, r.chunk).await?;
+            store_send.send((id, r.chunk))?;
 
             let indexer_result = generic_attribute_indexer.make_result();
-            index.add(id, indexer_result).await?;
+            index_send.send((id, indexer_result))?;
         }
 
         if e == Event::Eof {
@@ -56,8 +76,15 @@ pub async fn import_xml(path: String) -> Result<()> {
         buf.clear();
     }
 
-    store.commit().await?;
-    index.commit().await?;
+    drop(store_send);
+    if let Err(err) = store_thread.join() {
+        bail!("Store thread threw an error: {err:?}");
+    }
+
+    drop(index_send);
+    if let Err(err) = index_thread.join() {
+        bail!("Index thread threw an error: {err:?}");
+    }
 
     Ok(())
 }

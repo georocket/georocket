@@ -18,7 +18,7 @@ enum FileType {
 }
 
 /// Run the `import` command
-pub async fn run_import(args: ImportArgs) -> Result<()> {
+pub fn run_import(args: ImportArgs) -> Result<()> {
     let mut files_with_types = Vec::new();
 
     // detect file types
@@ -40,7 +40,7 @@ pub async fn run_import(args: ImportArgs) -> Result<()> {
     // import all files
     for (path, file_type) in files_with_types {
         match file_type {
-            FileType::Xml => import_xml(path).await?,
+            FileType::Xml => import_xml(path)?,
             FileType::Json => todo!("Importing JSON files is not supported yet"),
         }
     }

@@ -65,13 +65,16 @@ impl<'a> Splitter<Event<'a>> for FirstLevelSplitter {
 
 #[cfg(test)]
 mod tests {
-    use std::{io::Cursor, rc::Rc, str::from_utf8};
+    use std::{
+        io::{BufReader, Cursor},
+        rc::Rc,
+        str::from_utf8,
+    };
 
     use quick_xml::{
         events::{BytesStart, Event},
         Reader,
     };
-    use tokio::io::BufReader;
 
     use crate::{
         input::{Splitter, SplitterResult},
@@ -87,7 +90,7 @@ mod tests {
 
     /// Uses a [`FirstLevelSplitter`] to split an XML string. Returns the
     /// generated result objects.
-    async fn split(xml: String) -> Vec<SplitterResult> {
+    fn split(xml: String) -> Vec<SplitterResult> {
         let cursor = Cursor::new(xml);
         let window = WindowRead::new(cursor);
         let bufreader = BufReader::new(window);
@@ -98,7 +101,7 @@ mod tests {
         let mut result = Vec::new();
         loop {
             let start_pos = reader.buffer_position();
-            let e = reader.read_event_into_async(&mut buf).await.unwrap();
+            let e = reader.read_event_into(&mut buf).unwrap();
             let end_pos = reader.buffer_position();
             let window = reader.get_mut().get_mut().window_mut();
             if let Some(r) = splitter.on_event(&e, start_pos..end_pos, window).unwrap() {
@@ -114,12 +117,12 @@ mod tests {
     }
 
     /// Test if an XML string with one chunk can be split
-    #[tokio::test]
-    async fn one_chunk() {
+    #[test]
+    fn one_chunk() {
         let contents = "<object><child></child></object>";
         let xml = format!("{XMLHEADER}{PREFIX}{contents}{SUFFIX}");
 
-        let chunks = split(xml).await;
+        let chunks = split(xml);
         assert_eq!(chunks.len(), 1);
 
         let root = Rc::new(BytesStart::new("root"));
@@ -130,13 +133,13 @@ mod tests {
     }
 
     /// Test if an XML string with tow chunks can be split
-    #[tokio::test]
-    async fn two_chunks() {
+    #[test]
+    fn two_chunks() {
         let contents1 = "<object><child></child></object>";
         let contents2 = "<object><child2></child2></object>";
         let xml = format!("{XMLHEADER}{PREFIX}{contents1}{contents2}{SUFFIX}");
 
-        let chunks = split(xml).await;
+        let chunks = split(xml);
         assert_eq!(chunks.len(), 2);
 
         let root = Rc::new(BytesStart::new("root"));
@@ -150,14 +153,14 @@ mod tests {
     }
 
     /// Test if an XML string with two chunks and a namespace can be split
-    #[tokio::test]
-    async fn namespace() {
+    #[test]
+    fn namespace() {
         let contents1 = "<object><child></child></object>";
         let contents2 = "<object><child2></child2></object>";
         let root = r#"root xmlns="http://example.com" xmlns:p="http://example.com""#;
         let xml = format!("{XMLHEADER}<{root}>{contents1}{contents2}</root>");
 
-        let chunks = split(xml).await;
+        let chunks = split(xml);
         assert_eq!(chunks.len(), 2);
 
         let root = Rc::new(BytesStart::from_content(root, 4));
@@ -171,14 +174,14 @@ mod tests {
     }
 
     /// Test if an XML string with two chunks and attributes can be split
-    #[tokio::test]
-    async fn attributes() {
+    #[test]
+    fn attributes() {
         let contents1 = "<object><child></child></object>";
         let contents2 = "<object><child2></child2></object>";
         let root = r#"root key="value" key2="value2""#;
         let xml = format!("{XMLHEADER}<{root}>{contents1}{contents2}</root>");
 
-        let chunks = split(xml).await;
+        let chunks = split(xml);
         assert_eq!(chunks.len(), 2);
 
         let root = Rc::new(BytesStart::from_content(root, 4));
@@ -192,15 +195,15 @@ mod tests {
     }
 
     /// Test if an XML string with two chunks, a namespace, and attributes can be split
-    #[tokio::test]
-    async fn full() {
+    #[test]
+    fn full() {
         let contents1 = "<object><child></child></object>";
         let contents2 = "<object><child2></child2></object>";
         let root = r#"root xmlns="http://example.com" xmlns:p="http://example.com" 
             key="value" key2="value2""#;
         let xml = format!("{XMLHEADER}<{root}>{contents1}{contents2}</root>");
 
-        let chunks = split(xml).await;
+        let chunks = split(xml);
         assert_eq!(chunks.len(), 2);
 
         let root = Rc::new(BytesStart::from_content(root, 4));
@@ -214,12 +217,12 @@ mod tests {
     }
 
     /// Test if an XML string with an UTF8 character can be split
-    #[tokio::test]
-    async fn utf8() {
+    #[test]
+    fn utf8() {
         let contents = "<object><child name=\"≈\"></child></object>";
         let xml = format!("{XMLHEADER}{PREFIX}{contents}{SUFFIX}");
 
-        let chunks = split(xml).await;
+        let chunks = split(xml);
         assert_eq!(chunks.len(), 1);
 
         let root = Rc::new(BytesStart::new("root"));

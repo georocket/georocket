@@ -7,11 +7,9 @@ publish = false
 [dependencies]
 anyhow.workspace = true
 chumsky.workspace = true
-pin-project.workspace = true
 quick-xml.workspace = true
 rocksdb.workspace = true
 tantivy.workspace = true
-tokio.workspace = true
 ulid.workspace = true
 
 [dev-dependencies]

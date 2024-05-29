@@ -1,34 +1,21 @@
-use std::{
-    pin::Pin,
-    task::{Context, Poll},
-};
-
-use pin_project::pin_project;
-use tokio::io::{AsyncRead, ReadBuf};
+use std::io::Read;
 
 use super::window::Window;
 
 /// Wrapper around an `AsyncRead` object. Buffers all bytes read in an internal
 /// buffer enabling the extraction of relevant bytes
-#[pin_project]
 pub struct WindowRead<R> {
-    #[pin]
     inner: R,
     window: Window,
 }
 
-impl<R: AsyncRead> AsyncRead for WindowRead<R> {
-    fn poll_read(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &mut ReadBuf<'_>,
-    ) -> Poll<std::io::Result<()>> {
-        let this = self.project();
-        let old_length = buf.filled().len();
-        let result = this.inner.poll_read(cx, buf);
-        let new_length = buf.filled().len();
-        this.window.extend(&buf.filled()[old_length..new_length]);
-        result
+impl<R: Read> Read for WindowRead<R> {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        let r = self.inner.read(buf);
+        if let Ok(len) = r {
+            self.window.extend(&buf[0..len]);
+        }
+        r
     }
 }
 
@@ -52,12 +39,11 @@ impl<R> WindowRead<R> {
 #[cfg(test)]
 mod tests {
     use super::WindowRead;
-    use std::io::Cursor;
-    use tokio::io::AsyncReadExt;
+    use std::io::{Cursor, Read};
 
     /// Read from a cursor and compare the full contents of the window
-    #[tokio::test]
-    async fn full() {
+    #[test]
+    fn full() {
         // wrap WindowRead around a Cursor
         let data = "Hello world!".to_string();
         let cursor = Cursor::new(data);
@@ -65,7 +51,7 @@ mod tests {
 
         // read the full contents from the cursor
         let mut buf = Vec::new();
-        wr.read_to_end(&mut buf).await.unwrap();
+        wr.read_to_end(&mut buf).unwrap();
 
         // compare contents
         let window_buf = wr.window_mut().get_bytes(0..buf.len()).unwrap();
@@ -73,8 +59,8 @@ mod tests {
     }
 
     /// Compare a range of bytes
-    #[tokio::test]
-    async fn range() {
+    #[test]
+    fn range() {
         // wrap WindowRead around a Cursor
         let data = "Hello world!".to_string();
         let cursor = Cursor::new(data);
@@ -82,7 +68,7 @@ mod tests {
 
         // Read the full contents from the cursor. This will also fill the window.
         let mut buf = Vec::new();
-        wr.read_to_end(&mut buf).await.unwrap();
+        wr.read_to_end(&mut buf).unwrap();
 
         // Advance the window to the absolute position 6. This will remove the
         // first 6 bytes from the window.

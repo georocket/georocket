@@ -3,7 +3,6 @@ use std::{collections::BTreeMap, fs};
 use tantivy::{
     collector::DocSetCollector,
     directory::MmapDirectory,
-    query::QueryParser,
     schema::{OwnedValue, Schema, STORED, TEXT},
     IndexBuilder, IndexReader, IndexWriter, TantivyDocument,
 };
@@ -64,7 +63,7 @@ impl TantivyIndex {
 }
 
 impl Index for TantivyIndex {
-    async fn add(&self, id: Ulid, indexer_result: Vec<IndexedValue>) -> anyhow::Result<()> {
+    fn add(&self, id: Ulid, indexer_result: Vec<IndexedValue>) -> anyhow::Result<()> {
         let mut doc = TantivyDocument::new();
         doc.add_bytes(self.fields.id_field, &id.0.to_be_bytes());
 
@@ -95,13 +94,13 @@ impl Index for TantivyIndex {
         Ok(())
     }
 
-    async fn commit(&mut self) -> Result<()> {
+    fn commit(&mut self) -> Result<()> {
         self.writer.commit()?;
         self.reader.reload()?;
         Ok(())
     }
 
-    async fn search(&self, query: Query) -> Result<Vec<Ulid>> {
+    fn search(&self, query: Query) -> Result<Vec<Ulid>> {
         let searcher = self.reader.searcher();
 
         // TODO lowercase values (apply tokenizer?)
@@ -143,8 +142,8 @@ mod tests {
 
     use super::TantivyIndex;
 
-    #[tokio::test]
-    async fn add_and_get() {
+    #[test]
+    fn add_and_get() {
         let dir = TempDir::new("georocket_tantivy").unwrap();
 
         let mut index = TantivyIndex::new(dir.path().to_str().unwrap()).unwrap();
@@ -155,10 +154,10 @@ mod tests {
             [("name".to_string(), Value::String("Elvis".to_string()))].into(),
         )];
 
-        index.add(id, indexer_result).await.unwrap();
-        index.commit().await.unwrap();
+        index.add(id, indexer_result).unwrap();
+        index.commit().unwrap();
 
-        let retrieved_ids = index.search(query![]).await.unwrap();
+        let retrieved_ids = index.search(query![]).unwrap();
 
         assert_eq!(vec![id], retrieved_ids);
     }

@@ -19,11 +19,10 @@ enum Commands {
     Search(SearchArgs),
 }
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
+fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     match cli.command {
-        Commands::Import(args) => run_import(args).await,
-        Commands::Search(args) => run_search(args).await,
+        Commands::Import(args) => run_import(args),
+        Commands::Search(args) => run_search(args),
     }
 }
