@@ -5,6 +5,7 @@ use core::{
 };
 
 use anyhow::{Context, Result};
+use ariadne::{Color, Label, Report, ReportKind, Source};
 use clap::Args;
 
 /// Search the GeoRocket data store
@@ -38,9 +39,19 @@ pub fn run_search(args: SearchArgs) -> Result<()> {
                 println!("{}", std::str::from_utf8(&chunk).unwrap());
             }
         }
-        Err(err) => {
-            eprintln!("{err:?}");
-            todo!();
+        Err(errs) => {
+            for err in errs {
+                Report::build(ReportKind::Error, "query", err.span().start)
+                    .with_message(err.to_string())
+                    .with_label(
+                        Label::new(("query", err.span().into_range()))
+                            .with_message(err.reason().to_string())
+                            .with_color(Color::Red),
+                    )
+                    .finish()
+                    .eprint(("query", Source::from(&args.query)))
+                    .unwrap();
+            }
         }
     }
 
