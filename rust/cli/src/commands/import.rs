@@ -8,11 +8,7 @@ use clap::Args;
 pub struct ImportArgs {
     /// One or more files to import
     #[arg(name = "FILE")]
-    pub(super) files: Vec<String>,
-
-    /// The path or URI of the store to import into
-    #[arg(long, short)]
-    pub(super) destination: Option<String>,
+    pub files: Vec<String>,
 }
 
 /// The type of a file to import

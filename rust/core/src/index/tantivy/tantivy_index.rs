@@ -3,21 +3,22 @@ use std::{collections::BTreeMap, fs};
 use tantivy::{
     collector::DocSetCollector,
     directory::MmapDirectory,
-    query::AllQuery,
-    schema::{Field, OwnedValue, Schema, Value, STORED, TEXT},
+    query::QueryParser,
+    schema::{OwnedValue, Schema, STORED, TEXT},
     IndexBuilder, IndexReader, IndexWriter, TantivyDocument,
 };
 use ulid::Ulid;
 
-use crate::query::Query;
+use crate::{
+    index::{Index, IndexedValue},
+    query::Query,
+};
 
-use super::{Index, IndexedValue};
+use super::{translate_query::translate_query, Fields};
 
 /// An implementation of the [`Index`] trait backed by Tantivy
 pub struct TantivyIndex {
-    id_field: Field,
-    gen_attrs_field: Field,
-
+    fields: Fields,
     reader: IndexReader,
     writer: IndexWriter,
 }
@@ -49,9 +50,13 @@ impl TantivyIndex {
             .try_into()?;
         let writer = index.writer(1024 * 1024 * 20)?;
 
-        Ok(TantivyIndex {
+        let fields = Fields {
             id_field,
             gen_attrs_field,
+        };
+
+        Ok(TantivyIndex {
+            fields,
             reader,
             writer,
         })
@@ -61,7 +66,7 @@ impl TantivyIndex {
 impl Index for TantivyIndex {
     async fn add(&self, id: Ulid, indexer_result: Vec<IndexedValue>) -> anyhow::Result<()> {
         let mut doc = TantivyDocument::new();
-        doc.add_bytes(self.id_field, id.0.to_be_bytes());
+        doc.add_bytes(self.fields.id_field, &id.0.to_be_bytes());
 
         let mut gen_attrs = BTreeMap::new();
         for r in indexer_result {
@@ -83,7 +88,7 @@ impl Index for TantivyIndex {
                 }
             }
         }
-        doc.add_object(self.gen_attrs_field, gen_attrs);
+        doc.add_object(self.fields.gen_attrs_field, gen_attrs);
 
         self.writer.add_document(doc)?;
 
@@ -99,11 +104,9 @@ impl Index for TantivyIndex {
     async fn search(&self, query: Query) -> Result<Vec<Ulid>> {
         let searcher = self.reader.searcher();
 
-        let tantivy_query = if query.components.is_empty() {
-            AllQuery
-        } else {
-            todo!()
-        };
+        // TODO lowercase values (apply tokenizer?)
+        let tantivy_query = translate_query(query, &self.fields);
+
         let doc_addresses = searcher.search(&tantivy_query, &DocSetCollector)?;
 
         // fetch matching documents and collect IDs
@@ -112,7 +115,7 @@ impl Index for TantivyIndex {
             let doc: TantivyDocument = searcher.doc(doc_address)?;
 
             let doc_id = doc
-                .get_first(self.id_field)
+                .get_first(self.fields.id_field)
                 .context("Unable to retrieve ID field from document")?;
             let doc_id_bytes = doc_id
                 .as_bytes()
