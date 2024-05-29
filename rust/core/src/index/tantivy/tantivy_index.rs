@@ -41,7 +41,6 @@ impl TantivyIndex {
             .schema(schema)
             .open_or_create(index_dir)?;
 
-        // TODO having both reader and writer might not be necessary in all cases
         let reader = index
             .reader_builder()
             // we reload the reader manually in commit()
