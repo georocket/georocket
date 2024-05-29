@@ -108,12 +108,14 @@ impl From<Vec<QueryPart>> for Query {
     }
 }
 
+#[cfg(test)]
 macro_rules! query {
     ($($x:expr),* $(,)?) => {
         $crate::query::Query { parts: vec![$($x.into(),)*] }
     };
 }
 
+#[cfg(test)]
 macro_rules! and {
     ($($x:expr),* $(,)?) => {
         $crate::query::QueryPart::Logical(
@@ -121,6 +123,7 @@ macro_rules! and {
     };
 }
 
+#[cfg(test)]
 macro_rules! or {
     ($($x:expr),* $(,)?) => {
         $crate::query::QueryPart::Logical(
@@ -128,6 +131,7 @@ macro_rules! or {
     };
 }
 
+#[cfg(test)]
 macro_rules! not {
     ($($x:expr),* $(,)?) => {
         $crate::query::QueryPart::Logical(
@@ -135,6 +139,7 @@ macro_rules! not {
     };
 }
 
+#[cfg(test)]
 macro_rules! eq {
     ($key:expr, $value:expr) => {{
         let key = $key.into();
@@ -147,6 +152,7 @@ macro_rules! eq {
     }};
 }
 
+#[cfg(test)]
 macro_rules! gt {
     ($key:expr, $value:expr) => {{
         let key = $key.into();
@@ -159,6 +165,7 @@ macro_rules! gt {
     }};
 }
 
+#[cfg(test)]
 macro_rules! gte {
     ($key:expr, $value:expr) => {{
         let key = $key.into();
@@ -171,6 +178,7 @@ macro_rules! gte {
     }};
 }
 
+#[cfg(test)]
 macro_rules! lt {
     ($key:expr, $value:expr) => {{
         let key = $key.into();
@@ -183,6 +191,7 @@ macro_rules! lt {
     }};
 }
 
+#[cfg(test)]
 macro_rules! lte {
     ($key:expr, $value:expr) => {{
         let key = $key.into();
@@ -195,12 +204,21 @@ macro_rules! lte {
     }};
 }
 
+#[cfg(test)]
 pub(crate) use and;
+#[cfg(test)]
 pub(crate) use eq;
+#[cfg(test)]
 pub(crate) use gt;
+#[cfg(test)]
 pub(crate) use gte;
+#[cfg(test)]
 pub(crate) use lt;
+#[cfg(test)]
 pub(crate) use lte;
+#[cfg(test)]
 pub(crate) use not;
+#[cfg(test)]
 pub(crate) use or;
+#[cfg(test)]
 pub(crate) use query;

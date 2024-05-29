@@ -27,6 +27,7 @@ impl<R> WindowRead<R> {
         }
     }
 
+    #[cfg(test)]
     pub fn window(&self) -> &Window {
         &self.window
     }
