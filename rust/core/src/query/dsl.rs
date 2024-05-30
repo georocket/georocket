@@ -2,7 +2,7 @@ use chumsky::{prelude::*, text::whitespace};
 
 use crate::index::Value;
 
-use super::{Logic, Operator, Query, QueryPart};
+use super::{Logical, Operator, Query, QueryPart};
 
 pub fn compile_query(query: &str) -> Result<Query, Vec<Rich<'_, char>>> {
     let p = parser();
@@ -56,21 +56,21 @@ fn parser<'a>() -> impl Parser<'a, &'a str, Query, extra::Err<Rich<'a, char>>> {
             query_parts
                 .clone()
                 .delimited_by(just('('), just(')'))
-                .map(|a| QueryPart::Logical(Logic::And(a))),
+                .map(|a| QueryPart::Logical(Logical::And(a))),
         );
 
         let or = just("OR").ignore_then(whitespace()).ignore_then(
             query_parts
                 .clone()
                 .delimited_by(just('('), just(')'))
-                .map(|a| QueryPart::Logical(Logic::Or(a))),
+                .map(|a| QueryPart::Logical(Logical::Or(a))),
         );
 
         let not = just("NOT").ignore_then(whitespace()).ignore_then(
             query_parts
                 .clone()
                 .delimited_by(just('('), just(')'))
-                .map(|a| QueryPart::Logical(Logic::Not(a))),
+                .map(|a| QueryPart::Logical(Logical::Not(a))),
         );
 
         let key_value = choice((double_quoted_string, single_quoted_string, string))
@@ -148,7 +148,11 @@ fn parser<'a>() -> impl Parser<'a, &'a str, Query, extra::Err<Rich<'a, char>>> {
             lte,
             double_quoted_string.map(Into::into),
             single_quoted_string.map(Into::into),
-            number_value.map(|n: &str| n.parse::<f64>().unwrap().into()),
+            number_value.map(|n: &str| {
+                n.parse::<i64>()
+                    .map(|i| i.into())
+                    .unwrap_or_else(|_| n.parse::<f64>().unwrap().into())
+            }),
             string.map(Into::into),
         ))
         .separated_by(whitespace().at_least(1))
@@ -267,7 +271,7 @@ mod tests {
 
     #[test]
     fn number() {
-        assert_eq!(compile_query("13").unwrap(), query![13.]);
+        assert_eq!(compile_query("13").unwrap(), query![13]);
     }
 
     #[test]
@@ -276,7 +280,7 @@ mod tests {
             compile_query("13 1. -1 +20 1.5 -2.43 .05 1e5 2e-2 10.4e10 -10.3E-5 .4e4 .4E-4 2.E-5")
                 .unwrap(),
             query![
-                13., 1., -1., 20., 1.5, -2.43, 0.05, 1e5, 2e-2, 10.4e10, -10.3E-5, 0.4e4, 0.4E-4,
+                13, 1., -1, 20, 1.5, -2.43, 0.05, 1e5, 2e-2, 10.4e10, -10.3E-5, 0.4e4, 0.4E-4,
                 2.0E-5,
             ]
         );
@@ -300,10 +304,7 @@ mod tests {
 
     #[test]
     fn and_string_number() {
-        assert_eq!(
-            compile_query("AND(foo 5)").unwrap(),
-            query![and!["foo", 5.0]]
-        );
+        assert_eq!(compile_query("AND(foo 5)").unwrap(), query![and!["foo", 5]]);
     }
 
     #[test]

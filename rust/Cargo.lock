@@ -101,6 +101,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "assertor"
+version = "0.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "71da9fbad72fe17f4904c6dfe0cc9988cec215ed69d30ff278b1a475e868763d"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
 name = "async-trait"
 version = "0.1.80"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -288,6 +297,7 @@ name = "core"
 version = "0.2.0"
 dependencies = [
  "anyhow",
+ "assertor",
  "chumsky",
  "quick-xml",
  "rocksdb",

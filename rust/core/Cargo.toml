@@ -6,6 +6,7 @@ publish = false
 
 [dependencies]
 anyhow.workspace = true
+assertor.workspace = true
 chumsky.workspace = true
 quick-xml.workspace = true
 rocksdb.workspace = true

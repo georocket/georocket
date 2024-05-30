@@ -4,34 +4,9 @@ use crate::index::Value;
 
 pub mod dsl;
 
-/// Specifies primitive which may be queried for directly.
-#[derive(Debug, PartialEq)]
-pub enum Primitive {
-    String(String),
-    Number(f64),
-}
-
-impl From<String> for Primitive {
-    fn from(value: String) -> Self {
-        Primitive::String(value)
-    }
-}
-
-impl From<&str> for Primitive {
-    fn from(value: &str) -> Self {
-        Primitive::String(value.into())
-    }
-}
-
-impl From<f64> for Primitive {
-    fn from(value: f64) -> Self {
-        Primitive::Number(value)
-    }
-}
-
 /// Specifies the logical combinator to be to combine the list of `QueryPart`s.
 #[derive(Debug, PartialEq)]
-pub enum Logic {
+pub enum Logical {
     Or(Vec<QueryPart>),
     And(Vec<QueryPart>),
     Not(Vec<QueryPart>),
@@ -73,8 +48,8 @@ impl Display for Operator {
 /// The top level parts of a `Query`
 #[derive(Debug, PartialEq)]
 pub enum QueryPart {
-    Primitive(Primitive),
-    Logical(Logic),
+    Value(Value),
+    Logical(Logical),
     Comparison {
         operator: Operator,
         key: String,
@@ -82,17 +57,17 @@ pub enum QueryPart {
     },
 }
 
-impl<P> From<P> for QueryPart
+impl<V> From<V> for QueryPart
 where
-    P: Into<Primitive>,
+    V: Into<Value>,
 {
-    fn from(primitive: P) -> Self {
-        QueryPart::Primitive(primitive.into())
+    fn from(value: V) -> Self {
+        QueryPart::Value(value.into())
     }
 }
 
-impl From<Logic> for QueryPart {
-    fn from(logic: Logic) -> Self {
+impl From<Logical> for QueryPart {
+    fn from(logic: Logical) -> Self {
         QueryPart::Logical(logic)
     }
 }
@@ -119,7 +94,7 @@ macro_rules! query {
 macro_rules! and {
     ($($x:expr),* $(,)?) => {
         $crate::query::QueryPart::Logical(
-            $crate::query::Logic::And(vec![$($x.into(),)*]))
+            $crate::query::Logical::And(vec![$($x.into(),)*]))
     };
 }
 
@@ -127,7 +102,7 @@ macro_rules! and {
 macro_rules! or {
     ($($x:expr),* $(,)?) => {
         $crate::query::QueryPart::Logical(
-            $crate::query::Logic::Or(vec![$($x.into(),)*]))
+            $crate::query::Logical::Or(vec![$($x.into(),)*]))
     };
 }
 
@@ -135,7 +110,7 @@ macro_rules! or {
 macro_rules! not {
     ($($x:expr),* $(,)?) => {
         $crate::query::QueryPart::Logical(
-            $crate::query::Logic::Not(vec![$($x.into(),)*]))
+            $crate::query::Logical::Not(vec![$($x.into(),)*]))
     };
 }
 
