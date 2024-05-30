@@ -3,7 +3,7 @@ use std::{collections::BTreeMap, fs};
 use tantivy::{
     collector::DocSetCollector,
     directory::MmapDirectory,
-    schema::{OwnedValue, Schema, STORED, TEXT},
+    schema::{OwnedValue, Schema, STORED, STRING, TEXT},
     IndexBuilder, IndexReader, IndexWriter, TantivyDocument,
 };
 use ulid::Ulid;
@@ -29,11 +29,9 @@ impl TantivyIndex {
         fs::create_dir_all(path)?;
 
         let mut schema_builder = Schema::builder();
+
         let id_field = schema_builder.add_bytes_field("_id", STORED);
-
-        // TODO do we really want to use the TEXT tokenizer?
-        let gen_attrs_field = schema_builder.add_json_field("gen_attrs", TEXT);
-
+        let gen_attrs_field = schema_builder.add_json_field("gen_attrs", STRING);
         let all_values_field = schema_builder.add_text_field("all_values", TEXT);
 
         let schema = schema_builder.build();
@@ -156,7 +154,7 @@ mod tests {
 
     use crate::{
         index::{Index, IndexedValue, Value},
-        query::query,
+        query::{eq, query},
     };
 
     use super::TantivyIndex;
@@ -178,10 +176,14 @@ mod tests {
         )];
         let id2 = Ulid::new();
         let indexer_result2 = vec![IndexedValue::GenericAttributes(
-            [(
-                "name".to_string(),
-                Value::String("Empire State Building".to_string()),
-            )]
+            [
+                (
+                    "name".to_string(),
+                    Value::String("Empire State Building".to_string()),
+                ),
+                ("year".to_string(), Value::Integer(1931)),
+                ("height".to_string(), Value::Float(443.2)),
+            ]
             .into(),
         )];
         let id3 = Ulid::new();
@@ -241,6 +243,58 @@ mod tests {
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
 
         let retrieved_ids = mi.index.search(query!["empire state build"]).unwrap();
+        assert_that!(retrieved_ids).is_empty();
+    }
+
+    #[test]
+    fn eq_string() {
+        let mi = make_mini_index();
+
+        let retrieved_ids = mi
+            .index
+            .search(query![eq!["name", "Empire State Building"]])
+            .unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
+
+        let retrieved_ids = mi
+            .index
+            .search(query![eq!["name", "Empire State"]])
+            .unwrap();
+        assert_that!(retrieved_ids).is_empty();
+
+        let retrieved_ids = mi
+            .index
+            .search(query![eq!["name", "empire state building"]])
+            .unwrap();
+        assert_that!(retrieved_ids).is_empty();
+    }
+
+    #[test]
+    fn eq_integer() {
+        let mi = make_mini_index();
+        let retrieved_ids = mi.index.search(query![eq!["year", 1931]]).unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
+
+        let retrieved_ids = mi.index.search(query![eq!["year", "1931"]]).unwrap();
+        assert_that!(retrieved_ids).is_empty();
+
+        let retrieved_ids = mi.index.search(query![eq!["year", 443]]).unwrap();
+        assert_that!(retrieved_ids).is_empty();
+
+        let retrieved_ids = mi.index.search(query![eq!["year", 1931.0]]).unwrap();
+        assert_that!(retrieved_ids).is_empty();
+    }
+
+    #[test]
+    fn eq_float() {
+        let mi = make_mini_index();
+        let retrieved_ids = mi.index.search(query![eq!["height", 443.2]]).unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
+
+        let retrieved_ids = mi.index.search(query![eq!["height", 443]]).unwrap();
+        assert_that!(retrieved_ids).is_empty();
+
+        let retrieved_ids = mi.index.search(query![eq!["height", "443"]]).unwrap();
         assert_that!(retrieved_ids).is_empty();
     }
 }
