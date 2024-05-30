@@ -13,7 +13,7 @@ use crate::{
     query::Query,
 };
 
-use super::{translate_query::QueryTranslator, Fields};
+use super::{query_translator::QueryTranslator, Fields};
 
 /// An implementation of the [`Index`] trait backed by Tantivy
 pub struct TantivyIndex {

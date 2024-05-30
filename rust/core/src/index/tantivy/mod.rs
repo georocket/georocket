@@ -1,6 +1,6 @@
 pub mod json_range_query;
+mod query_translator;
 pub mod tantivy_index;
-mod translate_query;
 
 use tantivy::schema::Field;
 pub use tantivy_index::TantivyIndex;
