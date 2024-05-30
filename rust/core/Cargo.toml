@@ -11,6 +11,7 @@ chumsky.workspace = true
 quick-xml.workspace = true
 rocksdb.workspace = true
 tantivy.workspace = true
+tantivy-common.workspace = true
 ulid.workspace = true
 
 [dev-dependencies]

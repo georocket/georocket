@@ -302,6 +302,7 @@ dependencies = [
  "quick-xml",
  "rocksdb",
  "tantivy",
+ "tantivy-common",
  "tempdir",
  "ulid",
 ]

@@ -154,7 +154,7 @@ mod tests {
 
     use crate::{
         index::{Index, IndexedValue, Value},
-        query::{eq, query},
+        query::{eq, gt, gte, lt, lte, query},
     };
 
     use super::TantivyIndex;
@@ -164,6 +164,7 @@ mod tests {
         id1: Ulid,
         id2: Ulid,
         id3: Ulid,
+        id4: Ulid,
     }
 
     fn make_mini_index() -> MiniIndex {
@@ -190,10 +191,20 @@ mod tests {
         let indexer_result3 = vec![IndexedValue::GenericAttributes(
             [("name".to_string(), Value::String("Einar".to_string()))].into(),
         )];
+        let id4 = Ulid::new();
+        let indexer_result4 = vec![IndexedValue::GenericAttributes(
+            [
+                ("name".to_string(), Value::String("Main Tower".to_string())),
+                ("year".to_string(), Value::Integer(2000)),
+                ("height".to_string(), Value::Float(240.0)),
+            ]
+            .into(),
+        )];
 
         index.add(id1, indexer_result1).unwrap();
         index.add(id2, indexer_result2).unwrap();
         index.add(id3, indexer_result3).unwrap();
+        index.add(id4, indexer_result4).unwrap();
         index.commit().unwrap();
 
         MiniIndex {
@@ -201,6 +212,7 @@ mod tests {
             id1,
             id2,
             id3,
+            id4,
         }
     }
 
@@ -208,7 +220,7 @@ mod tests {
     fn get_all() {
         let mi = make_mini_index();
         let retrieved_ids = mi.index.search(query![]).unwrap();
-        assert_that!(retrieved_ids).contains_exactly(vec![mi.id1, mi.id2, mi.id3]);
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id1, mi.id2, mi.id3, mi.id4]);
     }
 
     #[test]
@@ -295,6 +307,132 @@ mod tests {
         assert_that!(retrieved_ids).is_empty();
 
         let retrieved_ids = mi.index.search(query![eq!["height", "443"]]).unwrap();
+        assert_that!(retrieved_ids).is_empty();
+    }
+
+    #[test]
+    fn gt() {
+        let mi = make_mini_index();
+        let retrieved_ids = mi.index.search(query![gt!["year", 1900]]).unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id2, mi.id4]);
+
+        let retrieved_ids = mi.index.search(query![gt!["year", 1990]]).unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id4]);
+
+        let retrieved_ids = mi.index.search(query![gt!["year", 1999]]).unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id4]);
+
+        let retrieved_ids = mi.index.search(query![gt!["year", 2000]]).unwrap();
+        assert_that!(retrieved_ids).is_empty();
+
+        let retrieved_ids = mi.index.search(query![gt!["height", 100.0]]).unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id2, mi.id4]);
+
+        let retrieved_ids = mi.index.search(query![gt!["height", 300.0]]).unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
+
+        let retrieved_ids = mi.index.search(query![gt!["height", 443.1999]]).unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
+
+        let retrieved_ids = mi.index.search(query![gt!["height", 443.2]]).unwrap();
+        assert_that!(retrieved_ids).is_empty();
+
+        // TODO we can't compare f64 with i64, which is correct (i.e. type-safe)
+        // but inconvenient for the user
+        let retrieved_ids = mi.index.search(query![gt!["height", 300]]).unwrap();
+        assert_that!(retrieved_ids).is_empty();
+    }
+
+    #[test]
+    fn gte() {
+        let mi = make_mini_index();
+        let retrieved_ids = mi.index.search(query![gte!["year", 1900]]).unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id2, mi.id4]);
+
+        let retrieved_ids = mi.index.search(query![gte!["year", 1990]]).unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id4]);
+
+        let retrieved_ids = mi.index.search(query![gte!["year", 2000]]).unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id4]);
+
+        let retrieved_ids = mi.index.search(query![gte!["year", 2001]]).unwrap();
+        assert_that!(retrieved_ids).is_empty();
+
+        let retrieved_ids = mi.index.search(query![gte!["height", 100.0]]).unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id2, mi.id4]);
+
+        let retrieved_ids = mi.index.search(query![gte!["height", 300.0]]).unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
+
+        let retrieved_ids = mi.index.search(query![gte!["height", 443.2]]).unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
+
+        let retrieved_ids = mi.index.search(query![gte!["height", 443.200001]]).unwrap();
+        assert_that!(retrieved_ids).is_empty();
+
+        let retrieved_ids = mi.index.search(query![gte!["height", 300]]).unwrap();
+        assert_that!(retrieved_ids).is_empty();
+    }
+
+    #[test]
+    fn lt() {
+        let mi = make_mini_index();
+        let retrieved_ids = mi.index.search(query![lt!["year", 2100]]).unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id2, mi.id4]);
+
+        let retrieved_ids = mi.index.search(query![lt!["year", 1990]]).unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
+
+        let retrieved_ids = mi.index.search(query![lt!["year", 1932]]).unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
+
+        let retrieved_ids = mi.index.search(query![lt!["year", 1931]]).unwrap();
+        assert_that!(retrieved_ids).is_empty();
+
+        let retrieved_ids = mi.index.search(query![lt!["height", 1000.0]]).unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id2, mi.id4]);
+
+        let retrieved_ids = mi.index.search(query![lt!["height", 300.0]]).unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id4]);
+
+        let retrieved_ids = mi.index.search(query![lt!["height", 240.001]]).unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id4]);
+
+        let retrieved_ids = mi.index.search(query![lt!["height", 240.0]]).unwrap();
+        assert_that!(retrieved_ids).is_empty();
+
+        let retrieved_ids = mi.index.search(query![lt!["height", 300]]).unwrap();
+        assert_that!(retrieved_ids).is_empty();
+    }
+
+    #[test]
+    fn lte() {
+        let mi = make_mini_index();
+        let retrieved_ids = mi.index.search(query![lte!["year", 2100]]).unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id2, mi.id4]);
+
+        let retrieved_ids = mi.index.search(query![lte!["year", 1990]]).unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
+
+        let retrieved_ids = mi.index.search(query![lte!["year", 1931]]).unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
+
+        let retrieved_ids = mi.index.search(query![lte!["year", 1930]]).unwrap();
+        assert_that!(retrieved_ids).is_empty();
+
+        let retrieved_ids = mi.index.search(query![lte!["height", 1000.0]]).unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id2, mi.id4]);
+
+        let retrieved_ids = mi.index.search(query![lte!["height", 300.0]]).unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id4]);
+
+        let retrieved_ids = mi.index.search(query![lte!["height", 240.0]]).unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id4]);
+
+        let retrieved_ids = mi.index.search(query![lte!["height", 239.999]]).unwrap();
+        assert_that!(retrieved_ids).is_empty();
+
+        let retrieved_ids = mi.index.search(query![lte!["height", 300]]).unwrap();
         assert_that!(retrieved_ids).is_empty();
     }
 }

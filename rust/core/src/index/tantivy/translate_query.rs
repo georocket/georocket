@@ -1,9 +1,9 @@
-use anyhow::Result;
-use std::borrow::Cow;
+use anyhow::{bail, Result};
+use std::{borrow::Cow, ops::Bound};
 
 use tantivy::{
     query::{AllQuery, BooleanQuery, Occur, PhraseQuery, Query as TantivyQuery, TermQuery},
-    schema::IndexRecordOption,
+    schema::{Field, IndexRecordOption},
     Term,
 };
 
@@ -12,7 +12,7 @@ use crate::{
     query::{Operator, Query, QueryPart},
 };
 
-use super::Fields;
+use super::{json_range_query::JsonRangeQuery, Fields};
 
 pub(super) struct QueryTranslator<'a> {
     index: &'a tantivy::Index,
@@ -43,7 +43,7 @@ impl<'a> QueryTranslator<'a> {
                     operator,
                     key,
                     value,
-                } => Some(self.translate_comparison(operator, &key, &value)),
+                } => Some(self.translate_comparison(operator, &key, &value)?),
             };
             if let Some(q) = q {
                 operands.push(q);
@@ -91,13 +91,41 @@ impl<'a> QueryTranslator<'a> {
         })
     }
 
+    fn key_value_to_bound(field: Field, key: &str, value: &Value) -> Result<Vec<u8>> {
+        let mut bound = Term::from_field_json_path(field, key, false);
+        match value {
+            Value::String(_) => bail!("Range queries on strings are not supported"),
+            Value::Float(f) => bound.append_type_and_fast_value(*f),
+            Value::Integer(i) => bound.append_type_and_fast_value(*i),
+        };
+        Ok(bound.serialized_value_bytes().to_owned())
+    }
+
+    /// Returns a new value representing the maximum of the given one
+    fn value_max(value: &Value) -> Result<Value> {
+        match value {
+            Value::String(_) => bail!("Cannot get maximum of string value"),
+            Value::Float(_) => Ok(Value::Float(f64::MAX)),
+            Value::Integer(_) => Ok(Value::Integer(i64::MAX)),
+        }
+    }
+
+    /// Returns a new value representing the minimum of the given one
+    fn value_min(value: &Value) -> Result<Value> {
+        match value {
+            Value::String(_) => bail!("Cannot get minimum of string value"),
+            Value::Float(_) => Ok(Value::Float(f64::MIN)),
+            Value::Integer(_) => Ok(Value::Integer(i64::MIN)),
+        }
+    }
+
     fn translate_comparison(
         &self,
         operator: Operator,
         key: &str,
         value: &Value,
-    ) -> Box<dyn TantivyQuery> {
-        Box::new(match operator {
+    ) -> Result<Box<dyn TantivyQuery>> {
+        match operator {
             Operator::Eq => {
                 let mut term = Term::from_field_json_path(self.fields.gen_attrs_field, key, false);
                 match value {
@@ -105,13 +133,80 @@ impl<'a> QueryTranslator<'a> {
                     Value::Float(f) => term.append_type_and_fast_value(*f),
                     Value::Integer(i) => term.append_type_and_fast_value(*i),
                 };
-                TermQuery::new(term, IndexRecordOption::Basic)
+                Ok(Box::new(TermQuery::new(term, IndexRecordOption::Basic)))
             }
 
-            Operator::Gt => todo!(),
-            Operator::Gte => todo!(),
-            Operator::Lt => todo!(),
-            Operator::Lte => todo!(),
-        })
+            Operator::Gt => {
+                let lower_bound =
+                    Self::key_value_to_bound(self.fields.gen_attrs_field, key, value)?;
+                let upper_bound = Self::key_value_to_bound(
+                    self.fields.gen_attrs_field,
+                    key,
+                    &Self::value_max(value)?,
+                )?;
+
+                let rq = JsonRangeQuery::new(
+                    self.fields.gen_attrs_field,
+                    Bound::Excluded(lower_bound),
+                    Bound::Included(upper_bound),
+                );
+
+                Ok(Box::new(rq))
+            }
+
+            Operator::Gte => {
+                let lower_bound =
+                    Self::key_value_to_bound(self.fields.gen_attrs_field, key, value)?;
+                let upper_bound = Self::key_value_to_bound(
+                    self.fields.gen_attrs_field,
+                    key,
+                    &Self::value_max(value)?,
+                )?;
+
+                let rq = JsonRangeQuery::new(
+                    self.fields.gen_attrs_field,
+                    Bound::Included(lower_bound),
+                    Bound::Included(upper_bound),
+                );
+
+                Ok(Box::new(rq))
+            }
+
+            Operator::Lt => {
+                let lower_bound = Self::key_value_to_bound(
+                    self.fields.gen_attrs_field,
+                    key,
+                    &Self::value_min(value)?,
+                )?;
+                let upper_bound =
+                    Self::key_value_to_bound(self.fields.gen_attrs_field, key, value)?;
+
+                let rq = JsonRangeQuery::new(
+                    self.fields.gen_attrs_field,
+                    Bound::Included(lower_bound),
+                    Bound::Excluded(upper_bound),
+                );
+
+                Ok(Box::new(rq))
+            }
+
+            Operator::Lte => {
+                let lower_bound = Self::key_value_to_bound(
+                    self.fields.gen_attrs_field,
+                    key,
+                    &Self::value_min(value)?,
+                )?;
+                let upper_bound =
+                    Self::key_value_to_bound(self.fields.gen_attrs_field, key, value)?;
+
+                let rq = JsonRangeQuery::new(
+                    self.fields.gen_attrs_field,
+                    Bound::Included(lower_bound),
+                    Bound::Included(upper_bound),
+                );
+
+                Ok(Box::new(rq))
+            }
+        }
     }
 }

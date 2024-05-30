@@ -19,5 +19,6 @@ quick-xml = "0.31.0"
 rocksdb = { version = "0.22.0", default-features = false, features = ["lz4"] }
 # tantivy = "0.22.0"
 tantivy = { git = "https://github.com/quickwit-oss/tantivy.git", rev = "b806122c817f19598c85369fe5c6e6788f81139d" }
+tantivy-common = { git = "https://github.com/quickwit-oss/tantivy.git", rev = "b806122c817f19598c85369fe5c6e6788f81139d" }
 tempdir = "0.3.7"
 ulid = "1.1.2"
