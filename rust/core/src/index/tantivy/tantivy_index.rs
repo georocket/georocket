@@ -154,12 +154,13 @@ mod tests {
 
     use crate::{
         index::{Index, IndexedValue, Value},
-        query::{eq, gt, gte, lt, lte, query},
+        query::{and, eq, gt, gte, lt, lte, not, or, query},
     };
 
     use super::TantivyIndex;
 
     struct MiniIndex {
+        _dir: TempDir,
         index: TantivyIndex,
         id1: Ulid,
         id2: Ulid,
@@ -208,6 +209,7 @@ mod tests {
         index.commit().unwrap();
 
         MiniIndex {
+            _dir: dir,
             index,
             id1,
             id2,
@@ -434,5 +436,188 @@ mod tests {
 
         let retrieved_ids = mi.index.search(query![lte!["height", 300]]).unwrap();
         assert_that!(retrieved_ids).is_empty();
+    }
+
+    #[test]
+    fn or() {
+        let mi = make_mini_index();
+        let retrieved_ids = mi
+            .index
+            .search(query![or![eq!["year", 1931], eq!["year", 2000]]])
+            .unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id2, mi.id4]);
+
+        let retrieved_ids = mi
+            .index
+            .search(query![or![eq!["year", 1931], eq!["foo", "bar"]]])
+            .unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
+
+        let retrieved_ids = mi
+            .index
+            .search(query![or![eq!["year", 1900], eq!["foo", "bar"]]])
+            .unwrap();
+        assert_that!(retrieved_ids).is_empty();
+
+        let retrieved_ids = mi.index.search(query![or![eq!["year", 1931]]]).unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
+
+        let retrieved_ids = mi.index.search(query![eq!["year", 1931], or![]]).unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
+
+        let retrieved_ids = mi.index.search(query![or![]]).unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id1, mi.id2, mi.id3, mi.id4]);
+    }
+
+    #[test]
+    fn and() {
+        let mi = make_mini_index();
+        let retrieved_ids = mi
+            .index
+            .search(query![and![eq!["year", 1931], eq!["year", 2000]]])
+            .unwrap();
+        assert_that!(retrieved_ids).is_empty();
+
+        let retrieved_ids = mi
+            .index
+            .search(query![and![
+                eq!["year", 1931],
+                eq!["name", "Empire State Building"]
+            ]])
+            .unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
+
+        let retrieved_ids = mi.index.search(query![and![eq!["year", 1931]]]).unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
+
+        let retrieved_ids = mi.index.search(query![eq!["year", 1931], and![]]).unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
+
+        let retrieved_ids = mi.index.search(query![and![]]).unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id1, mi.id2, mi.id3, mi.id4]);
+    }
+
+    #[test]
+    fn not() {
+        let mut mi = make_mini_index();
+        let retrieved_ids = mi
+            .index
+            .search(query![not![eq!["year", 1931], eq!["year", 2000]]])
+            .unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id1, mi.id3]);
+
+        let retrieved_ids = mi.index.search(query![not![eq!["year", 1931]]]).unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id1, mi.id3, mi.id4]);
+
+        let retrieved_ids = mi
+            .index
+            .search(query![not![and![
+                eq!["year", 1931],
+                eq!["name", "Empire State Building"]
+            ]]])
+            .unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id1, mi.id3, mi.id4]);
+
+        let retrieved_ids = mi
+            .index
+            .search(query![not![and![
+                eq!["year", 2000],
+                eq!["name", "Empire State Building"]
+            ]]])
+            .unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id1, mi.id2, mi.id3, mi.id4]);
+
+        let retrieved_ids = mi
+            .index
+            .search(query![
+                eq!["year", 2000],
+                not![and![
+                    eq!["year", 2000],
+                    eq!["name", "Empire State Building"]
+                ]]
+            ])
+            .unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id1, mi.id2, mi.id3, mi.id4]);
+
+        let retrieved_ids = mi
+            .index
+            .search(query![
+                eq!["year", 1931],
+                not![and![
+                    eq!["year", 1931],
+                    eq!["name", "Empire State Building"]
+                ]]
+            ])
+            .unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id1, mi.id2, mi.id3, mi.id4]);
+
+        let retrieved_ids = mi
+            .index
+            .search(query![and![
+                eq!["year", 1931],
+                not![and![
+                    eq!["year", 1931],
+                    eq!["name", "Empire State Building"]
+                ]]
+            ]])
+            .unwrap();
+        assert_that!(retrieved_ids).is_empty();
+
+        let retrieved_ids = mi
+            .index
+            .search(query![and![
+                eq!["year", 2000],
+                not![and![
+                    eq!["year", 2000],
+                    eq!["name", "Empire State Building"]
+                ]]
+            ]])
+            .unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id4]);
+
+        let id5 = Ulid::new();
+        let indexer_result5 = vec![IndexedValue::GenericAttributes(
+            [
+                (
+                    "name".to_string(),
+                    Value::String("Empire State Building".to_string()),
+                ),
+                ("year".to_string(), Value::Integer(2000)),
+            ]
+            .into(),
+        )];
+
+        mi.index.add(id5, indexer_result5).unwrap();
+        mi.index.commit().unwrap();
+
+        let retrieved_ids = mi.index.search(query![eq!["year", 2000]]).unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id4, id5]);
+
+        let retrieved_ids = mi
+            .index
+            .search(query![and![
+                eq!["year", 2000],
+                not![and![
+                    eq!["year", 2000],
+                    eq!["name", "Empire State Building"]
+                ]]
+            ]])
+            .unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id4]);
+
+        let retrieved_ids = mi
+            .index
+            .search(query![and![
+                eq!["year", 2000],
+                not![and![eq!["year", 2000], eq!["name", "Main Tower"]]]
+            ]])
+            .unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![id5]);
+
+        let retrieved_ids = mi.index.search(query![eq!["year", 1931], not![]]).unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
+
+        let retrieved_ids = mi.index.search(query![not![]]).unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id1, mi.id2, mi.id3, mi.id4, id5]);
     }
 }

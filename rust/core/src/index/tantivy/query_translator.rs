@@ -1,5 +1,5 @@
 use anyhow::{bail, Result};
-use std::{borrow::Cow, ops::Bound};
+use std::ops::Bound;
 
 use tantivy::{
     query::{AllQuery, BooleanQuery, Occur, PhraseQuery, Query as TantivyQuery, TermQuery},
@@ -9,7 +9,7 @@ use tantivy::{
 
 use crate::{
     index::Value,
-    query::{Operator, Query, QueryPart},
+    query::{Logical, Operator, Query, QueryPart},
 };
 
 use super::{json_range_query::JsonRangeQuery, Fields};
@@ -25,20 +25,26 @@ impl<'a> QueryTranslator<'a> {
     }
 
     pub fn translate(&self, query: Query) -> Result<Box<dyn TantivyQuery>> {
-        Ok(self
-            .translate_query_parts(query.parts)?
-            .unwrap_or_else(|| Box::new(AllQuery)))
+        let operands = self.translate_query_parts(query.parts)?;
+
+        Ok(if operands.len() > 1 {
+            Box::new(BooleanQuery::new(
+                operands.into_iter().map(|q| (Occur::Should, q)).collect(),
+            ))
+        } else {
+            operands
+                .into_iter()
+                .next()
+                .unwrap_or_else(|| Box::new(AllQuery))
+        })
     }
 
-    fn translate_query_parts(
-        &self,
-        parts: Vec<QueryPart>,
-    ) -> Result<Option<Box<dyn TantivyQuery>>> {
+    fn translate_query_parts(&self, parts: Vec<QueryPart>) -> Result<Vec<Box<dyn TantivyQuery>>> {
         let mut operands = Vec::new();
         for p in parts {
             let q = match p {
-                QueryPart::Value(p) => self.translate_value(&p)?,
-                QueryPart::Logical(_) => todo!(),
+                QueryPart::Value(p) => self.translate_value(p)?,
+                QueryPart::Logical(l) => self.translate_logical(l)?,
                 QueryPart::Comparison {
                     operator,
                     key,
@@ -49,22 +55,15 @@ impl<'a> QueryTranslator<'a> {
                 operands.push(q);
             }
         }
-
-        Ok(if operands.len() > 1 {
-            Some(Box::new(BooleanQuery::new(
-                operands.into_iter().map(|q| (Occur::Should, q)).collect(),
-            )))
-        } else {
-            operands.into_iter().next()
-        })
+        Ok(operands)
     }
 
     /// Create a query that performs a full-text search on the 'all_values' field
-    fn translate_value(&self, value: &Value) -> Result<Option<Box<dyn TantivyQuery>>> {
+    fn translate_value(&self, value: Value) -> Result<Option<Box<dyn TantivyQuery>>> {
         let text = match value {
-            Value::String(s) => Cow::Borrowed(s),
-            Value::Float(f) => Cow::Owned(f.to_string()),
-            Value::Integer(i) => Cow::Owned(i.to_string()),
+            Value::String(s) => s,
+            Value::Float(f) => f.to_string(),
+            Value::Integer(i) => i.to_string(),
         };
 
         // tokenize value and create individual terms
@@ -206,6 +205,49 @@ impl<'a> QueryTranslator<'a> {
                 );
 
                 Ok(Box::new(rq))
+            }
+        }
+    }
+
+    fn translate_logical(&self, logical: Logical) -> Result<Option<Box<dyn TantivyQuery>>> {
+        match logical {
+            Logical::Or(parts) => {
+                let operands = self.translate_query_parts(parts)?;
+                Ok(if operands.len() > 1 {
+                    Some(Box::new(BooleanQuery::new(
+                        operands.into_iter().map(|q| (Occur::Should, q)).collect(),
+                    )))
+                } else {
+                    operands.into_iter().next()
+                })
+            }
+
+            Logical::And(parts) => {
+                let operands = self.translate_query_parts(parts)?;
+                Ok(if operands.len() > 1 {
+                    Some(Box::new(BooleanQuery::new(
+                        operands.into_iter().map(|q| (Occur::Must, q)).collect(),
+                    )))
+                } else {
+                    operands.into_iter().next()
+                })
+            }
+
+            Logical::Not(parts) => {
+                let operands = self.translate_query_parts(parts)?;
+                Ok(if !operands.is_empty() {
+                    let mut subqueries = operands
+                        .into_iter()
+                        .map(|q| (Occur::MustNot, q))
+                        .collect::<Vec<_>>();
+
+                    // return all other documents that don't match the query
+                    subqueries.push((Occur::Should, Box::new(AllQuery)));
+
+                    Some(Box::new(BooleanQuery::new(subqueries)))
+                } else {
+                    None
+                })
             }
         }
     }
