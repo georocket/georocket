@@ -1,4 +1,4 @@
-use std::{collections::HashMap, mem, str::from_utf8};
+use std::{collections::HashMap, str::from_utf8};
 
 use anyhow::Result;
 use quick_xml::events::{attributes::Attribute, BytesStart, Event};
@@ -66,11 +66,11 @@ impl<'a> Indexer<Event<'a>> for GenericAttributeIndexer {
 
         Ok(())
     }
+}
 
-    fn make_result(&mut self) -> Vec<IndexedValue> {
-        let mut new_result = HashMap::new();
-        mem::swap(&mut self.result, &mut new_result);
-        vec![IndexedValue::GenericAttributes(new_result)]
+impl From<GenericAttributeIndexer> for Vec<IndexedValue> {
+    fn from(value: GenericAttributeIndexer) -> Self {
+        vec![IndexedValue::GenericAttributes(value.result)]
     }
 }
 
@@ -124,9 +124,9 @@ mod tests {
 
     #[test]
     fn empty() {
-        let mut i = GenericAttributeIndexer::default();
+        let i = GenericAttributeIndexer::default();
         assert_eq!(
-            i.make_result(),
+            Vec::<_>::from(i),
             vec![IndexedValue::GenericAttributes(HashMap::new())]
         );
     }
@@ -138,7 +138,7 @@ mod tests {
             .unwrap();
         i.on_event(&Event::End(BytesEnd::new("object"))).unwrap();
         assert_eq!(
-            i.make_result(),
+            Vec::<_>::from(i),
             vec![IndexedValue::GenericAttributes(HashMap::new())]
         );
     }
@@ -154,7 +154,7 @@ mod tests {
             .unwrap();
         i.on_event(&Event::End(BytesEnd::new("object"))).unwrap();
         assert_eq!(
-            i.make_result(),
+            Vec::<_>::from(i),
             vec![IndexedValue::GenericAttributes(HashMap::new())]
         );
     }
@@ -173,7 +173,7 @@ mod tests {
             .unwrap();
         i.on_event(&Event::End(BytesEnd::new("object"))).unwrap();
         assert_eq!(
-            i.make_result(),
+            Vec::<_>::from(i),
             vec![IndexedValue::GenericAttributes(HashMap::new())]
         );
     }
@@ -194,7 +194,7 @@ mod tests {
             .unwrap();
         i.on_event(&Event::End(BytesEnd::new("object"))).unwrap();
         assert_eq!(
-            i.make_result(),
+            Vec::<_>::from(i),
             vec![IndexedValue::GenericAttributes(HashMap::new())]
         );
     }
@@ -216,7 +216,7 @@ mod tests {
             .unwrap();
         i.on_event(&Event::End(BytesEnd::new("object"))).unwrap();
         assert_eq!(
-            i.make_result(),
+            Vec::<_>::from(i),
             vec![IndexedValue::GenericAttributes(
                 [("foo".to_string(), "bar".into())].into()
             )]
@@ -240,7 +240,7 @@ mod tests {
             .unwrap();
         i.on_event(&Event::End(BytesEnd::new("object"))).unwrap();
         assert_eq!(
-            i.make_result(),
+            Vec::<_>::from(i),
             vec![IndexedValue::GenericAttributes(
                 [("foo".to_string(), "bar".into())].into()
             )]
@@ -277,7 +277,7 @@ mod tests {
 
         i.on_event(&Event::End(BytesEnd::new("object"))).unwrap();
         assert_eq!(
-            i.make_result(),
+            Vec::<_>::from(i),
             vec![IndexedValue::GenericAttributes(
                 [
                     ("height".to_string(), 5.into()),

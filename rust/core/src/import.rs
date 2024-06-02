@@ -65,8 +65,11 @@ pub fn import_xml(path: String) -> Result<()> {
             let id = Ulid::new();
             store_send.send((id, r.chunk))?;
 
-            let indexer_result = generic_attribute_indexer.make_result();
+            let indexer_result = generic_attribute_indexer.into();
             index_send.send((id, indexer_result))?;
+
+            // reset indexers
+            generic_attribute_indexer = GenericAttributeIndexer::default();
         }
 
         if e == Event::Eof {
