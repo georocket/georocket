@@ -19,7 +19,7 @@ pub enum IndexedValue {
 /// Indexes chunks
 pub trait Indexer<E> {
     /// Will be called on every stream `event` in the chunk
-    fn on_event(&mut self, event: &E) -> Result<()>;
+    fn on_event(&mut self, event: E) -> Result<()>;
 }
 
 /// An index store information about chunks in a GeoRocket store and can be

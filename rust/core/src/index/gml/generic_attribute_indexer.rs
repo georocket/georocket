@@ -18,16 +18,14 @@ pub struct GenericAttributeIndexer {
     result: HashMap<String, Value>,
 }
 
-impl<'a> Indexer<Event<'a>> for GenericAttributeIndexer {
-    fn on_event(&mut self, event: &Event<'a>) -> Result<()> {
+impl Indexer<&Event<'_>> for GenericAttributeIndexer {
+    fn on_event(&mut self, event: &Event<'_>) -> Result<()> {
         match event {
             Event::Start(s) => {
                 let local_name = s.local_name();
-                if GenericAttributeIndexer::is_attribute_supported(local_name.as_ref()) {
-                    if let Some(n) =
-                        GenericAttributeIndexer::get_attribute_by_local_name(s, b"name")?
-                    {
-                        self.current_key = Some(from_utf8(&n.value)?.to_string());
+                if Self::is_attribute_supported(local_name.as_ref()) {
+                    if let Some(n) = Self::get_attribute_by_local_name(s, b"name")? {
+                        self.current_key = Some(n.unescape_value()?.to_string());
                     } else {
                         self.current_key = None;
                     }
@@ -38,7 +36,7 @@ impl<'a> Indexer<Event<'a>> for GenericAttributeIndexer {
 
             Event::End(e) => {
                 let local_name = e.local_name();
-                if GenericAttributeIndexer::is_attribute_supported(local_name.as_ref()) {
+                if Self::is_attribute_supported(local_name.as_ref()) {
                     self.current_key = None
                 } else if local_name.as_ref() == b"value" {
                     self.parsing_value = false
