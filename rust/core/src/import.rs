@@ -6,8 +6,9 @@ use ulid::Ulid;
 
 use crate::{
     index::{
-        gml::generic_attribute_indexer::GenericAttributeIndexer, tantivy::TantivyIndex, Index,
-        IndexedValue, Indexer,
+        gml::{generic_attribute_indexer::GenericAttributeIndexer, srs_indexer::SRSIndexer},
+        tantivy::TantivyIndex,
+        Index, IndexedValue, Indexer,
     },
     input::{xml::FirstLevelSplitter, Splitter},
     storage::{rocksdb::RocksDBStore, Store},
@@ -49,6 +50,7 @@ pub fn import_xml(path: String) -> Result<()> {
     let bufreader = BufReader::new(window);
     let mut reader = Reader::from_reader(bufreader);
 
+    let mut srs_indexer = SRSIndexer::default();
     let mut generic_attribute_indexer = GenericAttributeIndexer::default();
 
     let mut buf = Vec::new();
@@ -59,6 +61,7 @@ pub fn import_xml(path: String) -> Result<()> {
         let end_pos = reader.buffer_position();
         let window = reader.get_mut().get_mut().window_mut();
 
+        srs_indexer.on_event(&e)?;
         generic_attribute_indexer.on_event(&e)?;
 
         if let Some(r) = splitter.on_event(&e, start_pos..end_pos, window)? {
