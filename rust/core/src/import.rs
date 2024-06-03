@@ -61,8 +61,20 @@ pub fn import_xml(path: String) -> Result<()> {
         let end_pos = reader.buffer_position();
         let window = reader.get_mut().get_mut().window_mut();
 
-        srs_indexer.on_event(&e)?;
+        // SRSIndexer must be called before all other indexers because it needs
+        // to record the current SRS. Don't call it when the event represents
+        // and end tag. The current SRS should stay in effect until all
+        // indexers have processed the end tag.
+        if !matches!(e, Event::End(_)) {
+            srs_indexer.on_event(&e)?;
+        }
+
         generic_attribute_indexer.on_event(&e)?;
+
+        // now call SRSIndexer also for the end tag
+        if matches!(e, Event::End(_)) {
+            srs_indexer.on_event(&e)?;
+        }
 
         if let Some(r) = splitter.on_event(&e, start_pos..end_pos, window)? {
             let id = Ulid::new();
