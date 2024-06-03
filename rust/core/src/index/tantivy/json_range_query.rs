@@ -26,7 +26,7 @@ use tantivy_common::BitSet;
 /// use tantivy::collector::Count;
 /// use tantivy::schema::{OwnedValue, Schema, STRING};
 /// use tantivy::{doc, Index, IndexWriter, TantivyDocument, Term};
-/// use crate::core::index::tantivy::json_range_query::JsonRangeQuery;
+/// use core::index::tantivy::json_range_query::JsonRangeQuery;
 /// # fn test() -> tantivy::Result<()> {
 /// let mut schema_builder = Schema::builder();
 /// let attrs_field = schema_builder.add_json_field("attrs", STRING);

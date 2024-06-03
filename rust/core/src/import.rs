@@ -6,7 +6,10 @@ use ulid::Ulid;
 
 use crate::{
     index::{
-        gml::{generic_attribute_indexer::GenericAttributeIndexer, srs_indexer::SRSIndexer},
+        gml::{
+            bounding_box_indexer::BoundingBoxIndexer,
+            generic_attribute_indexer::GenericAttributeIndexer, srs_indexer::SRSIndexer,
+        },
         tantivy::TantivyIndex,
         Index, IndexedValue, Indexer,
     },
@@ -51,6 +54,7 @@ pub fn import_xml(path: String) -> Result<()> {
     let mut reader = Reader::from_reader(bufreader);
 
     let mut srs_indexer = SRSIndexer::default();
+    let mut bounding_box_indexer = BoundingBoxIndexer::default();
     let mut generic_attribute_indexer = GenericAttributeIndexer::default();
 
     let mut buf = Vec::new();
@@ -69,6 +73,7 @@ pub fn import_xml(path: String) -> Result<()> {
             srs_indexer.on_event(&e)?;
         }
 
+        bounding_box_indexer.on_event((&e, srs_indexer.context()))?;
         generic_attribute_indexer.on_event(&e)?;
 
         // now call SRSIndexer also for the end tag
@@ -80,10 +85,14 @@ pub fn import_xml(path: String) -> Result<()> {
             let id = Ulid::new();
             store_send.send((id, r.chunk))?;
 
-            let indexer_result = generic_attribute_indexer.into();
+            let mut indexer_result: Vec<_> = generic_attribute_indexer.into();
+            if let Some(v) = bounding_box_indexer.try_into()? {
+                indexer_result.push(v);
+            }
             index_send.send((id, indexer_result))?;
 
             // reset indexers
+            bounding_box_indexer = BoundingBoxIndexer::default();
             generic_attribute_indexer = GenericAttributeIndexer::default();
         }
 

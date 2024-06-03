@@ -3,7 +3,7 @@ use std::{collections::BTreeMap, fs};
 use tantivy::{
     collector::DocSetCollector,
     directory::MmapDirectory,
-    schema::{OwnedValue, Schema, STORED, STRING, TEXT},
+    schema::{OwnedValue, Schema, INDEXED, STORED, STRING, TEXT},
     IndexBuilder, IndexReader, IndexWriter, TantivyDocument,
 };
 use ulid::Ulid;
@@ -33,6 +33,12 @@ impl TantivyIndex {
         let id_field = schema_builder.add_bytes_field("_id", STORED);
         let gen_attrs_field = schema_builder.add_json_field("gen_attrs", STRING);
         let all_values_field = schema_builder.add_text_field("all_values", TEXT);
+        let bbox_min_x_field = schema_builder.add_f64_field("bbox_min_x", INDEXED);
+        let bbox_min_y_field = schema_builder.add_f64_field("bbox_min_y", INDEXED);
+        let bbox_min_z_field = schema_builder.add_f64_field("bbox_min_z", INDEXED);
+        let bbox_max_x_field = schema_builder.add_f64_field("bbox_max_x", INDEXED);
+        let bbox_max_y_field = schema_builder.add_f64_field("bbox_max_y", INDEXED);
+        let bbox_max_z_field = schema_builder.add_f64_field("bbox_max_z", INDEXED);
 
         let schema = schema_builder.build();
 
@@ -53,6 +59,12 @@ impl TantivyIndex {
             id_field,
             gen_attrs_field,
             all_values_field,
+            bbox_min_x_field,
+            bbox_min_y_field,
+            bbox_min_z_field,
+            bbox_max_x_field,
+            bbox_max_y_field,
+            bbox_max_z_field,
         };
 
         Ok(TantivyIndex {
@@ -98,6 +110,15 @@ impl Index for TantivyIndex {
                             }
                         }
                     }
+                }
+
+                IndexedValue::BoundingBox(bbox) => {
+                    doc.add_f64(self.fields.bbox_min_x_field, bbox.min_x);
+                    doc.add_f64(self.fields.bbox_min_y_field, bbox.min_y);
+                    doc.add_f64(self.fields.bbox_min_z_field, bbox.min_z);
+                    doc.add_f64(self.fields.bbox_max_x_field, bbox.max_x);
+                    doc.add_f64(self.fields.bbox_max_y_field, bbox.max_y);
+                    doc.add_f64(self.fields.bbox_max_z_field, bbox.max_z);
                 }
             }
         }

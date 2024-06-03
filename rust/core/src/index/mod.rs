@@ -2,7 +2,7 @@ use anyhow::Result;
 use std::collections::HashMap;
 use ulid::Ulid;
 
-use crate::query::Query;
+use crate::{query::Query, util::bounding_box::BoundingBox};
 
 pub use self::value::Value;
 
@@ -14,6 +14,7 @@ pub mod value;
 #[derive(Debug, PartialEq)]
 pub enum IndexedValue {
     GenericAttributes(HashMap<String, Value>),
+    BoundingBox(BoundingBox),
 }
 
 /// Indexes chunks
