@@ -15,8 +15,10 @@ clap = { version = "4.5", features = ["derive"] }
 cli = { path = "cli" }
 core = { path = "core" }
 mime_guess = "2.0.4"
+proj = "0.27.2"
 quick-xml = "0.31.0"
 rocksdb = { version = "0.22.0", default-features = false, features = ["lz4"] }
+rustc-hash = "1.1.0"
 # tantivy = "0.22.0"
 tantivy = { git = "https://github.com/quickwit-oss/tantivy.git", rev = "b806122c817f19598c85369fe5c6e6788f81139d" }
 tantivy-common = { git = "https://github.com/quickwit-oss/tantivy.git", rev = "b806122c817f19598c85369fe5c6e6788f81139d" }
