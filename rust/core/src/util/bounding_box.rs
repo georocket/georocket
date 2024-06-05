@@ -3,7 +3,7 @@
 /// # Examples
 ///
 /// ```rust
-/// use core::util::bounding_box::BoundingBox;
+/// use georocket_core::util::bounding_box::BoundingBox;
 ///
 /// let mut bb = BoundingBox::from_point(1.0, 2.0, 3.0);
 /// assert_eq!(bb.min_x, 1.0);
@@ -31,7 +31,7 @@
 /// ```
 ///
 /// ```rust
-/// use core::util::bounding_box::BoundingBox;
+/// use georocket_core::util::bounding_box::BoundingBox;
 ///
 /// let mut bb1 = BoundingBox::new(1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
 /// let mut bb2 = BoundingBox::new(40.0, 50.0, 60.0, 70.0, 80.0, 90.0);

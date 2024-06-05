@@ -8,5 +8,5 @@ publish = false
 anyhow.workspace = true
 ariadne.workspace = true
 clap.workspace = true
-core.workspace = true
+georocket-core.workspace = true
 mime_guess.workspace = true

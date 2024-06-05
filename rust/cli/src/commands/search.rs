@@ -1,4 +1,4 @@
-use core::{
+use georocket_core::{
     index::{tantivy::TantivyIndex, Index},
     query::dsl::compile_query,
     storage::{rocksdb::RocksDBStore, Store},

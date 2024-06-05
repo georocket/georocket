@@ -1,4 +1,4 @@
-use core::import::import_xml;
+use georocket_core::import::import_xml;
 
 use anyhow::{bail, Result};
 use clap::Args;
