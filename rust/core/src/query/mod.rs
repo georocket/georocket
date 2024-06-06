@@ -113,14 +113,12 @@ macro_rules! or {
     };
 }
 
-#[cfg(test)]
 macro_rules! not {
     ($x:expr) => {
         $crate::query::QueryPart::Logical($crate::query::Logical::Not(Box::new($x.into())))
     };
 }
 
-#[cfg(test)]
 macro_rules! eq {
     ($key:expr, $value:expr) => {{
         let key = $key.into();
@@ -133,7 +131,6 @@ macro_rules! eq {
     }};
 }
 
-#[cfg(test)]
 macro_rules! gt {
     ($key:expr, $value:expr) => {{
         let key = $key.into();
@@ -146,7 +143,6 @@ macro_rules! gt {
     }};
 }
 
-#[cfg(test)]
 macro_rules! gte {
     ($key:expr, $value:expr) => {{
         let key = $key.into();
@@ -159,7 +155,6 @@ macro_rules! gte {
     }};
 }
 
-#[cfg(test)]
 macro_rules! lt {
     ($key:expr, $value:expr) => {{
         let key = $key.into();
@@ -172,7 +167,6 @@ macro_rules! lt {
     }};
 }
 
-#[cfg(test)]
 macro_rules! lte {
     ($key:expr, $value:expr) => {{
         let key = $key.into();
@@ -186,17 +180,11 @@ macro_rules! lte {
 }
 
 pub(crate) use and;
-#[cfg(test)]
 pub(crate) use eq;
-#[cfg(test)]
 pub(crate) use gt;
-#[cfg(test)]
 pub(crate) use gte;
-#[cfg(test)]
 pub(crate) use lt;
-#[cfg(test)]
 pub(crate) use lte;
-#[cfg(test)]
 pub(crate) use not;
 pub(crate) use or;
 #[cfg(test)]
@@ -204,6 +192,7 @@ pub(crate) use query;
 
 #[cfg(test)]
 mod tests {
+    use lalrpop_util::lexer::Token;
     use lalrpop_util::ParseError;
 
     use crate::query::error::QueryParserError;
@@ -323,18 +312,27 @@ mod tests {
     #[test]
     fn and_without_whitespace() {
         let qp = QueryParser::new();
-        assert_eq!(
+        assert!(matches!(
             qp.parse("\"foo\"AND5"),
-            Err(ParseError::InvalidToken { location: 5 })
-        );
-        assert_eq!(
+            Err(ParseError::UnrecognizedToken {
+                token: (5, Token(_, "AND5"), 9),
+                ..
+            })
+        ));
+        assert!(matches!(
             qp.parse("\"foo\" AND5"),
-            Err(ParseError::InvalidToken { location: 6 })
-        );
-        assert_eq!(
+            Err(ParseError::UnrecognizedToken {
+                token: (6, Token(_, "AND5"), 10),
+                ..
+            })
+        ));
+        assert!(matches!(
             qp.parse("\"foo\"AND 5"),
-            Err(ParseError::InvalidToken { location: 5 })
-        );
+            Err(ParseError::UnrecognizedToken {
+                token: (5, Token(_, "AND"), 8),
+                ..
+            })
+        ));
     }
 
     #[test]
@@ -361,18 +359,27 @@ mod tests {
     #[test]
     fn or_without_whitespace() {
         let qp = QueryParser::new();
-        assert_eq!(
+        assert!(matches!(
             qp.parse("\"foo\"OR5"),
-            Err(ParseError::InvalidToken { location: 5 })
-        );
-        assert_eq!(
+            Err(ParseError::UnrecognizedToken {
+                token: (5, Token(_, "OR5"), 8),
+                ..
+            })
+        ));
+        assert!(matches!(
             qp.parse("\"foo\" OR5"),
-            Err(ParseError::InvalidToken { location: 6 })
-        );
-        assert_eq!(
+            Err(ParseError::UnrecognizedToken {
+                token: (6, Token(_, "OR5"), 9),
+                ..
+            })
+        ));
+        assert!(matches!(
             qp.parse("\"foo\"OR 5"),
-            Err(ParseError::InvalidToken { location: 5 })
-        );
+            Err(ParseError::UnrecognizedToken {
+                token: (5, Token(_, "OR"), 7),
+                ..
+            })
+        ));
     }
 
     #[test]
@@ -437,84 +444,104 @@ mod tests {
         );
     }
 
-    // #[test]
-    // fn eq() {
-    //     assert_eq!(
-    //         compile_query("EQ(foo bar)").unwrap(),
-    //         query![eq!["foo", "bar"]]
-    //     );
-    //     assert_eq!(
-    //         compile_query("EQ  (  foo bar   )  ").unwrap(),
-    //         query![eq!["foo", "bar"]]
-    //     );
-    //     assert_eq!(
-    //         compile_query("EQ(foo \"bar\")").unwrap(),
-    //         query![eq!["foo", "bar"]]
-    //     );
-    //     assert_eq!(
-    //         compile_query("EQ(\"foo\" \"bar\")").unwrap(),
-    //         query![eq!["foo", "bar"]]
-    //     );
-    //     assert_eq!(
-    //         compile_query("EQ('foo' bar)").unwrap(),
-    //         query![eq!["foo", "bar"]]
-    //     );
-    //     assert_eq!(
-    //         compile_query("EQ('foo' 'bar')").unwrap(),
-    //         query![eq!["foo", "bar"]]
-    //     );
-    //     assert_eq!(compile_query("EQ(foo 4)").unwrap(), query![eq!["foo", 4]]);
-    // }
+    #[test]
+    fn identifier() {
+        let qp = QueryParser::new();
+        assert_eq!(
+            qp.parse("foo == \"bar\"").unwrap(),
+            query![eq!["foo", "bar"]]
+        );
+        assert_eq!(
+            qp.parse("_fo_o == \"bar\"").unwrap(),
+            query![eq!["_fo_o", "bar"]]
+        );
+        assert_eq!(
+            qp.parse("foo500 == \"bar\"").unwrap(),
+            query![eq!["foo500", "bar"]]
+        );
+        assert_eq!(
+            qp.parse("f5o5o5 == \"bar\"").unwrap(),
+            query![eq!["f5o5o5", "bar"]]
+        );
+        assert_eq!(
+            qp.parse("fooäöü == \"bar\"").unwrap(),
+            query![eq!["fooäöü", "bar"]]
+        );
+    }
 
-    // #[test]
-    // fn gt() {
-    //     assert_eq!(
-    //         compile_query("GT(height 12)").unwrap(),
-    //         query![gt!["height", 12]]
-    //     );
-    // }
+    #[test]
+    fn eq() {
+        let expected = query![eq!["foo", "bar"]];
+        let qp = QueryParser::new();
+        assert_eq!(qp.parse("foo == \"bar\"").unwrap(), expected);
+        assert_eq!(qp.parse("foo = \"bar\"").unwrap(), expected);
+        assert_eq!(qp.parse("foo==\"bar\"").unwrap(), expected);
+        assert_eq!(qp.parse("foo=\"bar\"").unwrap(), expected);
 
-    // #[test]
-    // fn gte() {
-    //     assert_eq!(
-    //         compile_query("GTE(height 12.0  )").unwrap(),
-    //         query![gte!["height", 12.]]
-    //     );
-    // }
+        assert_eq!(qp.parse("foo == 5").unwrap(), query![eq!["foo", 5]]);
+        assert_eq!(
+            qp.parse("`foo bar` == 5").unwrap(),
+            query![eq!["foo bar", 5]]
+        );
+        assert_eq!(
+            qp.parse("`foo \\` bar` == 5").unwrap(),
+            query![eq!["foo ` bar", 5]]
+        );
+    }
 
-    // #[test]
-    // fn lt() {
-    //     assert_eq!(
-    //         compile_query("LT(height -12.)").unwrap(),
-    //         query![lt!["height", -12.]]
-    //     );
-    // }
+    #[test]
+    fn neq() {
+        let expected = query![not![eq!["foo", "bar"]]];
+        let qp = QueryParser::new();
+        assert_eq!(qp.parse("foo != \"bar\"").unwrap(), expected);
+        assert_eq!(qp.parse("foo!=\"bar\"").unwrap(), expected);
+        assert_eq!(qp.parse("foo !== \"bar\"").unwrap(), expected);
+        assert_eq!(qp.parse("foo!==\"bar\"").unwrap(), expected);
+    }
 
-    // #[test]
-    // fn lte() {
-    //     assert_eq!(
-    //         compile_query("LTE(height -12e5)").unwrap(),
-    //         query![lte!["height", -12e5]]
-    //     );
-    // }
+    #[test]
+    fn gt() {
+        let expected = query![gt!["height", 12]];
+        let qp = QueryParser::new();
+        assert_eq!(qp.parse("height > 12").unwrap(), expected);
+        assert_eq!(qp.parse("height>12").unwrap(), expected);
+    }
 
-    // #[test]
-    // fn not_eq() {
-    //     assert_eq!(
-    //         compile_query("NOT(EQ(foo bar))").unwrap(),
-    //         query![not![eq!["foo", "bar"]]]
-    //     );
-    // }
+    #[test]
+    fn gte() {
+        let expected = query![gte!["height", 12.]];
+        let qp = QueryParser::new();
+        assert_eq!(qp.parse("height >= 12.").unwrap(), expected);
+        assert_eq!(qp.parse("height>=12.").unwrap(), expected);
+    }
 
-    // #[test]
-    // fn complex() {
-    //     assert_eq!(
-    //         compile_query("AND(foo bar OR(test1 test2)) hello NOT(world \"you\")").unwrap(),
-    //         query![
-    //             and!["foo", "bar", or!["test1", "test2"]],
-    //             "hello",
-    //             not!["world", "you"]
-    //         ]
-    //     );
-    // }
+    #[test]
+    fn lt() {
+        let expected = query![lt!["height", -12]];
+        let qp = QueryParser::new();
+        assert_eq!(qp.parse("height < -12").unwrap(), expected);
+        assert_eq!(qp.parse("height<-12").unwrap(), expected);
+    }
+
+    #[test]
+    fn lte() {
+        let expected = query![lte!["height", -12e5]];
+        let qp = QueryParser::new();
+        assert_eq!(qp.parse("height <= -12e5").unwrap(), expected);
+        assert_eq!(qp.parse("height<=-12e5").unwrap(), expected);
+    }
+
+    #[test]
+    fn complex() {
+        let qp = QueryParser::new();
+        assert_eq!(
+            qp.parse("(\"foo\" && \"bar\" AND (\"test1\" || \"test2\")) || \"hello\" OR !(\"world\" or \"you\")")
+                .unwrap(),
+            query![or![
+                and!["foo", "bar", or!["test1", "test2"]],
+                "hello",
+                not![or!["world", "you"]]
+            ]]
+        );
+    }
 }

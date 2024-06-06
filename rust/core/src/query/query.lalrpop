@@ -1,8 +1,8 @@
 use lalrpop_util::{ParseError};
 
 use crate::index::Value;
-use super::{and, or, Logical, Query, QueryPart};
-use super::unescape::unescape;
+use super::{and, eq, gt, gte, lt, lte, not, or, Logical, Query, QueryPart};
+use super::unescape::{unescape_identifier, unescape_string};
 use super::error::QueryParserError;
 
 grammar;
@@ -29,7 +29,7 @@ Or: QueryPart = {
 };
 
 And: QueryPart = {
-    <l:And> r"(?i)\sand\s|&&" <r:Literal> => {
+    <l:And> r"(?i)\sand\s|&&" <r:Comparison> => {
         match l {
             QueryPart::Logical(Logical::And(mut parts)) => {
                 parts.push(r);
@@ -38,18 +38,41 @@ And: QueryPart = {
             _ => and![l, r],
         }
     },
-    Literal,
+    Comparison,
 };
 
-Literal: QueryPart = {
-    <s:String> => s.into(),
-    <n:Number> => n.into(),
+Comparison: QueryPart = {
+    <id:Identifier> r"![=]{1,2}" <l:Literal> => not![eq![id, l]],
+    <id:Identifier> r"[=]{1,2}" <l:Literal> => eq![id, l],
+    <id:Identifier> ">=" <l:Literal> => gte![id, l],
+    <id:Identifier> ">" <l:Literal> => gt![id, l],
+    <id:Identifier> "<=" <l:Literal> => lte![id, l],
+    <id:Identifier> "<" <l:Literal> => lt![id, l],
+    Logical,
+}
+
+Logical: QueryPart = {
     r"!\s*\(" <qp:Or> ")" => QueryPart::Logical(Logical::Not(Box::new(qp))),
     "(" <qp:Or> ")" => qp,
+    <l:Literal> => l.into(),
+}
+
+Literal: Value = {
+    String,
+    Number,
+};
+
+Identifier: String = {
+    PlainIdentifier,
+    QuotedIdentifier,
 };
 
 String: Value = {
-    <start:@L> <s:r#""([^"\\]|\\.)*""#> =>? unescape(&s[1..s.len() - 1], start + 1).map(|s| s.into()),
+    <start:@L> <s:r#""([^"\\]|\\.)*""#> =>? unescape_string(&s[1..s.len() - 1], start + 1).map(|s| s.into()),
+};
+
+QuotedIdentifier: String = {
+    <start:@L> <s:r#"`([^`\\]|\\.)*`"#> =>? unescape_identifier(&s[1..s.len() - 1], start + 1).map(|s| s.to_string()),
 };
 
 Number: Value = {
@@ -61,4 +84,8 @@ Number: Value = {
                 error: QueryParserError::InvalidNumber { start, end },
             })
     }
+};
+
+PlainIdentifier: String = {
+    <i:r"[_\p{L}][_\p{L}\d-]*"> => i.to_string(),
 };
