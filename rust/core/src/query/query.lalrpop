@@ -1,0 +1,64 @@
+use lalrpop_util::{ParseError};
+
+use crate::index::Value;
+use super::{and, or, Logical, Query, QueryPart};
+use super::unescape::unescape;
+use super::error::QueryParserError;
+
+grammar;
+
+extern {
+    type Error = QueryParserError;
+}
+
+pub Query: Query = {
+    <a:Or> => a.into(),
+};
+
+Or: QueryPart = {
+    <l:Or> r"(?i)\sor\s|\|\|" <r:And> => {
+        match l {
+            QueryPart::Logical(Logical::Or(mut parts)) => {
+                parts.push(r);
+                QueryPart::Logical(Logical::Or(parts))
+            }
+            _ => or![l, r],
+        }
+    },
+    And,
+};
+
+And: QueryPart = {
+    <l:And> r"(?i)\sand\s|&&" <r:Literal> => {
+        match l {
+            QueryPart::Logical(Logical::And(mut parts)) => {
+                parts.push(r);
+                QueryPart::Logical(Logical::And(parts))
+            }
+            _ => and![l, r],
+        }
+    },
+    Literal,
+};
+
+Literal: QueryPart = {
+    <s:String> => s.into(),
+    <n:Number> => n.into(),
+    r"!\s*\(" <qp:Or> ")" => QueryPart::Logical(Logical::Not(Box::new(qp))),
+    "(" <qp:Or> ")" => qp,
+};
+
+String: Value = {
+    <start:@L> <s:r#""([^"\\]|\\.)*""#> =>? unescape(&s[1..s.len() - 1], start + 1).map(|s| s.into()),
+};
+
+Number: Value = {
+    <start:@L> <n:r"-?(\d+|(\d+\.\d*)|(\d*\.\d+))([eE][+-]?\d*)?"> <end:@R> =>? {
+        n.parse::<i64>()
+            .map(|i| Value::from(i))
+            .or_else(|_| n.parse::<f64>().map(|i| i.into()))
+            .map_err(|e| ParseError::User {
+                error: QueryParserError::InvalidNumber { start, end },
+            })
+    }
+};

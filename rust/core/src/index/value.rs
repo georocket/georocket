@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 /// Represents different types allowed as indexed values
 #[derive(Debug, PartialEq, Clone)]
 pub enum Value {
@@ -15,6 +17,12 @@ impl From<&str> for Value {
 impl From<String> for Value {
     fn from(value: String) -> Self {
         Value::String(value)
+    }
+}
+
+impl From<Cow<'_, str>> for Value {
+    fn from(value: Cow<str>) -> Self {
+        Value::String(value.into())
     }
 }
 

@@ -25,37 +25,34 @@ impl<'a> QueryTranslator<'a> {
     }
 
     pub fn translate(&self, query: Query) -> Result<Box<dyn TantivyQuery>> {
-        let operands = self.translate_query_parts(query.parts)?;
+        Ok(match query {
+            Query::Empty => Box::new(AllQuery),
+            Query::Full(p) => self
+                .translate_query_part(p)?
+                .unwrap_or_else(|| Box::new(AllQuery)),
+        })
+    }
 
-        Ok(if operands.len() > 1 {
-            Box::new(BooleanQuery::new(
-                operands.into_iter().map(|q| (Occur::Should, q)).collect(),
-            ))
-        } else {
-            operands
-                .into_iter()
-                .next()
-                .unwrap_or_else(|| Box::new(AllQuery))
+    fn translate_query_part(&self, part: QueryPart) -> Result<Option<Box<dyn TantivyQuery>>> {
+        Ok(match part {
+            QueryPart::Value(p) => self.translate_value(p)?,
+            QueryPart::Logical(l) => self.translate_logical(l)?,
+            QueryPart::Comparison {
+                operator,
+                key,
+                value,
+            } => Some(self.translate_comparison(operator, &key, &value)?),
         })
     }
 
     fn translate_query_parts(&self, parts: Vec<QueryPart>) -> Result<Vec<Box<dyn TantivyQuery>>> {
-        let mut operands = Vec::new();
+        let mut result = Vec::new();
         for p in parts {
-            let q = match p {
-                QueryPart::Value(p) => self.translate_value(p)?,
-                QueryPart::Logical(l) => self.translate_logical(l)?,
-                QueryPart::Comparison {
-                    operator,
-                    key,
-                    value,
-                } => Some(self.translate_comparison(operator, &key, &value)?),
-            };
-            if let Some(q) = q {
-                operands.push(q);
+            if let Some(r) = self.translate_query_part(p)? {
+                result.push(r);
             }
         }
-        Ok(operands)
+        Ok(result)
     }
 
     /// Create a query that performs a full-text search on the 'all_values' field
@@ -233,21 +230,16 @@ impl<'a> QueryTranslator<'a> {
                 })
             }
 
-            Logical::Not(parts) => {
-                let operands = self.translate_query_parts(parts)?;
-                Ok(if !operands.is_empty() {
-                    let mut subqueries = operands
-                        .into_iter()
-                        .map(|q| (Occur::MustNot, q))
-                        .collect::<Vec<_>>();
-
-                    // return all other documents that don't match the query
-                    subqueries.push((Occur::Should, Box::new(AllQuery)));
-
-                    Some(Box::new(BooleanQuery::new(subqueries)))
-                } else {
-                    None
-                })
+            Logical::Not(part) => {
+                let operands = self.translate_query_part(*part)?;
+                Ok(operands.map::<Box<dyn TantivyQuery>, _>(|sub| {
+                    let q = vec![
+                        (Occur::MustNot, sub),
+                        // return all other documents that don't match the query
+                        (Occur::Should, Box::new(AllQuery)),
+                    ];
+                    Box::new(BooleanQuery::new(q))
+                }))
             }
         }
     }
