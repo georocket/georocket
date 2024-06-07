@@ -1,7 +1,7 @@
 use lalrpop_util::{ParseError};
 
 use crate::index::Value;
-use super::{and, eq, gt, gte, lt, lte, not, or, Logical, Query, QueryPart};
+use super::{and, bbox, eq, gt, gte, lt, lte, not, or, Logical, Query, QueryPart};
 use super::unescape::{unescape_identifier, unescape_string};
 use super::error::QueryParserError;
 
@@ -9,6 +9,15 @@ grammar;
 
 extern {
     type Error = QueryParserError;
+}
+
+match {
+    // keywords
+    r"(?i)bbox" => BBOX,
+} else {
+    r"[_\p{L}][_\p{L}\d-]*" => IDENT,
+    r"-?(\d+|(\d+\.\d*)|(\d*\.\d+))([eE][+-]?\d*)?" => NUMBER,
+    _
 }
 
 pub Query: Query = {
@@ -48,14 +57,20 @@ Comparison: QueryPart = {
     <id:Identifier> ">" <l:Literal> => gt![id, l],
     <id:Identifier> "<=" <l:Literal> => lte![id, l],
     <id:Identifier> "<" <l:Literal> => lt![id, l],
+    BoundingBox,
     Logical,
-}
+};
+
+BoundingBox: QueryPart = {
+    BBOX "(" <min_x:Float> "," <min_y:Float> "," <max_x:Float> "," <max_y:Float> ")" =>
+        bbox![min_x, min_y, max_x, max_y],
+};
 
 Logical: QueryPart = {
     r"!\s*\(" <qp:Or> ")" => QueryPart::Logical(Logical::Not(Box::new(qp))),
     "(" <qp:Or> ")" => qp,
     <l:Literal> => l.into(),
-}
+};
 
 Literal: Value = {
     String,
@@ -76,7 +91,7 @@ QuotedIdentifier: String = {
 };
 
 Number: Value = {
-    <start:@L> <n:r"-?(\d+|(\d+\.\d*)|(\d*\.\d+))([eE][+-]?\d*)?"> <end:@R> =>? {
+    <start:@L> <n:NUMBER> <end:@R> =>? {
         n.parse::<i64>()
             .map(|i| Value::from(i))
             .or_else(|_| n.parse::<f64>().map(|i| i.into()))
@@ -86,6 +101,16 @@ Number: Value = {
     }
 };
 
+Float: f64 = {
+    <start:@L> <n:NUMBER> <end:@R> =>? {
+        n.parse::<f64>()
+            .map(|i| i.into())
+            .map_err(|e| ParseError::User {
+                error: QueryParserError::InvalidNumber { start, end },
+            })
+    }
+}
+
 PlainIdentifier: String = {
-    <i:r"[_\p{L}][_\p{L}\d-]*"> => i.to_string(),
+    <i:IDENT> => i.to_string(),
 };

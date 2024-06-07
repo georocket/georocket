@@ -180,16 +180,15 @@ macro_rules! lte {
     }};
 }
 
-#[cfg(test)]
 macro_rules! bbox {
     ($min_x:expr, $min_y:expr, $max_x:expr, $max_y:expr) => {{
-        let bbox = BoundingBox::new($min_x, $min_y, 0.0, $max_x, $max_y, 0.0);
+        let bbox =
+            $crate::util::bounding_box::BoundingBox::new($min_x, $min_y, 0.0, $max_x, $max_y, 0.0);
         $crate::query::QueryPart::BoundingBox(bbox)
     }};
 }
 
 pub(crate) use and;
-#[cfg(test)]
 pub(crate) use bbox;
 pub(crate) use eq;
 pub(crate) use gt;
@@ -543,15 +542,45 @@ mod tests {
     }
 
     #[test]
+    fn bbox() {
+        let expected = query![bbox![1.0, 2.0, 3.0, 4.0]];
+        let qp = QueryParser::new();
+        assert_eq!(qp.parse("bbox(1, 2, 3, 4)").unwrap(), expected);
+        assert_eq!(qp.parse("BBOX  (  1.0   ,2, 3.0, 4  )").unwrap(), expected);
+    }
+
+    #[test]
+    fn bbox_error() {
+        let qp = QueryParser::new();
+        assert!(matches!(
+            qp.parse("bbox(1, 2, 3)"),
+            Err(ParseError::UnrecognizedToken {
+                token: (12, Token(_, ")"), 13),
+                ..
+            })
+        ));
+        assert!(matches!(
+            qp.parse("bbox(1, 2, 3,)"),
+            Err(ParseError::UnrecognizedToken {
+                token: (13, Token(_, ")"), 14),
+                ..
+            })
+        ));
+    }
+
+    #[test]
     fn complex() {
         let qp = QueryParser::new();
         assert_eq!(
-            qp.parse("(\"foo\" && \"bar\" AND (\"test1\" || \"test2\")) || \"hello\" OR !(\"world\" or \"you\")")
-                .unwrap(),
+            qp.parse(
+                "(\"foo\" && \"bar\" AND (\"test1\" || \"test2\")) ||
+                \"hello\" OR !(\"world\" or \"you\") && bbox(0,1,2,3)"
+            )
+            .unwrap(),
             query![or![
                 and!["foo", "bar", or!["test1", "test2"]],
                 "hello",
-                not![or!["world", "you"]]
+                and![not![or!["world", "you"]], bbox![0.0, 1.0, 2.0, 3.0],]
             ]]
         );
     }

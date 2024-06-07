@@ -19,7 +19,13 @@ fn expected_to_string(expected: &[String]) -> String {
     let mut result = String::new();
     for (i, e) in expected.iter().enumerate() {
         let sep = match i {
-            0 => " Expected one of",
+            0 => {
+                if expected.len() > 1 {
+                    " Expected one of"
+                } else {
+                    " Expected"
+                }
+            }
             _ if i < expected.len() - 1 => ",",
             _ => ", or",
         };

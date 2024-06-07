@@ -23,11 +23,9 @@ fn unescape(
     while let Some((i, c)) = chars.next() {
         let p = if c == '\\' {
             // get escaped character
-            let Some((j, n)) = chars.next() else {
-                return Err(User {
-                    error: ExpectedEscapeCharacter { location: pos + i },
-                });
-            };
+            let (j, n) = chars.next().ok_or(User {
+                error: ExpectedEscapeCharacter { location: pos + i },
+            })?;
 
             match n {
                 _ if n == quote_character => n,
@@ -43,35 +41,26 @@ fn unescape(
                     // get next 4 hex characters and convert them to u32
                     let mut u = 0u32;
                     for k in 0..4 {
-                        let Some((xi, x)) = chars.next() else {
-                            return Err(User {
-                                error: ExpectedHexInUnicodeEscape {
-                                    location: pos + j + k + 1,
-                                },
-                            });
-                        };
+                        let (xi, x) = chars.next().ok_or(User {
+                            error: ExpectedHexInUnicodeEscape {
+                                location: pos + j + k + 1,
+                            },
+                        })?;
 
-                        let Some(xu) = x.to_digit(16) else {
-                            return Err(User {
-                                error: InvalidHexInUnicodeEscape { location: pos + xi },
-                            });
-                        };
+                        let xu = x.to_digit(16).ok_or(User {
+                            error: InvalidHexInUnicodeEscape { location: pos + xi },
+                        })?;
 
                         u <<= 4;
                         u |= xu;
                     }
 
-                    match char::from_u32(u) {
-                        Some(d) => d,
-                        None => {
-                            return Err(User {
-                                error: InvalidUnicodeEscapeSequence {
-                                    start: pos + j,
-                                    end: pos + j + 4,
-                                },
-                            })
-                        }
-                    }
+                    char::from_u32(u).ok_or(User {
+                        error: InvalidUnicodeEscapeSequence {
+                            start: pos + j,
+                            end: pos + j + 4,
+                        },
+                    })?
                 }
 
                 _ => {
