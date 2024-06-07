@@ -13,10 +13,17 @@ extern {
 
 match {
     // keywords
-    r"(?i)bbox" => BBOX,
+    r"(?i)\sor\s|\|\|" => "||",
+    r"(?i)\sand\s|&&" => "&&",
+    r"(?i)bbox" => "BBOX()",
 } else {
     r"[_\p{L}][_\p{L}\d-]*" => IDENT,
     r"-?(\d+|(\d+\.\d*)|(\d*\.\d+))([eE][+-]?\d*)?" => NUMBER,
+    r"![=]{1,2}" => "!=",
+    r"[=]{1,2}" => "==",
+    r"!\s*\(" => "!(",
+    r#""([^"\\]|\\.)*""# => STRING,
+    r#"`([^`\\]|\\.)*`"# => QUOTED_IDENT,
     _
 }
 
@@ -25,7 +32,7 @@ pub Query: Query = {
 };
 
 Or: QueryPart = {
-    <l:Or> r"(?i)\sor\s|\|\|" <r:And> => {
+    <l:Or> "||" <r:And> => {
         match l {
             QueryPart::Logical(Logical::Or(mut parts)) => {
                 parts.push(r);
@@ -38,7 +45,7 @@ Or: QueryPart = {
 };
 
 And: QueryPart = {
-    <l:And> r"(?i)\sand\s|&&" <r:Comparison> => {
+    <l:And> "&&" <r:Comparison> => {
         match l {
             QueryPart::Logical(Logical::And(mut parts)) => {
                 parts.push(r);
@@ -51,8 +58,8 @@ And: QueryPart = {
 };
 
 Comparison: QueryPart = {
-    <id:Identifier> r"![=]{1,2}" <l:Literal> => not![eq![id, l]],
-    <id:Identifier> r"[=]{1,2}" <l:Literal> => eq![id, l],
+    <id:Identifier> "!=" <l:Literal> => not![eq![id, l]],
+    <id:Identifier> "==" <l:Literal> => eq![id, l],
     <id:Identifier> ">=" <l:Literal> => gte![id, l],
     <id:Identifier> ">" <l:Literal> => gt![id, l],
     <id:Identifier> "<=" <l:Literal> => lte![id, l],
@@ -62,12 +69,12 @@ Comparison: QueryPart = {
 };
 
 BoundingBox: QueryPart = {
-    BBOX "(" <min_x:Float> "," <min_y:Float> "," <max_x:Float> "," <max_y:Float> ")" =>
+    "BBOX()" "(" <min_x:Float> "," <min_y:Float> "," <max_x:Float> "," <max_y:Float> ")" =>
         bbox![min_x, min_y, max_x, max_y],
 };
 
 Logical: QueryPart = {
-    r"!\s*\(" <qp:Or> ")" => QueryPart::Logical(Logical::Not(Box::new(qp))),
+    "!(" <qp:Or> ")" => QueryPart::Logical(Logical::Not(Box::new(qp))),
     "(" <qp:Or> ")" => qp,
     <l:Literal> => l.into(),
 };
@@ -83,11 +90,11 @@ Identifier: String = {
 };
 
 String: Value = {
-    <start:@L> <s:r#""([^"\\]|\\.)*""#> =>? unescape_string(&s[1..s.len() - 1], start + 1).map(|s| s.into()),
+    <start:@L> <s:STRING> =>? unescape_string(&s[1..s.len() - 1], start + 1).map(|s| s.into()),
 };
 
 QuotedIdentifier: String = {
-    <start:@L> <s:r#"`([^`\\]|\\.)*`"#> =>? unescape_identifier(&s[1..s.len() - 1], start + 1).map(|s| s.to_string()),
+    <start:@L> <s:QUOTED_IDENT> =>? unescape_identifier(&s[1..s.len() - 1], start + 1).map(|s| s.to_string()),
 };
 
 Number: Value = {
