@@ -9,7 +9,7 @@ use tantivy::{
 use ulid::Ulid;
 
 use crate::{
-    index::{Index, IndexedValue},
+    index::{Index, IndexedValue, Value},
     query::Query,
 };
 
@@ -96,15 +96,15 @@ impl Index for TantivyIndex {
                 IndexedValue::GenericAttributes(m) => {
                     for (k, v) in m {
                         match v {
-                            crate::index::Value::String(s) => {
+                            Value::String(s) => {
                                 push_all_values(&mut all_values, &s);
                                 gen_attrs.insert(k, OwnedValue::Str(s));
                             }
-                            crate::index::Value::Float(f) => {
+                            Value::Float(f) => {
                                 push_all_values(&mut all_values, &f.to_string());
                                 gen_attrs.insert(k, OwnedValue::F64(f));
                             }
-                            crate::index::Value::Integer(i) => {
+                            Value::Integer(i) => {
                                 push_all_values(&mut all_values, &i.to_string());
                                 gen_attrs.insert(k, OwnedValue::I64(i));
                             }
@@ -175,7 +175,8 @@ mod tests {
 
     use crate::{
         index::{Index, IndexedValue, Value},
-        query::{and, eq, gt, gte, lt, lte, not, or, query},
+        query::{and, bbox, eq, gt, gte, lt, lte, not, or, query},
+        util::bounding_box::BoundingBox,
     };
 
     use super::TantivyIndex;
@@ -198,30 +199,42 @@ mod tests {
             [("name".to_string(), Value::String("Elvis".to_string()))].into(),
         )];
         let id2 = Ulid::new();
-        let indexer_result2 = vec![IndexedValue::GenericAttributes(
-            [
-                (
-                    "name".to_string(),
-                    Value::String("Empire State Building".to_string()),
-                ),
-                ("year".to_string(), Value::Integer(1931)),
-                ("height".to_string(), Value::Float(443.2)),
-            ]
-            .into(),
-        )];
+        let indexer_result2 = vec![
+            IndexedValue::GenericAttributes(
+                [
+                    (
+                        "name".to_string(),
+                        Value::String("Empire State Building".to_string()),
+                    ),
+                    ("year".to_string(), Value::Integer(1931)),
+                    ("height".to_string(), Value::Float(443.2)),
+                ]
+                .into(),
+            ),
+            IndexedValue::BoundingBox(BoundingBox::new(
+                // aprox. :-)
+                -73.986479, 40.747914, 0.0, -73.984866, 40.748978, 0.0,
+            )),
+        ];
         let id3 = Ulid::new();
         let indexer_result3 = vec![IndexedValue::GenericAttributes(
             [("name".to_string(), Value::String("Einar".to_string()))].into(),
         )];
         let id4 = Ulid::new();
-        let indexer_result4 = vec![IndexedValue::GenericAttributes(
-            [
-                ("name".to_string(), Value::String("Main Tower".to_string())),
-                ("year".to_string(), Value::Integer(2000)),
-                ("height".to_string(), Value::Float(240.0)),
-            ]
-            .into(),
-        )];
+        let indexer_result4 = vec![
+            IndexedValue::GenericAttributes(
+                [
+                    ("name".to_string(), Value::String("Main Tower".to_string())),
+                    ("year".to_string(), Value::Integer(2000)),
+                    ("height".to_string(), Value::Float(240.0)),
+                ]
+                .into(),
+            ),
+            IndexedValue::BoundingBox(BoundingBox::new(
+                // aprox. :-)
+                8.6718699, 50.1123123, 0.0, 8.6725155, 50.1127384, 0.0,
+            )),
+        ];
 
         index.add(id1, indexer_result1).unwrap();
         index.add(id2, indexer_result2).unwrap();
@@ -649,5 +662,84 @@ mod tests {
 
         let retrieved_ids = mi.index.search(query![not![or![]]]).unwrap();
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id1, mi.id2, mi.id3, mi.id4, id5]);
+    }
+
+    #[test]
+    fn bbox() {
+        let mi = make_mini_index();
+        let retrieved_ids = mi
+            .index
+            .search(query![bbox![0.0, -90.0, 180.0, 90.0]])
+            .unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id4]);
+
+        let retrieved_ids = mi
+            .index
+            .search(query![bbox![-180.0, -90.0, 0.0, 90.0]])
+            .unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
+
+        // exact bbox of id2
+        let retrieved_ids = mi
+            .index
+            .search(query![bbox![-73.986479, 40.747914, -73.984866, 40.748978]])
+            .unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
+
+        // move query bbox left
+        let retrieved_ids = mi
+            .index
+            .search(query![bbox![-73.986489, 40.747914, -73.986479, 40.748978]])
+            .unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
+
+        // move query bbox even further left
+        let retrieved_ids = mi
+            .index
+            .search(query![bbox![-73.986489, 40.747914, -73.986480, 40.748978]])
+            .unwrap();
+        assert_that!(retrieved_ids).is_empty();
+
+        // move query bbox right
+        let retrieved_ids = mi
+            .index
+            .search(query![bbox![-73.984866, 40.747914, -73.984856, 40.748978]])
+            .unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
+
+        // move query bbox even further right
+        let retrieved_ids = mi
+            .index
+            .search(query![bbox![-73.984865, 40.747914, -73.984856, 40.748978]])
+            .unwrap();
+        assert_that!(retrieved_ids).is_empty();
+
+        // move query bbox up
+        let retrieved_ids = mi
+            .index
+            .search(query![bbox![-73.986479, 40.747904, -73.984866, 40.747914]])
+            .unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
+
+        // move query bbox even further up
+        let retrieved_ids = mi
+            .index
+            .search(query![bbox![-73.986479, 40.747904, -73.984866, 40.747913]])
+            .unwrap();
+        assert_that!(retrieved_ids).is_empty();
+
+        // move query bbox down
+        let retrieved_ids = mi
+            .index
+            .search(query![bbox![-73.986479, 40.748978, -73.984866, 40.748988]])
+            .unwrap();
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
+
+        // move query bbox even further down
+        let retrieved_ids = mi
+            .index
+            .search(query![bbox![-73.986479, 40.748979, -73.984866, 40.748988]])
+            .unwrap();
+        assert_that!(retrieved_ids).is_empty()
     }
 }

@@ -2,7 +2,9 @@ use anyhow::{bail, Result};
 use std::ops::Bound;
 
 use tantivy::{
-    query::{AllQuery, BooleanQuery, Occur, PhraseQuery, Query as TantivyQuery, TermQuery},
+    query::{
+        AllQuery, BooleanQuery, Occur, PhraseQuery, Query as TantivyQuery, RangeQuery, TermQuery,
+    },
     schema::{Field, IndexRecordOption},
     Term,
 };
@@ -10,6 +12,7 @@ use tantivy::{
 use crate::{
     index::Value,
     query::{Logical, Operator, Query, QueryPart},
+    util::bounding_box::BoundingBox,
 };
 
 use super::{json_range_query::JsonRangeQuery, Fields};
@@ -36,6 +39,7 @@ impl<'a> QueryTranslator<'a> {
     fn translate_query_part(&self, part: QueryPart) -> Result<Option<Box<dyn TantivyQuery>>> {
         Ok(match part {
             QueryPart::Value(p) => self.translate_value(p)?,
+            QueryPart::BoundingBox(b) => Some(self.translate_bbox(b)),
             QueryPart::Logical(l) => self.translate_logical(l)?,
             QueryPart::Comparison {
                 operator,
@@ -85,6 +89,38 @@ impl<'a> QueryTranslator<'a> {
         } else {
             Some(Box::new(PhraseQuery::new(terms)))
         })
+    }
+
+    /// Create a spatial query returning chunks whose bounding boxes intersect
+    /// the given one
+    fn translate_bbox(&self, bbox: BoundingBox) -> Box<dyn TantivyQuery> {
+        // TODO is it possible to use self.fields instead of field names (strings)?
+        let subqueries: Vec<Box<dyn TantivyQuery>> = vec![
+            Box::new(RangeQuery::new_f64_bounds(
+                "bbox_max_x".to_string(),
+                Bound::Included(bbox.min_x),
+                Bound::Unbounded,
+            )),
+            Box::new(RangeQuery::new_f64_bounds(
+                "bbox_min_x".to_string(),
+                Bound::Unbounded,
+                Bound::Included(bbox.max_x),
+            )),
+            Box::new(RangeQuery::new_f64_bounds(
+                "bbox_max_y".to_string(),
+                Bound::Included(bbox.min_y),
+                Bound::Unbounded,
+            )),
+            Box::new(RangeQuery::new_f64_bounds(
+                "bbox_min_y".to_string(),
+                Bound::Unbounded,
+                Bound::Included(bbox.max_y),
+            )),
+        ];
+
+        Box::new(BooleanQuery::new(
+            subqueries.into_iter().map(|q| (Occur::Must, q)).collect(),
+        ))
     }
 
     fn key_value_to_bound(field: Field, key: &str, value: &Value) -> Result<Vec<u8>> {
