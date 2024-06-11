@@ -1,6 +1,8 @@
-use std::{fs::File, io::BufReader, sync::mpsc, thread::spawn};
+use std::{fs::File, io::BufReader, sync::Arc, thread::spawn};
 
 use anyhow::{bail, Ok, Result};
+use crossbeam_channel::bounded;
+use parking_lot::RwLock;
 use quick_xml::{events::Event, Reader};
 use ulid::Ulid;
 
@@ -24,10 +26,10 @@ pub fn import_xml(path: String) -> Result<()> {
     let mut store = RocksDBStore::new("store")?;
 
     // initialize index
-    let mut index = TantivyIndex::new("index")?;
+    let index = Arc::new(RwLock::new(TantivyIndex::new("index")?));
 
     // run separate thread for store
-    let (store_send, store_recv) = mpsc::sync_channel::<(Ulid, Vec<u8>)>(16);
+    let (store_send, store_recv) = bounded::<(Ulid, Vec<u8>)>(16);
     let store_thread = spawn(move || {
         for (id, chunk) in store_recv {
             store.add(id, chunk)?;
@@ -36,15 +38,24 @@ pub fn import_xml(path: String) -> Result<()> {
         Ok(())
     });
 
-    // run separate thread for index
-    let (index_send, index_recv) = mpsc::sync_channel::<(Ulid, Vec<IndexedValue>)>(16);
-    let index_thread = spawn(move || {
-        for (id, indexer_result) in index_recv {
-            index.add(id, indexer_result)?;
-        }
-        index.commit()?;
-        Ok(())
-    });
+    // Run separate threads for index. Even though the underlying indexer
+    // might not be multi-threaded or might have its own threading layer,
+    // preparing the documents (e.g. creating spatial indexing terms) will
+    // benefit from parallelization.
+    let (index_send, index_recv) = bounded::<(Ulid, Vec<IndexedValue>)>(16);
+    let index_threads = (0..num_cpus::get())
+        .map(|_| {
+            let index = Arc::clone(&index);
+            let index_recv = index_recv.clone();
+            spawn(move || {
+                let index = index.read();
+                for (id, indexer_result) in index_recv {
+                    index.add(id, indexer_result)?;
+                }
+                Ok(())
+            })
+        })
+        .collect::<Vec<_>>();
 
     // open file to import
     let file = File::open(path)?;
@@ -109,9 +120,12 @@ pub fn import_xml(path: String) -> Result<()> {
     }
 
     drop(index_send);
-    if let Err(err) = index_thread.join() {
-        bail!("Index thread threw an error: {err:?}");
+    for index_thread in index_threads {
+        if let Err(err) = index_thread.join() {
+            bail!("Index thread threw an error: {err:?}");
+        }
     }
+    index.write().commit()?;
 
     Ok(())
 }

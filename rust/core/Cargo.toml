@@ -7,13 +7,16 @@ publish = false
 [dependencies]
 anyhow.workspace = true
 assertor.workspace = true
+crossbeam-channel.workspace = true
 lalrpop-util.workspace = true
+num_cpus.workspace = true
+parking_lot.workspace = true
 proj.workspace = true
 quick-xml.workspace = true
 rocksdb.workspace = true
 rustc-hash.workspace = true
-tantivy.workspace = true
 tantivy-common.workspace = true
+tantivy.workspace = true
 ulid.workspace = true
 
 [dev-dependencies]
