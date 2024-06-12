@@ -7,6 +7,7 @@ use crate::{query::Query, util::bounding_box::BoundingBox};
 pub use self::value::Value;
 
 pub mod gml;
+pub mod h3_term_index;
 pub mod tantivy;
 pub mod value;
 

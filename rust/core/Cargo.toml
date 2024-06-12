@@ -8,6 +8,8 @@ publish = false
 anyhow.workspace = true
 assertor.workspace = true
 crossbeam-channel.workspace = true
+geo.workspace = true
+h3o.workspace = true
 lalrpop-util.workspace = true
 num_cpus.workspace = true
 parking_lot.workspace = true
@@ -20,6 +22,7 @@ tantivy.workspace = true
 ulid.workspace = true
 
 [dev-dependencies]
+rand.workspace = true
 tempdir.workspace = true
 
 [build-dependencies]
