@@ -2,29 +2,40 @@ use anyhow::{bail, Result};
 use std::ops::Bound;
 
 use tantivy::{
-    query::{
-        AllQuery, BooleanQuery, Occur, PhraseQuery, Query as TantivyQuery, RangeQuery, TermQuery,
-    },
+    query::{AllQuery, BooleanQuery, Occur, PhraseQuery, Query as TantivyQuery, TermQuery},
     schema::{Field, IndexRecordOption},
     Term,
 };
 
 use crate::{
-    index::Value,
+    index::{h3_term_index::TermOptions, Value},
     query::{Logical, Operator, Query, QueryPart},
     util::bounding_box::BoundingBox,
 };
 
-use super::{json_range_query::JsonRangeQuery, Fields};
+use super::{
+    bounding_box_query::{BoundingBoxFields, BoundingBoxQuery},
+    json_range_query::JsonRangeQuery,
+    Fields,
+};
 
 pub(super) struct QueryTranslator<'a> {
     index: &'a tantivy::Index,
     fields: &'a Fields,
+    bbox_term_options: TermOptions,
 }
 
 impl<'a> QueryTranslator<'a> {
-    pub fn new(index: &'a tantivy::Index, fields: &'a Fields) -> Self {
-        Self { index, fields }
+    pub fn new(
+        index: &'a tantivy::Index,
+        fields: &'a Fields,
+        bbox_term_options: TermOptions,
+    ) -> Self {
+        Self {
+            index,
+            fields,
+            bbox_term_options,
+        }
     }
 
     pub fn translate(&self, query: Query) -> Result<Box<dyn TantivyQuery>> {
@@ -39,7 +50,7 @@ impl<'a> QueryTranslator<'a> {
     fn translate_query_part(&self, part: QueryPart) -> Result<Option<Box<dyn TantivyQuery>>> {
         Ok(match part {
             QueryPart::Value(p) => self.translate_value(p)?,
-            QueryPart::BoundingBox(b) => Some(self.translate_bbox(b)),
+            QueryPart::BoundingBox(b) => Some(self.translate_bbox(b)?),
             QueryPart::Logical(l) => self.translate_logical(l)?,
             QueryPart::Comparison {
                 operator,
@@ -93,34 +104,19 @@ impl<'a> QueryTranslator<'a> {
 
     /// Create a spatial query returning chunks whose bounding boxes intersect
     /// the given one
-    fn translate_bbox(&self, bbox: BoundingBox) -> Box<dyn TantivyQuery> {
-        // TODO is it possible to use self.fields instead of field names (strings)?
-        let subqueries: Vec<Box<dyn TantivyQuery>> = vec![
-            Box::new(RangeQuery::new_f64_bounds(
-                "bbox_max_x".to_string(),
-                Bound::Included(bbox.min_x),
-                Bound::Unbounded,
-            )),
-            Box::new(RangeQuery::new_f64_bounds(
-                "bbox_min_x".to_string(),
-                Bound::Unbounded,
-                Bound::Included(bbox.max_x),
-            )),
-            Box::new(RangeQuery::new_f64_bounds(
-                "bbox_max_y".to_string(),
-                Bound::Included(bbox.min_y),
-                Bound::Unbounded,
-            )),
-            Box::new(RangeQuery::new_f64_bounds(
-                "bbox_min_y".to_string(),
-                Bound::Unbounded,
-                Bound::Included(bbox.max_y),
-            )),
-        ];
-
-        Box::new(BooleanQuery::new(
-            subqueries.into_iter().map(|q| (Occur::Must, q)).collect(),
-        ))
+    fn translate_bbox(&self, bbox: BoundingBox) -> Result<Box<dyn TantivyQuery>> {
+        Ok(Box::new(BoundingBoxQuery::new(
+            self.fields.bbox_terms_field,
+            bbox,
+            BoundingBoxFields {
+                // TODO is it possible to use self.fields instead of field names (strings)?
+                min_x: "bbox_min_x".to_string(),
+                min_y: "bbox_min_y".to_string(),
+                max_x: "bbox_max_x".to_string(),
+                max_y: "bbox_max_y".to_string(),
+            },
+            self.bbox_term_options,
+        )?))
     }
 
     fn key_value_to_bound(field: Field, key: &str, value: &Value) -> Result<Vec<u8>> {

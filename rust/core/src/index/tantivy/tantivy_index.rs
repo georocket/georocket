@@ -1,15 +1,20 @@
 use anyhow::{Context, Result};
+use geo::{coord, Rect};
+use h3o::Resolution;
 use std::{collections::BTreeMap, fs};
 use tantivy::{
     collector::DocSetCollector,
     directory::MmapDirectory,
-    schema::{OwnedValue, Schema, INDEXED, STORED, STRING, TEXT},
+    schema::{OwnedValue, Schema, FAST, STORED, STRING, TEXT},
     IndexBuilder, IndexReader, IndexWriter, TantivyDocument,
 };
 use ulid::Ulid;
 
 use crate::{
-    index::{Index, IndexedValue, Value},
+    index::{
+        h3_term_index::{make_terms, TermMode, TermOptions},
+        Index, IndexedValue, Value,
+    },
     query::Query,
 };
 
@@ -21,6 +26,7 @@ pub struct TantivyIndex {
     index: tantivy::Index,
     reader: IndexReader,
     writer: IndexWriter,
+    bbox_term_options: TermOptions,
 }
 
 impl TantivyIndex {
@@ -33,12 +39,11 @@ impl TantivyIndex {
         let id_field = schema_builder.add_bytes_field("_id", STORED);
         let gen_attrs_field = schema_builder.add_json_field("gen_attrs", STRING);
         let all_values_field = schema_builder.add_text_field("all_values", TEXT);
-        let bbox_min_x_field = schema_builder.add_f64_field("bbox_min_x", INDEXED);
-        let bbox_min_y_field = schema_builder.add_f64_field("bbox_min_y", INDEXED);
-        let bbox_min_z_field = schema_builder.add_f64_field("bbox_min_z", INDEXED);
-        let bbox_max_x_field = schema_builder.add_f64_field("bbox_max_x", INDEXED);
-        let bbox_max_y_field = schema_builder.add_f64_field("bbox_max_y", INDEXED);
-        let bbox_max_z_field = schema_builder.add_f64_field("bbox_max_z", INDEXED);
+        let bbox_min_x_field = schema_builder.add_f64_field("bbox_min_x", FAST);
+        let bbox_min_y_field = schema_builder.add_f64_field("bbox_min_y", FAST);
+        let bbox_max_x_field = schema_builder.add_f64_field("bbox_max_x", FAST);
+        let bbox_max_y_field = schema_builder.add_f64_field("bbox_max_y", FAST);
+        let bbox_terms_field = schema_builder.add_text_field("bbox_terms", STRING);
 
         let schema = schema_builder.build();
 
@@ -61,10 +66,21 @@ impl TantivyIndex {
             all_values_field,
             bbox_min_x_field,
             bbox_min_y_field,
-            bbox_min_z_field,
             bbox_max_x_field,
             bbox_max_y_field,
-            bbox_max_z_field,
+            bbox_terms_field,
+        };
+
+        // TODO If necessary, this could be made configurable. Note that
+        // changing the term options here requires the whole index to be
+        // rebuilt, as they must be the same for both indexing and querying. If
+        // we make this configurable, the options should be stored somewhere in
+        // the index (or metadata), so we can compare them when opening it.
+        let bbox_term_options = TermOptions {
+            min_resolution: Resolution::One,
+            max_resolution: Resolution::Fifteen,
+            max_cells: 8,
+            optimize_for_space: false,
         };
 
         Ok(TantivyIndex {
@@ -72,6 +88,7 @@ impl TantivyIndex {
             index,
             reader,
             writer,
+            bbox_term_options,
         })
     }
 }
@@ -115,10 +132,17 @@ impl Index for TantivyIndex {
                 IndexedValue::BoundingBox(bbox) => {
                     doc.add_f64(self.fields.bbox_min_x_field, bbox.min_x);
                     doc.add_f64(self.fields.bbox_min_y_field, bbox.min_y);
-                    doc.add_f64(self.fields.bbox_min_z_field, bbox.min_z);
                     doc.add_f64(self.fields.bbox_max_x_field, bbox.max_x);
                     doc.add_f64(self.fields.bbox_max_y_field, bbox.max_y);
-                    doc.add_f64(self.fields.bbox_max_z_field, bbox.max_z);
+
+                    let rect = Rect::new(
+                        coord! { x: bbox.min_x, y: bbox.min_y },
+                        coord! { x: bbox.max_x, y: bbox.max_y },
+                    );
+                    let terms = make_terms(&rect, self.bbox_term_options, TermMode::Index)?;
+                    for t in terms {
+                        doc.add_text(self.fields.bbox_terms_field, t);
+                    }
                 }
             }
         }
@@ -140,7 +164,8 @@ impl Index for TantivyIndex {
     fn search(&self, query: Query) -> Result<Vec<Ulid>> {
         let searcher = self.reader.searcher();
 
-        let query_translator = QueryTranslator::new(&self.index, &self.fields);
+        let query_translator =
+            QueryTranslator::new(&self.index, &self.fields, self.bbox_term_options);
         let tantivy_query = query_translator.translate(query)?;
 
         let doc_addresses = searcher.search(&tantivy_query, &DocSetCollector)?;
