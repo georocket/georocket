@@ -10,9 +10,9 @@ use tantivy::{DocId, Result, Score, SegmentReader, TantivyError};
 use tantivy_common::BitSet;
 
 /// A workaround for the fact that Tantivy does not support range requests on
-/// JSON fields yet (see issue https://github.com/quickwit-oss/tantivy/issues/1709).
+/// JSON fields yet (see issue <https://github.com/quickwit-oss/tantivy/issues/1709>).
 ///
-/// Most of this code has been copied from https://github.com/quickwit-oss/tantivy/blob/0.22.0/src/query/range_query/range_query.rs
+/// Most of this code has been copied from <https://github.com/quickwit-oss/tantivy/blob/0.22.0/src/query/range_query/range_query.rs>
 /// (licensed under the MIT license, Copyright (c) 2018 by the Tantivy project
 /// authors) but adapted for JSON fields.
 ///

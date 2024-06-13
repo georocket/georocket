@@ -194,9 +194,10 @@ struct Candidate {
     cell: CellIndex,
 
     /// The cell's children. `None` if:
-    /// * [`terminal`] is `true`, which means that the cell either has no
-    ///   children or should not be refined any further
-    /// * [`terminal`] is `false` and the children have not been determined yet
+    /// * [`terminal`](Self::terminal) is `true`, which means that the cell
+    ///   either has no children or should not be refined any further
+    /// * [`terminal`](Self::terminal) is `false` and the children have not
+    ///   been determined yet
     children: Option<Vec<Candidate>>,
 
     /// `true` if the cell should not be refined any further. This happens if
@@ -476,8 +477,8 @@ pub struct TermOptions {
 
     /// The maximum number of covering terms the function should return. Note
     /// that the result set will actually be larger as it will also contain
-    /// ancestor terms and, depending on [`Self::optimize_for_space`], also
-    /// artificial ancestor terms.
+    /// ancestor terms and, depending on [`optimize_for_space`](Self::optimize_for_space),
+    /// also artificial ancestor terms.
     pub max_cells: usize,
 
     /// `true` if the terms created should aim to keep the index size low (i.e.
