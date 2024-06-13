@@ -137,7 +137,7 @@
 //! As described above, [`make_terms`] will create covering and ancestor terms
 //! for the indexed geometry. Ancestor terms will have a prefix, so they can be
 //! differentiated from the covering terms. For the query geometry, it will
-//! also create covering and ancestor teams, but this time, the covering terms
+//! also create covering and ancestor terms, but this time, the covering terms
 //! will have a prefix (so covering terms will become ancestor terms and
 //! ancestor terms will become covering terms).
 //!
