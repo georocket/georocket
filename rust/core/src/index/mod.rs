@@ -24,10 +24,10 @@ pub trait Indexer<E> {
     fn on_event(&mut self, event: E) -> Result<()>;
 }
 
-/// An index store information about chunks in a GeoRocket store and can be
+/// An index stores information about chunks in a GeoRocket store and can be
 /// used to perform queries.
 pub trait Index {
-    /// Add the results of indexing a chunk with the given `id` to the index
+    /// Adds the results of indexing a chunk with the given `id` to the index
     fn add(&self, id: Ulid, indexer_result: Vec<IndexedValue>) -> Result<()>;
 
     /// Persists changes

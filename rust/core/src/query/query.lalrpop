@@ -100,7 +100,7 @@ QuotedIdentifier: String = {
 Number: Value = {
     <start:@L> <n:NUMBER> <end:@R> =>? {
         n.parse::<i64>()
-            .map(|i| Value::from(i))
+            .map(Value::from)
             .or_else(|_| n.parse::<f64>().map(|i| i.into()))
             .map_err(|e| ParseError::User {
                 error: QueryParserError::InvalidNumber { start, end },
@@ -111,7 +111,6 @@ Number: Value = {
 Float: f64 = {
     <start:@L> <n:NUMBER> <end:@R> =>? {
         n.parse::<f64>()
-            .map(|i| i.into())
             .map_err(|e| ParseError::User {
                 error: QueryParserError::InvalidNumber { start, end },
             })
