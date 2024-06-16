@@ -28,7 +28,7 @@ jobs:
       - name: Lint
         run: |
           cargo fmt --all -- --check
-          cargo clippy --all-features --all-targets -- -Dwarnings
+          cargo clippy --all-features --all-targets --no-deps -- -Dwarnings
 
       - name: Build
         run: cargo check
