@@ -25,6 +25,9 @@ jobs:
       - name: Install rustfmt and clippy
         run: rustup component add rustfmt clippy
 
+      # Cache dependencies - must be run after rustup
+      - uses: Swatinem/rust-cache@v2
+
       - name: Lint
         run: |
           cargo fmt --all -- --check
