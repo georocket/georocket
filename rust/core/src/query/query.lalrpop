@@ -16,6 +16,7 @@ match {
     r"(?i)\sor\s|\|\|" => "||",
     r"(?i)\sand\s|&&" => "&&",
     r"(?i)bbox" => "BBOX()",
+    r"(?i)rect" => "RECT()",
 } else {
     r"[_\p{L}][_\p{L}\d-]*" => IDENT,
     r"-?(\d+|(\d+\.\d*)|(\d*\.\d+))([eE][+-]?\d*)?" => NUMBER,
@@ -69,8 +70,13 @@ Comparison: QueryPart = {
 };
 
 BoundingBox: QueryPart = {
-    "BBOX()" "(" <min_x:Float> "," <min_y:Float> "," <max_x:Float> "," <max_y:Float> ")" =>
+    BoundingBoxAlias "(" <min_x:Float> "," <min_y:Float> "," <max_x:Float> "," <max_y:Float> ")" =>
         bbox![min_x, min_y, max_x, max_y],
+};
+
+BoundingBoxAlias = {
+    "BBOX()",
+    "RECT()",
 };
 
 Logical: QueryPart = {

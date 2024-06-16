@@ -553,6 +553,14 @@ mod tests {
     }
 
     #[test]
+    fn rect() {
+        let expected = query![bbox![1.0, 2.0, 3.0, 4.0]];
+        let qp = QueryParser::new();
+        assert_eq!(qp.parse("rect(1, 2, 3, 4)").unwrap(), expected);
+        assert_eq!(qp.parse("RECT  (  1.0   ,2, 3.0, 4  )").unwrap(), expected);
+    }
+
+    #[test]
     fn bbox_error() {
         let qp = QueryParser::new();
         assert!(matches!(
