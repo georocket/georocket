@@ -1,7 +1,8 @@
+use geo::Rect;
 use lalrpop_util::lalrpop_mod;
 use std::fmt::{Display, Formatter};
 
-use crate::{index::Value, util::bounding_box::BoundingBox};
+use crate::index::Value;
 
 pub mod error;
 mod unescape;
@@ -54,7 +55,7 @@ impl Display for Operator {
 #[derive(Debug, PartialEq)]
 pub enum QueryPart {
     Value(Value),
-    BoundingBox(BoundingBox),
+    BoundingBox(Rect),
     Logical(Logical),
     Comparison {
         operator: Operator,
@@ -182,8 +183,10 @@ macro_rules! lte {
 
 macro_rules! bbox {
     ($min_x:expr, $min_y:expr, $max_x:expr, $max_y:expr) => {{
-        let bbox =
-            $crate::util::bounding_box::BoundingBox::new($min_x, $min_y, 0.0, $max_x, $max_y, 0.0);
+        let bbox = geo::Rect::new(
+            geo::coord! { x: $min_x, y: $min_y },
+            geo::coord! { x: $max_x, y: $max_y },
+        );
         $crate::query::QueryPart::BoundingBox(bbox)
     }};
 }

@@ -1,8 +1,9 @@
 use anyhow::Result;
+use geo::Rect;
 use std::collections::HashMap;
 use ulid::Ulid;
 
-use crate::{query::Query, util::bounding_box::BoundingBox};
+use crate::query::Query;
 
 pub use self::value::Value;
 
@@ -15,7 +16,7 @@ pub mod value;
 #[derive(Debug, PartialEq)]
 pub enum IndexedValue {
     GenericAttributes(HashMap<String, Value>),
-    BoundingBox(BoundingBox),
+    BoundingBox(Rect),
 }
 
 /// Indexes chunks

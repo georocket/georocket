@@ -1,5 +1,4 @@
 use anyhow::{Context, Result};
-use geo::{coord, Rect};
 use h3o::Resolution;
 use std::{collections::BTreeMap, fs};
 use tantivy::{
@@ -130,16 +129,12 @@ impl Index for TantivyIndex {
                 }
 
                 IndexedValue::BoundingBox(bbox) => {
-                    doc.add_f64(self.fields.bbox_min_x_field, bbox.min_x);
-                    doc.add_f64(self.fields.bbox_min_y_field, bbox.min_y);
-                    doc.add_f64(self.fields.bbox_max_x_field, bbox.max_x);
-                    doc.add_f64(self.fields.bbox_max_y_field, bbox.max_y);
+                    doc.add_f64(self.fields.bbox_min_x_field, bbox.min().x);
+                    doc.add_f64(self.fields.bbox_min_y_field, bbox.min().y);
+                    doc.add_f64(self.fields.bbox_max_x_field, bbox.max().x);
+                    doc.add_f64(self.fields.bbox_max_y_field, bbox.max().y);
 
-                    let rect = Rect::new(
-                        coord! { x: bbox.min_x, y: bbox.min_y },
-                        coord! { x: bbox.max_x, y: bbox.max_y },
-                    );
-                    let terms = make_terms(&rect, self.bbox_term_options, TermMode::Index)?;
+                    let terms = make_terms(&bbox, self.bbox_term_options, TermMode::Index)?;
                     for t in terms {
                         doc.add_text(self.fields.bbox_terms_field, t);
                     }
@@ -195,13 +190,13 @@ impl Index for TantivyIndex {
 #[cfg(test)]
 mod tests {
     use assertor::{assert_that, VecAssertion};
+    use geo::{coord, Rect};
     use tempdir::TempDir;
     use ulid::Ulid;
 
     use crate::{
         index::{Index, IndexedValue, Value},
         query::{and, bbox, eq, gt, gte, lt, lte, not, or, query},
-        util::bounding_box::BoundingBox,
     };
 
     use super::TantivyIndex;
@@ -236,9 +231,10 @@ mod tests {
                 ]
                 .into(),
             ),
-            IndexedValue::BoundingBox(BoundingBox::new(
+            IndexedValue::BoundingBox(Rect::new(
                 // aprox. :-)
-                -73.986479, 40.747914, 0.0, -73.984866, 40.748978, 0.0,
+                coord! { x: -73.986479, y: 40.747914 },
+                coord! { x: -73.984866, y: 40.748978 },
             )),
         ];
         let id3 = Ulid::new();
@@ -255,9 +251,10 @@ mod tests {
                 ]
                 .into(),
             ),
-            IndexedValue::BoundingBox(BoundingBox::new(
+            IndexedValue::BoundingBox(Rect::new(
                 // aprox. :-)
-                8.6718699, 50.1123123, 0.0, 8.6725155, 50.1127384, 0.0,
+                coord! { x: 8.6718699, y: 50.1123123 },
+                coord! { x: 8.6725155, y: 50.1127384 },
             )),
         ];
 

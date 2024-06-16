@@ -1,4 +1,5 @@
 use anyhow::{bail, Result};
+use geo::Rect;
 use std::ops::Bound;
 
 use tantivy::{
@@ -10,7 +11,6 @@ use tantivy::{
 use crate::{
     index::{h3_term_index::TermOptions, Value},
     query::{Logical, Operator, Query, QueryPart},
-    util::bounding_box::BoundingBox,
 };
 
 use super::{
@@ -104,7 +104,7 @@ impl<'a> QueryTranslator<'a> {
 
     /// Create a spatial query returning chunks whose bounding boxes intersect
     /// the given one
-    fn translate_bbox(&self, bbox: BoundingBox) -> Result<Box<dyn TantivyQuery>> {
+    fn translate_bbox(&self, bbox: Rect) -> Result<Box<dyn TantivyQuery>> {
         Ok(Box::new(BoundingBoxQuery::new(
             self.fields.bbox_terms_field,
             bbox,

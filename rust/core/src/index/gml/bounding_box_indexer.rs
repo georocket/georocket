@@ -1,13 +1,14 @@
 use std::{collections::VecDeque, mem, rc::Rc, str::from_utf8};
 
 use anyhow::{bail, Context, Result};
+use geo::{coord, Rect};
 use proj::Proj;
 use quick_xml::events::Event;
 use rustc_hash::FxHashMap;
 
 use crate::{
     index::{IndexedValue, Indexer},
-    util::bounding_box::BoundingBox,
+    util::extend_rect::ExtendRect,
 };
 
 use super::srs_indexer::SRSContext;
@@ -24,7 +25,7 @@ enum State {
         /// The bounding box that the indexer was able to create so far from
         /// the parsed coordinates. `None` if not enough coordinates have been
         /// parsed yet.
-        bbox: Option<BoundingBox>,
+        bbox: Option<Rect>,
 
         /// A queue of coordinates that were already parsed but could not be
         /// added to the bounding box yet
@@ -35,7 +36,7 @@ enum State {
 /// Represents an intermediate bounding box created during parsing
 struct IntermediateBoundingBox {
     /// The actual bounding box
-    bbox: BoundingBox,
+    bbox: Rect,
 
     /// The SRS transformation object to convert the bounding box to WGS84
     proj: Rc<Proj>,
@@ -58,7 +59,7 @@ impl BoundingBoxIndexer {
     /// dimension allows and leaves any coordinates that could not be added to
     /// the bounding box in the queue.
     fn process_remaining_coordinates(
-        bbox: &mut Option<BoundingBox>,
+        bbox: &mut Option<Rect>,
         remaining: &mut VecDeque<f64>,
         dim: u32,
     ) {
@@ -66,17 +67,16 @@ impl BoundingBoxIndexer {
             // take `dim` coordinates out of the queue
             let mut i = remaining.drain(0..dim as usize);
 
-            // Try to get X, Y, Z. If `dim` is less than 3, `z` will be `None`.
-            // If it is greater than 3, the iterator will still drain `dim`
-            // elements from the queue when it is dropped.
+            // Try to get X, Y. Note that we ignore the Z value (if there is
+            // any). The iterator will still drain `dim` elements from the
+            // queue when it is dropped.
             let x = i.next().unwrap_or_default();
             let y = i.next().unwrap_or_default();
-            let z = i.next().unwrap_or_default();
 
             if let Some(bbox) = bbox {
-                bbox.extend_point(x, y, z);
+                bbox.extend_point(x, y);
             } else {
-                bbox.replace(BoundingBox::from_point(x, y, z));
+                bbox.replace(Rect::new(coord! { x: x, y: y }, coord! { x: x, y: y }));
             }
         }
     }
@@ -86,7 +86,7 @@ impl BoundingBoxIndexer {
     /// not be added.
     fn parse_coordinates(
         coords: &str,
-        bbox: &mut Option<BoundingBox>,
+        bbox: &mut Option<Rect>,
         remaining: &mut VecDeque<f64>,
         srs_context: &SRSContext,
     ) -> Result<()> {
@@ -151,7 +151,7 @@ impl BoundingBoxIndexer {
                 // extend existing bounding box or add new entry
                 let e = self.intermediate.get_mut(&srs);
                 if let Some(intermediate_bbox) = e {
-                    intermediate_bbox.bbox.extend_bbox(&bbox);
+                    intermediate_bbox.bbox.extend_rect(&bbox);
                 } else {
                     self.intermediate.insert(
                         Rc::clone(&srs),
@@ -231,21 +231,17 @@ impl TryFrom<BoundingBoxIndexer> for Option<IndexedValue> {
     type Error = anyhow::Error;
 
     fn try_from(value: BoundingBoxIndexer) -> Result<Self> {
-        let mut result: Option<BoundingBox> = None;
+        let mut result: Option<Rect> = None;
 
         for (_, IntermediateBoundingBox { bbox, proj }) in value.intermediate {
-            let mut points = [(bbox.min_x, bbox.min_y), (bbox.max_x, bbox.max_y)];
+            let mut points = [(bbox.min().x, bbox.min().y), (bbox.max().x, bbox.max().y)];
             proj.convert_array(&mut points)?;
-            let converted = BoundingBox::new(
-                points[0].0,
-                points[0].1,
-                bbox.min_z,
-                points[1].0,
-                points[1].1,
-                bbox.max_z,
+            let converted = Rect::new(
+                coord! { x: points[0].0, y: points[0].1 },
+                coord! { x: points[1].0, y: points[1].1 },
             );
             if let Some(ref mut r) = result {
-                r.extend_bbox(&converted);
+                r.extend_rect(&converted);
             } else {
                 result = Some(converted);
             }
@@ -258,14 +254,12 @@ impl TryFrom<BoundingBoxIndexer> for Option<IndexedValue> {
 #[cfg(test)]
 mod tests {
     use anyhow::Result;
-    use assertor::{assert_that, EqualityAssertion, FloatAssertion, ResultAssertion};
+    use assertor::{assert_that, FloatAssertion, ResultAssertion};
+    use geo::{coord, Rect};
     use proj::Proj;
     use quick_xml::{events::Event, Reader};
 
-    use crate::{
-        index::{gml::srs_indexer::SRSIndexer, IndexedValue, Indexer},
-        util::bounding_box::BoundingBox,
-    };
+    use crate::index::{gml::srs_indexer::SRSIndexer, IndexedValue, Indexer};
 
     use super::BoundingBoxIndexer;
 
@@ -292,22 +286,20 @@ mod tests {
         bbox_indexer.try_into()
     }
 
-    fn assert_bbox(result: &IndexedValue, expected: BoundingBox) {
+    fn assert_bbox(result: &IndexedValue, expected: Rect) {
         let proj = Proj::new_known_crs("EPSG:25832", "WGS84", None).unwrap();
         let mut arr = [
-            (expected.min_x, expected.min_y),
-            (expected.max_x, expected.max_y),
+            (expected.min().x, expected.min().y),
+            (expected.max().x, expected.max().y),
         ];
         proj.convert_array(&mut arr).unwrap();
 
         match result {
             IndexedValue::BoundingBox(bbox) => {
-                assert_that!(bbox.min_x).is_approx_equal_to(arr[0].0);
-                assert_that!(bbox.min_y).is_approx_equal_to(arr[0].1);
-                assert_that!(bbox.min_z).is_equal_to(expected.min_z);
-                assert_that!(bbox.max_x).is_approx_equal_to(arr[1].0);
-                assert_that!(bbox.max_y).is_approx_equal_to(arr[1].1);
-                assert_that!(bbox.max_z).is_equal_to(expected.max_z);
+                assert_that!(bbox.min().x).is_approx_equal_to(arr[0].0);
+                assert_that!(bbox.min().y).is_approx_equal_to(arr[0].1);
+                assert_that!(bbox.max().x).is_approx_equal_to(arr[1].0);
+                assert_that!(bbox.max().y).is_approx_equal_to(arr[1].1);
             }
             _ => panic!("Test failed: value is not a BoundingBox"),
         }
@@ -363,7 +355,10 @@ mod tests {
         let value = parse(xml).unwrap().unwrap();
         assert_bbox(
             &value,
-            BoundingBox::new(675603.0, 6522325.0, 0.0, 675604.0, 6522326.0, 100.0),
+            Rect::new(
+                coord! { x: 675603.0, y: 6522325.0 },
+                coord! { x: 675604.0, y: 6522326.0 },
+            ),
         );
     }
 
@@ -379,7 +374,10 @@ mod tests {
         let value_2d = parse(xml_2d).unwrap().unwrap();
         assert_bbox(
             &value_2d,
-            BoundingBox::new(675603.0, 6522325.0, 0.0, 675604.0, 6522326.0, 0.0),
+            Rect::new(
+                coord! { x: 675603.0, y: 6522325.0 },
+                coord! { x: 675604.0, y: 6522326.0 },
+            ),
         );
 
         let xml_3d = r#"
@@ -391,7 +389,10 @@ mod tests {
         let value_3d = parse(xml_3d).unwrap().unwrap();
         assert_bbox(
             &value_3d,
-            BoundingBox::new(675603.0, 6522325.0, 0.0, 675604.0, 6522326.0, 100.0),
+            Rect::new(
+                coord! { x: 675603.0, y: 6522325.0 },
+                coord! { x: 675604.0, y: 6522326.0 },
+            ),
         );
     }
 
@@ -412,7 +413,10 @@ mod tests {
         let value = parse(xml).unwrap().unwrap();
         assert_bbox(
             &value,
-            BoundingBox::new(675603.0, 6522325.0, -10.0, 675614.0, 6522336.0, 110.0),
+            Rect::new(
+                coord! { x: 675603.0, y: 6522325.0 },
+                coord! { x: 675614.0, y: 6522336.0 },
+            ),
         );
     }
 
@@ -433,7 +437,10 @@ mod tests {
         let value = parse(xml).unwrap().unwrap();
         assert_bbox(
             &value,
-            BoundingBox::new(675603.0, 6522325.0, 0.0, 675614.0, 6522336.0, 100.0),
+            Rect::new(
+                coord! { x: 675603.0, y: 6522325.0 },
+                coord! { x: 675614.0, y: 6522336.0 },
+            ),
         );
     }
 
@@ -454,7 +461,10 @@ mod tests {
         let value = parse(xml).unwrap().unwrap();
         assert_bbox(
             &value,
-            BoundingBox::new(675603.0, 6522325.0, -10.0, 675614.0, 6522336.0, 110.0),
+            Rect::new(
+                coord! { x: 675603.0, y: 6522325.0 },
+                coord! { x: 675614.0, y: 6522336.0 },
+            ),
         );
     }
 }
