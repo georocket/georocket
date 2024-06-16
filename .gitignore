@@ -1,8 +1,3 @@
-.idea/
-target/
-target
-.DS_Store
-bacon.toml
-tarpaulin-report.html
-.env
-refinery.toml
+/index/
+/store/
+/target/
