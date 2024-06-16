@@ -1,6 +1,6 @@
 [package]
 name = "georocket-core"
-version = "0.2.0"
+version = "3.0.0-alpha.1"
 edition = "2021"
 publish = false
 
