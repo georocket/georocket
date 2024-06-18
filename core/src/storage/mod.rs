@@ -1,4 +1,3 @@
-pub mod chunk_meta;
 pub mod rocksdb;
 
 use anyhow::Result;

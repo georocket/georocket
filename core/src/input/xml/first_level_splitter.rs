@@ -3,11 +3,7 @@ use std::{ops::Range, rc::Rc};
 use anyhow::Result;
 use quick_xml::events::{BytesStart, Event};
 
-use crate::{
-    input::{Splitter, SplitterResult},
-    storage::chunk_meta::{ChunkMeta, XMLChunkMeta},
-    util::window::Window,
-};
+use crate::{input::Splitter, util::window::Window};
 
 /// Splits incoming XML tokens whenever a token in the first level (i.e. a
 /// child of the XML document's root node) is encountered
@@ -24,13 +20,21 @@ pub struct FirstLevelSplitter {
     root: Option<Rc<BytesStart<'static>>>,
 }
 
+impl FirstLevelSplitter {
+    /// Returns the opening tag data of the XML document's root element or
+    /// [`None`] if the root has not been found yet
+    pub fn root(&self) -> Option<Rc<BytesStart<'static>>> {
+        self.root.clone()
+    }
+}
+
 impl<'a> Splitter<Event<'a>> for FirstLevelSplitter {
     fn on_event(
         &mut self,
         e: &Event,
         pos: Range<usize>,
         window: &mut Window,
-    ) -> Result<Option<SplitterResult>> {
+    ) -> Result<Option<Vec<u8>>> {
         let mut result = None;
 
         match e {
@@ -49,10 +53,7 @@ impl<'a> Splitter<Event<'a>> for FirstLevelSplitter {
                 if self.depth == 1 {
                     let chunk = window.get_bytes(self.mark..pos.end)?;
                     window.advance_to(pos.end)?;
-                    let meta = ChunkMeta::Xml(XMLChunkMeta {
-                        root: Rc::clone(self.root.as_ref().unwrap()),
-                    });
-                    result = Some(SplitterResult { chunk, meta });
+                    result = Some(chunk);
                 }
             }
 
@@ -71,16 +72,13 @@ mod tests {
         str::from_utf8,
     };
 
+    use assertor::{assert_that, EqualityAssertion, OptionAssertion, VecAssertion};
     use quick_xml::{
         events::{BytesStart, Event},
         Reader,
     };
 
-    use crate::{
-        input::{Splitter, SplitterResult},
-        storage::chunk_meta::{ChunkMeta, XMLChunkMeta},
-        util::window_read::WindowRead,
-    };
+    use crate::{input::Splitter, util::window_read::WindowRead};
 
     use super::FirstLevelSplitter;
 
@@ -90,7 +88,7 @@ mod tests {
 
     /// Uses a [`FirstLevelSplitter`] to split an XML string. Returns the
     /// generated result objects.
-    fn split(xml: String) -> Vec<SplitterResult> {
+    fn split(xml: String) -> (Vec<Vec<u8>>, Rc<BytesStart<'static>>) {
         let cursor = Cursor::new(xml);
         let window = WindowRead::new(cursor);
         let bufreader = BufReader::new(window);
@@ -98,6 +96,7 @@ mod tests {
 
         let mut buf = Vec::new();
         let mut splitter = FirstLevelSplitter::default();
+        assert_that!(splitter.root()).is_none();
         let mut result = Vec::new();
         loop {
             let start_pos = reader.buffer_position();
@@ -105,6 +104,9 @@ mod tests {
             let end_pos = reader.buffer_position();
             let window = reader.get_mut().get_mut().window_mut();
             if let Some(r) = splitter.on_event(&e, start_pos..end_pos, window).unwrap() {
+                // root should exist after the first chunk has been created
+                assert_that!(splitter.root()).is_some();
+
                 result.push(r);
             }
             if e == Event::Eof {
@@ -113,7 +115,7 @@ mod tests {
             buf.clear();
         }
 
-        result
+        (result, splitter.root().unwrap())
     }
 
     /// Test if an XML string with one chunk can be split
@@ -122,14 +124,13 @@ mod tests {
         let contents = "<object><child></child></object>";
         let xml = format!("{XMLHEADER}{PREFIX}{contents}{SUFFIX}");
 
-        let chunks = split(xml);
-        assert_eq!(chunks.len(), 1);
+        let (chunks, root) = split(xml);
+        assert_that!(chunks).has_length(1);
 
-        let root = Rc::new(BytesStart::new("root"));
-        let meta = ChunkMeta::Xml(XMLChunkMeta { root });
-        assert_eq!(chunks[0].meta, meta);
+        let expected_root = Rc::new(BytesStart::new("root"));
+        assert_that!(root).is_equal_to(expected_root);
 
-        assert_eq!(from_utf8(&chunks[0].chunk).unwrap(), contents);
+        assert_that!(from_utf8(&chunks[0]).unwrap()).is_equal_to(contents);
     }
 
     /// Test if an XML string with tow chunks can be split
@@ -139,17 +140,14 @@ mod tests {
         let contents2 = "<object><child2></child2></object>";
         let xml = format!("{XMLHEADER}{PREFIX}{contents1}{contents2}{SUFFIX}");
 
-        let chunks = split(xml);
-        assert_eq!(chunks.len(), 2);
+        let (chunks, root) = split(xml);
+        assert_that!(chunks).has_length(2);
 
-        let root = Rc::new(BytesStart::new("root"));
-        let meta = ChunkMeta::Xml(XMLChunkMeta { root });
+        let expected_root = Rc::new(BytesStart::new("root"));
+        assert_that!(root).is_equal_to(expected_root);
 
-        assert_eq!(chunks[0].meta, meta);
-        assert_eq!(chunks[1].meta, meta);
-
-        assert_eq!(from_utf8(&chunks[0].chunk).unwrap(), contents1);
-        assert_eq!(from_utf8(&chunks[1].chunk).unwrap(), contents2);
+        assert_that!(from_utf8(&chunks[0]).unwrap()).is_equal_to(contents1);
+        assert_that!(from_utf8(&chunks[1]).unwrap()).is_equal_to(contents2);
     }
 
     /// Test if an XML string with two chunks and a namespace can be split
@@ -157,20 +155,17 @@ mod tests {
     fn namespace() {
         let contents1 = "<object><child></child></object>";
         let contents2 = "<object><child2></child2></object>";
-        let root = r#"root xmlns="http://example.com" xmlns:p="http://example.com""#;
-        let xml = format!("{XMLHEADER}<{root}>{contents1}{contents2}</root>");
+        let contents_root = r#"root xmlns="http://example.com" xmlns:p="http://example.com""#;
+        let xml = format!("{XMLHEADER}<{contents_root}>{contents1}{contents2}</root>");
 
-        let chunks = split(xml);
-        assert_eq!(chunks.len(), 2);
+        let (chunks, root) = split(xml);
+        assert_that!(chunks).has_length(2);
 
-        let root = Rc::new(BytesStart::from_content(root, 4));
-        let meta = ChunkMeta::Xml(XMLChunkMeta { root });
+        let expected_root = Rc::new(BytesStart::from_content(contents_root, 4));
+        assert_that!(root).is_equal_to(expected_root);
 
-        assert_eq!(chunks[0].meta, meta);
-        assert_eq!(chunks[1].meta, meta);
-
-        assert_eq!(from_utf8(&chunks[0].chunk).unwrap(), contents1);
-        assert_eq!(from_utf8(&chunks[1].chunk).unwrap(), contents2);
+        assert_that!(from_utf8(&chunks[0]).unwrap()).is_equal_to(contents1);
+        assert_that!(from_utf8(&chunks[1]).unwrap()).is_equal_to(contents2);
     }
 
     /// Test if an XML string with two chunks and attributes can be split
@@ -178,20 +173,17 @@ mod tests {
     fn attributes() {
         let contents1 = "<object><child></child></object>";
         let contents2 = "<object><child2></child2></object>";
-        let root = r#"root key="value" key2="value2""#;
-        let xml = format!("{XMLHEADER}<{root}>{contents1}{contents2}</root>");
+        let contents_root = r#"root key="value" key2="value2""#;
+        let xml = format!("{XMLHEADER}<{contents_root}>{contents1}{contents2}</root>");
 
-        let chunks = split(xml);
-        assert_eq!(chunks.len(), 2);
+        let (chunks, root) = split(xml);
+        assert_that!(chunks).has_length(2);
 
-        let root = Rc::new(BytesStart::from_content(root, 4));
-        let meta = ChunkMeta::Xml(XMLChunkMeta { root });
+        let expected_root = Rc::new(BytesStart::from_content(contents_root, 4));
+        assert_that!(root).is_equal_to(expected_root);
 
-        assert_eq!(chunks[0].meta, meta);
-        assert_eq!(chunks[1].meta, meta);
-
-        assert_eq!(from_utf8(&chunks[0].chunk).unwrap(), contents1);
-        assert_eq!(from_utf8(&chunks[1].chunk).unwrap(), contents2);
+        assert_that!(from_utf8(&chunks[0]).unwrap()).is_equal_to(contents1);
+        assert_that!(from_utf8(&chunks[1]).unwrap()).is_equal_to(contents2);
     }
 
     /// Test if an XML string with two chunks, a namespace, and attributes can be split
@@ -199,21 +191,18 @@ mod tests {
     fn full() {
         let contents1 = "<object><child></child></object>";
         let contents2 = "<object><child2></child2></object>";
-        let root = r#"root xmlns="http://example.com" xmlns:p="http://example.com" 
+        let contents_root = r#"root xmlns="http://example.com" xmlns:p="http://example.com" 
             key="value" key2="value2""#;
-        let xml = format!("{XMLHEADER}<{root}>{contents1}{contents2}</root>");
+        let xml = format!("{XMLHEADER}<{contents_root}>{contents1}{contents2}</root>");
 
-        let chunks = split(xml);
-        assert_eq!(chunks.len(), 2);
+        let (chunks, root) = split(xml);
+        assert_that!(chunks).has_length(2);
 
-        let root = Rc::new(BytesStart::from_content(root, 4));
-        let meta = ChunkMeta::Xml(XMLChunkMeta { root });
+        let expected_root = Rc::new(BytesStart::from_content(contents_root, 4));
+        assert_that!(root).is_equal_to(expected_root);
 
-        assert_eq!(chunks[0].meta, meta);
-        assert_eq!(chunks[1].meta, meta);
-
-        assert_eq!(from_utf8(&chunks[0].chunk).unwrap(), contents1);
-        assert_eq!(from_utf8(&chunks[1].chunk).unwrap(), contents2);
+        assert_that!(from_utf8(&chunks[0]).unwrap()).is_equal_to(contents1);
+        assert_that!(from_utf8(&chunks[1]).unwrap()).is_equal_to(contents2);
     }
 
     /// Test if an XML string with an UTF8 character can be split
@@ -222,13 +211,12 @@ mod tests {
         let contents = "<object><child name=\"≈\"></child></object>";
         let xml = format!("{XMLHEADER}{PREFIX}{contents}{SUFFIX}");
 
-        let chunks = split(xml);
-        assert_eq!(chunks.len(), 1);
+        let (chunks, root) = split(xml);
+        assert_that!(chunks).has_length(1);
 
-        let root = Rc::new(BytesStart::new("root"));
-        let meta = ChunkMeta::Xml(XMLChunkMeta { root });
-        assert_eq!(chunks[0].meta, meta);
+        let expected_root = Rc::new(BytesStart::new("root"));
+        assert_that!(root).is_equal_to(expected_root);
 
-        assert_eq!(from_utf8(&chunks[0].chunk).unwrap(), contents);
+        assert_that!(from_utf8(&chunks[0]).unwrap()).is_equal_to(contents);
     }
 }

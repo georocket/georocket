@@ -1,15 +1,9 @@
 use std::ops::Range;
 
-use crate::{storage::chunk_meta::ChunkMeta, util::window::Window};
+use crate::util::window::Window;
 use anyhow::Result;
 
 pub mod xml;
-
-/// Result of the [`Splitter::onEvent`] method. Holds a chunk and its metadata.
-pub struct SplitterResult {
-    pub chunk: Vec<u8>,
-    pub meta: ChunkMeta,
-}
 
 ///  Splits input tokens and returns chunks
 pub trait Splitter<E> {
@@ -21,5 +15,5 @@ pub trait Splitter<E> {
         event: &E,
         pos: Range<usize>,
         window: &mut Window,
-    ) -> Result<Option<SplitterResult>>;
+    ) -> Result<Option<Vec<u8>>>;
 }

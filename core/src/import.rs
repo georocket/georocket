@@ -94,7 +94,7 @@ pub fn import_xml(path: String) -> Result<()> {
 
         if let Some(r) = splitter.on_event(&e, start_pos..end_pos, window)? {
             let id = Ulid::new();
-            store_send.send((id, r.chunk))?;
+            store_send.send((id, r))?;
 
             let mut indexer_result: Vec<_> = generic_attribute_indexer.into();
             if let Some(v) = bounding_box_indexer.try_into()? {
