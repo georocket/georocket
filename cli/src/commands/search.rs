@@ -1,12 +1,13 @@
-use std::time::Instant;
+use std::{thread::spawn, time::Instant};
 
+use crossbeam_channel::bounded;
 use georocket_core::{
     index::{tantivy::TantivyIndex, Index},
     query::{error::QueryParserError, QueryParser},
     storage::{rocksdb::RocksDBStore, Store},
 };
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use ariadne::{Color, Label, Report, ReportKind, Source};
 use clap::Args;
 
@@ -57,8 +58,17 @@ pub fn run_search(args: SearchArgs) -> Result<()> {
     let compiler_result = query_parser.parse(&args.query);
     match compiler_result {
         Ok(query) => {
-            for id in index.search(query)? {
-                let id = id?;
+            let (search_sender, search_receiver) = bounded(1024 * 10);
+
+            let search_thread = spawn(move || {
+                for id in index.search(query)? {
+                    let id = id?;
+                    search_sender.send(id)?;
+                }
+                anyhow::Ok(())
+            });
+
+            for id in search_receiver {
                 // TODO remove this
                 if !first {
                     println!("Found first chunk after {:?}", search_start.elapsed());
@@ -73,6 +83,10 @@ pub fn run_search(args: SearchArgs) -> Result<()> {
                 println!("{}", std::str::from_utf8(&chunk).unwrap());
 
                 found_chunks += 1;
+            }
+
+            if let Err(err) = search_thread.join() {
+                bail!("Search thread threw an error: {err:?}");
             }
 
             // TODO remove this
