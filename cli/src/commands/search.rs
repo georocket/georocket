@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use georocket_core::{
     index::{tantivy::TantivyIndex, Index},
     query::{error::QueryParserError, QueryParser},
@@ -47,22 +49,38 @@ pub fn run_search(args: SearchArgs) -> Result<()> {
     // initialize index
     let index = TantivyIndex::new("index")?;
 
+    let search_start = Instant::now();
+    let mut first = false;
+    let mut found_chunks = 0;
+
     let query_parser = QueryParser::new();
     let compiler_result = query_parser.parse(&args.query);
     match compiler_result {
         Ok(query) => {
-            let ids = index.search(query)?;
+            for id in index.search(query)? {
+                let id = id?;
+                // TODO remove this
+                if !first {
+                    println!("Found first chunk after {:?}", search_start.elapsed());
+                    first = true;
+                }
 
-            // TODO remove this
-            println!("Found {} chunks", ids.len());
-            for id in ids {
                 let chunk = store
                     .get(id)?
                     .with_context(|| format!("Unable to find chunk with ID `{id}'"))?;
 
                 // TODO implement merger
                 println!("{}", std::str::from_utf8(&chunk).unwrap());
+
+                found_chunks += 1;
             }
+
+            // TODO remove this
+            println!(
+                "Found {} chunks in {:?}",
+                found_chunks,
+                search_start.elapsed()
+            );
         }
         Err(err) => {
             let (msg, span) = match err {

@@ -34,6 +34,7 @@ pub trait Index {
     /// Persists changes
     fn commit(&mut self) -> Result<()>;
 
-    /// Queries the index and returns a list of chunk IDs matching the query
-    fn search(&self, query: Query) -> Result<Vec<Ulid>>;
+    /// Queries the index and returns an iterator over the IDs of all chunks
+    /// matching the given query
+    fn search(&self, query: Query) -> Result<impl Iterator<Item = Result<Ulid>>>;
 }

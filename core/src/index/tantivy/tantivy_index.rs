@@ -1,11 +1,12 @@
 use anyhow::{Context, Result};
 use h3o::Resolution;
-use std::{collections::BTreeMap, fs};
+use std::{collections::BTreeMap, fs, rc::Rc};
 use tantivy::{
-    collector::DocSetCollector,
     directory::MmapDirectory,
+    query::{EnableScoring, Scorer, Weight},
     schema::{OwnedValue, Schema, FAST, STORED, STRING, TEXT},
-    IndexBuilder, IndexReader, IndexWriter, TantivyDocument,
+    DocAddress, IndexBuilder, IndexReader, IndexWriter, Searcher, TantivyDocument,
+    COLLECT_BLOCK_BUFFER_LEN,
 };
 use ulid::Ulid;
 
@@ -156,47 +157,141 @@ impl Index for TantivyIndex {
         Ok(())
     }
 
-    fn search(&self, query: Query) -> Result<Vec<Ulid>> {
-        let searcher = self.reader.searcher();
+    fn search(&self, query: Query) -> Result<impl Iterator<Item = Result<Ulid>>> {
+        let searcher = Rc::new(self.reader.searcher());
 
         let query_translator =
             QueryTranslator::new(&self.index, &self.fields, self.bbox_term_options);
         let tantivy_query = query_translator.translate(query)?;
+        let weight = tantivy_query.weight(EnableScoring::Disabled {
+            schema: searcher.schema(),
+            searcher_opt: Some(&searcher),
+        })?;
 
-        let doc_addresses = searcher.search(&tantivy_query, &DocSetCollector)?;
+        // create an iterator that performs the search for us and yields the
+        // first chunk ID as soon as possible
+        Ok(SearchIterator::new(Rc::clone(&searcher), weight)
+            .flatten()
+            .flat_map(|(index, docset)| DocSetIterator::new(index as u32, docset))
+            .map(move |doc_address| {
+                let doc: TantivyDocument = searcher.doc(doc_address)?;
 
-        // fetch matching documents and collect IDs
-        let mut result = Vec::new();
-        for doc_address in doc_addresses {
-            let doc: TantivyDocument = searcher.doc(doc_address)?;
+                let id_field_value = doc
+                    .get_first(self.fields.id_field)
+                    .context("Unable to retrieve ID field from document")?;
+                let id_bytes = id_field_value
+                    .as_bytes()
+                    .context("ID field does not contain bytes")?;
 
-            let doc_id = doc
-                .get_first(self.fields.id_field)
-                .context("Unable to retrieve ID field from document")?;
-            let doc_id_bytes = doc_id
-                .as_bytes()
-                .context("ID field does not contain bytes")?;
-            let mut bytes = [0u8; 16];
-            bytes.copy_from_slice(&doc_id_bytes[..16]);
-            let id = Ulid::from_bytes(bytes);
+                let mut bytes = [0u8; 16];
+                bytes.copy_from_slice(&id_bytes[..16]);
 
-            result.push(id);
+                anyhow::Ok(Ulid::from_bytes(bytes))
+            }))
+    }
+}
+
+/// Iterates over all segments in a [`Searcher`], performs a search using
+/// the given [`Weight`], and returns a scorer
+struct SearchIterator {
+    searcher: Rc<Searcher>,
+    weight: Box<dyn Weight>,
+    index: usize,
+}
+
+impl SearchIterator {
+    fn new(searcher: Rc<Searcher>, weight: Box<dyn Weight>) -> Self {
+        Self {
+            searcher,
+            weight,
+            index: 0,
+        }
+    }
+}
+
+impl Iterator for SearchIterator {
+    type Item = Result<(usize, Box<dyn Scorer>)>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let segment_readers = self.searcher.segment_readers();
+        if self.index == segment_readers.len() {
+            None
+        } else {
+            let r = Some(
+                self.weight
+                    .scorer(&segment_readers[self.index], 1.0)
+                    .map(|scorer| (self.index, scorer))
+                    .map_err(|e| e.into()),
+            );
+            self.index += 1;
+            r
+        }
+    }
+}
+
+/// Iterates over the doc sets returned by a scorer and returns doc addresses
+struct DocSetIterator {
+    segment_ord: u32,
+    docset: Box<dyn Scorer>,
+    buffer: [u32; COLLECT_BLOCK_BUFFER_LEN],
+    finished: bool,
+    num_items: usize,
+    index: usize,
+}
+
+impl DocSetIterator {
+    fn new(segment_ord: u32, docset: Box<dyn Scorer>) -> Self {
+        Self {
+            segment_ord,
+            docset,
+            buffer: [0u32; COLLECT_BLOCK_BUFFER_LEN],
+            finished: false,
+            num_items: 0,
+            index: 0,
+        }
+    }
+}
+
+impl Iterator for DocSetIterator {
+    type Item = DocAddress;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index == self.num_items {
+            if self.finished {
+                return None;
+            }
+
+            self.num_items = self.docset.fill_buffer(&mut self.buffer);
+            self.index = 0;
+
+            if self.num_items < self.buffer.len() {
+                self.finished = true;
+            }
+
+            if self.num_items == 0 {
+                return None;
+            }
         }
 
-        Ok(result)
+        let doc_id = self.buffer[self.index];
+        self.index += 1;
+
+        Some(DocAddress::new(self.segment_ord, doc_id))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use assertor::{assert_that, VecAssertion};
+    use anyhow::Result;
+    use assertor::{assert_that, EqualityAssertion, VecAssertion};
     use geo::{coord, Rect};
+    use tantivy::COLLECT_BLOCK_BUFFER_LEN;
     use tempdir::TempDir;
     use ulid::Ulid;
 
     use crate::{
         index::{Index, IndexedValue, Value},
-        query::{and, bbox, eq, gt, gte, lt, lte, not, or, query},
+        query::{and, bbox, eq, gt, gte, lt, lte, not, or, query, Query},
     };
 
     use super::TantivyIndex;
@@ -208,6 +303,11 @@ mod tests {
         id2: Ulid,
         id3: Ulid,
         id4: Ulid,
+    }
+
+    struct LargeIndex {
+        _dir: TempDir,
+        index: TantivyIndex,
     }
 
     fn make_mini_index() -> MiniIndex {
@@ -274,31 +374,64 @@ mod tests {
         }
     }
 
+    fn make_large_index(n_items: usize) -> LargeIndex {
+        let dir = TempDir::new("georocket_tantivy").unwrap();
+        let mut index = TantivyIndex::new(dir.path().to_str().unwrap()).unwrap();
+
+        for _ in 0..n_items {
+            let id = Ulid::new();
+            let indexer_result = vec![IndexedValue::GenericAttributes(
+                [("id".to_string(), Value::String(id.to_string()))].into(),
+            )];
+            index.add(id, indexer_result).unwrap();
+        }
+
+        index.commit().unwrap();
+
+        LargeIndex { _dir: dir, index }
+    }
+
+    fn search(mi: &MiniIndex, query: Query) -> Vec<Ulid> {
+        mi.index
+            .search(query)
+            .unwrap()
+            .collect::<Result<_>>()
+            .unwrap()
+    }
+
+    fn search_large(li: &LargeIndex, query: Query) -> Vec<Ulid> {
+        li.index
+            .search(query)
+            .unwrap()
+            .collect::<Result<_>>()
+            .unwrap()
+    }
+
     #[test]
     fn get_all() {
         let mi = make_mini_index();
-        let retrieved_ids = mi.index.search(query![]).unwrap();
+        let retrieved_ids = search(&mi, query![]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id1, mi.id2, mi.id3, mi.id4]);
     }
 
     #[test]
     fn match_nothing() {
         let mi = make_mini_index();
-        let retrieved_ids = mi.index.search(query!["Max"]).unwrap();
+        let retrieved_ids = search(&mi, query!["Max"]);
         assert_that!(retrieved_ids).is_empty();
     }
 
     #[test]
     fn full_text_single_term() {
         let mi = make_mini_index();
-        let retrieved_ids = mi.index.search(query!["empire"]).unwrap();
+        let retrieved_ids = search(&mi, query!["empire"]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
     }
 
     #[test]
     fn full_text_two_terms() {
         let mi = make_mini_index();
-        let retrieved_ids = mi.index.search(query![or!["empire", "einar"]]).unwrap();
+        let retrieved_ids = search(&mi, query![or!["empire", "einar"]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id2, mi.id3]);
     }
 
@@ -306,13 +439,13 @@ mod tests {
     fn full_text_phrase() {
         let mi = make_mini_index();
 
-        let retrieved_ids = mi.index.search(query!["empire state"]).unwrap();
+        let retrieved_ids = search(&mi, query!["empire state"]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
 
-        let retrieved_ids = mi.index.search(query!["empire state building"]).unwrap();
+        let retrieved_ids = search(&mi, query!["empire state building"]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
 
-        let retrieved_ids = mi.index.search(query!["empire state build"]).unwrap();
+        let retrieved_ids = search(&mi, query!["empire state build"]);
         assert_that!(retrieved_ids).is_empty();
     }
 
@@ -320,321 +453,291 @@ mod tests {
     fn eq_string() {
         let mi = make_mini_index();
 
-        let retrieved_ids = mi
-            .index
-            .search(query![eq!["name", "Empire State Building"]])
-            .unwrap();
+        let retrieved_ids = search(&mi, query![eq!["name", "Empire State Building"]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
 
-        let retrieved_ids = mi
-            .index
-            .search(query![eq!["name", "Empire State"]])
-            .unwrap();
+        let retrieved_ids = search(&mi, query![eq!["name", "Empire State"]]);
         assert_that!(retrieved_ids).is_empty();
 
-        let retrieved_ids = mi
-            .index
-            .search(query![eq!["name", "empire state building"]])
-            .unwrap();
+        let retrieved_ids = search(&mi, query![eq!["name", "empire state building"]]);
         assert_that!(retrieved_ids).is_empty();
     }
 
     #[test]
     fn eq_integer() {
         let mi = make_mini_index();
-        let retrieved_ids = mi.index.search(query![eq!["year", 1931]]).unwrap();
+        let retrieved_ids = search(&mi, query![eq!["year", 1931]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
 
-        let retrieved_ids = mi.index.search(query![eq!["year", "1931"]]).unwrap();
+        let retrieved_ids = search(&mi, query![eq!["year", "1931"]]);
         assert_that!(retrieved_ids).is_empty();
 
-        let retrieved_ids = mi.index.search(query![eq!["year", 443]]).unwrap();
+        let retrieved_ids = search(&mi, query![eq!["year", 443]]);
         assert_that!(retrieved_ids).is_empty();
 
-        let retrieved_ids = mi.index.search(query![eq!["year", 1931.0]]).unwrap();
+        let retrieved_ids = search(&mi, query![eq!["year", 1931.0]]);
         assert_that!(retrieved_ids).is_empty();
     }
 
     #[test]
     fn eq_float() {
         let mi = make_mini_index();
-        let retrieved_ids = mi.index.search(query![eq!["height", 443.2]]).unwrap();
+        let retrieved_ids = search(&mi, query![eq!["height", 443.2]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
 
-        let retrieved_ids = mi.index.search(query![eq!["height", 443]]).unwrap();
+        let retrieved_ids = search(&mi, query![eq!["height", 443]]);
         assert_that!(retrieved_ids).is_empty();
 
-        let retrieved_ids = mi.index.search(query![eq!["height", "443"]]).unwrap();
+        let retrieved_ids = search(&mi, query![eq!["height", "443"]]);
         assert_that!(retrieved_ids).is_empty();
     }
 
     #[test]
     fn gt() {
         let mi = make_mini_index();
-        let retrieved_ids = mi.index.search(query![gt!["year", 1900]]).unwrap();
+        let retrieved_ids = search(&mi, query![gt!["year", 1900]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id2, mi.id4]);
 
-        let retrieved_ids = mi.index.search(query![gt!["year", 1990]]).unwrap();
+        let retrieved_ids = search(&mi, query![gt!["year", 1990]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id4]);
 
-        let retrieved_ids = mi.index.search(query![gt!["year", 1999]]).unwrap();
+        let retrieved_ids = search(&mi, query![gt!["year", 1999]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id4]);
 
-        let retrieved_ids = mi.index.search(query![gt!["year", 2000]]).unwrap();
+        let retrieved_ids = search(&mi, query![gt!["year", 2000]]);
         assert_that!(retrieved_ids).is_empty();
 
-        let retrieved_ids = mi.index.search(query![gt!["height", 100.0]]).unwrap();
+        let retrieved_ids = search(&mi, query![gt!["height", 100.0]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id2, mi.id4]);
 
-        let retrieved_ids = mi.index.search(query![gt!["height", 300.0]]).unwrap();
+        let retrieved_ids = search(&mi, query![gt!["height", 300.0]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
 
-        let retrieved_ids = mi.index.search(query![gt!["height", 443.1999]]).unwrap();
+        let retrieved_ids = search(&mi, query![gt!["height", 443.1999]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
 
-        let retrieved_ids = mi.index.search(query![gt!["height", 443.2]]).unwrap();
+        let retrieved_ids = search(&mi, query![gt!["height", 443.2]]);
         assert_that!(retrieved_ids).is_empty();
 
         // TODO we can't compare f64 with i64, which is correct (i.e. type-safe)
         // but inconvenient for the user
-        let retrieved_ids = mi.index.search(query![gt!["height", 300]]).unwrap();
+        let retrieved_ids = search(&mi, query![gt!["height", 300]]);
         assert_that!(retrieved_ids).is_empty();
     }
 
     #[test]
     fn gte() {
         let mi = make_mini_index();
-        let retrieved_ids = mi.index.search(query![gte!["year", 1900]]).unwrap();
+        let retrieved_ids = search(&mi, query![gte!["year", 1900]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id2, mi.id4]);
 
-        let retrieved_ids = mi.index.search(query![gte!["year", 1990]]).unwrap();
+        let retrieved_ids = search(&mi, query![gte!["year", 1990]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id4]);
 
-        let retrieved_ids = mi.index.search(query![gte!["year", 2000]]).unwrap();
+        let retrieved_ids = search(&mi, query![gte!["year", 2000]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id4]);
 
-        let retrieved_ids = mi.index.search(query![gte!["year", 2001]]).unwrap();
+        let retrieved_ids = search(&mi, query![gte!["year", 2001]]);
         assert_that!(retrieved_ids).is_empty();
 
-        let retrieved_ids = mi.index.search(query![gte!["height", 100.0]]).unwrap();
+        let retrieved_ids = search(&mi, query![gte!["height", 100.0]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id2, mi.id4]);
 
-        let retrieved_ids = mi.index.search(query![gte!["height", 300.0]]).unwrap();
+        let retrieved_ids = search(&mi, query![gte!["height", 300.0]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
 
-        let retrieved_ids = mi.index.search(query![gte!["height", 443.2]]).unwrap();
+        let retrieved_ids = search(&mi, query![gte!["height", 443.2]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
 
-        let retrieved_ids = mi.index.search(query![gte!["height", 443.200001]]).unwrap();
+        let retrieved_ids = search(&mi, query![gte!["height", 443.200001]]);
         assert_that!(retrieved_ids).is_empty();
 
-        let retrieved_ids = mi.index.search(query![gte!["height", 300]]).unwrap();
+        let retrieved_ids = search(&mi, query![gte!["height", 300]]);
         assert_that!(retrieved_ids).is_empty();
     }
 
     #[test]
     fn lt() {
         let mi = make_mini_index();
-        let retrieved_ids = mi.index.search(query![lt!["year", 2100]]).unwrap();
+        let retrieved_ids = search(&mi, query![lt!["year", 2100]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id2, mi.id4]);
 
-        let retrieved_ids = mi.index.search(query![lt!["year", 1990]]).unwrap();
+        let retrieved_ids = search(&mi, query![lt!["year", 1990]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
 
-        let retrieved_ids = mi.index.search(query![lt!["year", 1932]]).unwrap();
+        let retrieved_ids = search(&mi, query![lt!["year", 1932]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
 
-        let retrieved_ids = mi.index.search(query![lt!["year", 1931]]).unwrap();
+        let retrieved_ids = search(&mi, query![lt!["year", 1931]]);
         assert_that!(retrieved_ids).is_empty();
 
-        let retrieved_ids = mi.index.search(query![lt!["height", 1000.0]]).unwrap();
+        let retrieved_ids = search(&mi, query![lt!["height", 1000.0]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id2, mi.id4]);
 
-        let retrieved_ids = mi.index.search(query![lt!["height", 300.0]]).unwrap();
+        let retrieved_ids = search(&mi, query![lt!["height", 300.0]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id4]);
 
-        let retrieved_ids = mi.index.search(query![lt!["height", 240.001]]).unwrap();
+        let retrieved_ids = search(&mi, query![lt!["height", 240.001]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id4]);
 
-        let retrieved_ids = mi.index.search(query![lt!["height", 240.0]]).unwrap();
+        let retrieved_ids = search(&mi, query![lt!["height", 240.0]]);
         assert_that!(retrieved_ids).is_empty();
 
-        let retrieved_ids = mi.index.search(query![lt!["height", 300]]).unwrap();
+        let retrieved_ids = search(&mi, query![lt!["height", 300]]);
         assert_that!(retrieved_ids).is_empty();
     }
 
     #[test]
     fn lte() {
         let mi = make_mini_index();
-        let retrieved_ids = mi.index.search(query![lte!["year", 2100]]).unwrap();
+        let retrieved_ids = search(&mi, query![lte!["year", 2100]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id2, mi.id4]);
 
-        let retrieved_ids = mi.index.search(query![lte!["year", 1990]]).unwrap();
+        let retrieved_ids = search(&mi, query![lte!["year", 1990]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
 
-        let retrieved_ids = mi.index.search(query![lte!["year", 1931]]).unwrap();
+        let retrieved_ids = search(&mi, query![lte!["year", 1931]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
 
-        let retrieved_ids = mi.index.search(query![lte!["year", 1930]]).unwrap();
+        let retrieved_ids = search(&mi, query![lte!["year", 1930]]);
         assert_that!(retrieved_ids).is_empty();
 
-        let retrieved_ids = mi.index.search(query![lte!["height", 1000.0]]).unwrap();
+        let retrieved_ids = search(&mi, query![lte!["height", 1000.0]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id2, mi.id4]);
 
-        let retrieved_ids = mi.index.search(query![lte!["height", 300.0]]).unwrap();
+        let retrieved_ids = search(&mi, query![lte!["height", 300.0]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id4]);
 
-        let retrieved_ids = mi.index.search(query![lte!["height", 240.0]]).unwrap();
+        let retrieved_ids = search(&mi, query![lte!["height", 240.0]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id4]);
 
-        let retrieved_ids = mi.index.search(query![lte!["height", 239.999]]).unwrap();
+        let retrieved_ids = search(&mi, query![lte!["height", 239.999]]);
         assert_that!(retrieved_ids).is_empty();
 
-        let retrieved_ids = mi.index.search(query![lte!["height", 300]]).unwrap();
+        let retrieved_ids = search(&mi, query![lte!["height", 300]]);
         assert_that!(retrieved_ids).is_empty();
     }
 
     #[test]
     fn or() {
         let mi = make_mini_index();
-        let retrieved_ids = mi
-            .index
-            .search(query![or![eq!["year", 1931], eq!["year", 2000]]])
-            .unwrap();
+        let retrieved_ids = search(&mi, query![or![eq!["year", 1931], eq!["year", 2000]]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id2, mi.id4]);
 
-        let retrieved_ids = mi
-            .index
-            .search(query![or![eq!["year", 1931], eq!["foo", "bar"]]])
-            .unwrap();
+        let retrieved_ids = search(&mi, query![or![eq!["year", 1931], eq!["foo", "bar"]]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
 
-        let retrieved_ids = mi
-            .index
-            .search(query![or![eq!["year", 1900], eq!["foo", "bar"]]])
-            .unwrap();
+        let retrieved_ids = search(&mi, query![or![eq!["year", 1900], eq!["foo", "bar"]]]);
         assert_that!(retrieved_ids).is_empty();
 
-        let retrieved_ids = mi.index.search(query![or![eq!["year", 1931]]]).unwrap();
+        let retrieved_ids = search(&mi, query![or![eq!["year", 1931]]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
 
-        let retrieved_ids = mi
-            .index
-            .search(query![or![eq!["year", 1931], or![]]])
-            .unwrap();
+        let retrieved_ids = search(&mi, query![or![eq!["year", 1931], or![]]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
 
-        let retrieved_ids = mi.index.search(query![or![]]).unwrap();
+        let retrieved_ids = search(&mi, query![or![]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id1, mi.id2, mi.id3, mi.id4]);
     }
 
     #[test]
     fn and() {
         let mi = make_mini_index();
-        let retrieved_ids = mi
-            .index
-            .search(query![and![eq!["year", 1931], eq!["year", 2000]]])
-            .unwrap();
+        let retrieved_ids = search(&mi, query![and![eq!["year", 1931], eq!["year", 2000]]]);
         assert_that!(retrieved_ids).is_empty();
 
-        let retrieved_ids = mi
-            .index
-            .search(query![and![
+        let retrieved_ids = search(
+            &mi,
+            query![and![
                 eq!["year", 1931],
                 eq!["name", "Empire State Building"]
-            ]])
-            .unwrap();
+            ]],
+        );
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
 
-        let retrieved_ids = mi.index.search(query![and![eq!["year", 1931]]]).unwrap();
+        let retrieved_ids = search(&mi, query![and![eq!["year", 1931]]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
 
-        let retrieved_ids = mi
-            .index
-            .search(query![or![eq!["year", 1931], and![]]])
-            .unwrap();
+        let retrieved_ids = search(&mi, query![or![eq!["year", 1931], and![]]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
 
-        let retrieved_ids = mi.index.search(query![and![]]).unwrap();
+        let retrieved_ids = search(&mi, query![and![]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id1, mi.id2, mi.id3, mi.id4]);
     }
 
     #[test]
     fn not() {
         let mut mi = make_mini_index();
-        let retrieved_ids = mi
-            .index
-            .search(query![not![or![eq!["year", 1931], eq!["year", 2000]]]])
-            .unwrap();
+        let retrieved_ids = search(&mi, query![not![or![eq!["year", 1931], eq!["year", 2000]]]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id1, mi.id3]);
 
-        let retrieved_ids = mi.index.search(query![not![eq!["year", 1931]]]).unwrap();
+        let retrieved_ids = search(&mi, query![not![eq!["year", 1931]]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id1, mi.id3, mi.id4]);
 
-        let retrieved_ids = mi
-            .index
-            .search(query![not![and![
+        let retrieved_ids = search(
+            &mi,
+            query![not![and![
                 eq!["year", 1931],
                 eq!["name", "Empire State Building"]
-            ]]])
-            .unwrap();
+            ]]],
+        );
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id1, mi.id3, mi.id4]);
 
-        let retrieved_ids = mi
-            .index
-            .search(query![not![and![
+        let retrieved_ids = search(
+            &mi,
+            query![not![and![
                 eq!["year", 2000],
                 eq!["name", "Empire State Building"]
-            ]]])
-            .unwrap();
+            ]]],
+        );
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id1, mi.id2, mi.id3, mi.id4]);
 
-        let retrieved_ids = mi
-            .index
-            .search(query![or![
+        let retrieved_ids = search(
+            &mi,
+            query![or![
                 eq!["year", 2000],
                 not![and![
                     eq!["year", 2000],
                     eq!["name", "Empire State Building"]
                 ]]
-            ]])
-            .unwrap();
+            ]],
+        );
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id1, mi.id2, mi.id3, mi.id4]);
 
-        let retrieved_ids = mi
-            .index
-            .search(query![or![
+        let retrieved_ids = search(
+            &mi,
+            query![or![
                 eq!["year", 1931],
                 not![and![
                     eq!["year", 1931],
                     eq!["name", "Empire State Building"]
                 ]]
-            ]])
-            .unwrap();
+            ]],
+        );
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id1, mi.id2, mi.id3, mi.id4]);
 
-        let retrieved_ids = mi
-            .index
-            .search(query![and![
+        let retrieved_ids = search(
+            &mi,
+            query![and![
                 eq!["year", 1931],
                 not![and![
                     eq!["year", 1931],
                     eq!["name", "Empire State Building"]
                 ]]
-            ]])
-            .unwrap();
+            ]],
+        );
         assert_that!(retrieved_ids).is_empty();
 
-        let retrieved_ids = mi
-            .index
-            .search(query![and![
+        let retrieved_ids = search(
+            &mi,
+            query![and![
                 eq!["year", 2000],
                 not![and![
                     eq!["year", 2000],
                     eq!["name", "Empire State Building"]
                 ]]
-            ]])
-            .unwrap();
+            ]],
+        );
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id4]);
 
         let id5 = Ulid::new();
@@ -652,116 +755,145 @@ mod tests {
         mi.index.add(id5, indexer_result5).unwrap();
         mi.index.commit().unwrap();
 
-        let retrieved_ids = mi.index.search(query![eq!["year", 2000]]).unwrap();
+        let retrieved_ids = search(&mi, query![eq!["year", 2000]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id4, id5]);
 
-        let retrieved_ids = mi
-            .index
-            .search(query![and![
+        let retrieved_ids = search(
+            &mi,
+            query![and![
                 eq!["year", 2000],
                 not![and![
                     eq!["year", 2000],
                     eq!["name", "Empire State Building"]
                 ]]
-            ]])
-            .unwrap();
+            ]],
+        );
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id4]);
 
-        let retrieved_ids = mi
-            .index
-            .search(query![and![
+        let retrieved_ids = search(
+            &mi,
+            query![and![
                 eq!["year", 2000],
                 not![and![eq!["year", 2000], eq!["name", "Main Tower"]]]
-            ]])
-            .unwrap();
+            ]],
+        );
         assert_that!(retrieved_ids).contains_exactly(vec![id5]);
 
-        let retrieved_ids = mi
-            .index
-            .search(query![or![eq!["year", 1931], not![or![]]]])
-            .unwrap();
+        let retrieved_ids = search(&mi, query![or![eq!["year", 1931], not![or![]]]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
 
-        let retrieved_ids = mi.index.search(query![not![or![]]]).unwrap();
+        let retrieved_ids = search(&mi, query![not![or![]]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id1, mi.id2, mi.id3, mi.id4, id5]);
     }
 
     #[test]
     fn bbox() {
         let mi = make_mini_index();
-        let retrieved_ids = mi
-            .index
-            .search(query![bbox![0.0, -90.0, 180.0, 90.0]])
-            .unwrap();
+        let retrieved_ids = search(&mi, query![bbox![0.0, -90.0, 180.0, 90.0]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id4]);
 
-        let retrieved_ids = mi
-            .index
-            .search(query![bbox![-180.0, -90.0, 0.0, 90.0]])
-            .unwrap();
+        let retrieved_ids = search(&mi, query![bbox![-180.0, -90.0, 0.0, 90.0]]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
 
         // exact bbox of id2
-        let retrieved_ids = mi
-            .index
-            .search(query![bbox![-73.986479, 40.747914, -73.984866, 40.748978]])
-            .unwrap();
+        let retrieved_ids = search(
+            &mi,
+            query![bbox![-73.986479, 40.747914, -73.984866, 40.748978]],
+        );
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
 
         // move query bbox left
-        let retrieved_ids = mi
-            .index
-            .search(query![bbox![-73.986489, 40.747914, -73.986479, 40.748978]])
-            .unwrap();
+        let retrieved_ids = search(
+            &mi,
+            query![bbox![-73.986489, 40.747914, -73.986479, 40.748978]],
+        );
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
 
         // move query bbox even further left
-        let retrieved_ids = mi
-            .index
-            .search(query![bbox![-73.986489, 40.747914, -73.986480, 40.748978]])
-            .unwrap();
+        let retrieved_ids = search(
+            &mi,
+            query![bbox![-73.986489, 40.747914, -73.986480, 40.748978]],
+        );
         assert_that!(retrieved_ids).is_empty();
 
         // move query bbox right
-        let retrieved_ids = mi
-            .index
-            .search(query![bbox![-73.984866, 40.747914, -73.984856, 40.748978]])
-            .unwrap();
+        let retrieved_ids = search(
+            &mi,
+            query![bbox![-73.984866, 40.747914, -73.984856, 40.748978]],
+        );
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
 
         // move query bbox even further right
-        let retrieved_ids = mi
-            .index
-            .search(query![bbox![-73.984865, 40.747914, -73.984856, 40.748978]])
-            .unwrap();
+        let retrieved_ids = search(
+            &mi,
+            query![bbox![-73.984865, 40.747914, -73.984856, 40.748978]],
+        );
         assert_that!(retrieved_ids).is_empty();
 
         // move query bbox up
-        let retrieved_ids = mi
-            .index
-            .search(query![bbox![-73.986479, 40.747904, -73.984866, 40.747914]])
-            .unwrap();
+        let retrieved_ids = search(
+            &mi,
+            query![bbox![-73.986479, 40.747904, -73.984866, 40.747914]],
+        );
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
 
         // move query bbox even further up
-        let retrieved_ids = mi
-            .index
-            .search(query![bbox![-73.986479, 40.747904, -73.984866, 40.747913]])
-            .unwrap();
+        let retrieved_ids = search(
+            &mi,
+            query![bbox![-73.986479, 40.747904, -73.984866, 40.747913]],
+        );
         assert_that!(retrieved_ids).is_empty();
 
         // move query bbox down
-        let retrieved_ids = mi
-            .index
-            .search(query![bbox![-73.986479, 40.748978, -73.984866, 40.748988]])
-            .unwrap();
+        let retrieved_ids = search(
+            &mi,
+            query![bbox![-73.986479, 40.748978, -73.984866, 40.748988]],
+        );
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id2]);
 
         // move query bbox even further down
-        let retrieved_ids = mi
-            .index
-            .search(query![bbox![-73.986479, 40.748979, -73.984866, 40.748988]])
-            .unwrap();
+        let retrieved_ids = search(
+            &mi,
+            query![bbox![-73.986479, 40.748979, -73.984866, 40.748988]],
+        );
         assert_that!(retrieved_ids).is_empty()
+    }
+
+    /// Tests if we can search over a large number of elements - basically
+    /// tests [`super::DocSetIterator`]
+    #[test]
+    fn scrolling() {
+        let li = make_large_index(0);
+        assert_that!(li
+            .index
+            .index
+            .reader()
+            .unwrap()
+            .searcher()
+            .segment_readers()
+            .len())
+        .is_equal_to(0);
+        assert_that!(search_large(&li, query![])).is_empty();
+
+        let li = make_large_index(20);
+        assert_that!(li
+            .index
+            .index
+            .reader()
+            .unwrap()
+            .searcher()
+            .segment_readers()
+            .len())
+        .is_equal_to(1);
+        assert_that!(search_large(&li, query![])).has_length(20);
+
+        let li = make_large_index(COLLECT_BLOCK_BUFFER_LEN / 2);
+        assert_that!(search_large(&li, query![])).has_length(COLLECT_BLOCK_BUFFER_LEN / 2);
+
+        let li = make_large_index(COLLECT_BLOCK_BUFFER_LEN);
+        assert_that!(search_large(&li, query![])).has_length(COLLECT_BLOCK_BUFFER_LEN);
+
+        let li = make_large_index(COLLECT_BLOCK_BUFFER_LEN * 2);
+        assert_that!(search_large(&li, query![])).has_length(COLLECT_BLOCK_BUFFER_LEN * 2);
     }
 }

@@ -649,6 +649,7 @@ dependencies = [
  "anyhow",
  "ariadne",
  "clap",
+ "crossbeam-channel",
  "georocket-core",
  "lalrpop-util",
  "mime_guess",
