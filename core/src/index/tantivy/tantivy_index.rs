@@ -4,7 +4,7 @@ use std::{collections::BTreeMap, fs, rc::Rc};
 use tantivy::{
     directory::MmapDirectory,
     query::{EnableScoring, Scorer, Weight},
-    schema::{OwnedValue, Schema, FAST, STORED, STRING, TEXT},
+    schema::{OwnedValue, Schema, FAST, INDEXED, STORED, STRING, TEXT},
     DocAddress, IndexBuilder, IndexReader, IndexWriter, Searcher, TantivyDocument,
     COLLECT_BLOCK_BUFFER_LEN,
 };
@@ -36,7 +36,7 @@ impl TantivyIndex {
 
         let mut schema_builder = Schema::builder();
 
-        let id_field = schema_builder.add_bytes_field("_id", STORED);
+        let id_field = schema_builder.add_bytes_field("_id", STORED | INDEXED);
         let gen_attrs_field = schema_builder.add_json_field("gen_attrs", STRING);
         let all_values_field = schema_builder.add_text_field("all_values", TEXT);
         let bbox_min_x_field = schema_builder.add_f64_field("bbox_min_x", FAST);
