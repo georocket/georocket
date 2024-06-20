@@ -23,6 +23,7 @@ pub struct FirstLevelSplitter {
 impl FirstLevelSplitter {
     /// Returns the opening tag data of the XML document's root element or
     /// [`None`] if the root has not been found yet
+    #[cfg(test)]
     pub fn root(&self) -> Option<Rc<BytesStart<'static>>> {
         self.root.clone()
     }
