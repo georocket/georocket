@@ -5,7 +5,7 @@ use tantivy::{
     directory::MmapDirectory,
     query::{EnableScoring, Scorer, Weight},
     schema::{OwnedValue, Schema, FAST, INDEXED, STORED, STRING, TEXT},
-    DocAddress, IndexBuilder, IndexReader, IndexWriter, Searcher, TantivyDocument,
+    DocAddress, DocId, IndexBuilder, IndexReader, IndexWriter, Searcher, TantivyDocument,
     COLLECT_BLOCK_BUFFER_LEN,
 };
 use ulid::Ulid;
@@ -168,12 +168,23 @@ impl Index for TantivyIndex {
             searcher_opt: Some(&searcher),
         })?;
 
-        // create an iterator that performs the search for us and yields the
-        // first chunk ID as soon as possible
-        Ok(SearchIterator::new(Rc::clone(&searcher), weight)
-            .flatten()
-            .flat_map(|(index, docset)| DocSetIterator::new(index as u32, docset))
-            .map(move |doc_address| {
+        let map_docset_to_doc_addresses = |searcher: Rc<Searcher>| {
+            move |(index, docset)| {
+                let searcher = searcher.clone();
+                DocSetIterator::new(docset)
+                    .filter(move |&doc_id| {
+                        searcher
+                            .segment_reader(index as u32)
+                            .alive_bitset()
+                            .map(|ab| ab.is_alive(doc_id))
+                            .unwrap_or(true)
+                    })
+                    .map(move |doc_id| DocAddress::new(index as u32, doc_id))
+            }
+        };
+
+        let map_doc_address_to_chunk_id = |searcher: Rc<Searcher>| {
+            move |doc_address| {
                 let doc: TantivyDocument = searcher.doc(doc_address)?;
 
                 let id_field_value = doc
@@ -187,7 +198,15 @@ impl Index for TantivyIndex {
                 bytes.copy_from_slice(&id_bytes[..16]);
 
                 anyhow::Ok(Ulid::from_bytes(bytes))
-            }))
+            }
+        };
+
+        // create an iterator that performs the search for us and yields the
+        // first chunk ID as soon as possible
+        Ok(SearchIterator::new(Rc::clone(&searcher), weight)
+            .flatten()
+            .flat_map(map_docset_to_doc_addresses(Rc::clone(&searcher)))
+            .map(map_doc_address_to_chunk_id(Rc::clone(&searcher))))
     }
 }
 
@@ -231,7 +250,6 @@ impl Iterator for SearchIterator {
 
 /// Iterates over the doc sets returned by a scorer and returns doc addresses
 struct DocSetIterator {
-    segment_ord: u32,
     docset: Box<dyn Scorer>,
     buffer: [u32; COLLECT_BLOCK_BUFFER_LEN],
     finished: bool,
@@ -240,9 +258,8 @@ struct DocSetIterator {
 }
 
 impl DocSetIterator {
-    fn new(segment_ord: u32, docset: Box<dyn Scorer>) -> Self {
+    fn new(docset: Box<dyn Scorer>) -> Self {
         Self {
-            segment_ord,
             docset,
             buffer: [0u32; COLLECT_BLOCK_BUFFER_LEN],
             finished: false,
@@ -253,7 +270,7 @@ impl DocSetIterator {
 }
 
 impl Iterator for DocSetIterator {
-    type Item = DocAddress;
+    type Item = DocId;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.index == self.num_items {
@@ -276,16 +293,16 @@ impl Iterator for DocSetIterator {
         let doc_id = self.buffer[self.index];
         self.index += 1;
 
-        Some(DocAddress::new(self.segment_ord, doc_id))
+        Some(doc_id)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use anyhow::Result;
-    use assertor::{assert_that, EqualityAssertion, VecAssertion};
+    use assertor::{assert_that, BooleanAssertion, EqualityAssertion, VecAssertion};
     use geo::{coord, Rect};
-    use tantivy::COLLECT_BLOCK_BUFFER_LEN;
+    use tantivy::{Term, COLLECT_BLOCK_BUFFER_LEN};
     use tempdir::TempDir;
     use ulid::Ulid;
 
@@ -412,6 +429,33 @@ mod tests {
         let mi = make_mini_index();
         let retrieved_ids = search(&mi, query![]);
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id1, mi.id2, mi.id3, mi.id4]);
+    }
+
+    /// Make sure the search result does not contain deleted chunks
+    #[test]
+    fn delete() {
+        let mut mi = make_mini_index();
+        assert_that!(mi.index.reader.searcher().num_docs()).is_equal_to(4);
+
+        // TODO use delete method of TantivyIndex once we've implemented it
+        mi.index.writer.delete_term(Term::from_field_bytes(
+            mi.index.fields.id_field,
+            &mi.id2.0.to_be_bytes(),
+        ));
+        mi.index.commit().unwrap();
+
+        assert_that!(mi.index.reader.searcher().num_docs()).is_equal_to(3);
+        assert_that!(mi.index.reader.searcher().segment_reader(0).has_deletes()).is_true();
+        assert_that!(mi
+            .index
+            .reader
+            .searcher()
+            .segment_reader(0)
+            .num_deleted_docs())
+        .is_equal_to(1);
+
+        let retrieved_ids = search(&mi, query![]);
+        assert_that!(retrieved_ids).contains_exactly(vec![mi.id1, mi.id3, mi.id4]);
     }
 
     #[test]
