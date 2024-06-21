@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use h3o::Resolution;
-use std::{collections::BTreeMap, fs, rc::Rc};
+use std::{fs, rc::Rc};
 use tantivy::{
     directory::MmapDirectory,
     query::{EnableScoring, Scorer, Weight},
@@ -99,7 +99,7 @@ impl Index for TantivyIndex {
         doc.add_bytes(self.fields.id_field, &id.0.to_be_bytes());
 
         let mut all_values = String::new();
-        let mut gen_attrs = BTreeMap::new();
+        let mut gen_attrs = Vec::new();
 
         fn push_all_values(all_values: &mut String, value: &str) {
             if !all_values.is_empty() {
@@ -115,15 +115,15 @@ impl Index for TantivyIndex {
                         match v {
                             Value::String(s) => {
                                 push_all_values(&mut all_values, &s);
-                                gen_attrs.insert(k, OwnedValue::Str(s));
+                                gen_attrs.push((k, OwnedValue::Str(s)));
                             }
                             Value::Float(f) => {
                                 push_all_values(&mut all_values, &f.to_string());
-                                gen_attrs.insert(k, OwnedValue::F64(f));
+                                gen_attrs.push((k, OwnedValue::F64(f)));
                             }
                             Value::Integer(i) => {
                                 push_all_values(&mut all_values, &i.to_string());
-                                gen_attrs.insert(k, OwnedValue::I64(i));
+                                gen_attrs.push((k, OwnedValue::I64(i)));
                             }
                         }
                     }
@@ -143,7 +143,7 @@ impl Index for TantivyIndex {
             }
         }
 
-        doc.add_object(self.fields.gen_attrs_field, gen_attrs);
+        doc.add_field_value(self.fields.gen_attrs_field, &OwnedValue::Object(gen_attrs));
         doc.add_text(self.fields.all_values_field, all_values);
 
         self.writer.add_document(doc)?;
@@ -505,6 +505,29 @@ mod tests {
 
         let retrieved_ids = search(&mi, query![eq!["name", "empire state building"]]);
         assert_that!(retrieved_ids).is_empty();
+    }
+
+    #[test]
+    fn duplicate_attribute_value() {
+        let mut mi = make_mini_index();
+
+        let id5 = Ulid::new();
+        let indexer_result5 = vec![IndexedValue::GenericAttributes(
+            [
+                ("name".to_string(), Value::String("Value1".to_string())),
+                ("name".to_string(), Value::String("Value2".to_string())),
+            ]
+            .into(),
+        )];
+
+        mi.index.add(id5, indexer_result5).unwrap();
+        mi.index.commit().unwrap();
+
+        let retrieved_ids = search(&mi, query![eq!["name", "Value1"]]);
+        assert_that!(retrieved_ids).contains_exactly(vec![id5]);
+
+        let retrieved_ids = search(&mi, query![eq!["name", "Value2"]]);
+        assert_that!(retrieved_ids).contains_exactly(vec![id5]);
     }
 
     #[test]

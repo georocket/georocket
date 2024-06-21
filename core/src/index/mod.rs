@@ -1,6 +1,5 @@
 use anyhow::Result;
 use geo::Rect;
-use std::collections::HashMap;
 use ulid::Ulid;
 
 use crate::query::Query;
@@ -15,7 +14,7 @@ pub mod value;
 /// A value created by an [`Indexer`]
 #[derive(Debug, PartialEq)]
 pub enum IndexedValue {
-    GenericAttributes(HashMap<String, Value>),
+    GenericAttributes(Vec<(String, Value)>),
     BoundingBox(Rect),
 }
 
