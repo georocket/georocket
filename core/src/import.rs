@@ -11,7 +11,7 @@ use crate::{
         chunk_meta::ChunkMeta,
         gml::{
             bounding_box_indexer::BoundingBoxIndexer,
-            generic_attribute_indexer::GenericAttributeIndexer, namespaces::Namespaces,
+            generic_attribute_indexer::GenericAttributeIndexer, root_element::RootElement,
             srs_indexer::SRSIndexer,
         },
         tantivy::TantivyIndex,
@@ -72,7 +72,7 @@ pub fn import_xml(path: String) -> Result<()> {
 
     let mut buf = Vec::new();
     let mut splitter = FirstLevelSplitter::default();
-    let mut namespaces: Option<Namespaces> = None;
+    let mut root_element: Option<RootElement> = None;
     loop {
         let start_pos = reader.buffer_position();
         let e = reader.read_event_into(&mut buf)?;
@@ -99,8 +99,8 @@ pub fn import_xml(path: String) -> Result<()> {
             let id = Ulid::new();
             store_send.send((id, r))?;
 
-            if namespaces.is_none() {
-                namespaces = Some(Namespaces::try_from_xml_tag(
+            if root_element.is_none() {
+                root_element = Some(RootElement::try_from_xml_tag(
                     splitter.root().unwrap(),
                     &reader,
                 )?);
@@ -108,7 +108,7 @@ pub fn import_xml(path: String) -> Result<()> {
 
             let meta = ChunkMeta {
                 id,
-                namespaces: namespaces.clone(),
+                root_element: root_element.clone().unwrap(),
             };
 
             let mut indexer_result: Vec<_> = generic_attribute_indexer.into();

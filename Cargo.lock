@@ -684,6 +684,7 @@ dependencies = [
  "crossbeam-channel",
  "geo",
  "h3o",
+ "itertools 0.13.0",
  "lalrpop",
  "lalrpop-util",
  "num_cpus",

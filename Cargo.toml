@@ -16,6 +16,7 @@ crossbeam-channel = "0.5.13"
 geo = "0.28.0"
 georocket-core = { path = "core" }
 h3o = { version = "0.6.4", features = ["geo"] }
+itertools = "0.13.0"
 lalrpop = "0.20.2"
 lalrpop-util = { version = "0.20.2", features = ["lexer", "unicode"] }
 mime_guess = "2.0.4"

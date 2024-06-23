@@ -14,7 +14,6 @@ use ulid::Ulid;
 use crate::{
     index::{
         chunk_meta::ChunkMeta,
-        gml::namespaces::Namespaces,
         h3_term_index::{make_terms, TermMode, TermOptions},
         Index, IndexedValue, Value,
     },
@@ -41,7 +40,7 @@ impl TantivyIndex {
         let mut schema_builder = Schema::builder();
 
         let id = schema_builder.add_bytes_field("_id", STORED | INDEXED);
-        let namespaces = schema_builder.add_bytes_field("_namespaces", STORED);
+        let root_element = schema_builder.add_bytes_field("_root_element", STORED);
         let gen_attrs = schema_builder.add_json_field("gen_attrs", STRING);
         let all_values = schema_builder.add_text_field("all_values", TEXT);
         let bbox_min_x = schema_builder.add_f64_field("bbox_min_x", FAST);
@@ -67,7 +66,7 @@ impl TantivyIndex {
 
         let fields = Fields {
             id,
-            namespaces,
+            root_element,
             gen_attrs,
             all_values,
             bbox_min_x,
@@ -105,10 +104,8 @@ impl Index for TantivyIndex {
         let mut doc = TantivyDocument::new();
         doc.add_bytes(self.fields.id, &meta.id.0.to_be_bytes());
 
-        if let Some(namespaces) = meta.namespaces {
-            let n = bincode::encode_to_vec(namespaces, self.bincode_config)?;
-            doc.add_bytes(self.fields.namespaces, &n);
-        }
+        let root_element = bincode::encode_to_vec(meta.root_element, self.bincode_config)?;
+        doc.add_bytes(self.fields.root_element, &root_element);
 
         let mut all_values = String::new();
         let mut gen_attrs = Vec::new();
@@ -209,17 +206,16 @@ impl Index for TantivyIndex {
                 bytes.copy_from_slice(&id_bytes[..16]);
                 let id = Ulid::from_bytes(bytes);
 
-                let namespaces: Option<Namespaces> = doc
-                    .get_first(self.fields.namespaces)
-                    .map(|namespaces_field_value| {
-                        let namespaces_bytes = namespaces_field_value
-                            .as_bytes()
-                            .context("Namespaces field does not contain bytes")?;
-                        Ok(bincode::decode_from_slice(namespaces_bytes, self.bincode_config)?.0)
-                    })
-                    .transpose()?;
+                let root_element_field_value = doc
+                    .get_first(self.fields.root_element)
+                    .context("Unable to retrieve root element field from document")?;
+                let root_element_bytes = root_element_field_value
+                    .as_bytes()
+                    .context("Root element field does not contain bytes")?;
+                let root_element =
+                    bincode::decode_from_slice(root_element_bytes, self.bincode_config)?.0;
 
-                anyhow::Ok(ChunkMeta::new(id, namespaces))
+                anyhow::Ok(ChunkMeta::new(id, root_element))
             }
         };
 
@@ -331,7 +327,7 @@ mod tests {
     use crate::{
         index::{
             chunk_meta::ChunkMeta,
-            gml::namespaces::{Namespaces, Prefix},
+            gml::root_element::{Prefix, RootElement},
             Index, IndexedValue, Value,
         },
         query::{and, bbox, eq, gt, gte, lt, lte, not, or, query, Query},
@@ -346,7 +342,7 @@ mod tests {
         id2: Ulid,
         id3: Ulid,
         id4: Ulid,
-        namespaces1: Namespaces,
+        root_element1: RootElement,
     }
 
     struct LargeIndex {
@@ -359,19 +355,23 @@ mod tests {
         let mut index = TantivyIndex::new(dir.path().to_str().unwrap()).unwrap();
 
         let id1 = Ulid::new();
-        let namespaces1 = Namespaces(vec![
-            (Prefix::Default, "https://georocket.io".to_string()),
-            (
-                Prefix::Named("geo".to_string()),
-                "https://fraunhofer.de".to_string(),
-            ),
-        ]);
-        let meta1 = ChunkMeta::new(id1, Some(namespaces1.clone()));
+        let root_element1 = RootElement::new(
+            "elvis".to_string(),
+            vec![
+                (Prefix::Default, "https://georocket.io".to_string()),
+                (
+                    Prefix::Named("geo".to_string()),
+                    "https://fraunhofer.de".to_string(),
+                ),
+            ],
+            None,
+        );
+        let meta1 = ChunkMeta::new(id1, root_element1.clone());
         let indexer_result1 = vec![IndexedValue::GenericAttributes(
             [("name".to_string(), Value::String("Elvis".to_string()))].into(),
         )];
         let id2 = Ulid::new();
-        let meta2 = ChunkMeta::new(id2, None);
+        let meta2 = ChunkMeta::new(id2, RootElement::new("root".to_string(), vec![], None));
         let indexer_result2 = vec![
             IndexedValue::GenericAttributes(
                 [
@@ -391,12 +391,12 @@ mod tests {
             )),
         ];
         let id3 = Ulid::new();
-        let meta3 = ChunkMeta::new(id3, None);
+        let meta3 = ChunkMeta::new(id3, RootElement::new("root".to_string(), vec![], None));
         let indexer_result3 = vec![IndexedValue::GenericAttributes(
             [("name".to_string(), Value::String("Einar".to_string()))].into(),
         )];
         let id4 = Ulid::new();
-        let meta4 = ChunkMeta::new(id4, None);
+        let meta4 = ChunkMeta::new(id4, RootElement::new("root".to_string(), vec![], None));
         let indexer_result4 = vec![
             IndexedValue::GenericAttributes(
                 [
@@ -426,7 +426,7 @@ mod tests {
             id2,
             id3,
             id4,
-            namespaces1,
+            root_element1,
         }
     }
 
@@ -436,10 +436,11 @@ mod tests {
 
         for _ in 0..n_items {
             let id = Ulid::new();
+            let meta = ChunkMeta::new(id, RootElement::new("root".to_string(), vec![], None));
             let indexer_result = vec![IndexedValue::GenericAttributes(
                 [("id".to_string(), Value::String(id.to_string()))].into(),
             )];
-            index.add(ChunkMeta::new(id, None), indexer_result).unwrap();
+            index.add(meta, indexer_result).unwrap();
         }
 
         index.commit().unwrap();
@@ -514,7 +515,7 @@ mod tests {
             .collect::<Result<_>>()
             .unwrap();
         assert_that!(retrieved_metas)
-            .contains_exactly(vec![ChunkMeta::new(mi.id1, Some(mi.namespaces1))]);
+            .contains_exactly(vec![ChunkMeta::new(mi.id1, mi.root_element1)]);
     }
 
     #[test]
@@ -564,6 +565,7 @@ mod tests {
         let mut mi = make_mini_index();
 
         let id5 = Ulid::new();
+        let meta5 = ChunkMeta::new(id5, RootElement::new("root".to_string(), vec![], None));
         let indexer_result5 = vec![IndexedValue::GenericAttributes(
             [
                 ("name".to_string(), Value::String("Value1".to_string())),
@@ -572,9 +574,7 @@ mod tests {
             .into(),
         )];
 
-        mi.index
-            .add(ChunkMeta::new(id5, None), indexer_result5)
-            .unwrap();
+        mi.index.add(meta5, indexer_result5).unwrap();
         mi.index.commit().unwrap();
 
         let retrieved_ids = search(&mi, query![eq!["name", "Value1"]]);
@@ -862,6 +862,7 @@ mod tests {
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id4]);
 
         let id5 = Ulid::new();
+        let meta5 = ChunkMeta::new(id5, RootElement::new("root".to_string(), vec![], None));
         let indexer_result5 = vec![IndexedValue::GenericAttributes(
             [
                 (
@@ -873,9 +874,7 @@ mod tests {
             .into(),
         )];
 
-        mi.index
-            .add(ChunkMeta::new(id5, None), indexer_result5)
-            .unwrap();
+        mi.index.add(meta5, indexer_result5).unwrap();
         mi.index.commit().unwrap();
 
         let retrieved_ids = search(&mi, query![eq!["year", 2000]]);

@@ -11,7 +11,7 @@ pub use tantivy_index::TantivyIndex;
 
 struct Fields {
     id: Field,
-    namespaces: Field,
+    root_element: Field,
     gen_attrs: Field,
     all_values: Field,
     bbox_min_x: Field,
