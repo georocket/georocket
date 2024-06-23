@@ -40,15 +40,15 @@ impl TantivyIndex {
 
         let mut schema_builder = Schema::builder();
 
-        let id_field = schema_builder.add_bytes_field("_id", STORED | INDEXED);
-        let namespaces_field = schema_builder.add_bytes_field("_namespaces", STORED);
-        let gen_attrs_field = schema_builder.add_json_field("gen_attrs", STRING);
-        let all_values_field = schema_builder.add_text_field("all_values", TEXT);
-        let bbox_min_x_field = schema_builder.add_f64_field("bbox_min_x", FAST);
-        let bbox_min_y_field = schema_builder.add_f64_field("bbox_min_y", FAST);
-        let bbox_max_x_field = schema_builder.add_f64_field("bbox_max_x", FAST);
-        let bbox_max_y_field = schema_builder.add_f64_field("bbox_max_y", FAST);
-        let bbox_terms_field = schema_builder.add_text_field("bbox_terms", STRING);
+        let id = schema_builder.add_bytes_field("_id", STORED | INDEXED);
+        let namespaces = schema_builder.add_bytes_field("_namespaces", STORED);
+        let gen_attrs = schema_builder.add_json_field("gen_attrs", STRING);
+        let all_values = schema_builder.add_text_field("all_values", TEXT);
+        let bbox_min_x = schema_builder.add_f64_field("bbox_min_x", FAST);
+        let bbox_min_y = schema_builder.add_f64_field("bbox_min_y", FAST);
+        let bbox_max_x = schema_builder.add_f64_field("bbox_max_x", FAST);
+        let bbox_max_y = schema_builder.add_f64_field("bbox_max_y", FAST);
+        let bbox_terms = schema_builder.add_text_field("bbox_terms", STRING);
 
         let schema = schema_builder.build();
 
@@ -66,15 +66,15 @@ impl TantivyIndex {
         let writer = index.writer(1024 * 1024 * 20)?;
 
         let fields = Fields {
-            id_field,
-            namespaces_field,
-            gen_attrs_field,
-            all_values_field,
-            bbox_min_x_field,
-            bbox_min_y_field,
-            bbox_max_x_field,
-            bbox_max_y_field,
-            bbox_terms_field,
+            id,
+            namespaces,
+            gen_attrs,
+            all_values,
+            bbox_min_x,
+            bbox_min_y,
+            bbox_max_x,
+            bbox_max_y,
+            bbox_terms,
         };
 
         // TODO If necessary, this could be made configurable. Note that
@@ -103,11 +103,11 @@ impl TantivyIndex {
 impl Index for TantivyIndex {
     fn add(&self, meta: ChunkMeta, indexer_result: Vec<IndexedValue>) -> anyhow::Result<()> {
         let mut doc = TantivyDocument::new();
-        doc.add_bytes(self.fields.id_field, &meta.id.0.to_be_bytes());
+        doc.add_bytes(self.fields.id, &meta.id.0.to_be_bytes());
 
         if let Some(namespaces) = meta.namespaces {
             let n = bincode::encode_to_vec(namespaces, self.bincode_config)?;
-            doc.add_bytes(self.fields.namespaces_field, &n);
+            doc.add_bytes(self.fields.namespaces, &n);
         }
 
         let mut all_values = String::new();
@@ -142,21 +142,21 @@ impl Index for TantivyIndex {
                 }
 
                 IndexedValue::BoundingBox(bbox) => {
-                    doc.add_f64(self.fields.bbox_min_x_field, bbox.min().x);
-                    doc.add_f64(self.fields.bbox_min_y_field, bbox.min().y);
-                    doc.add_f64(self.fields.bbox_max_x_field, bbox.max().x);
-                    doc.add_f64(self.fields.bbox_max_y_field, bbox.max().y);
+                    doc.add_f64(self.fields.bbox_min_x, bbox.min().x);
+                    doc.add_f64(self.fields.bbox_min_y, bbox.min().y);
+                    doc.add_f64(self.fields.bbox_max_x, bbox.max().x);
+                    doc.add_f64(self.fields.bbox_max_y, bbox.max().y);
 
                     let terms = make_terms(&bbox, self.bbox_term_options, TermMode::Index)?;
                     for t in terms {
-                        doc.add_text(self.fields.bbox_terms_field, t);
+                        doc.add_text(self.fields.bbox_terms, t);
                     }
                 }
             }
         }
 
-        doc.add_field_value(self.fields.gen_attrs_field, &OwnedValue::Object(gen_attrs));
-        doc.add_text(self.fields.all_values_field, all_values);
+        doc.add_field_value(self.fields.gen_attrs, &OwnedValue::Object(gen_attrs));
+        doc.add_text(self.fields.all_values, all_values);
 
         self.writer.add_document(doc)?;
 
@@ -200,7 +200,7 @@ impl Index for TantivyIndex {
                 let doc: TantivyDocument = searcher.doc(doc_address)?;
 
                 let id_field_value = doc
-                    .get_first(self.fields.id_field)
+                    .get_first(self.fields.id)
                     .context("Unable to retrieve ID field from document")?;
                 let id_bytes = id_field_value
                     .as_bytes()
@@ -210,7 +210,7 @@ impl Index for TantivyIndex {
                 let id = Ulid::from_bytes(bytes);
 
                 let namespaces: Option<Namespaces> = doc
-                    .get_first(self.fields.namespaces_field)
+                    .get_first(self.fields.namespaces)
                     .map(|namespaces_field_value| {
                         let namespaces_bytes = namespaces_field_value
                             .as_bytes()
@@ -478,7 +478,7 @@ mod tests {
 
         // TODO use delete method of TantivyIndex once we've implemented it
         mi.index.writer.delete_term(Term::from_field_bytes(
-            mi.index.fields.id_field,
+            mi.index.fields.id,
             &mi.id2.0.to_be_bytes(),
         ));
         mi.index.commit().unwrap();

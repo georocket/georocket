@@ -80,15 +80,10 @@ impl<'a> QueryTranslator<'a> {
 
         // tokenize value and create individual terms
         let mut terms = Vec::new();
-        let mut tokenizer = self
-            .index
-            .tokenizer_for_field(self.fields.all_values_field)?;
+        let mut tokenizer = self.index.tokenizer_for_field(self.fields.all_values)?;
         let mut token_stream = tokenizer.token_stream(&text);
         token_stream.process(&mut |token| {
-            terms.push(Term::from_field_text(
-                self.fields.all_values_field,
-                &token.text,
-            ));
+            terms.push(Term::from_field_text(self.fields.all_values, &token.text));
         });
 
         // combine terms
@@ -106,7 +101,7 @@ impl<'a> QueryTranslator<'a> {
     /// the given one
     fn translate_bbox(&self, bbox: Rect) -> Result<Box<dyn TantivyQuery>> {
         Ok(Box::new(BoundingBoxQuery::new(
-            self.fields.bbox_terms_field,
+            self.fields.bbox_terms,
             bbox,
             BoundingBoxFields {
                 // TODO is it possible to use self.fields instead of field names (strings)?
@@ -155,7 +150,7 @@ impl<'a> QueryTranslator<'a> {
     ) -> Result<Box<dyn TantivyQuery>> {
         match operator {
             Operator::Eq => {
-                let mut term = Term::from_field_json_path(self.fields.gen_attrs_field, key, false);
+                let mut term = Term::from_field_json_path(self.fields.gen_attrs, key, false);
                 match value {
                     Value::String(s) => term.append_type_and_str(s),
                     Value::Float(f) => term.append_type_and_fast_value(*f),
@@ -165,16 +160,12 @@ impl<'a> QueryTranslator<'a> {
             }
 
             Operator::Gt => {
-                let lower_bound =
-                    Self::key_value_to_bound(self.fields.gen_attrs_field, key, value)?;
-                let upper_bound = Self::key_value_to_bound(
-                    self.fields.gen_attrs_field,
-                    key,
-                    &Self::value_max(value)?,
-                )?;
+                let lower_bound = Self::key_value_to_bound(self.fields.gen_attrs, key, value)?;
+                let upper_bound =
+                    Self::key_value_to_bound(self.fields.gen_attrs, key, &Self::value_max(value)?)?;
 
                 let rq = JsonRangeQuery::new(
-                    self.fields.gen_attrs_field,
+                    self.fields.gen_attrs,
                     Bound::Excluded(lower_bound),
                     Bound::Included(upper_bound),
                 );
@@ -183,16 +174,12 @@ impl<'a> QueryTranslator<'a> {
             }
 
             Operator::Gte => {
-                let lower_bound =
-                    Self::key_value_to_bound(self.fields.gen_attrs_field, key, value)?;
-                let upper_bound = Self::key_value_to_bound(
-                    self.fields.gen_attrs_field,
-                    key,
-                    &Self::value_max(value)?,
-                )?;
+                let lower_bound = Self::key_value_to_bound(self.fields.gen_attrs, key, value)?;
+                let upper_bound =
+                    Self::key_value_to_bound(self.fields.gen_attrs, key, &Self::value_max(value)?)?;
 
                 let rq = JsonRangeQuery::new(
-                    self.fields.gen_attrs_field,
+                    self.fields.gen_attrs,
                     Bound::Included(lower_bound),
                     Bound::Included(upper_bound),
                 );
@@ -201,16 +188,12 @@ impl<'a> QueryTranslator<'a> {
             }
 
             Operator::Lt => {
-                let lower_bound = Self::key_value_to_bound(
-                    self.fields.gen_attrs_field,
-                    key,
-                    &Self::value_min(value)?,
-                )?;
-                let upper_bound =
-                    Self::key_value_to_bound(self.fields.gen_attrs_field, key, value)?;
+                let lower_bound =
+                    Self::key_value_to_bound(self.fields.gen_attrs, key, &Self::value_min(value)?)?;
+                let upper_bound = Self::key_value_to_bound(self.fields.gen_attrs, key, value)?;
 
                 let rq = JsonRangeQuery::new(
-                    self.fields.gen_attrs_field,
+                    self.fields.gen_attrs,
                     Bound::Included(lower_bound),
                     Bound::Excluded(upper_bound),
                 );
@@ -219,16 +202,12 @@ impl<'a> QueryTranslator<'a> {
             }
 
             Operator::Lte => {
-                let lower_bound = Self::key_value_to_bound(
-                    self.fields.gen_attrs_field,
-                    key,
-                    &Self::value_min(value)?,
-                )?;
-                let upper_bound =
-                    Self::key_value_to_bound(self.fields.gen_attrs_field, key, value)?;
+                let lower_bound =
+                    Self::key_value_to_bound(self.fields.gen_attrs, key, &Self::value_min(value)?)?;
+                let upper_bound = Self::key_value_to_bound(self.fields.gen_attrs, key, value)?;
 
                 let rq = JsonRangeQuery::new(
-                    self.fields.gen_attrs_field,
+                    self.fields.gen_attrs,
                     Bound::Included(lower_bound),
                     Bound::Included(upper_bound),
                 );
