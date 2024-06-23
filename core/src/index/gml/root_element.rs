@@ -40,7 +40,8 @@ impl RootElement {
     }
 
     /// Creates a `RootElement` object from the given XML tag. The root
-    /// element's namespaces will be sorted lexicographically.
+    /// element's namespaces and the optional schema locations will be sorted
+    /// lexicographically.
     pub fn try_from_xml_tag<B>(tag: &BytesStart, reader: &Reader<B>) -> Result<Self> {
         let name = from_utf8(tag.name().0)?.to_string();
 
@@ -86,6 +87,7 @@ impl RootElement {
                                 break;
                             }
                         }
+                        r.sort_unstable();
                         anyhow::Ok(r)
                     }
                 })
@@ -282,8 +284,8 @@ mod tests {
                 ),
             ],
             Some(vec![
-                ("foo.com".to_string(), "https://foo.com".to_string()),
                 ("example.com".to_string(), "https://example.com".to_string()),
+                ("foo.com".to_string(), "https://foo.com".to_string()),
             ]),
         );
         check(xml, expected);
