@@ -1,4 +1,5 @@
-use anyhow::{Context, Result};
+use anyhow::{Context, Ok, Result};
+use bincode::config::Configuration;
 use h3o::Resolution;
 use std::{fs, rc::Rc};
 use tantivy::{
@@ -12,6 +13,8 @@ use ulid::Ulid;
 
 use crate::{
     index::{
+        chunk_meta::ChunkMeta,
+        gml::namespaces::Namespaces,
         h3_term_index::{make_terms, TermMode, TermOptions},
         Index, IndexedValue, Value,
     },
@@ -27,6 +30,7 @@ pub struct TantivyIndex {
     reader: IndexReader,
     writer: IndexWriter,
     bbox_term_options: TermOptions,
+    bincode_config: Configuration,
 }
 
 impl TantivyIndex {
@@ -37,6 +41,7 @@ impl TantivyIndex {
         let mut schema_builder = Schema::builder();
 
         let id_field = schema_builder.add_bytes_field("_id", STORED | INDEXED);
+        let namespaces_field = schema_builder.add_bytes_field("_namespaces", STORED);
         let gen_attrs_field = schema_builder.add_json_field("gen_attrs", STRING);
         let all_values_field = schema_builder.add_text_field("all_values", TEXT);
         let bbox_min_x_field = schema_builder.add_f64_field("bbox_min_x", FAST);
@@ -62,6 +67,7 @@ impl TantivyIndex {
 
         let fields = Fields {
             id_field,
+            namespaces_field,
             gen_attrs_field,
             all_values_field,
             bbox_min_x_field,
@@ -89,14 +95,20 @@ impl TantivyIndex {
             reader,
             writer,
             bbox_term_options,
+            bincode_config: bincode::config::standard(),
         })
     }
 }
 
 impl Index for TantivyIndex {
-    fn add(&self, id: Ulid, indexer_result: Vec<IndexedValue>) -> anyhow::Result<()> {
+    fn add(&self, meta: ChunkMeta, indexer_result: Vec<IndexedValue>) -> anyhow::Result<()> {
         let mut doc = TantivyDocument::new();
-        doc.add_bytes(self.fields.id_field, &id.0.to_be_bytes());
+        doc.add_bytes(self.fields.id_field, &meta.id.0.to_be_bytes());
+
+        if let Some(namespaces) = meta.namespaces {
+            let n = bincode::encode_to_vec(namespaces, self.bincode_config)?;
+            doc.add_bytes(self.fields.namespaces_field, &n);
+        }
 
         let mut all_values = String::new();
         let mut gen_attrs = Vec::new();
@@ -157,7 +169,7 @@ impl Index for TantivyIndex {
         Ok(())
     }
 
-    fn search(&self, query: Query) -> Result<impl Iterator<Item = Result<Ulid>>> {
+    fn search(&self, query: Query) -> Result<impl Iterator<Item = Result<ChunkMeta>>> {
         let searcher = Rc::new(self.reader.searcher());
 
         let query_translator =
@@ -193,11 +205,21 @@ impl Index for TantivyIndex {
                 let id_bytes = id_field_value
                     .as_bytes()
                     .context("ID field does not contain bytes")?;
-
                 let mut bytes = [0u8; 16];
                 bytes.copy_from_slice(&id_bytes[..16]);
+                let id = Ulid::from_bytes(bytes);
 
-                anyhow::Ok(Ulid::from_bytes(bytes))
+                let namespaces: Option<Namespaces> = doc
+                    .get_first(self.fields.namespaces_field)
+                    .map(|namespaces_field_value| {
+                        let namespaces_bytes = namespaces_field_value
+                            .as_bytes()
+                            .context("Namespaces field does not contain bytes")?;
+                        Ok(bincode::decode_from_slice(namespaces_bytes, self.bincode_config)?.0)
+                    })
+                    .transpose()?;
+
+                anyhow::Ok(ChunkMeta::new(id, namespaces))
             }
         };
 
@@ -307,7 +329,11 @@ mod tests {
     use ulid::Ulid;
 
     use crate::{
-        index::{Index, IndexedValue, Value},
+        index::{
+            chunk_meta::ChunkMeta,
+            gml::namespaces::{Namespaces, Prefix},
+            Index, IndexedValue, Value,
+        },
         query::{and, bbox, eq, gt, gte, lt, lte, not, or, query, Query},
     };
 
@@ -320,6 +346,7 @@ mod tests {
         id2: Ulid,
         id3: Ulid,
         id4: Ulid,
+        namespaces1: Namespaces,
     }
 
     struct LargeIndex {
@@ -332,10 +359,19 @@ mod tests {
         let mut index = TantivyIndex::new(dir.path().to_str().unwrap()).unwrap();
 
         let id1 = Ulid::new();
+        let namespaces1 = Namespaces(vec![
+            (Prefix::Default, "https://georocket.io".to_string()),
+            (
+                Prefix::Named("geo".to_string()),
+                "https://fraunhofer.de".to_string(),
+            ),
+        ]);
+        let meta1 = ChunkMeta::new(id1, Some(namespaces1.clone()));
         let indexer_result1 = vec![IndexedValue::GenericAttributes(
             [("name".to_string(), Value::String("Elvis".to_string()))].into(),
         )];
         let id2 = Ulid::new();
+        let meta2 = ChunkMeta::new(id2, None);
         let indexer_result2 = vec![
             IndexedValue::GenericAttributes(
                 [
@@ -355,10 +391,12 @@ mod tests {
             )),
         ];
         let id3 = Ulid::new();
+        let meta3 = ChunkMeta::new(id3, None);
         let indexer_result3 = vec![IndexedValue::GenericAttributes(
             [("name".to_string(), Value::String("Einar".to_string()))].into(),
         )];
         let id4 = Ulid::new();
+        let meta4 = ChunkMeta::new(id4, None);
         let indexer_result4 = vec![
             IndexedValue::GenericAttributes(
                 [
@@ -375,10 +413,10 @@ mod tests {
             )),
         ];
 
-        index.add(id1, indexer_result1).unwrap();
-        index.add(id2, indexer_result2).unwrap();
-        index.add(id3, indexer_result3).unwrap();
-        index.add(id4, indexer_result4).unwrap();
+        index.add(meta1, indexer_result1).unwrap();
+        index.add(meta2, indexer_result2).unwrap();
+        index.add(meta3, indexer_result3).unwrap();
+        index.add(meta4, indexer_result4).unwrap();
         index.commit().unwrap();
 
         MiniIndex {
@@ -388,6 +426,7 @@ mod tests {
             id2,
             id3,
             id4,
+            namespaces1,
         }
     }
 
@@ -400,7 +439,7 @@ mod tests {
             let indexer_result = vec![IndexedValue::GenericAttributes(
                 [("id".to_string(), Value::String(id.to_string()))].into(),
             )];
-            index.add(id, indexer_result).unwrap();
+            index.add(ChunkMeta::new(id, None), indexer_result).unwrap();
         }
 
         index.commit().unwrap();
@@ -412,16 +451,16 @@ mod tests {
         mi.index
             .search(query)
             .unwrap()
-            .collect::<Result<_>>()
-            .unwrap()
+            .map(|cm| cm.unwrap().id)
+            .collect::<_>()
     }
 
     fn search_large(li: &LargeIndex, query: Query) -> Vec<Ulid> {
         li.index
             .search(query)
             .unwrap()
-            .collect::<Result<_>>()
-            .unwrap()
+            .map(|cm| cm.unwrap().id)
+            .collect::<_>()
     }
 
     #[test]
@@ -463,6 +502,19 @@ mod tests {
         let mi = make_mini_index();
         let retrieved_ids = search(&mi, query!["Max"]);
         assert_that!(retrieved_ids).is_empty();
+    }
+
+    #[test]
+    fn metadata() {
+        let mi = make_mini_index();
+        let retrieved_metas: Vec<ChunkMeta> = mi
+            .index
+            .search(query![eq!["name", "Elvis"]])
+            .unwrap()
+            .collect::<Result<_>>()
+            .unwrap();
+        assert_that!(retrieved_metas)
+            .contains_exactly(vec![ChunkMeta::new(mi.id1, Some(mi.namespaces1))]);
     }
 
     #[test]
@@ -520,7 +572,9 @@ mod tests {
             .into(),
         )];
 
-        mi.index.add(id5, indexer_result5).unwrap();
+        mi.index
+            .add(ChunkMeta::new(id5, None), indexer_result5)
+            .unwrap();
         mi.index.commit().unwrap();
 
         let retrieved_ids = search(&mi, query![eq!["name", "Value1"]]);
@@ -819,7 +873,9 @@ mod tests {
             .into(),
         )];
 
-        mi.index.add(id5, indexer_result5).unwrap();
+        mi.index
+            .add(ChunkMeta::new(id5, None), indexer_result5)
+            .unwrap();
         mi.index.commit().unwrap();
 
         let retrieved_ids = search(&mi, query![eq!["year", 2000]]);

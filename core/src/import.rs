@@ -8,9 +8,11 @@ use ulid::Ulid;
 
 use crate::{
     index::{
+        chunk_meta::ChunkMeta,
         gml::{
             bounding_box_indexer::BoundingBoxIndexer,
-            generic_attribute_indexer::GenericAttributeIndexer, srs_indexer::SRSIndexer,
+            generic_attribute_indexer::GenericAttributeIndexer, namespaces::Namespaces,
+            srs_indexer::SRSIndexer,
         },
         tantivy::TantivyIndex,
         Index, IndexedValue, Indexer,
@@ -42,15 +44,15 @@ pub fn import_xml(path: String) -> Result<()> {
     // might not be multi-threaded or might have its own threading layer,
     // preparing the documents (e.g. creating spatial indexing terms) will
     // benefit from parallelization.
-    let (index_send, index_recv) = bounded::<(Ulid, Vec<IndexedValue>)>(16);
+    let (index_send, index_recv) = bounded::<(ChunkMeta, Vec<IndexedValue>)>(16);
     let index_threads = (0..num_cpus::get())
         .map(|_| {
             let index = Arc::clone(&index);
             let index_recv = index_recv.clone();
             spawn(move || {
                 let index = index.read();
-                for (id, indexer_result) in index_recv {
-                    index.add(id, indexer_result)?;
+                for (meta, indexer_result) in index_recv {
+                    index.add(meta, indexer_result)?;
                 }
                 Ok(())
             })
@@ -70,6 +72,7 @@ pub fn import_xml(path: String) -> Result<()> {
 
     let mut buf = Vec::new();
     let mut splitter = FirstLevelSplitter::default();
+    let mut namespaces: Option<Namespaces> = None;
     loop {
         let start_pos = reader.buffer_position();
         let e = reader.read_event_into(&mut buf)?;
@@ -96,11 +99,24 @@ pub fn import_xml(path: String) -> Result<()> {
             let id = Ulid::new();
             store_send.send((id, r))?;
 
+            if namespaces.is_none() {
+                namespaces = Some(Namespaces::try_from_xml_tag(
+                    splitter.root().unwrap(),
+                    &reader,
+                )?);
+            }
+
+            let meta = ChunkMeta {
+                id,
+                namespaces: namespaces.clone(),
+            };
+
             let mut indexer_result: Vec<_> = generic_attribute_indexer.into();
             if let Some(v) = bounding_box_indexer.try_into()? {
                 indexer_result.push(v);
             }
-            index_send.send((id, indexer_result))?;
+
+            index_send.send((meta, indexer_result))?;
 
             // reset indexers
             bounding_box_indexer = BoundingBoxIndexer::default();

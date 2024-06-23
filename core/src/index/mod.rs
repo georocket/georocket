@@ -1,11 +1,12 @@
 use anyhow::Result;
+use chunk_meta::ChunkMeta;
 use geo::Rect;
-use ulid::Ulid;
 
 use crate::query::Query;
 
 pub use self::value::Value;
 
+pub mod chunk_meta;
 pub mod gml;
 pub mod h3_term_index;
 pub mod tantivy;
@@ -27,13 +28,13 @@ pub trait Indexer<E> {
 /// An index stores information about chunks in a GeoRocket store and can be
 /// used to perform queries.
 pub trait Index {
-    /// Adds the results of indexing a chunk with the given `id` to the index
-    fn add(&self, id: Ulid, indexer_result: Vec<IndexedValue>) -> Result<()>;
+    /// Adds the results of indexing a chunk to the index
+    fn add(&self, meta: ChunkMeta, indexer_result: Vec<IndexedValue>) -> Result<()>;
 
     /// Persists changes
     fn commit(&mut self) -> Result<()>;
 
-    /// Queries the index and returns an iterator over the IDs of all chunks
-    /// matching the given query
-    fn search(&self, query: Query) -> Result<impl Iterator<Item = Result<Ulid>>>;
+    /// Queries the index and returns an iterator over the metadata objects of
+    /// all chunks matching the given query
+    fn search(&self, query: Query) -> Result<impl Iterator<Item = Result<ChunkMeta>>>;
 }

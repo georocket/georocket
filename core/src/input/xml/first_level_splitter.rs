@@ -1,4 +1,4 @@
-use std::{ops::Range, rc::Rc};
+use std::ops::Range;
 
 use anyhow::Result;
 use quick_xml::events::{BytesStart, Event};
@@ -17,15 +17,14 @@ pub struct FirstLevelSplitter {
 
     /// The opening tag data of the XML document's root element. [`None`] if
     /// the root has not been found yet.
-    root: Option<Rc<BytesStart<'static>>>,
+    root: Option<BytesStart<'static>>,
 }
 
 impl FirstLevelSplitter {
     /// Returns the opening tag data of the XML document's root element or
     /// [`None`] if the root has not been found yet
-    #[cfg(test)]
-    pub fn root(&self) -> Option<Rc<BytesStart<'static>>> {
-        self.root.clone()
+    pub fn root(&self) -> Option<&BytesStart<'static>> {
+        self.root.as_ref()
     }
 }
 
@@ -42,7 +41,7 @@ impl<'a> Splitter<Event<'a>> for FirstLevelSplitter {
             Event::Start(s) => {
                 if self.depth == 0 {
                     // save root element
-                    self.root = Some(Rc::new(s.to_owned()));
+                    self.root = Some(s.to_owned());
                 } else if self.depth == 1 {
                     self.mark = pos.start;
                 }
@@ -89,7 +88,7 @@ mod tests {
 
     /// Uses a [`FirstLevelSplitter`] to split an XML string. Returns the
     /// generated result objects.
-    fn split(xml: String) -> (Vec<Vec<u8>>, Rc<BytesStart<'static>>) {
+    fn split(xml: String) -> (Vec<Vec<u8>>, BytesStart<'static>) {
         let cursor = Cursor::new(xml);
         let window = WindowRead::new(cursor);
         let bufreader = BufReader::new(window);
@@ -116,7 +115,7 @@ mod tests {
             buf.clear();
         }
 
-        (result, splitter.root().unwrap())
+        (result, splitter.root().unwrap().clone())
     }
 
     /// Test if an XML string with one chunk can be split

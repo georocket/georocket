@@ -61,14 +61,14 @@ pub fn run_search(args: SearchArgs) -> Result<()> {
             let (search_sender, search_receiver) = bounded(1024 * 10);
 
             let search_thread = spawn(move || {
-                for id in index.search(query)? {
-                    let id = id?;
-                    search_sender.send(id)?;
+                for meta in index.search(query)? {
+                    let meta = meta?;
+                    search_sender.send(meta)?;
                 }
                 anyhow::Ok(())
             });
 
-            for id in search_receiver {
+            for meta in search_receiver {
                 // TODO remove this
                 if !first {
                     println!("Found first chunk after {:?}", search_start.elapsed());
@@ -76,8 +76,8 @@ pub fn run_search(args: SearchArgs) -> Result<()> {
                 }
 
                 let chunk = store
-                    .get(id)?
-                    .with_context(|| format!("Unable to find chunk with ID `{id}'"))?;
+                    .get(meta.id)?
+                    .with_context(|| format!("Unable to find chunk with ID `{}'", meta.id))?;
 
                 // TODO implement merger
                 println!("{}", std::str::from_utf8(&chunk).unwrap());

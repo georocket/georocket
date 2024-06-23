@@ -10,6 +10,7 @@ members = [
 anyhow = "1.0"
 ariadne = "0.4.1"
 assertor = "0.0.2"
+bincode = "2.0.0-rc.3"
 clap = { version = "4.5", features = ["derive"] }
 crossbeam-channel = "0.5.13"
 geo = "0.28.0"
