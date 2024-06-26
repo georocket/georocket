@@ -180,7 +180,7 @@ use std::{
 };
 
 use anyhow::Result;
-use geo::{Contains, Intersects, Polygon, Rect};
+use geo::{Contains, Intersects, Polygon};
 use h3o::{
     geom::{ContainmentMode, PolyfillConfig, ToCells, ToGeo},
     CellIndex, Resolution,
@@ -258,28 +258,6 @@ impl Ord for Candidate {
     }
 }
 
-/// Since we know that we only ever check if hexagon cells lie within a polygon,
-/// we can take some shortcuts. For example, to decide whether a hexagon lies
-/// within a Rect, we only need to check if all its vertices lie within. This
-/// is faster than the default implementation of [`Rect::contains`], which
-/// calculates a full DE-9IM matrix.
-pub trait FastContains {
-    /// Check if the given hexagon cell polygon lies within this geometry
-    fn fast_contains(&self, cell_polygon: &Polygon) -> bool;
-}
-
-impl FastContains for Rect {
-    fn fast_contains(&self, cell_polygon: &Polygon) -> bool {
-        cell_polygon.exterior().0.iter().all(|v| self.contains(v))
-    }
-}
-
-impl FastContains for Polygon {
-    fn fast_contains(&self, cell_polygon: &Polygon) -> bool {
-        self.contains(cell_polygon)
-    }
-}
-
 /// Converts a cell to a string and adds a prefix if it is an ancestor cell
 fn format_cell(cell: CellIndex, ancestor: bool) -> String {
     if ancestor {
@@ -317,7 +295,7 @@ fn subdivide<G>(
     max_resolution: Resolution,
     max_children: usize,
 ) where
-    G: Intersects<Polygon> + FastContains,
+    G: Intersects<Polygon> + Contains<Polygon>,
 {
     if candidate.terminal {
         return;
@@ -351,7 +329,7 @@ fn subdivide<G>(
             break;
         }
 
-        let terminal = child_resolution == max_resolution || geom.fast_contains(&child_geom);
+        let terminal = child_resolution == max_resolution || geom.contains(&child_geom);
         children.push(Candidate {
             cell: child,
             children: None,
@@ -381,7 +359,7 @@ fn build_tree<G>(
     max_cells: usize,
 ) -> Result<(Vec<CellIndex>, Vec<CellIndex>)>
 where
-    G: Intersects<Polygon> + Into<Polygon> + FastContains + Clone,
+    G: Intersects<Polygon> + Into<Polygon> + Contains<Polygon> + Clone,
 {
     // get initial candidates covering the geometry completely at minimum resolution
     let geom_poly = h3o::geom::Polygon::from_degrees(Into::<Polygon>::into(geom.clone())).unwrap();
@@ -493,7 +471,7 @@ pub struct TermOptions {
 /// documentation for more information.
 pub fn make_terms<G>(poly: &G, options: TermOptions, mode: TermMode) -> Result<Vec<String>>
 where
-    G: Intersects<Polygon> + Into<Polygon> + FastContains + Clone,
+    G: Intersects<Polygon> + Into<Polygon> + Contains<Polygon> + Clone,
 {
     let (covering, ancestors) = build_tree(
         poly,

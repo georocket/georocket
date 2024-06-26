@@ -616,6 +616,20 @@ version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f811f663912a69249fa620dcd2a005db7254529da2d8a0b23942e81f47084501"
 dependencies = [
+ "float_next_after",
+ "geo-types",
+ "geographiclib-rs",
+ "log",
+ "num-traits",
+ "robust",
+ "rstar",
+]
+
+[[package]]
+name = "geo"
+version = "0.28.0"
+source = "git+https://github.com/georust/geo.git?rev=0ee6b34712556624d4c1b482fc8799e00898394b#0ee6b34712556624d4c1b482fc8799e00898394b"
+dependencies = [
  "earcutr",
  "float_next_after",
  "geo-types",
@@ -682,7 +696,7 @@ dependencies = [
  "assertor",
  "bincode",
  "crossbeam-channel",
- "geo",
+ "geo 0.28.0 (git+https://github.com/georust/geo.git?rev=0ee6b34712556624d4c1b482fc8799e00898394b)",
  "h3o",
  "itertools 0.13.0",
  "lalrpop",
@@ -728,7 +742,7 @@ dependencies = [
  "ahash",
  "either",
  "float_eq",
- "geo",
+ "geo 0.28.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "geojson",
  "h3o-bit",
  "libm",

@@ -1,6 +1,7 @@
 pub mod import;
 pub mod index;
-mod input;
+pub mod input;
+pub mod output;
 pub mod query;
 pub mod storage;
 pub mod util;

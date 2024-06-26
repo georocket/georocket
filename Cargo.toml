@@ -13,7 +13,7 @@ assertor = "0.0.2"
 bincode = "2.0.0-rc.3"
 clap = { version = "4.5", features = ["derive"] }
 crossbeam-channel = "0.5.13"
-geo = "0.28.0"
+geo = { git = "https://github.com/georust/geo.git", rev = "0ee6b34712556624d4c1b482fc8799e00898394b" }
 georocket-core = { path = "core" }
 h3o = { version = "0.6.4", features = ["geo"] }
 itertools = "0.13.0"
