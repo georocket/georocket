@@ -1,8 +1,13 @@
-use std::{thread::spawn, time::Instant};
+use std::{
+    io::{self, BufWriter},
+    thread::spawn,
+    time::Instant,
+};
 
 use crossbeam_channel::bounded;
 use georocket_core::{
     index::{tantivy::TantivyIndex, Index},
+    output::{xml::XmlMerger, Merger},
     query::{error::QueryParserError, QueryParser},
     storage::{rocksdb::RocksDBStore, Store},
 };
@@ -50,6 +55,11 @@ pub fn run_search(args: SearchArgs) -> Result<()> {
     // initialize index
     let index = TantivyIndex::new("index")?;
 
+    // initialize merger
+    let stdout = io::stdout().lock();
+    let writer = BufWriter::new(stdout);
+    let mut merger = XmlMerger::new(writer);
+
     let search_start = Instant::now();
     let mut first = false;
     let mut found_chunks = 0;
@@ -71,7 +81,7 @@ pub fn run_search(args: SearchArgs) -> Result<()> {
             for meta in search_receiver {
                 // TODO remove this
                 if !first {
-                    println!("Found first chunk after {:?}", search_start.elapsed());
+                    eprintln!("Found first chunk after {:?}", search_start.elapsed());
                     first = true;
                 }
 
@@ -79,8 +89,7 @@ pub fn run_search(args: SearchArgs) -> Result<()> {
                     .get(meta.id)?
                     .with_context(|| format!("Unable to find chunk with ID `{}'", meta.id))?;
 
-                // TODO implement merger
-                println!("{}", std::str::from_utf8(&chunk).unwrap());
+                merger.merge(&chunk, meta)?;
 
                 found_chunks += 1;
             }
@@ -89,8 +98,10 @@ pub fn run_search(args: SearchArgs) -> Result<()> {
                 bail!("Search thread threw an error: {err:?}");
             }
 
+            merger.finish()?;
+
             // TODO remove this
-            println!(
+            eprintln!(
                 "Found {} chunks in {:?}",
                 found_chunks,
                 search_start.elapsed()

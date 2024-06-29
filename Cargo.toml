@@ -22,6 +22,7 @@ lalrpop-util = { version = "0.20.2", features = ["lexer", "unicode"] }
 mime_guess = "2.0.4"
 num_cpus = "1.16.0"
 parking_lot = "0.12.3"
+pretty_assertions = "1.4.0"
 proj = "0.27.2"
 quick-xml = "0.31.0"
 rand = "0.8.5"
@@ -31,4 +32,5 @@ rustc-hash = "2.0.0"
 tantivy = { git = "https://github.com/quickwit-oss/tantivy.git", rev = "b806122c817f19598c85369fe5c6e6788f81139d" }
 tantivy-common = { git = "https://github.com/quickwit-oss/tantivy.git", rev = "b806122c817f19598c85369fe5c6e6788f81139d" }
 tempdir = "0.3.7"
+thiserror = "1.0.61"
 ulid = "1.1.2"

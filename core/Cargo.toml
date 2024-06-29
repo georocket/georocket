@@ -6,7 +6,6 @@ publish = false
 
 [dependencies]
 anyhow.workspace = true
-assertor.workspace = true
 bincode.workspace = true
 crossbeam-channel.workspace = true
 geo.workspace = true
@@ -21,9 +20,12 @@ rocksdb.workspace = true
 rustc-hash.workspace = true
 tantivy-common.workspace = true
 tantivy.workspace = true
+thiserror.workspace = true
 ulid.workspace = true
 
 [dev-dependencies]
+assertor.workspace = true
+pretty_assertions.workspace = true
 rand.workspace = true
 tempdir.workspace = true
 

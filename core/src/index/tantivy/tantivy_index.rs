@@ -356,6 +356,7 @@ mod tests {
 
         let id1 = Ulid::new();
         let root_element1 = RootElement::new(
+            Prefix::Default,
             "elvis".to_string(),
             vec![
                 (Prefix::Default, "https://georocket.io".to_string()),
@@ -371,7 +372,10 @@ mod tests {
             [("name".to_string(), Value::String("Elvis".to_string()))].into(),
         )];
         let id2 = Ulid::new();
-        let meta2 = ChunkMeta::new(id2, RootElement::new("root".to_string(), vec![], None));
+        let meta2 = ChunkMeta::new(
+            id2,
+            RootElement::new(Prefix::Default, "root".to_string(), vec![], None),
+        );
         let indexer_result2 = vec![
             IndexedValue::GenericAttributes(
                 [
@@ -391,12 +395,18 @@ mod tests {
             )),
         ];
         let id3 = Ulid::new();
-        let meta3 = ChunkMeta::new(id3, RootElement::new("root".to_string(), vec![], None));
+        let meta3 = ChunkMeta::new(
+            id3,
+            RootElement::new(Prefix::Default, "root".to_string(), vec![], None),
+        );
         let indexer_result3 = vec![IndexedValue::GenericAttributes(
             [("name".to_string(), Value::String("Einar".to_string()))].into(),
         )];
         let id4 = Ulid::new();
-        let meta4 = ChunkMeta::new(id4, RootElement::new("root".to_string(), vec![], None));
+        let meta4 = ChunkMeta::new(
+            id4,
+            RootElement::new(Prefix::Default, "root".to_string(), vec![], None),
+        );
         let indexer_result4 = vec![
             IndexedValue::GenericAttributes(
                 [
@@ -436,7 +446,10 @@ mod tests {
 
         for _ in 0..n_items {
             let id = Ulid::new();
-            let meta = ChunkMeta::new(id, RootElement::new("root".to_string(), vec![], None));
+            let meta = ChunkMeta::new(
+                id,
+                RootElement::new(Prefix::Default, "root".to_string(), vec![], None),
+            );
             let indexer_result = vec![IndexedValue::GenericAttributes(
                 [("id".to_string(), Value::String(id.to_string()))].into(),
             )];
@@ -565,7 +578,10 @@ mod tests {
         let mut mi = make_mini_index();
 
         let id5 = Ulid::new();
-        let meta5 = ChunkMeta::new(id5, RootElement::new("root".to_string(), vec![], None));
+        let meta5 = ChunkMeta::new(
+            id5,
+            RootElement::new(Prefix::Default, "root".to_string(), vec![], None),
+        );
         let indexer_result5 = vec![IndexedValue::GenericAttributes(
             [
                 ("name".to_string(), Value::String("Value1".to_string())),
@@ -862,7 +878,10 @@ mod tests {
         assert_that!(retrieved_ids).contains_exactly(vec![mi.id4]);
 
         let id5 = Ulid::new();
-        let meta5 = ChunkMeta::new(id5, RootElement::new("root".to_string(), vec![], None));
+        let meta5 = ChunkMeta::new(
+            id5,
+            RootElement::new(Prefix::Default, "root".to_string(), vec![], None),
+        );
         let indexer_result5 = vec![IndexedValue::GenericAttributes(
             [
                 (

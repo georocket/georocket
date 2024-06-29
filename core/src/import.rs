@@ -81,7 +81,7 @@ pub fn import_xml(path: String) -> Result<()> {
 
         // SRSIndexer must be called before all other indexers because it needs
         // to record the current SRS. Don't call it when the event represents
-        // and end tag. The current SRS should stay in effect until all
+        // an end tag. The current SRS should stay in effect until all
         // indexers have processed the end tag.
         if !matches!(e, Event::End(_)) {
             srs_indexer.on_event(&e)?;
