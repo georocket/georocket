@@ -17,7 +17,10 @@ use crate::{
         tantivy::TantivyIndex,
         Index, IndexedValue, Indexer,
     },
-    input::{xml::FirstLevelSplitter, Splitter},
+    input::{
+        xml::{FirstLevelSplitter, ShouldBeSkipped},
+        Splitter,
+    },
     storage::{rocksdb::RocksDBStore, Store},
     util::window_read::WindowRead,
 };
@@ -76,6 +79,16 @@ pub fn import_xml(path: String) -> Result<()> {
     loop {
         let start_pos = reader.buffer_position();
         let e = reader.read_event_into(&mut buf)?;
+
+        // skip element if necessary
+        if e.should_be_skipped() {
+            if let Event::Start(s) = e {
+                let end = s.to_end().into_owned();
+                reader.read_to_end_into(end.name(), &mut buf)?;
+            }
+            continue;
+        }
+
         let end_pos = reader.buffer_position();
         let window = reader.get_mut().get_mut().window_mut();
 
