@@ -10,6 +10,11 @@ pub trait Store {
     /// [`commit`](Self::commit) to wait for all operations to finish.
     fn add(&mut self, id: Ulid, chunk: Vec<u8>) -> Result<()>;
 
+    /// Delete the chunk with the given ID from the store. Depending on the
+    /// actual implementation, this operation might be asynchronous. Call
+    /// [`commit`](Self::commit) to wait for all operations to finish.
+    fn delete(&mut self, id: Ulid) -> Result<()>;
+
     /// Call this method after adding one or more chunks via [`add`](Self::add)
     fn commit(&mut self) -> Result<()>;
 

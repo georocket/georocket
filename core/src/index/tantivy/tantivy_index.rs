@@ -6,7 +6,7 @@ use tantivy::{
     directory::MmapDirectory,
     query::{EnableScoring, Scorer, Weight},
     schema::{OwnedValue, Schema, FAST, INDEXED, STORED, STRING, TEXT},
-    DocAddress, DocId, IndexBuilder, IndexReader, IndexWriter, Searcher, TantivyDocument,
+    DocAddress, DocId, IndexBuilder, IndexReader, IndexWriter, Searcher, TantivyDocument, Term,
     COLLECT_BLOCK_BUFFER_LEN,
 };
 use ulid::Ulid;
@@ -157,6 +157,12 @@ impl Index for TantivyIndex {
 
         self.writer.add_document(doc)?;
 
+        Ok(())
+    }
+
+    fn delete(&self, id: Ulid) -> Result<()> {
+        self.writer
+            .delete_term(Term::from_field_bytes(self.fields.id, &id.0.to_be_bytes()));
         Ok(())
     }
 
@@ -490,11 +496,7 @@ mod tests {
         let mut mi = make_mini_index();
         assert_that!(mi.index.reader.searcher().num_docs()).is_equal_to(4);
 
-        // TODO use delete method of TantivyIndex once we've implemented it
-        mi.index.writer.delete_term(Term::from_field_bytes(
-            mi.index.fields.id,
-            &mi.id2.0.to_be_bytes(),
-        ));
+        mi.index.delete(mi.id2).unwrap();
         mi.index.commit().unwrap();
 
         assert_that!(mi.index.reader.searcher().num_docs()).is_equal_to(3);

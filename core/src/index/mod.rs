@@ -1,6 +1,7 @@
 use anyhow::Result;
 use chunk_meta::ChunkMeta;
 use geo::Rect;
+use ulid::Ulid;
 
 use crate::query::Query;
 
@@ -30,6 +31,9 @@ pub trait Indexer<E> {
 pub trait Index {
     /// Adds the results of indexing a chunk to the index
     fn add(&self, meta: ChunkMeta, indexer_result: Vec<IndexedValue>) -> Result<()>;
+
+    /// Deletes the chunk with the given `id` from the index
+    fn delete(&self, id: Ulid) -> Result<()>;
 
     /// Persists changes
     fn commit(&mut self) -> Result<()>;

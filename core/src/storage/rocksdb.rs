@@ -29,6 +29,11 @@ impl Store for RocksDBStore {
         Ok(())
     }
 
+    fn delete(&mut self, id: Ulid) -> anyhow::Result<()> {
+        self.db.delete(id.0.to_be_bytes())?;
+        Ok(())
+    }
+
     fn commit(&mut self) -> Result<()> {
         // nothing to do here
         Ok(())
@@ -45,23 +50,39 @@ mod tests {
 
     use super::RocksDBStore;
 
+    use assertor::{assert_that, OptionAssertion};
     use tempdir::TempDir;
     use ulid::Ulid;
 
-    #[test]
-    fn add_and_get() {
+    fn internal_add_and_get(id: Ulid, chunk: Vec<u8>) -> RocksDBStore {
         let dir = TempDir::new("georocket_rocksdb").unwrap();
-
         let mut store = RocksDBStore::new(dir.path().to_str().unwrap()).unwrap();
 
-        let id = Ulid::new();
-        let chunk = b"hello world".to_vec();
-
-        store.add(id, chunk.clone()).unwrap();
+        store.add(id, chunk).unwrap();
         store.commit().unwrap();
 
-        let new_chunk = store.get(id).unwrap();
+        store
+    }
 
+    #[test]
+    fn add_and_get() {
+        let id = Ulid::new();
+        let chunk = b"hello world".to_vec();
+        let store = internal_add_and_get(id, chunk.clone());
+        let new_chunk = store.get(id).unwrap();
         assert_eq!(new_chunk, Some(chunk));
+    }
+
+    #[test]
+    fn delete() {
+        let id = Ulid::new();
+        let chunk = b"hello world".to_vec();
+        let mut store = internal_add_and_get(id, chunk.clone());
+        assert_that!(store.get(id).unwrap()).is_some();
+
+        store.delete(id).unwrap();
+        store.commit().unwrap();
+
+        assert_that!(store.get(id).unwrap()).is_none();
     }
 }
