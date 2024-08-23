@@ -326,7 +326,7 @@ mod tests {
     use anyhow::Result;
     use assertor::{assert_that, BooleanAssertion, EqualityAssertion, VecAssertion};
     use geo::{coord, Rect};
-    use tantivy::{Term, COLLECT_BLOCK_BUFFER_LEN};
+    use tantivy::COLLECT_BLOCK_BUFFER_LEN;
     use tempdir::TempDir;
     use ulid::Ulid;
 
