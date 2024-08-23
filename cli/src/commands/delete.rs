@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use anyhow::Result;
 use clap::Args;
@@ -7,6 +7,7 @@ use georocket_core::{
     query::QueryParser,
     storage::{rocksdb::RocksDBStore, Store},
 };
+use humantime::format_duration;
 
 use crate::commands::search_error::TryIntoSearchError;
 
@@ -46,13 +47,17 @@ pub fn run_delete(args: DeleteArgs) -> Result<()> {
         found_chunks += 1;
     }
 
-    index.commit()?;
-    store.commit()?;
+    if found_chunks > 0 {
+        index.commit()?;
+        store.commit()?;
+    }
 
     eprintln!(
-        "Deleted {} chunks in {:?}",
+        "Deleted {} chunks in {}",
         found_chunks,
-        search_start.elapsed()
+        format_duration(Duration::from_millis(
+            search_start.elapsed().as_millis() as u64
+        ))
     );
 
     Ok(())

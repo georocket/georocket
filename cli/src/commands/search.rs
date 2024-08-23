@@ -1,7 +1,7 @@
 use std::{
     io::{self, BufWriter},
     thread::spawn,
-    time::Instant,
+    time::{Duration, Instant},
 };
 
 use crossbeam_channel::bounded;
@@ -14,6 +14,7 @@ use georocket_core::{
 
 use anyhow::{bail, Context, Result};
 use clap::Args;
+use humantime::format_duration;
 
 use super::search_error::TryIntoSearchError;
 
@@ -84,11 +85,12 @@ pub fn run_search(args: SearchArgs) -> Result<()> {
 
     merger.finish()?;
 
-    // TODO remove this
     eprintln!(
-        "Found {} chunks in {:?}",
+        "Found {} chunks in {}",
         found_chunks,
-        search_start.elapsed()
+        format_duration(Duration::from_millis(
+            search_start.elapsed().as_millis() as u64
+        ))
     );
 
     Ok(())

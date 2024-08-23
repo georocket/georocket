@@ -15,6 +15,7 @@ crossbeam-channel = "0.5.13"
 geo = { git = "https://github.com/georust/geo.git", rev = "0ee6b34712556624d4c1b482fc8799e00898394b" }
 georocket-core = { path = "core" }
 h3o = { version = "0.6.4", features = ["geo"] }
+humantime = "2.1.0"
 itertools = "0.13.0"
 lalrpop = "0.20.2"
 lalrpop-util = { version = "0.20.2", features = ["lexer", "unicode"] }
