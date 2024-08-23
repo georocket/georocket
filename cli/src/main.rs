@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand};
 use commands::{
+    delete::{run_delete, DeleteArgs},
     import::{run_import, ImportArgs},
     search::{run_search, SearchArgs},
 };
@@ -17,6 +18,7 @@ struct Cli {
 enum Commands {
     Import(ImportArgs),
     Search(SearchArgs),
+    Delete(DeleteArgs),
 }
 
 fn main() -> anyhow::Result<()> {
@@ -24,5 +26,6 @@ fn main() -> anyhow::Result<()> {
     match cli.command {
         Commands::Import(args) => run_import(args),
         Commands::Search(args) => run_search(args),
+        Commands::Delete(args) => run_delete(args),
     }
 }
