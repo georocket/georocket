@@ -8,7 +8,6 @@ members = [
 
 [workspace.dependencies]
 anyhow = "1.0"
-ariadne = "0.4.1"
 assertor = "0.0.2"
 bincode = "2.0.0-rc.3"
 clap = { version = "4.5", features = ["derive"] }
@@ -34,3 +33,4 @@ tantivy-common = { git = "https://github.com/quickwit-oss/tantivy.git", rev = "b
 tempdir = "0.3.7"
 thiserror = "1.0.61"
 ulid = "1.1.2"
+yansi = { version = "1.0.1", features = ["detect-env", "detect-tty"] }

@@ -6,9 +6,10 @@ publish = false
 
 [dependencies]
 anyhow.workspace = true
-ariadne.workspace = true
 clap.workspace = true
 crossbeam-channel.workspace = true
 georocket-core.workspace = true
 lalrpop-util.workspace = true
 mime_guess.workspace = true
+thiserror.workspace = true
+yansi.workspace = true
