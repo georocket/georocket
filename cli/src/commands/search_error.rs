@@ -46,10 +46,16 @@ impl<T> TryIntoSearchError for ParseError<usize, T, QueryParserError> {
             ParseError::InvalidToken { location } => {
                 ("Invalid token".to_string(), location..location)
             }
-            ParseError::UnrecognizedEof { location, expected } => (
-                format!("Unrecognized EOF.{}", expected_to_string(&expected)),
-                location..location,
-            ),
+            ParseError::UnrecognizedEof { location, expected } => {
+                if query.trim().is_empty() {
+                    return Ok(SearchError::Parse("Query must not be empty".to_string()));
+                } else {
+                    (
+                        format!("Unrecognized EOF.{}", expected_to_string(&expected)),
+                        location..location,
+                    )
+                }
+            }
             ParseError::UnrecognizedToken { token, expected } => (
                 format!("Unrecognized token.{}", expected_to_string(&expected)),
                 token.0..token.2,
