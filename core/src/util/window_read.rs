@@ -2,8 +2,8 @@ use std::io::Read;
 
 use super::window::Window;
 
-/// Wrapper around an `Read` object. Buffers all bytes read in an internal
-/// buffer enabling the extraction of relevant bytes
+/// Wrapper around a `Read` object. Buffers all bytes read in an internal
+/// buffer enabling the extraction of relevant bytes.
 pub struct WindowRead<R> {
     inner: R,
     window: Window,

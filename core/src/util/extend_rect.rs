@@ -64,7 +64,6 @@ pub trait ExtendRect {
 }
 
 impl ExtendRect for Rect {
-    /// Extends the bounding box so it overlaps the given point
     fn extend_point(&mut self, x: f64, y: f64) {
         let min = self.min();
         self.set_min((min.x.min(x), min.y.min(y)));
@@ -72,7 +71,6 @@ impl ExtendRect for Rect {
         self.set_max((max.x.max(x), max.y.max(y)));
     }
 
-    /// Extends the bounding box so it overlaps the given other box
     fn extend_rect(&mut self, other: &Rect) {
         let min = self.min();
         let other_min = other.min();
